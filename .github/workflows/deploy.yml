@@ -18,6 +18,13 @@ jobs:
       # PM2 process names per environment (app = php built-in server, reverb = websocket server)
       PM2_APP_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-app' || 'e11lifeos-app-staging' }}
       PM2_REVERB_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-reverb' || 'e11lifeos-reverb-staging' }}
+      # Baked into the built JS by Vite — these are the PUBLIC Reverb app key/host/etc.
+      # (never the secret), so plain repo Variables are fine, no need for Secrets.
+      VITE_REVERB_APP_KEY: ${{ github.ref == 'refs/heads/main' && vars.REVERB_APP_KEY_LIVE || vars.REVERB_APP_KEY_STAGING }}
+      VITE_REVERB_HOST: zimmimail.de
+      VITE_REVERB_PORT: 443
+      VITE_REVERB_SCHEME: https
+      VITE_REVERB_PATH: ${{ github.ref == 'refs/heads/main' && '/E11LifeOS' || '/E11LifeOS-staging' }}
 
     steps:
       - name: Checkout code

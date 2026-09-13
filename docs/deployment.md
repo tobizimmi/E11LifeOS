@@ -86,16 +86,18 @@ eigene `REVERB_APP_ID`/`KEY`/`SECRET` (nicht mit Live teilen).
 
 Zwei Prozesse pro Umgebung — App (`php -S`) und Reverb-WebSocket-Server —
 auf unterschiedlichen internen Ports, analog zu
-`RezepteApp2/backend/ecosystem.config.js`:
+`RezepteApp2/backend/ecosystem.config.js`. **Wichtig:** explizit den PHP-8.4-
+Pfad (`/opt/plesk/php/8.4/bin/php`) verwenden, nicht das bloße `php` — das
+zeigt auf die alte System-PHP 8.2, mit der die App nicht läuft.
 
 ```bash
 # Live: App-Port 3010, Reverb-Port 3011
-pm2 start php --name e11lifeos-app --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live -- -S 127.0.0.1:3010 -t public/
-pm2 start "php artisan reverb:start --port=3011" --name e11lifeos-reverb --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live
+pm2 start /opt/plesk/php/8.4/bin/php --name e11lifeos-app --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live -- -S 127.0.0.1:3010 -t public/
+pm2 start "/opt/plesk/php/8.4/bin/php artisan reverb:start --port=3011" --name e11lifeos-reverb --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live
 
 # Staging: App-Port 3020, Reverb-Port 3021
-pm2 start php --name e11lifeos-app-staging --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging -- -S 127.0.0.1:3020 -t public/
-pm2 start "php artisan reverb:start --port=3021" --name e11lifeos-reverb-staging --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging
+pm2 start /opt/plesk/php/8.4/bin/php --name e11lifeos-app-staging --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging -- -S 127.0.0.1:3020 -t public/
+pm2 start "/opt/plesk/php/8.4/bin/php artisan reverb:start --port=3021" --name e11lifeos-reverb-staging --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging
 
 pm2 save
 ```

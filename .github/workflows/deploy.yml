@@ -79,7 +79,10 @@ jobs:
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- \
             "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" << 'EOF'
             set -e
-            export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+            # Server default `php`/composer resolve to the OS-packaged PHP 8.2 (via
+            # /usr/bin/php), but this app needs PHP >=8.3 (Laravel 13) — Plesk also has
+            # PHP 8.4 installed under /opt/plesk/php/8.4, just not on the default PATH.
+            export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
             APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"
 
             cd "$APP_PATH"

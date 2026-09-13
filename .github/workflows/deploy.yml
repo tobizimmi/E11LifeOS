@@ -1,0 +1,119 @@
+name: Deploy E11LifeOS
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'live' || 'staging' }}
+      APP_PATH_DEPLOY: ${{ github.ref == 'refs/heads/main' && secrets.APP_PATH_LIVE || secrets.APP_PATH_STAGING }}
+      SSH_HOST_DEPLOY: ${{ github.ref == 'refs/heads/main' && secrets.SSH_HOST_LIVE || secrets.SSH_HOST_STAGING }}
+      # PM2 process names per environment (app = php built-in server, reverb = websocket server)
+      PM2_APP_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-app' || 'e11lifeos-app-staging' }}
+      PM2_REVERB_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-reverb' || 'e11lifeos-reverb-staging' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Log deployment info
+        run: echo "Deploying to ${{ env.DEPLOY_ENV }} (PM2 app ${{ env.PM2_APP_NAME }}, reverb ${{ env.PM2_REVERB_NAME }})"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ env.SSH_HOST_DEPLOY }}" >> ~/.ssh/known_hosts
+
+      - name: Create deployment directories
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} << 'DIRSEOF'
+          set -e
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/public/build
+          # Laravel writable dirs (excluded from rsync) — without these a thrown
+          # exception cannot even render an error page ("valid cache path").
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/views
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/cache/data
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/sessions
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/logs
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/bootstrap/cache
+          echo "Directories created"
+          DIRSEOF
+
+      - name: Deploy application code
+        run: |
+          # .env is fully SERVER-MANAGED and intentionally never touched by CI —
+          # avoids the class of bugs where CI-side templating mangles a real secret.
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_rsa" \
+            --exclude='storage/' \
+            --exclude='vendor/' \
+            --exclude='node_modules/' \
+            --exclude='.env' \
+            --exclude='.git/' \
+            ./ \
+            ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }}:${{ env.APP_PATH_DEPLOY }}/
+
+      - name: Run server-side deployment tasks
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- \
+            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" << 'EOF'
+            set -e
+            export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"
+
+            cd "$APP_PATH"
+
+            if [ ! -f .env ]; then
+              echo "ERROR: .env missing at $APP_PATH/.env (server-managed; create it once manually)" >&2
+              exit 1
+            fi
+
+            composer install --no-dev --optimize-autoloader --no-scripts
+            php artisan package:discover --ansi
+
+            php artisan migrate --force
+
+            # Clear stale caches (do NOT config:cache — keep reading the live .env)
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+            php artisan cache:clear
+
+            if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_APP_NAME" --update-env
+            else
+              echo "PM2 process $PM2_APP_NAME not found — start it once manually (see docs/deployment.md), then re-deploy." >&2
+              exit 1
+            fi
+
+            if pm2 describe "$PM2_REVERB_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_REVERB_NAME" --update-env
+            else
+              echo "PM2 process $PM2_REVERB_NAME not found — start it once manually (see docs/deployment.md), then re-deploy." >&2
+              exit 1
+            fi
+
+            pm2 save
+
+            echo "Deployment complete (PM2: $PM2_APP_NAME, $PM2_REVERB_NAME)."
+          EOF

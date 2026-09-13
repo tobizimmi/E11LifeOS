@@ -4,7 +4,10 @@ import './echo';
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js');
+        // Base URL is injected server-side (works whether the app is deployed
+        // at the domain root or under a path, e.g. https://host/E11LifeOS).
+        const base = document.querySelector('meta[name="app-base-url"]')?.content?.replace(/\/$/, '') ?? '';
+        navigator.serviceWorker.register(`${base}/service-worker.js`, { scope: `${base}/` });
     });
 }
 

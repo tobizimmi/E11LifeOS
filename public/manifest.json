@@ -2,18 +2,18 @@
     "name": "E11LifeOS",
     "short_name": "E11LifeOS",
     "description": "Second Brain und Verwaltungs-App für Paare, Familien und Einzelpersonen.",
-    "start_url": "/dashboard",
+    "start_url": "dashboard",
     "display": "standalone",
     "background_color": "#111827",
     "theme_color": "#4f46e5",
     "icons": [
         {
-            "src": "/icons/icon-192.png",
+            "src": "icons/icon-192.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "/icons/icon-512.png",
+            "src": "icons/icon-512.png",
             "sizes": "512x512",
             "type": "image/png"
         }

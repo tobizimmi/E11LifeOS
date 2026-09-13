@@ -7,11 +7,12 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- PWA -->
-        <link rel="manifest" href="/manifest.json">
+        <!-- PWA (app.url()/asset() so this also works when deployed under a URL path, e.g. /E11LifeOS) -->
+        <meta name="app-base-url" content="{{ url('/') }}">
+        <link rel="manifest" href="{{ asset('manifest.json') }}">
         <meta name="theme-color" content="#4f46e5">
-        <link rel="icon" href="/icons/icon-192.png">
-        <link rel="apple-touch-icon" href="/icons/icon-192.png">
+        <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

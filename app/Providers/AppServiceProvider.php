@@ -28,6 +28,14 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment(['production', 'staging'])) {
             URL::forceRootUrl(config('app.url'));
             URL::forceScheme('https');
+
+            // Livewire's own <script> tag for livewire.min.js is NOT built via the
+            // url()/route() helpers above — it hardcodes a root-relative path
+            // ("/livewire/livewire.min.js"), which 404s once the app lives under a
+            // URL path prefix. livewire.asset_url expects the FULL file path (not
+            // just a base to prefix), see FrontendAssets::js().
+            $filename = config('app.debug') ? '/livewire/livewire.js' : '/livewire/livewire.min.js';
+            config(['livewire.asset_url' => rtrim(config('app.url'), '/').$filename]);
         }
     }
 }

@@ -1,0 +1,100 @@
+<?php
+
+use App\Models\HouseholdInvite;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
+
+new #[Layout('layouts.app')] class extends Component
+{
+    public ?string $newInviteCode = null;
+
+    public function generateInvite(): void
+    {
+        $household = Auth::user()->currentHousehold();
+
+        abort_if(! $household, 403);
+
+        $invite = HouseholdInvite::create([
+            'household_id' => $household->id,
+            'code' => HouseholdInvite::generateCode(),
+            'created_by' => Auth::id(),
+        ]);
+
+        $this->newInviteCode = $invite->code;
+    }
+
+    public function with(): array
+    {
+        $household = Auth::user()->currentHousehold();
+
+        abort_if(! $household, 403);
+
+        return [
+            'household' => $household,
+            'members' => $household->users()->orderBy('household_members.role')->get(),
+            'invites' => $household->invites()->latest()->get(),
+        ];
+    }
+}; ?>
+
+<div>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('Household') }}: {{ $household->name }}
+        </h2>
+    </x-slot>
+
+    <div class="py-12">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Members') }}</h3>
+                <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @foreach ($members as $member)
+                        <li class="py-2 flex justify-between items-center">
+                            <span class="text-gray-900 dark:text-gray-100">{{ $member->name }}</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ $member->pivot->role }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Invite someone') }}</h3>
+
+                <x-primary-button wire:click="generateInvite">
+                    {{ __('Generate invite code') }}
+                </x-primary-button>
+
+                @if ($newInviteCode)
+                    <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-md">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Share this code with the person you want to invite:') }}</p>
+                        <p class="mt-1 text-xl font-mono tracking-widest text-gray-900 dark:text-gray-100">{{ $newInviteCode }}</p>
+                    </div>
+                @endif
+
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Invite history') }}</h4>
+                    <ul class="divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        @forelse ($invites as $invite)
+                            <li class="py-2 flex justify-between items-center">
+                                <span class="font-mono text-gray-900 dark:text-gray-100">{{ $invite->code }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">
+                                    @if ($invite->used_at)
+                                        {{ __('used') }} {{ $invite->used_at->diffForHumans() }}
+                                    @else
+                                        {{ __('open') }}
+                                    @endif
+                                </span>
+                            </li>
+                        @empty
+                            <li class="py-2 text-gray-500 dark:text-gray-400">{{ __('No invites yet.') }}</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

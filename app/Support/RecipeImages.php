@@ -35,6 +35,18 @@ class RecipeImages
     }
 
     /**
+     * Photo or screenshot prepared for the Claude API: JPEG, long edge at most 1568 px.
+     *
+     * @return array{data: string, mediaType: string}
+     */
+    public static function forAi(UploadedFile $image): array
+    {
+        $decoded = (new ImageManager(new Driver))->read($image->getRealPath());
+
+        return ['data' => (string) $decoded->orient()->scaleDown(1568, 1568)->toJpeg(85), 'mediaType' => 'image/jpeg'];
+    }
+
+    /**
      * Copies a stored photo (e.g. when duplicating a recipe); null if it is missing.
      */
     public static function copy(?string $path, int $householdId): ?string

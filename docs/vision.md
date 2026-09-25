@@ -63,6 +63,11 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Bewertungen (1–5 Sterne + Notiz, eine pro Person), Sortierung „Beste Bewertung“; Suche nach vorhandenen Zutaten; Duplizieren; weitere Fotos mit Galerie.
 - Import übernimmt auch Bewertungen, Wochenplan und weitere Fotos; Export und Kontolöschung berücksichtigen die neuen Daten.
 
+### Rezepte-Addon – Etappe R3 ✅
+- Import per Link (schema.org JSON-LD/Microdata, sonst Claude), Foto/Screenshot, PDF und Text über die Claude-API (offizielles PHP-SDK, strukturierte Ausgabe); Entwurf öffnet im Formular. Schutz vor Abrufen ins lokale Netz.
+- Nährwerte pro Portion (manuell oder per KI geschätzt, gekennzeichnet), PDF-Export (dompdf), öffentliche Links (`/r/{token}`, abschaltbar, nicht indexiert).
+- Barcode-Scanner in der Einkaufsliste (BarcodeDetector des Browsers, Eingabe als Fallback, Open Food Facts).
+
 ## Nächste Schritte
 
 ### Notion-Ansatz – nächste Ausbaustufen
@@ -78,7 +83,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 ### Phase 4 – Weitere Module
 - Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.
 - Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
-- Rezepte R3: Import per URL/Screenshot/PDF (Claude-API), Nährwerte, PDF-Export (dompdf), öffentliche Links, Barcode-Scanner.
 - Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.
 
 ### Phase 5 – KI (optional)

@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\DataExportController;
+use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\RecipeImageController;
+use App\Http\Controllers\RecipePdfController;
 use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -49,13 +51,21 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Volt::route('recipes', 'recipes.index')->name('recipes.index');
     Volt::route('recipes/create', 'recipes.form')->name('recipes.create');
+    Volt::route('recipes/import', 'recipes.import')->name('recipes.import');
     Volt::route('recipes/categories', 'recipes.categories')->name('recipes.categories');
     Volt::route('recipes/plan', 'recipes.plan')->name('recipes.plan');
     Volt::route('recipes/{recipe}', 'recipes.show')->whereNumber('recipe')->name('recipes.show');
     Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');
     Volt::route('recipes/{recipe}/cook', 'recipes.cook')->whereNumber('recipe')->name('recipes.cook');
+    Route::get('recipes/{recipe}/pdf', RecipePdfController::class)->whereNumber('recipe')->name('recipes.pdf');
     Route::get('recipes/{recipe}/image', RecipeImageController::class)->whereNumber('recipe')->name('recipes.image');
     Route::get('recipes/{recipe}/photos/{index}', RecipeImageController::class)->whereNumber(['recipe', 'index'])->name('recipes.photo');
+});
+
+// Public recipe links (no login; only recipes someone shared, see PublicRecipeController).
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');
+    Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
 });
 
 require __DIR__.'/auth.php';

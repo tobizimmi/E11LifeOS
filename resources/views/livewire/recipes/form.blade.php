@@ -77,6 +77,22 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $newCategoryName = '';
 
+    /**
+     * Nutrition per serving (kcal / g), all optional.
+     *
+     * @var array{calories: ?int, protein: ?int, carbs: ?int, fat: ?int, fiber: ?int}
+     */
+    public array $nutrition = ['calories' => null, 'protein' => null, 'carbs' => null, 'fat' => null, 'fiber' => null];
+
+    /**
+     * Photo downloaded by the import (stored already, attached on save).
+     */
+    #[Locked]
+    public ?string $importedImagePath = null;
+
+    #[Locked]
+    public ?string $sourceType = null;
+
     public function mount(?int $recipe = null): void
     {
         $this->resolveHousehold();
@@ -84,6 +100,7 @@ new #[Layout('layouts.app')] class extends Component
         if ($recipe === null) {
             $this->ingredients = [$this->emptyIngredient()];
             $this->steps = [''];
+            $this->fillFromDraft(session()->pull('recipe_draft'));
 
             return;
         }
@@ -102,6 +119,33 @@ new #[Layout('layouts.app')] class extends Component
         $this->categoryIds = $model->categories->pluck('id')->all();
         $this->ingredients = collect($model->scaledIngredients())->map(fn (array $ingredient) => $ingredient)->all() ?: [$this->emptyIngredient()];
         $this->steps = $model->steps() ?: [''];
+        $this->nutrition = array_merge($this->nutrition, array_intersect_key(array_map(fn ($value) => is_numeric($value) ? (int) round((float) $value) : null, (array) $model->nutrition), $this->nutrition));
+    }
+
+    /**
+     * Pre-fills a new recipe with the result of the import page.
+     *
+     * @param  array<string, mixed>|null  $draft
+     */
+    private function fillFromDraft(?array $draft): void
+    {
+        if (! $draft) {
+            return;
+        }
+
+        $this->title = (string) ($draft['title'] ?? '');
+        $this->description = (string) ($draft['description'] ?? '');
+        $this->servings = $draft['servings'] ?? null;
+        $this->prepTime = $draft['prepTime'] ?? null;
+        $this->cookTime = $draft['cookTime'] ?? null;
+        $this->sourceUrl = (string) ($draft['sourceUrl'] ?? '');
+        $this->sourceType = $draft['sourceType'] ?? null;
+        $this->ingredients = collect($draft['ingredients'] ?? [])->map(fn (array $ingredient) => $ingredient + $this->emptyIngredient())->all() ?: [$this->emptyIngredient()];
+        $this->steps = $draft['steps'] ?: [''];
+
+        // Only photos the import stored for this household.
+        $imagePath = (string) ($draft['imagePath'] ?? '');
+        $this->importedImagePath = str_starts_with($imagePath, 'recipes/'.$this->householdId.'/') ? $imagePath : null;
     }
 
     private function findRecipe(int $id): Recipe
@@ -166,6 +210,26 @@ new #[Layout('layouts.app')] class extends Component
         return array_values($list);
     }
 
+    /**
+     * Manual values replace the stored ones; an estimate's extra keys (e.g. "estimated") survive
+     * as long as the numbers were not changed.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function nutritionAttribute(Recipe $recipe): ?array
+    {
+        $values = array_map(fn ($value) => $value === null || $value === '' ? null : (int) $value, $this->nutrition);
+
+        if (array_filter($values, fn ($value) => $value !== null) === []) {
+            return null;
+        }
+
+        $stored = (array) $recipe->nutrition;
+        $unchanged = array_intersect_key($stored, $values) == array_filter($values, fn ($value) => $value !== null);
+
+        return $unchanged ? $stored : $values;
+    }
+
     public function removeNewPhoto(int $index): void
     {
         unset($this->newPhotos[$index]);
@@ -215,6 +279,8 @@ new #[Layout('layouts.app')] class extends Component
             'photo' => ['nullable', 'image', 'max:15360'],
             'newPhotos' => ['array', 'max:'.Recipe::MAX_ADDITIONAL_IMAGES],
             'newPhotos.*' => ['image', 'max:15360'],
+            'nutrition' => ['array'],
+            'nutrition.*' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
 
         $recipe = $this->recipeId ? $this->findRecipe($this->recipeId) : new Recipe([
@@ -247,7 +313,12 @@ new #[Layout('layouts.app')] class extends Component
                 ->map(fn (string $step) => ['text' => $step])
                 ->values()
                 ->all(),
+            'nutrition' => $this->nutritionAttribute($recipe),
         ];
+
+        if (! $recipe->exists && $this->sourceType) {
+            $attributes['source_type'] = $this->sourceType;
+        }
 
         if (! $recipe->exists || $recipe->visibilityCanBeChangedBy(Auth::user())) {
             $attributes['visibility'] = $this->isPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED;
@@ -259,6 +330,8 @@ new #[Layout('layouts.app')] class extends Component
             $attributes['image_path'] = RecipeImages::store($this->photo, (int) $this->householdId);
         } elseif ($this->removePhoto) {
             $attributes['image_path'] = null;
+        } elseif (! $recipe->exists && $this->importedImagePath) {
+            $attributes['image_path'] = $this->importedImagePath;
         }
 
         $keptPhotos = collect($recipe->additional_images ?? [])->except($this->removedPhotos);
@@ -360,10 +433,13 @@ new #[Layout('layouts.app')] class extends Component
                         @elseif ($recipe?->imageUrl() && ! $removePhoto)
                             <img src="{{ $recipe->imageUrl() }}" alt="" class="h-24 w-32 rounded-md object-cover" />
                         @endif
+                        @if ($importedImagePath && ! $photo && ! $removePhoto)
+                            <span class="rounded-md bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 text-sm text-indigo-700 dark:text-indigo-200">🖼 {{ __('The photo from the import is used.') }}</span>
+                        @endif
                         <div class="space-y-1">
                             <input type="file" wire:model="photo" id="photo" accept="image/*" class="block text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-indigo-700" />
                             <p wire:loading wire:target="photo" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
-                            @if ($recipe?->image_path && ! $photo)
+                            @if (($recipe?->image_path || $importedImagePath) && ! $photo)
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                                     <input type="checkbox" wire:model.live="removePhoto" class="rounded border-gray-300 text-indigo-600" /> {{ __('Remove photo') }}
                                 </label>
@@ -446,6 +522,20 @@ new #[Layout('layouts.app')] class extends Component
                     @endforeach
                 </div>
                 <x-secondary-button type="button" wire:click="addStep">+ {{ __('Step') }}</x-secondary-button>
+            </section>
+
+            {{-- Nutrition --}}
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Nutrition per serving') }} <span class="text-sm font-normal text-gray-500">({{ __('optional') }})</span></h2>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    @foreach (['calories' => __('Calories (kcal)'), 'protein' => __('Protein (g)'), 'carbs' => __('Carbohydrates (g)'), 'fat' => __('Fat (g)'), 'fiber' => __('Fiber (g)')] as $key => $label)
+                        <div>
+                            <x-input-label for="nutrition-{{ $key }}" :value="$label" />
+                            <x-text-input wire:model="nutrition.{{ $key }}" id="nutrition-{{ $key }}" type="number" min="0" class="mt-1 block w-full" />
+                        </div>
+                    @endforeach
+                </div>
+                <x-input-error :messages="$errors->get('nutrition.*')" />
             </section>
 
             {{-- Organisation --}}

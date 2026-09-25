@@ -5,8 +5,11 @@ use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
+use App\Support\RecipeAi;
+use App\Support\RecipeAiException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -38,6 +41,8 @@ new #[Layout('layouts.app')] class extends Component
     public string $planDate = '';
 
     public string $planMealType = 'dinner';
+
+    public bool $sharing = false;
 
     public int $myRating = 0;
 
@@ -156,6 +161,37 @@ new #[Layout('layouts.app')] class extends Component
         $this->reset('myRating', 'myComment');
     }
 
+    /**
+     * Rough values per serving from the ingredient list (Claude API).
+     */
+    public function estimateNutrition(RecipeAi $ai): void
+    {
+        $recipe = $this->findRecipe();
+
+        try {
+            $recipe->update(['nutrition' => $ai->estimateNutrition($recipe) + ['estimated' => true]]);
+        } catch (RecipeAiException $exception) {
+            $this->dispatch('toast', message: $exception->getMessage());
+        }
+    }
+
+    public function createPublicLink(): void
+    {
+        $recipe = $this->findRecipe();
+
+        if (! $recipe->public_token) {
+            $recipe->update(['public_token' => Str::random(40)]);
+        }
+
+        $this->sharing = true;
+    }
+
+    public function revokePublicLink(): void
+    {
+        $this->findRecipe()->update(['public_token' => null]);
+        $this->dispatch('toast', message: __('The public link no longer works.'));
+    }
+
     public function duplicate(): void
     {
         $copy = $this->findRecipe()->duplicateFor(Auth::user());
@@ -191,6 +227,8 @@ new #[Layout('layouts.app')] class extends Component
             'averageRating' => $recipe->averageRating(),
             'otherRatings' => $recipe->ratings->where('user_id', '!=', Auth::id())->sortByDesc('updated_at')->values(),
             'photos' => $recipe->additionalImageUrls(),
+            'nutritionValues' => $recipe->nutritionValues(),
+            'aiAvailable' => RecipeAi::isConfigured(),
             'upcomingPlans' => MealPlan::query()->visibleTo(Auth::user(), (int) $this->householdId)
                 ->where('recipe_id', $recipe->id)
                 ->whereDate('date', '>=', today())
@@ -255,6 +293,8 @@ new #[Layout('layouts.app')] class extends Component
                             <div x-data="{ open: false }" class="relative">
                                 <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-label="{{ __('More') }}">⋯</button>
                                 <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
+                                    <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📄 {{ __('Download as PDF') }}</a>
+                                    <button type="button" wire:click="$toggle('sharing')" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🔗 {{ __('Public link') }}</button>
                                     <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
                                     <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
                                     <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
@@ -262,6 +302,22 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </div>
                     </div>
+
+                    @if ($sharing)
+                        <div class="rounded-md bg-emerald-50 dark:bg-emerald-900/30 p-3 space-y-2 text-sm">
+                            @if ($recipe->publicUrl())
+                                <p class="text-gray-700 dark:text-gray-300">{{ __('Anyone with this link can view the recipe (without ratings, notes or the meal plan).') }}</p>
+                                <div class="flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                                    <x-text-input readonly value="{{ $recipe->publicUrl() }}" class="block flex-1 min-w-0 text-sm" aria-label="{{ __('Public link') }}" x-on:focus="$el.select()" />
+                                    <button type="button" x-on:click="navigator.clipboard.writeText(@js($recipe->publicUrl())).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700" x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></button>
+                                    <button type="button" wire:click="revokePublicLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 dark:text-red-400 underline">{{ __('Turn off link') }}</button>
+                                </div>
+                            @else
+                                <p class="text-gray-700 dark:text-gray-300">{{ __('Share the recipe with people outside the household via a link. You can turn it off at any time.') }}</p>
+                                <button type="button" wire:click="createPublicLink" class="rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700">🔗 {{ __('Create public link') }}</button>
+                            @endif
+                        </div>
+                    @endif
 
                     @if ($planning)
                         <form wire:submit="planMeal" class="flex flex-wrap items-end gap-3 rounded-md bg-indigo-50 dark:bg-indigo-900/30 p-3">
@@ -388,6 +444,37 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="markCooked" class="mt-6 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm">✅ {{ __('Cooked it') }}</button>
                 </section>
             </div>
+
+            @if ($nutritionValues !== [] || ($aiAvailable && collect($ingredients)->contains('isSection', false)))
+                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {{ __('Nutrition per serving') }}
+                            @if (($recipe->nutrition['estimated'] ?? false) && $nutritionValues !== [])
+                                <span class="text-sm font-normal text-gray-500">({{ __('estimated') }})</span>
+                            @endif
+                        </h2>
+                        @if ($aiAvailable && collect($ingredients)->contains('isSection', false))
+                            <button type="button" wire:click="estimateNutrition" wire:loading.attr="disabled" class="text-sm text-indigo-600 dark:text-indigo-400 underline disabled:opacity-50">
+                                <span wire:loading.remove wire:target="estimateNutrition">✨ {{ $nutritionValues === [] ? __('Estimate with AI') : __('Estimate again') }}</span>
+                                <span wire:loading wire:target="estimateNutrition">{{ __('Estimating …') }}</span>
+                            </button>
+                        @endif
+                    </div>
+                    @if ($nutritionValues !== [])
+                        <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                            @foreach ($nutritionValues as $key => $value)
+                                <div class="rounded-md bg-gray-50 dark:bg-gray-900/60 p-3 text-center">
+                                    <dt class="text-xs text-gray-500 dark:text-gray-400">{{ \App\Models\Recipe::nutritionLabel($key)[0] }}</dt>
+                                    <dd class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ str_replace('.', ',', (string) $value) }}<span class="text-sm font-normal text-gray-500"> {{ \App\Models\Recipe::nutritionLabel($key)[1] }}</span></dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    @else
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No nutrition values yet. Enter them when editing or let the AI estimate them from the ingredients.') }}</p>
+                    @endif
+                </section>
+            @endif
 
             @if ($photos !== [])
                 <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm" x-data="{ open: null, photos: @js(array_values($photos)) }">

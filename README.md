@@ -16,8 +16,9 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Aufgaben** – eingebaute Sammlung mit Status, Fälligkeit, Zuständigkeit und Wiederholung (täglich/wöchentlich/monatlich/jährlich – abgehakt springt die Aufgabe zum nächsten Termin); als Board, Tabelle oder Kalender; Überfälliges wird hervorgehoben.
 - **Kalender** – Monatsansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen.
 - **Sammlungen** – eigene Tabellen/Boards wie Notion-Datenbanken: Eigenschaften (Text, Zahl, Datum, Auswahl, Checkbox, Person, Link), Vorlagen (Projekte, Verträge, Leseliste), jeder Eintrag mit eigenen Notizen.
-- **Einkaufsliste** – abhaken, per Wischen löschen.
+- **Einkaufsliste** – abhaken, per Wischen löschen, Produkte per Barcode-Scanner (Kamera oder Nummer, Daten von Open Food Facts) eintragen.
 - **Rezepte (Addon)** – Rezeptsammlung mit Foto und weiteren Bildern (Galerie), Zutaten (mit Abschnitten), Zubereitungsschritten, Portionsrechner, Kategorien, Tags, Favoriten, Bewertungen (Sterne + Notiz pro Person), Archiv und Duplizieren; ausgewählte Zutaten landen mit einem Klick (umgerechnet) auf der Einkaufsliste. „Was kann ich kochen?“ sucht nach vorhandenen Zutaten. Pro Haushalt ein-/ausschaltbar (Haushalt → Addons).
+- **Rezepte importieren** – per Link (liest die Rezeptdaten der Seite direkt, sonst die KI), Foto/Screenshot (auch Kochbuchseiten und Handschrift), PDF oder eingefügtem Text; das Formular öffnet vorausgefüllt zum Prüfen. Dazu Nährwerte pro Portion (von Hand oder per KI geschätzt), PDF-Export und öffentliche Links zum Teilen (jederzeit abschaltbar).
 - **Kochmodus** – Schritt für Schritt im Vollbild, Timer aus dem Schritttext („10 Minuten“) oder per Schnellwahl, Alarm mit Ton/Vibration, Bildschirm bleibt an; am Ende bewerten.
 - **Wochenplan** – Rezepte oder freie Einträge („Reste“) pro Tag und Mahlzeit planen, per Drag & Drop verschieben; die Zutaten der Woche zusammengefasst auf die Einkaufsliste; „Heute auf dem Speiseplan“ auf der Übersicht.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
@@ -45,6 +46,17 @@ composer run dev   # Server, Queue, Logs und Vite
 ```
 
 Registrierung unter `/register` mit dem erzeugten Code.
+
+## KI-Funktionen der Rezepte (optional)
+
+Import von Fotos, PDFs und Text sowie die Nährwert-Schätzung nutzen die Claude-API. Dafür in der `.env` auf dem Server:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-opus-5   # optional, Standard
+```
+
+Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden.
 
 ## Rezepte aus der RezepteApp2 übernehmen
 

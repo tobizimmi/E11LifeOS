@@ -105,7 +105,7 @@ class HouseholdModulesTest extends TestCase
         $private->update(['visibility' => Item::VISIBILITY_PRIVATE, 'created_by' => $user->id]);
         $this->entry($private, 'Geheim', ['Kündigen bis' => '2026-10-25'])->update(['visibility' => Item::VISIBILITY_PRIVATE, 'created_by' => $user->id]);
 
-        $this->artisan('reminders:send')->expectsOutput('Reminders sent: 2')->assertSuccessful();
+        $this->artisan('reminders:send')->expectsOutput('Reminders sent: 2, pushed: 0')->assertSuccessful();
 
         Notification::assertSentTo($user, TaskReminder::class, function (TaskReminder $notification) use ($user) {
             $lines = implode("\n", $notification->toMail($user)->introLines);

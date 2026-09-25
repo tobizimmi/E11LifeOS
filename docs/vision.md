@@ -91,7 +91,7 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 ## Nächste Schritte
 
 ### Phase 3 – Organisation (Rest)
-- Erinnerungen zusätzlich per Web-Push (braucht VAPID-Schlüssel und ein Push-Paket).
+- ✅ Erinnerungen zusätzlich per Web-Push: VAPID (ES256) mit PHP-OpenSSL signiert, Pushes ohne Payload; der Service Worker holt die Texte von `/push/pending`. Nur bekannte Push-Dienste als Endpunkte erlaubt.
 
 ### Phase 4 – Weitere Module
 

@@ -126,7 +126,7 @@ class OrganisationFeaturesTest extends TestCase
         $this->task($tasks, 'Privat vom Partner', '2026-09-25', [], ['created_by' => $partner->id, 'visibility' => Item::VISIBILITY_PRIVATE]);
         $this->task($tasks, 'Für Stille', '2026-09-25', ['assignee' => $quiet->id], ['created_by' => $user->id]);
 
-        $this->artisan('reminders:send')->expectsOutput('Reminders sent: 2')->assertSuccessful();
+        $this->artisan('reminders:send')->expectsOutput('Reminders sent: 2, pushed: 0')->assertSuccessful();
 
         Notification::assertSentTo($user, TaskReminder::class, function (TaskReminder $notification) use ($user) {
             $mail = $notification->toMail($user);

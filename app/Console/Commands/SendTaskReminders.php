@@ -6,38 +6,74 @@ use App\Models\Collection;
 use App\Models\Item;
 use App\Models\User;
 use App\Notifications\TaskReminder;
+use App\Support\WebPush;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 #[Signature('reminders:send')]
-#[Description('E-mail everyone who opted in their due/overdue tasks and date reminders from collections (runs daily via the scheduler)')]
+#[Description('E-mail and/or push everyone who opted in their due/overdue tasks and date reminders from collections (runs daily via the scheduler)')]
 class SendTaskReminders extends Command
 {
-    public function handle(): int
+    public function handle(WebPush $webPush): int
     {
         $sent = 0;
+        $pushed = 0;
 
-        User::where('reminder_emails', true)->each(function (User $user) use (&$sent) {
-            $household = $user->currentHousehold();
+        User::query()
+            ->where(fn ($query) => $query->where('reminder_emails', true)->orWhereHas('pushSubscriptions'))
+            ->each(function (User $user) use (&$sent, &$pushed, $webPush) {
+                $household = $user->currentHousehold();
 
-            if (! $household) {
-                return;
-            }
+                if (! $household) {
+                    return;
+                }
 
-            $collection = Collection::tasksFor($household->id);
-            $tasks = $this->dueTasksFor($user, $collection);
-            $dates = $this->dateRemindersFor($user, $household->id);
+                $collection = Collection::tasksFor($household->id);
+                $tasks = $this->dueTasksFor($user, $collection);
+                $dates = $this->dateRemindersFor($user, $household->id);
 
-            if ($tasks->isNotEmpty() || $dates->isNotEmpty()) {
-                $user->notify(new TaskReminder($tasks, $collection, $dates));
-                $sent++;
-            }
-        });
+                if ($tasks->isEmpty() && $dates->isEmpty()) {
+                    return;
+                }
 
-        $this->info("Reminders sent: {$sent}");
+                if ($user->reminder_emails) {
+                    $user->notify(new TaskReminder($tasks, $collection, $dates));
+                    $sent++;
+                }
+
+                if ($webPush->send($user, ...$this->pushText($tasks, $dates, $collection)) > 0) {
+                    $pushed++;
+                }
+            });
+
+        $this->info("Reminders sent: {$sent}, pushed: {$pushed}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Title, body and target URL of the push notification.
+     *
+     * @param  \Illuminate\Support\Collection<int, array{task: Item, due: string}>  $tasks
+     * @param  \Illuminate\Support\Collection<int, array{entry: Item, collection: Collection, property: string, date: string}>  $dates
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function pushText(\Illuminate\Support\Collection $tasks, \Illuminate\Support\Collection $dates, Collection $collection): array
+    {
+        $title = $tasks->isNotEmpty()
+            ? trans_choice(':count task is due|:count tasks are due', $tasks->count())
+            : trans_choice(':count reminder|:count reminders', $dates->count());
+
+        $lines = $tasks->map(fn (array $row) => '• '.$row['task']->title)
+            ->concat($dates->map(fn (array $row) => '• '.$row['entry']->title.' – '.$row['property'].': '
+                .($row['date'] === now()->toDateString() ? __('today') : Carbon::parse($row['date'])->translatedFormat('j. M'))));
+
+        $body = $lines->take(4)->implode("\n").($lines->count() > 4 ? "\n".__('and :count more', ['count' => $lines->count() - 4]) : '');
+        $url = $tasks->isNotEmpty() ? route('collections.show', $collection) : route('collections.show', $dates->first()['collection']);
+
+        return [$title, $body, $url];
     }
 
     /**

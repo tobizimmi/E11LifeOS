@@ -2,8 +2,10 @@
 
 use App\Livewire\Actions\Logout;
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Collection;
 use App\Models\Item;
 use App\Support\PageTree;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
@@ -16,6 +18,9 @@ new class extends Component
      */
     #[Locked]
     public ?int $currentPageId = null;
+
+    #[Locked]
+    public ?int $currentCollectionId = null;
 
     /**
      * @var array<string, string>
@@ -34,6 +39,12 @@ new class extends Component
         if (request()->routeIs('pages.index') && is_numeric($item)) {
             $this->currentPageId = (int) $item;
         }
+
+        $collection = request()->route('collection');
+
+        if (request()->routeIs('collections.show') && is_numeric($collection)) {
+            $this->currentCollectionId = (int) $collection;
+        }
     }
 
     /**
@@ -49,7 +60,7 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'tasksCollection' => null, 'collections' => collect()];
         }
 
         $tree = new PageTree(
@@ -65,6 +76,12 @@ new class extends Component
                 ? collect($tree->ancestors($this->currentPageId))->pluck('id')->push($this->currentPageId)->all()
                 : [],
             'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
+            'tasksCollection' => Collection::tasksFor($this->householdId),
+            'collections' => Collection::query()
+                ->visibleTo(Auth::user(), $this->householdId)
+                ->whereNull('system_key')
+                ->orderBy('name')
+                ->get(['id', 'name', 'icon', 'visibility']),
         ];
     }
 }; ?>
@@ -125,7 +142,7 @@ new class extends Component
             @if ($householdId !== null)
                 <div class="space-y-0.5">
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
-                    <x-sidebar-link :href="route('todos.index')" :active="request()->routeIs('todos.index')" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('collections.show', $tasksCollection)" :active="$currentCollectionId === $tasksCollection->id" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.index')" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
                 </div>
@@ -144,6 +161,16 @@ new class extends Component
                     @else
                         <p class="px-2 text-xs text-gray-400">{{ __('Only you can see pages here.') }}</p>
                     @endif
+                </x-sidebar-section>
+
+                <x-sidebar-section :title="__('Collections')" :add-href="route('collections.index', ['create' => 1])" :all-href="route('collections.index')" :add-label="__('New collection')">
+                    @forelse ($collections as $sidebarCollection)
+                        <x-sidebar-link :href="route('collections.show', $sidebarCollection)" :active="$currentCollectionId === $sidebarCollection->id" wire:navigate wire:key="sidebar-collection-{{ $sidebarCollection->id }}">
+                            {{ $sidebarCollection->displayIcon() }} {{ $sidebarCollection->name }}
+                        </x-sidebar-link>
+                    @empty
+                        <p class="px-2 text-xs text-gray-400">{{ __('Tables and boards with your own properties.') }}</p>
+                    @endforelse
                 </x-sidebar-section>
             @endif
         </nav>

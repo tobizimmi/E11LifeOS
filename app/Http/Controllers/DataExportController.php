@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class DataExportController extends Controller
 {
@@ -28,8 +29,15 @@ class DataExportController extends Controller
             'household_members' => $household?->members()->with('user:id,name,email')->get()
                 ->map->only(['role', 'joined_at', 'user']),
             'notes' => $this->exportItems($household, $user, Item::TYPE_NOTE, ['id', 'parent_id', 'icon', 'title', 'content', 'visibility', 'created_at', 'updated_at']),
-            'todos' => $this->exportItems($household, $user, Item::TYPE_TODO, ['id', 'title', 'done', 'position', 'visibility', 'created_at', 'updated_at']),
+            'todos' => $this->exportItems($household, $user, Item::TYPE_TODO, ['id', 'collection_id', 'title', 'content', 'done', 'properties', 'position', 'visibility', 'created_at', 'updated_at']),
             'inbox' => $this->exportItems($household, $user, Item::TYPE_INBOX, ['id', 'title', 'visibility', 'created_at', 'updated_at']),
+            'collections' => $household
+                ? Collection::query()->visibleTo($user, $household->id)->with('properties')->orderBy('id')->get()
+                    ->map(fn (Collection $collection) => $collection->only(['id', 'name', 'icon', 'visibility', 'system_key', 'created_at']) + [
+                        'properties' => $collection->properties->map->only(['id', 'name', 'type', 'options'])->all(),
+                    ])
+                : [],
+            'collection_entries' => $this->exportItems($household, $user, Item::TYPE_ENTRY, ['id', 'collection_id', 'title', 'content', 'properties', 'visibility', 'created_at', 'updated_at']),
             'shopping_list' => $household
                 ? ShoppingListEntry::where('household_id', $household->id)->get()
                     ->map->only(['id', 'label', 'quantity', 'checked', 'created_at', 'updated_at'])
@@ -46,9 +54,9 @@ class DataExportController extends Controller
      * other members' private items), with tag names inlined.
      *
      * @param  array<int, string>  $attributes
-     * @return Collection<int, array<string, mixed>>|array{}
+     * @return SupportCollection<int, array<string, mixed>>|array{}
      */
-    private function exportItems(?Household $household, User $user, string $type, array $attributes): Collection|array
+    private function exportItems(?Household $household, User $user, string $type, array $attributes): SupportCollection|array
     {
         if (! $household) {
             return [];

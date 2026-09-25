@@ -45,9 +45,12 @@ new class extends Component
             return [];
         }
 
+        $entryUrl = fn (Item $item) => route('collections.show', ['collection' => $item->collection_id, 'entry' => $item->id]);
+
         $groups = [
             __('Pages') => $this->itemResults(Item::TYPE_NOTE, $term, fn (Item $item) => route('pages.index', ['item' => $item->id])),
-            __('To-Do') => $this->itemResults(Item::TYPE_TODO, $term, fn () => route('todos.index')),
+            __('To-Do') => $this->itemResults(Item::TYPE_TODO, $term, $entryUrl),
+            __('Collections') => $this->itemResults(Item::TYPE_ENTRY, $term, $entryUrl),
             __('Inbox') => $this->itemResults(Item::TYPE_INBOX, $term, fn () => route('inbox.index')),
             __('Shopping List') => ShoppingListEntry::where('household_id', $this->householdId)
                 ->whereRaw('LOWER(label) LIKE ?', ['%'.mb_strtolower($term).'%'])

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\HouseholdItemsChanged;
+use App\Models\Collection;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,8 +65,10 @@ class HouseholdBroadcastingTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        foreach (['pages.index', 'todos.index', 'shopping-list.index', 'inbox.index', 'dashboard', 'layout.navigation'] as $component) {
-            $listeners = invade(Volt::test($component)->instance())->getListeners();
+        $tasks = Collection::tasksFor($household->id);
+
+        foreach (['pages.index' => [], 'collections.show' => ['collection' => $tasks->id], 'shopping-list.index' => [], 'inbox.index' => [], 'dashboard' => [], 'layout.navigation' => []] as $component => $parameters) {
+            $listeners = invade(Volt::test($component, $parameters)->instance())->getListeners();
 
             $this->assertSame('$refresh', $listeners["echo-private:household.{$household->id},.items.updated"] ?? null, $component);
         }

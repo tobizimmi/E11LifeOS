@@ -184,6 +184,8 @@ return [
 
     'attributes' => [
         'body' => 'Inhalt',
+        'collectionIcon' => 'Icon',
+        'collectionName' => 'Name',
         'current_password' => 'Aktuelles Passwort',
         'email' => 'E-Mail-Adresse',
         'form.email' => 'E-Mail-Adresse',
@@ -193,11 +195,14 @@ return [
         'invite_code' => 'Einladungscode',
         'label' => 'Artikel',
         'name' => 'Name',
+        'newPropertyName' => 'Name der Eigenschaft',
+        'newPropertyType' => 'Typ',
         'password' => 'Passwort',
         'parentId' => 'Übergeordnete Seite',
         'password_confirmation' => 'Passwortbestätigung',
         'quantity' => 'Menge',
         'tagsInput' => 'Tags',
+        'template' => 'Vorlage',
         'title' => 'Titel',
     ],
 

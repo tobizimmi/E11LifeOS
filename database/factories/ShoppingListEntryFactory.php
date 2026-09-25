@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Household;
 use App\Models\ShoppingListEntry;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,7 +19,10 @@ class ShoppingListEntryFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'household_id' => Household::factory(),
+            'label' => fake()->word(),
+            'quantity' => null,
+            'checked' => false,
         ];
     }
 }

@@ -53,4 +53,18 @@ class AccountDeletionPreservesHouseholdDataTest extends TestCase
 
         $this->assertDatabaseHas('household_members', ['household_id' => $household->id, 'user_id' => $partner->id]);
     }
+
+    public function test_deleting_a_users_account_removes_their_private_items(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
+
+        $private = Item::factory()->note()->for($household)->privateTo($user)->create();
+        $partnersPrivate = Item::factory()->note()->for($household)->privateTo($partner)->create();
+
+        $user->delete();
+
+        $this->assertDatabaseMissing('items', ['id' => $private->id]);
+        $this->assertDatabaseHas('items', ['id' => $partnersPrivate->id]);
+    }
 }

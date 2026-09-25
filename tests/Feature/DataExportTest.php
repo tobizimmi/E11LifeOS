@@ -34,6 +34,22 @@ class DataExportTest extends TestCase
         $this->assertCount(1, $data['shopping_list']);
     }
 
+    public function test_the_export_contains_own_private_items_but_not_those_of_other_members(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
+
+        Item::factory()->note()->for($household)->privateTo($user)->create(['title' => 'Mein Tagebuch'])->syncTagNames(['privat']);
+        Item::factory()->note()->for($household)->privateTo($partner)->create(['title' => 'Partner Tagebuch']);
+        Item::factory()->inbox()->for($household)->create(['title' => 'Gemeinsame Idee']);
+
+        $data = $this->actingAs($user)->get('/profile/export')->assertOk()->json();
+
+        $this->assertSame(['Mein Tagebuch'], array_column($data['notes'], 'title'));
+        $this->assertSame(['privat'], $data['notes'][0]['tags']);
+        $this->assertSame(['Gemeinsame Idee'], array_column($data['inbox'], 'title'));
+    }
+
     public function test_guests_cannot_export_data(): void
     {
         $this->get('/profile/export')->assertRedirect('/login');

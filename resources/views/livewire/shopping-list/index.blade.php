@@ -1,32 +1,18 @@
 <?php
 
+use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ShoppingListEntry;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] class extends Component
 {
-    public int $householdId;
+    use InteractsWithHousehold;
 
     public string $label = '';
 
     public string $quantity = '';
-
-    public function mount(): void
-    {
-        $household = Auth::user()->currentHousehold();
-        abort_if(! $household, 403);
-
-        $this->householdId = $household->id;
-    }
-
-    #[On('echo-private:household.{householdId},.items.updated')]
-    public function refreshFromBroadcast(): void
-    {
-        //
-    }
 
     public function add(): void
     {

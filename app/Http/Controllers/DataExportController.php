@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Household;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class DataExportController extends Controller
 {
@@ -24,14 +27,9 @@ class DataExportController extends Controller
             'household' => $household?->only(['id', 'name', 'created_at']),
             'household_members' => $household?->members()->with('user:id,name,email')->get()
                 ->map->only(['role', 'joined_at', 'user']),
-            'notes' => $household
-                ? Item::where('household_id', $household->id)->ofType(Item::TYPE_NOTE)->get()
-                    ->map->only(['id', 'title', 'content', 'tags', 'created_at', 'updated_at'])
-                : [],
-            'todos' => $household
-                ? Item::where('household_id', $household->id)->ofType(Item::TYPE_TODO)->get()
-                    ->map->only(['id', 'title', 'done', 'position', 'created_at', 'updated_at'])
-                : [],
+            'notes' => $this->exportItems($household, $user, Item::TYPE_NOTE, ['id', 'title', 'content', 'visibility', 'created_at', 'updated_at']),
+            'todos' => $this->exportItems($household, $user, Item::TYPE_TODO, ['id', 'title', 'done', 'position', 'visibility', 'created_at', 'updated_at']),
+            'inbox' => $this->exportItems($household, $user, Item::TYPE_INBOX, ['id', 'title', 'visibility', 'created_at', 'updated_at']),
             'shopping_list' => $household
                 ? ShoppingListEntry::where('household_id', $household->id)->get()
                     ->map->only(['id', 'label', 'quantity', 'checked', 'created_at', 'updated_at'])
@@ -41,5 +39,28 @@ class DataExportController extends Controller
         return response()->json($data, 200, [
             'Content-Disposition' => 'attachment; filename="e11lifeos-export-'.$user->id.'.json"',
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Items the user can see (shared ones plus their own private ones — never
+     * other members' private items), with tag names inlined.
+     *
+     * @param  array<int, string>  $attributes
+     * @return Collection<int, array<string, mixed>>|array{}
+     */
+    private function exportItems(?Household $household, User $user, string $type, array $attributes): Collection|array
+    {
+        if (! $household) {
+            return [];
+        }
+
+        return Item::query()
+            ->forHousehold($household->id)
+            ->visibleTo($user)
+            ->ofType($type)
+            ->with('tags')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Item $item) => $item->only($attributes) + ['tags' => $item->tags->pluck('name')->sort()->values()->all()]);
     }
 }

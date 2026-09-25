@@ -77,7 +77,7 @@ document.addEventListener('alpine:init', () => {
             },
 
             pickFile() {
-                this.$refs.file.click();
+                this.$refs.file?.click();
             },
 
             /**

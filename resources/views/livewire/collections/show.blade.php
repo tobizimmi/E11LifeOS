@@ -2,6 +2,8 @@
 
 use App\Events\HouseholdItemsChanged;
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Livewire\Concerns\StoresAttachments;
+use App\Models\Attachment;
 use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
@@ -14,10 +16,13 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+    use StoresAttachments;
+    use WithFileUploads;
 
     #[Locked]
     public int $collectionId;
@@ -92,6 +97,11 @@ new #[Layout('layouts.app')] class extends Component
      * Markdown of the open entry while editing (name shared with the pageEditor Alpine component).
      */
     public string $body = '';
+
+    /**
+     * File picked, dropped or pasted into the notes editor (see storeAttachment).
+     */
+    public $attachmentUpload = null;
 
     public bool $showSettings = false;
 
@@ -373,8 +383,17 @@ new #[Layout('layouts.app')] class extends Component
 
         $entry = $this->findEntry((int) $this->openEntryId);
         $entry->update(['content' => ['body' => $this->body]]);
+        Attachment::attachReferencedTo($entry, Auth::user());
 
         $this->editingBody = false;
+    }
+
+    /**
+     * @return array{markdown: string, url: string, name: string, isImage: bool}
+     */
+    public function storeAttachment(): array
+    {
+        return $this->storeAttachmentFor($this->findEntry((int) $this->openEntryId));
     }
 
     public function cancelBody(): void
@@ -1099,7 +1118,8 @@ new #[Layout('layouts.app')] class extends Component
             aria-modal="true"
             aria-label="{{ $openEntry->title }}"
             x-data
-            x-on:keydown.escape.window="$wire.closeEntry()"
+            {{-- Escape closes the panel, but not while typing (e.g. closing the "/" menu of the editor). --}}
+            x-on:keydown.escape.window="if (! $event.target.closest('.ProseMirror, input, textarea, select')) $wire.closeEntry()"
             wire:key="panel-{{ $openEntry->id }}"
         >
             <div class="sticky top-0 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3">
@@ -1158,27 +1178,14 @@ new #[Layout('layouts.app')] class extends Component
                             <div
                                 x-data="pageEditor(@js([
                                     'pageTitles' => $pageTitles,
-                                    'translations' => [
-                                        'placeholder' => __('Write something, or type “/” for commands …'),
-                                        'editorLabel' => __('Notes'),
-                                        'linkPrompt' => __('Link address (leave empty to remove the link):'),
-                                        'newPage' => __('New page'),
-                                        'text' => __('Text'),
-                                        'heading1' => __('Heading 1'),
-                                        'heading2' => __('Heading 2'),
-                                        'heading3' => __('Heading 3'),
-                                        'bulletList' => __('Bulleted list'),
-                                        'orderedList' => __('Numbered list'),
-                                        'taskList' => __('Checklist'),
-                                        'quote' => __('Quote'),
-                                        'codeBlock' => __('Code'),
-                                        'divider' => __('Divider'),
-                                        'table' => __('Table'),
-                                        'pageLink' => __('Link to page'),
-                                    ],
+                                    'translations' => \App\Support\EditorTranslations::all(__('Notes')),
                                 ]))"
                                 wire:key="entry-editor-{{ $openEntry->id }}"
                             >
+                                <div class="mb-1 flex justify-end">
+                                    <button type="button" x-show="mode !== 'loading'" x-on:click="pickFile()" class="text-xs text-gray-500 dark:text-gray-400 underline">📎 {{ __('Image or file') }}</button>
+                                    <input type="file" x-ref="file" class="hidden" x-on:change="uploadFiles($event.target.files); $event.target.value = ''" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" />
+                                </div>
                                 <div wire:ignore x-show="mode !== 'markdown'">
                                     <div x-ref="bubble" class="editor-bubble" style="visibility: hidden" role="toolbar" aria-label="{{ __('Formatting') }}">
                                         <button type="button" x-on:click="run('toggleBold')" :class="isActive('bold') && 'is-active'" title="{{ __('Bold') }}"><strong>B</strong></button>
@@ -1191,6 +1198,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <p x-show="mode === 'loading'" class="p-3 text-sm text-gray-400">{{ __('Loading editor …') }}</p>
                                     </div>
                                 </div>
+                                <p x-show="uploadStatus" x-cloak x-text="uploadStatus" class="mt-1 text-xs text-gray-500 dark:text-gray-400" role="status"></p>
                                 <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" rows="10" class="block w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm" aria-label="{{ __('Notes') }}"></textarea>
                             </div>
                             <div class="flex items-center gap-3">

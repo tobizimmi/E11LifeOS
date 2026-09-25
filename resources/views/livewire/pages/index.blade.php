@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Livewire\Concerns\StoresAttachments;
 use App\Models\Attachment;
 use App\Models\Item;
 use App\Models\Tag;
@@ -8,7 +9,6 @@ use App\Support\NoteMarkdown;
 use App\Support\PageMover;
 use App\Support\PageTree;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -18,6 +18,7 @@ use Livewire\WithFileUploads;
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+    use StoresAttachments;
     use WithFileUploads;
 
     #[Url(as: 'q', except: '')]
@@ -154,33 +155,11 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Stores the uploaded file and returns what the editor inserts.
-     *
-     * @return array{markdown: string, url: string, name: string, isImage: bool}|null
+     * @return array{markdown: string, url: string, name: string, isImage: bool}
      */
-    public function storeAttachment(): ?array
+    public function storeAttachment(): array
     {
-        $this->validate([
-            'attachmentUpload' => ['required', 'file', 'max:'.Attachment::MAX_KILOBYTES, 'mimes:'.implode(',', Attachment::EXTENSIONS)],
-        ]);
-
-        $upload = $this->attachmentUpload;
-        $extension = strtolower($upload->guessExtension() ?: $upload->getClientOriginalExtension());
-        $page = $this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null;
-
-        $attachment = Attachment::create([
-            'household_id' => $this->householdId,
-            'item_id' => $page?->id,
-            'created_by' => Auth::id(),
-            'path' => $upload->storeAs('attachments/'.$this->householdId, Str::uuid().'.'.$extension, Attachment::DISK),
-            'original_name' => mb_substr($upload->getClientOriginalName(), 0, 255),
-            'mime_type' => $upload->getMimeType() ?: 'application/octet-stream',
-            'size' => $upload->getSize(),
-        ]);
-
-        $this->reset('attachmentUpload');
-
-        return ['markdown' => $attachment->markdown(), 'url' => $attachment->url(), 'name' => $attachment->original_name, 'isImage' => $attachment->isImage()];
+        return $this->storeAttachmentFor($this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null);
     }
 
     private function parentIsAllowed(?int $parentId): bool
@@ -351,27 +330,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div
                             x-data="pageEditor(@js([
                                 'pageTitles' => $pageTitles,
-                                'translations' => [
-                                    'placeholder' => __('Write something, or type “/” for commands …'),
-                                    'editorLabel' => __('Content'),
-                                    'linkPrompt' => __('Link address (leave empty to remove the link):'),
-                                    'newPage' => __('New page'),
-                                    'text' => __('Text'),
-                                    'heading1' => __('Heading 1'),
-                                    'heading2' => __('Heading 2'),
-                                    'heading3' => __('Heading 3'),
-                                    'bulletList' => __('Bulleted list'),
-                                    'orderedList' => __('Numbered list'),
-                                    'taskList' => __('Checklist'),
-                                    'quote' => __('Quote'),
-                                    'codeBlock' => __('Code'),
-                                    'divider' => __('Divider'),
-                                    'table' => __('Table'),
-                                    'pageLink' => __('Link to page'),
-                                    'attachment' => __('Image or file'),
-                                    'uploading' => __('Uploading …'),
-                                    'uploadFailed' => __('The file could not be uploaded (max. 20 MB; images, PDF, Office, text, ZIP).'),
-                                ],
+                                'translations' => \App\Support\EditorTranslations::all(__('Content')),
                             ]))"
                             wire:key="editor-{{ $editingId ?? 'new' }}"
                         >

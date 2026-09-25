@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attachment;
+use App\Models\Collection;
 use App\Models\Item;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,6 +87,25 @@ class PageAttachmentsAndTreeMovingTest extends TestCase
         Volt::test('pages.index', ['item' => $private->id])->call('delete', $private->id);
         $this->assertDatabaseMissing('attachments', ['id' => $attachment->id]);
         Storage::disk('local')->assertMissing($attachment->path);
+    }
+
+    public function test_files_can_be_attached_to_collection_entries(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $tasks = Collection::tasksFor($household->id);
+        $todo = Item::factory()->todo()->for($household)->create(['title' => 'Handyvertrag kündigen']);
+        $this->actingAs($user);
+
+        $component = Volt::test('collections.show', ['collection' => $tasks->id])
+            ->call('openEntry', $todo->id)
+            ->call('editBody')
+            ->set('attachmentUpload', UploadedFile::fake()->create('Vertrag.pdf', 50, 'application/pdf'));
+        $result = $component->call('storeAttachment')->effects['returns'][0];
+
+        $this->assertSame($todo->id, Attachment::sole()->item_id);
+        $component->set('body', $result['markdown'])->call('saveBody');
+        $this->get($result['url'])->assertOk();
+        Volt::test('collections.show', ['collection' => $tasks->id, 'openEntryId' => (string) $todo->id])->assertSee('📎 Vertrag.pdf');
     }
 
     public function test_dangerous_or_too_large_files_are_rejected(): void

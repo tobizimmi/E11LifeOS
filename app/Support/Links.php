@@ -326,7 +326,7 @@ class Links
         };
     }
 
-    private static function recipesEnabled(int $householdId): bool
+    public static function recipesEnabled(int $householdId): bool
     {
         return (bool) Household::find($householdId)?->hasAddon(Addons::RECIPES);
     }

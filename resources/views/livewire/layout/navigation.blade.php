@@ -153,6 +153,7 @@ new class extends Component
                 </button>
                 <x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>🏠 {{ __('Dashboard') }}</x-sidebar-link>
                 <x-sidebar-link :href="route('inbox.index')" :active="request()->routeIs('inbox.index')" :badge="$inboxCount ?: null" wire:navigate>📥 {{ __('Inbox') }}</x-sidebar-link>
+                <x-sidebar-link :href="route('brain.ask')" :active="request()->routeIs('brain.ask')" wire:navigate>✨ {{ __('Ask your Second Brain') }}</x-sidebar-link>
             </div>
 
             @if ($householdId !== null)

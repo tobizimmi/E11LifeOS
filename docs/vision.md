@@ -96,4 +96,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 ### Phase 4 – Weitere Module
 
 ### Phase 5 – KI (optional)
-- Tag-Vorschläge, Zusammenfassungen, Fragen an das eigene Second Brain (z. B. über die Claude-API). Neue Abhängigkeiten nur nach Absprache.
+- ✅ „Frag dein Second Brain“: Stichwortsuche über alles, was die fragende Person sehen darf (Seiten, Aufgaben, Einträge mit Eigenschaften, Rezepte), die 15 besten Treffer gehen als Dokumente an Claude; Antwort mit verlinkten Quellen (nur sichtbare), Limit 30 Fragen pro Stunde.
+- ✅ Tag-Vorschläge für Seiten und Einträge (bevorzugt vorhandene Tags).
+- Offen: Zusammenfassungen, semantische Suche (Embeddings).

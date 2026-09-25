@@ -134,6 +134,14 @@ class NoteMarkdown
     }
 
     /**
+     * Markdown without wiki links (e.g. an AI answer) to safe HTML.
+     */
+    public static function plainToHtml(string $markdown): string
+    {
+        return (string) Str::markdown($markdown, self::MARKDOWN_OPTIONS);
+    }
+
+    /**
      * Plain-text preview for lists (Markdown syntax and link brackets removed).
      */
     public static function excerpt(string $body, int $limit = 160): string

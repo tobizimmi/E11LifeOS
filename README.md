@@ -25,6 +25,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Kochmodus** – Schritt für Schritt im Vollbild, Timer aus dem Schritttext („10 Minuten“) oder per Schnellwahl, Alarm mit Ton/Vibration, Bildschirm bleibt an; am Ende bewerten.
 - **Wochenplan** – Rezepte oder freie Einträge („Reste“) pro Tag und Mahlzeit planen, per Drag & Drop verschieben; die Zutaten der Woche zusammengefasst auf die Einkaufsliste; „Heute auf dem Speiseplan“ auf der Übersicht.
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
+- **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
@@ -51,16 +52,16 @@ composer run dev   # Server, Queue, Logs und Vite
 
 Registrierung unter `/register` mit dem erzeugten Code.
 
-## KI-Funktionen der Rezepte (optional)
+## KI-Funktionen (optional)
 
-Import von Fotos, PDFs und Text sowie die Nährwert-Schätzung nutzen die Claude-API. Dafür in der `.env` auf dem Server:
+Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“ und Tag-Vorschläge nutzen die Claude-API. Dafür in der `.env` auf dem Server:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5   # optional, Standard
 ```
 
-Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden.
+Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden; bei einer Frage die bis zu 15 passendsten Inhalte, die die fragende Person sehen darf, bei Tag-Vorschlägen Titel und Text der Seite bzw. des Eintrags.
 
 ## Rezepte aus der RezepteApp2 übernehmen
 

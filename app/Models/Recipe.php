@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\IngredientAmount;
+use App\Support\Links;
 use App\Support\RecipeImages;
 use Database\Factories\RecipeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -51,6 +52,7 @@ class Recipe extends Model
     protected static function booted(): void
     {
         static::deleted(function (Recipe $recipe) {
+            Links::forget(Links::RECIPE, $recipe->id);
             RecipeImages::delete($recipe->image_path);
             array_map(RecipeImages::delete(...), $recipe->additional_images ?? []);
         });

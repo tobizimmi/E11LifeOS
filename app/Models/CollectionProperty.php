@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Links;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,13 @@ class CollectionProperty extends Model
 
     public const TYPE_URL = 'url';
 
+    public const TYPE_MULTI_SELECT = 'multi_select';
+
+    /**
+     * Links to other pages, tasks, entries or recipes ("item:12", "recipe:3"), see App\Support\Links.
+     */
+    public const TYPE_RELATION = 'relation';
+
     public const TYPES = [
         self::TYPE_TEXT,
         self::TYPE_NUMBER,
@@ -33,6 +41,8 @@ class CollectionProperty extends Model
         self::TYPE_CHECKBOX,
         self::TYPE_PERSON,
         self::TYPE_URL,
+        self::TYPE_MULTI_SELECT,
+        self::TYPE_RELATION,
     ];
 
     /**
@@ -52,6 +62,14 @@ class CollectionProperty extends Model
         return $this->belongsTo(Collection::class);
     }
 
+    /**
+     * Select and multi-select properties have a list of options.
+     */
+    public function hasOptions(): bool
+    {
+        return in_array($this->type, [self::TYPE_SELECT, self::TYPE_MULTI_SELECT], true);
+    }
+
     public function isSystem(): bool
     {
         return $this->system_key !== null;
@@ -62,7 +80,7 @@ class CollectionProperty extends Model
      */
     public function selectOptions(): array
     {
-        return $this->options ?? [];
+        return $this->hasOptions() ? array_values(array_filter($this->options ?? [], 'is_array')) : [];
     }
 
     /**
@@ -130,6 +148,20 @@ class CollectionProperty extends Model
      */
     public function normalizeValue(mixed $value, array $memberIds = []): mixed
     {
+        if ($this->type === self::TYPE_MULTI_SELECT) {
+            $ids = collect(is_array($value) ? $value : [$value])->map(fn ($id) => (string) $id)
+                ->filter(fn (string $id) => $this->option($id) !== null)->unique()->values()->all();
+
+            return $ids ?: null;
+        }
+
+        if ($this->type === self::TYPE_RELATION) {
+            $keys = collect(is_array($value) ? $value : [$value])
+                ->filter(fn ($key) => Links::parseKey($key) !== null)->unique()->take(50)->values()->all();
+
+            return $keys ?: null;
+        }
+
         if ($value === null || $value === '' || is_array($value)) {
             return null;
         }

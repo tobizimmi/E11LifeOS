@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DataExportController;
+use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
@@ -36,6 +37,7 @@ Route::middleware(['auth'])->group(function () {
             ? redirect()->route('pages.index', ['item' => (int) $noteId])
             : redirect()->route('pages.index', $request->only(['new', 'tag', 'q']));
     })->name('notes.index');
+    Route::get('items/{item}', ItemLinkController::class)->whereNumber('item')->name('items.show');
     Route::get('attachments/{attachment}/{name?}', AttachmentController::class)->whereNumber('attachment')->name('attachments.show');
     Volt::route('collections', 'collections.index')->name('collections.index');
     Volt::route('collections/{collection}', 'collections.show')->whereNumber('collection')->name('collections.show');

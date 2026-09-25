@@ -84,6 +84,10 @@
         @apply cursor-pointer;
     }
 
+    .editor-popup-kind {
+        @apply ms-auto ps-3 text-xs text-gray-400;
+    }
+
     .note-content img {
         @apply my-2 inline-block max-h-[32rem] max-w-full rounded-md;
     }

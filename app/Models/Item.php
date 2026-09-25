@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection as SupportCollection;
 
 #[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'position'])]
 #[ObservedBy(ItemObserver::class)]
@@ -277,44 +276,6 @@ class Item extends Model
     public function body(): string
     {
         return (string) ($this->content['body'] ?? '');
-    }
-
-    /**
-     * Lower-cased titles of all notes this item links to via [[Title]].
-     *
-     * @return array<int, string>
-     */
-    public function wikiLinkTitles(): array
-    {
-        preg_match_all(self::WIKI_LINK_PATTERN, $this->body(), $matches);
-
-        return collect($matches[1])
-            ->map(fn (string $title) => mb_strtolower(trim($title)))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Notes the viewer can see that link to this note via [[Title]].
-     *
-     * @return SupportCollection<int, Item>
-     */
-    public function backlinksVisibleTo(User $viewer): SupportCollection
-    {
-        $title = mb_strtolower($this->title);
-
-        return self::query()
-            ->forHousehold($this->household_id)
-            ->visibleTo($viewer)
-            ->ofType(self::TYPE_NOTE)
-            ->whereKeyNot($this->id)
-            ->whereRaw("JSON_EXTRACT(items.content, '$.body') LIKE ?", ['%[[%'])
-            ->orderBy('title')
-            ->get()
-            ->filter(fn (Item $note) => in_array($title, $note->wikiLinkTitles(), true))
-            ->values();
     }
 
     /**

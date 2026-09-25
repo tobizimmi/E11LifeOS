@@ -66,7 +66,7 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 ### Rezepte-Addon – Etappe R3 ✅
 - Import per Link (schema.org JSON-LD/Microdata, sonst Claude), Foto/Screenshot, PDF und Text über die Claude-API (offizielles PHP-SDK, strukturierte Ausgabe); Entwurf öffnet im Formular. Schutz vor Abrufen ins lokale Netz.
 - Nährwerte pro Portion (manuell oder per KI geschätzt, gekennzeichnet), PDF-Export (dompdf), öffentliche Links (`/r/{token}`, abschaltbar, nicht indexiert).
-- Barcode-Scanner in der Einkaufsliste (BarcodeDetector des Browsers, Eingabe als Fallback, Open Food Facts).
+- Barcode-Scanner in der Einkaufsliste (BarcodeDetector des Browsers, auf dem iPhone die nachgeladene ZXing-Bibliothek, Eingabe als Fallback, Open Food Facts).
 
 ### Notion-Ansatz – Seitenbaum & Dateien ✅
 - Seiten in der Seitenleiste per Drag & Drop sortieren und in andere (aufgeklappte) Seiten verschieben; ohne Handsortierung bleibt es alphabetisch.

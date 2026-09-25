@@ -342,4 +342,60 @@ document.addEventListener('alpine:init', () => {
             },
         };
     });
+
+    /**
+     * Dictation into a text field with the browser's speech recognition (German).
+     * The recognised text is appended to the field and sent to Livewire as if typed.
+     */
+    window.Alpine.data('voiceInput', (inputId, submitWhenDone) => {
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+
+        return {
+            supported: !!Recognition,
+            listening: false,
+
+            toggle() {
+                this.listening ? recognition?.stop() : this.start();
+            },
+
+            start() {
+                const input = document.getElementById(inputId);
+
+                if (!Recognition || !input) {
+                    return;
+                }
+
+                const before = input.value.trim();
+                recognition = new Recognition();
+                recognition.lang = document.documentElement.lang || 'de-DE';
+                recognition.interimResults = true;
+                recognition.continuous = false;
+
+                recognition.onresult = (event) => {
+                    const spoken = Array.from(event.results).map((result) => result[0].transcript).join('').trim();
+                    input.value = [before, spoken].filter(Boolean).join(' ');
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                };
+                recognition.onend = () => {
+                    this.listening = false;
+                    input.focus();
+
+                    if (submitWhenDone && input.value.trim() !== '' && input.value.trim() !== before) {
+                        input.form?.requestSubmit();
+                    }
+                };
+                recognition.onerror = () => {
+                    this.listening = false;
+                };
+
+                this.listening = true;
+                recognition.start();
+            },
+
+            destroy() {
+                recognition?.abort();
+            },
+        };
+    });
 });

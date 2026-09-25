@@ -915,7 +915,8 @@ new #[Layout('layouts.app')] class extends Component
             {{-- Toolbar --}}
             <div class="flex flex-wrap items-center gap-3">
                 <form wire:submit="addEntry()" class="flex flex-1 min-w-[16rem] gap-2">
-                    <x-text-input wire:model="newTitle" class="block w-full" placeholder="{{ $collection->isTasks() ? __('New task... (#tags optional)') : __('New entry... (#tags optional)') }}" aria-label="{{ __('Title') }}" />
+                    <x-text-input id="new-entry-title" wire:model="newTitle" class="block w-full" placeholder="{{ $collection->isTasks() ? __('New task... (#tags optional)') : __('New entry... (#tags optional)') }}" aria-label="{{ __('Title') }}" />
+                    <x-voice-button for="new-entry-title" :submit="true" />
                     <x-primary-button>{{ __('Add') }}</x-primary-button>
                 </form>
                 <x-text-input wire:model.live.debounce.300ms="search" type="search" class="block w-48" placeholder="{{ __('Filter...') }}" aria-label="{{ __('Filter') }}" />

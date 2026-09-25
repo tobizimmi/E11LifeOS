@@ -39,12 +39,14 @@ new class extends Component
 <form wire:submit="capture" class="space-y-2">
     <div class="flex gap-3">
         <x-text-input
+            id="quick-capture-title"
             wire:model="title"
             class="block w-full"
             type="text"
             placeholder="{{ __('What is on your mind? (#tags optional)') }}"
             aria-label="{{ __('Quick capture') }}"
         />
+        <x-voice-button for="quick-capture-title" :submit="true" />
         <x-primary-button type="submit">{{ __('Capture') }}</x-primary-button>
     </div>
     <x-input-error :messages="$errors->get('title')" />

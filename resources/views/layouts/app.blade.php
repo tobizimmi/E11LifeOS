@@ -56,16 +56,19 @@
 
                 <!-- Short confirmations dispatched by components ($this->dispatch('toast', message: ...)) -->
                 <div
-                    x-data="{ message: '', visible: false, timer: null }"
-                    x-on:toast.window="message = $event.detail.message; visible = true; clearTimeout(timer); timer = setTimeout(() => visible = false, 4000)"
+                    x-data="{ message: '', action: null, visible: false, timer: null }"
+                    x-on:toast.window="message = $event.detail.message; action = $event.detail.action ?? null; visible = true; clearTimeout(timer); timer = setTimeout(() => visible = false, action ? 6000 : 4000)"
                     x-show="visible"
                     x-cloak
                     x-transition.opacity
                     role="status"
                     aria-live="polite"
-                    class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-100 dark:text-gray-900"
-                    x-text="message"
-                ></div>
+                    class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-100 dark:text-gray-900"
+                >
+                    <span x-text="message"></span>
+                    {{-- Optional action, e.g. "Undo": dispatches a Livewire event ($this->dispatch('toast', message: ..., action: ['label' => ..., 'event' => ..., 'params' => [...]])) --}}
+                    <button type="button" x-show="action" x-text="action?.label" x-on:click="Livewire.dispatch(action.event, action.params ?? {}); visible = false" class="font-semibold text-indigo-300 dark:text-indigo-700 hover:underline"></button>
+                </div>
             </div>
         </div>
     </body>

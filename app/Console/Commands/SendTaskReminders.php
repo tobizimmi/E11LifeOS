@@ -71,7 +71,7 @@ class SendTaskReminders extends Command
                 .($row['date'] === now()->toDateString() ? __('today') : Carbon::parse($row['date'])->translatedFormat('j. M'))));
 
         $body = $lines->take(4)->implode("\n").($lines->count() > 4 ? "\n".__('and :count more', ['count' => $lines->count() - 4]) : '');
-        $url = $tasks->isNotEmpty() ? route('collections.show', $collection) : route('collections.show', $dates->first()['collection']);
+        $url = $tasks->isNotEmpty() ? route('tasks.index') : route('collections.show', $dates->first()['collection']);
 
         return [$title, $body, $url];
     }

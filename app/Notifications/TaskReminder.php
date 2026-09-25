@@ -66,7 +66,7 @@ class TaskReminder extends Notification
         }
 
         if ($this->tasks->isNotEmpty()) {
-            $message->action(__('Open tasks'), route('collections.show', $this->collection));
+            $message->action(__('Open tasks'), route('tasks.index'));
         } else {
             $message->action(__('Open :name', ['name' => $this->dates->first()['collection']->name]), route('collections.show', $this->dates->first()['collection']));
         }

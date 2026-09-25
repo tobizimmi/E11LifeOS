@@ -446,7 +446,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->validate(['body' => ['nullable', 'string', 'max:100000']]);
 
         $entry = $this->findEntry((int) $this->openEntryId);
-        $entry->update(['content' => ['body' => $this->body]]);
+        $entry->update(['content' => ['body' => $this->body] + ($entry->content ?? [])]);
         Attachment::attachReferencedTo($entry, Auth::user());
 
         $this->editingBody = false;
@@ -474,7 +474,7 @@ new #[Layout('layouts.app')] class extends Component
         $body = NoteMarkdown::toggleTask($entry->body(), $index);
 
         if ($body !== null) {
-            $entry->update(['content' => ['body' => $body]]);
+            $entry->update(['content' => ['body' => $body] + ($entry->content ?? [])]);
         }
     }
 

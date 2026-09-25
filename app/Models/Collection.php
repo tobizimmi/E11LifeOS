@@ -34,6 +34,15 @@ class Collection extends Model
 
     public const TASK_STATUS_DONE = 'done';
 
+    /**
+     * Priority option ids of the tasks collection.
+     */
+    public const TASK_PRIORITY_HIGH = 'high';
+
+    public const TASK_PRIORITY_MEDIUM = 'medium';
+
+    public const TASK_PRIORITY_LOW = 'low';
+
     protected $attributes = [
         'visibility' => Item::VISIBILITY_SHARED,
     ];
@@ -145,6 +154,17 @@ class Collection extends Model
                 ],
                 'system_key' => 'repeat',
                 'position' => 3,
+            ],
+            [
+                'name' => __('Priority'),
+                'type' => CollectionProperty::TYPE_SELECT,
+                'options' => [
+                    ['id' => self::TASK_PRIORITY_HIGH, 'name' => __('High'), 'color' => 'red'],
+                    ['id' => self::TASK_PRIORITY_MEDIUM, 'name' => __('Medium'), 'color' => 'orange'],
+                    ['id' => self::TASK_PRIORITY_LOW, 'name' => __('Low'), 'color' => 'blue'],
+                ],
+                'system_key' => 'priority',
+                'position' => 4,
             ],
         ]);
 

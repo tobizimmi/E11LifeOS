@@ -103,7 +103,7 @@ class LinksEverywhereTest extends TestCase
         $inbox = Item::factory()->for($household)->create(['type' => Item::TYPE_INBOX]);
 
         $this->get(route('items.show', $page))->assertRedirect(route('pages.index', ['item' => $page->id]));
-        $this->get(route('items.show', $task))->assertRedirect(route('collections.show', ['collection' => $tasks->id, 'entry' => $task->id]));
+        $this->get(route('items.show', $task))->assertRedirect(route('tasks.index', ['task' => $task->id]));
         $this->get(route('items.show', $inbox))->assertRedirect(route('inbox.index'));
     }
 

@@ -126,7 +126,7 @@ class PushNotificationsTest extends TestCase
         $message = PushMessage::sole();
         $this->assertSame('1 Aufgabe ist fällig', $message->title);
         $this->assertSame('• Müll rausbringen', $message->body);
-        $this->assertSame(route('collections.show', $tasks), $message->url);
+        $this->assertSame(route('tasks.index'), $message->url);
     }
 
     public function test_the_profile_explains_when_push_is_not_set_up(): void

@@ -46,13 +46,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('attachments/{attachment}/{name?}', AttachmentController::class)->whereNumber('attachment')->name('attachments.show');
     Volt::route('collections', 'collections.index')->name('collections.index');
     Volt::route('collections/{collection}', 'collections.show')->whereNumber('collection')->name('collections.show');
-    // Tasks are the built-in collection now; keep the old URL working.
+    // Old task URL: the list views moved to the tasks page, board/calendar stay with the collection.
     Route::get('todos', function (Request $request) {
         $household = $request->user()->currentHousehold();
         abort_if(! $household, 403);
 
-        return redirect()->route('collections.show', ['collection' => Collection::tasksFor($household->id)] + $request->only(['view', 'entry', 'month']));
+        return $request->hasAny(['view', 'month'])
+            ? redirect()->route('collections.show', ['collection' => Collection::tasksFor($household->id)] + $request->only(['view', 'entry', 'month']))
+            : redirect()->route('tasks.index', $request->filled('entry') ? ['task' => $request->query('entry')] : []);
     })->name('todos.index');
+    Volt::route('tasks', 'tasks.index')->name('tasks.index');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
 });
 

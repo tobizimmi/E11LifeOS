@@ -279,6 +279,34 @@ class Item extends Model
     }
 
     /**
+     * Checklist of a task (content.subtasks).
+     *
+     * @return array<int, array{id: string, text: string, done: bool}>
+     */
+    public function subtasks(): array
+    {
+        return array_values(array_filter(
+            (array) ($this->content['subtasks'] ?? []),
+            fn ($subtask) => is_array($subtask) && isset($subtask['id'], $subtask['text']),
+        ));
+    }
+
+    /**
+     * @param  array<int, array{id: string, text: string, done: bool}>  $subtasks
+     */
+    public function setSubtasks(array $subtasks): void
+    {
+        $content = $this->content ?? [];
+        $content['subtasks'] = array_values($subtasks);
+
+        if ($content['subtasks'] === []) {
+            unset($content['subtasks']);
+        }
+
+        $this->content = $content ?: null;
+    }
+
+    /**
      * "Milch kaufen #einkauf #dringend" → ["Milch kaufen", ["einkauf", "dringend"]].
      *
      * @return array{0: string, 1: array<int, string>}

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\RecipeCategory;
+use App\Models\RecipeRating;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +46,7 @@ class RecipeImportTest extends TestCase
             $table->integer('cookTime')->nullable();
             $table->integer('servings')->nullable();
             $table->string('imageUrl')->nullable();
+            $table->json('additionalImages')->nullable();
             $table->string('sourceUrl')->nullable();
             $table->string('sourceType')->nullable();
             $table->string('difficulty')->nullable();
@@ -78,6 +81,24 @@ class RecipeImportTest extends TestCase
             $table->string('userId');
             $table->string('recipeId');
         });
+        $schema->create('recipe_ratings', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('recipeId');
+            $table->string('userId');
+            $table->integer('rating');
+            $table->text('comment')->nullable();
+            $table->dateTime('cookedAt')->nullable();
+        });
+        $schema->create('meal_plans', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('userId');
+            $table->string('recipeId')->nullable();
+            $table->date('date');
+            $table->string('mealType')->nullable();
+            $table->integer('servings')->nullable();
+            $table->string('customTitle')->nullable();
+            $table->text('note')->nullable();
+        });
 
         $source = DB::connection('rezepteapp');
         $source->table('users')->insert([['id' => 'u1', 'email' => 'tobi@example.com'], ['id' => 'u2', 'email' => 'other@example.com']]);
@@ -91,18 +112,19 @@ class RecipeImportTest extends TestCase
                 ]),
                 'instructions' => json_encode([['step' => 1, 'text' => 'Anbraten'], ['step' => 2, 'text' => '  ']]),
                 'prepTime' => 30, 'cookTime' => 45, 'servings' => 4, 'imageUrl' => 'https://zimmimail.de/RezepteApp2/uploads/recipes/lasagne.jpg',
+                'additionalImages' => json_encode(['/uploads/recipes/lasagne.jpg', '/uploads/recipes/fehlt.jpg']),
                 'sourceUrl' => null, 'sourceType' => 'MANUAL', 'difficulty' => 'mittel', 'nutrition' => null, 'cookedCount' => 7,
                 'archivedAt' => null, 'createdAt' => '2025-01-10 12:00:00', 'updatedAt' => '2025-02-01 12:00:00',
             ],
             [
                 'id' => 'r2', 'userId' => 'u1', 'title' => 'Altes Rezept', 'description' => null, 'ingredients' => null, 'instructions' => null,
-                'prepTime' => null, 'cookTime' => null, 'servings' => null, 'imageUrl' => null, 'sourceUrl' => 'https://example.org/x',
+                'prepTime' => null, 'cookTime' => null, 'servings' => null, 'imageUrl' => null, 'additionalImages' => null, 'sourceUrl' => 'https://example.org/x',
                 'sourceType' => 'WEB', 'difficulty' => null, 'nutrition' => null, 'cookedCount' => 0,
                 'archivedAt' => '2025-03-01 00:00:00', 'createdAt' => '2025-01-01 00:00:00', 'updatedAt' => '2025-01-01 00:00:00',
             ],
             [
                 'id' => 'r3', 'userId' => 'u2', 'title' => 'Fremdes Rezept', 'description' => null, 'ingredients' => null, 'instructions' => null,
-                'prepTime' => null, 'cookTime' => null, 'servings' => null, 'imageUrl' => null, 'sourceUrl' => null,
+                'prepTime' => null, 'cookTime' => null, 'servings' => null, 'imageUrl' => null, 'additionalImages' => null, 'sourceUrl' => null,
                 'sourceType' => null, 'difficulty' => null, 'nutrition' => null, 'cookedCount' => 0,
                 'archivedAt' => null, 'createdAt' => null, 'updatedAt' => null,
             ],
@@ -116,6 +138,16 @@ class RecipeImportTest extends TestCase
         $source->table('tags')->insert([['id' => 't1', 'userId' => 'u1', 'name' => 'Familie']]);
         $source->table('recipe_tags')->insert([['tagId' => 't1', 'recipeId' => 'r1']]);
         $source->table('favorites')->insert([['userId' => 'u1', 'recipeId' => 'r1']]);
+        $source->table('recipe_ratings')->insert([
+            ['id' => 'rt1', 'recipeId' => 'r1', 'userId' => 'u1', 'rating' => 5, 'comment' => 'Super', 'cookedAt' => '2025-02-01 18:00:00'],
+            ['id' => 'rt2', 'recipeId' => 'r1', 'userId' => 'u2', 'rating' => 1, 'comment' => null, 'cookedAt' => null],
+        ]);
+        $source->table('meal_plans')->insert([
+            ['id' => 'm1', 'userId' => 'u1', 'recipeId' => 'r1', 'date' => '2025-03-03', 'mealType' => 'lunch', 'servings' => 6, 'customTitle' => null, 'note' => null],
+            ['id' => 'm2', 'userId' => 'u1', 'recipeId' => null, 'date' => '2025-03-04', 'mealType' => 'brunch', 'servings' => null, 'customTitle' => 'Reste', 'note' => 'vom Vortag'],
+            ['id' => 'm3', 'userId' => 'u1', 'recipeId' => 'r3', 'date' => '2025-03-05', 'mealType' => 'dinner', 'servings' => null, 'customTitle' => null, 'note' => null],
+            ['id' => 'm4', 'userId' => 'u2', 'recipeId' => 'r3', 'date' => '2025-03-05', 'mealType' => 'dinner', 'servings' => null, 'customTitle' => null, 'note' => null],
+        ]);
 
         // Photo in the RezepteApp2 upload directory.
         $this->uploads = sys_get_temp_dir().'/rezepteapp-uploads-'.uniqid();
@@ -148,6 +180,18 @@ class RecipeImportTest extends TestCase
         $this->assertNotNull($lasagne->image_path);
         Storage::disk('local')->assertExists($lasagne->image_path);
 
+        $this->assertCount(1, $lasagne->additional_images);
+        Storage::disk('local')->assertExists($lasagne->additional_images[0]);
+
+        $rating = RecipeRating::sole();
+        $this->assertSame([$lasagne->id, $user->id, 5, 'Super', '2025-02-01'], [$rating->recipe_id, $rating->user_id, $rating->rating, $rating->comment, $rating->cooked_at->toDateString()]);
+
+        $plans = MealPlan::where('household_id', $household->id)->orderBy('date')->get();
+        $this->assertSame(
+            [['2025-03-03', 'lunch', $lasagne->id, 'Lasagne', 6, null], ['2025-03-04', 'dinner', null, 'Reste', null, 'vom Vortag']],
+            $plans->map(fn (MealPlan $plan) => [$plan->date->toDateString(), $plan->meal_type, $plan->recipe_id, $plan->title, $plan->servings, $plan->note])->all(),
+        );
+
         $this->assertTrue(Recipe::where('legacy_id', 'r2')->firstOrFail()->isArchived());
         $this->assertDatabaseMissing('recipes', ['legacy_id' => 'r3']);
 
@@ -168,6 +212,8 @@ class RecipeImportTest extends TestCase
         $this->assertSame(2, Recipe::where('household_id', $household->id)->count());
         $this->assertSame(2, RecipeCategory::where('household_id', $household->id)->count());
         $this->assertSame('Lasagne (angepasst)', Recipe::where('legacy_id', 'r1')->value('title'));
+        $this->assertSame(1, RecipeRating::count());
+        $this->assertSame(2, MealPlan::where('household_id', $household->id)->count());
     }
 
     public function test_dry_run_and_private_import(): void

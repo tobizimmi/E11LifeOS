@@ -50,9 +50,12 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Volt::route('recipes', 'recipes.index')->name('recipes.index');
     Volt::route('recipes/create', 'recipes.form')->name('recipes.create');
     Volt::route('recipes/categories', 'recipes.categories')->name('recipes.categories');
+    Volt::route('recipes/plan', 'recipes.plan')->name('recipes.plan');
     Volt::route('recipes/{recipe}', 'recipes.show')->whereNumber('recipe')->name('recipes.show');
     Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');
+    Volt::route('recipes/{recipe}/cook', 'recipes.cook')->whereNumber('recipe')->name('recipes.cook');
     Route::get('recipes/{recipe}/image', RecipeImageController::class)->whereNumber('recipe')->name('recipes.image');
+    Route::get('recipes/{recipe}/photos/{index}', RecipeImageController::class)->whereNumber(['recipe', 'index'])->name('recipes.photo');
 });
 
 require __DIR__.'/auth.php';

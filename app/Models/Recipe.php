@@ -11,10 +11,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'household_id', 'created_by', 'visibility', 'title', 'description', 'ingredients', 'instructions',
-    'prep_time', 'cook_time', 'servings', 'difficulty', 'image_path', 'source_url', 'source_type',
+    'prep_time', 'cook_time', 'servings', 'difficulty', 'image_path', 'additional_images', 'source_url', 'source_type',
     'nutrition', 'cooked_count', 'archived_at', 'legacy_id',
 ])]
 class Recipe extends Model
@@ -23,6 +25,8 @@ class Recipe extends Model
     use HasFactory;
 
     public const DIFFICULTIES = ['easy', 'medium', 'hard'];
+
+    public const MAX_ADDITIONAL_IMAGES = 12;
 
     /**
      * Disk for recipe photos (served through RecipeImageController, which checks access).
@@ -38,6 +42,7 @@ class Recipe extends Model
         return [
             'ingredients' => 'array',
             'instructions' => 'array',
+            'additional_images' => 'array',
             'nutrition' => 'array',
             'archived_at' => 'datetime',
         ];
@@ -45,7 +50,10 @@ class Recipe extends Model
 
     protected static function booted(): void
     {
-        static::deleted(fn (Recipe $recipe) => RecipeImages::delete($recipe->image_path));
+        static::deleted(function (Recipe $recipe) {
+            RecipeImages::delete($recipe->image_path);
+            array_map(RecipeImages::delete(...), $recipe->additional_images ?? []);
+        });
     }
 
     public function household(): BelongsTo
@@ -71,6 +79,16 @@ class Recipe extends Model
     public function favoritedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'recipe_favorites')->withPivot('created_at');
+    }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(RecipeRating::class);
+    }
+
+    public function mealPlans(): HasMany
+    {
+        return $this->hasMany(MealPlan::class);
     }
 
     /**
@@ -147,6 +165,89 @@ class Recipe extends Model
     public function imageUrl(): ?string
     {
         return $this->image_path ? route('recipes.image', ['recipe' => $this->id, 'v' => substr(md5($this->image_path), 0, 8)]) : null;
+    }
+
+    /**
+     * URLs of the additional photos, keyed by their index in additional_images.
+     *
+     * @return array<int, string>
+     */
+    public function additionalImageUrls(): array
+    {
+        return collect($this->additional_images ?? [])
+            ->map(fn (string $path, int $index) => route('recipes.photo', ['recipe' => $this->id, 'index' => $index, 'v' => substr(md5($path), 0, 8)]))
+            ->all();
+    }
+
+    /**
+     * Average rating (one decimal) or null while nobody has rated the recipe.
+     */
+    public function averageRating(): ?float
+    {
+        $average = $this->relationLoaded('ratings') ? $this->ratings->avg('rating') : $this->ratings()->avg('rating');
+
+        return $average !== null ? round((float) $average, 1) : null;
+    }
+
+    /**
+     * Saves (or replaces) the user's rating; one rating per person and recipe.
+     */
+    public function rateBy(User $user, int $rating, ?string $comment = null, bool $cookedToday = false): RecipeRating
+    {
+        $values = ['rating' => max(1, min(5, $rating)), 'comment' => trim((string) $comment) ?: null];
+
+        if ($cookedToday) {
+            $values['cooked_at'] = today();
+        }
+
+        return $this->ratings()->updateOrCreate(['user_id' => $user->id], $values);
+    }
+
+    /**
+     * Copy with categories, tags and own photo files, owned by the given user.
+     * Ratings, favorites, meal plans and the cooked counter start fresh.
+     */
+    public function duplicateFor(User $user): Recipe
+    {
+        return DB::transaction(function () use ($user) {
+            $copy = $this->replicate(['cooked_count', 'archived_at', 'legacy_id', 'image_path', 'additional_images']);
+            $copy->title = mb_substr(__(':title (copy)', ['title' => $this->title]), 0, 500);
+            $copy->created_by = $user->id;
+            $copy->image_path = RecipeImages::copy($this->image_path, $this->household_id);
+            $copy->additional_images = array_values(array_filter(array_map(
+                fn (string $path) => RecipeImages::copy($path, $this->household_id),
+                $this->additional_images ?? [],
+            ))) ?: null;
+            $copy->save();
+
+            $copy->categories()->sync($this->categories()->pluck('recipe_categories.id'));
+            $copy->tags()->sync($this->tags()->pluck('tags.id'));
+
+            return $copy;
+        });
+    }
+
+    /**
+     * How many of the given pantry items appear in the ingredient names.
+     *
+     * @param  array<int, string>  $pantry  Lower-case search terms.
+     * @return array{matched: array<int, string>, missing: array<int, string>, percent: int}
+     */
+    public function pantryMatch(array $pantry): array
+    {
+        $names = collect($this->scaledIngredients())
+            ->reject(fn (array $ingredient) => $ingredient['isSection'])
+            ->pluck('name')
+            ->values();
+
+        [$matched, $missing] = $names->partition(fn (string $name) => collect($pantry)
+            ->contains(fn (string $term) => str_contains(mb_strtolower($name), $term)));
+
+        return [
+            'matched' => $matched->values()->all(),
+            'missing' => $missing->values()->all(),
+            'percent' => $names->isEmpty() ? 0 : (int) round($matched->count() / $names->count() * 100),
+        ];
     }
 
     /**

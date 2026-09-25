@@ -2,8 +2,11 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Collection;
+use App\Models\Household;
 use App\Models\Item;
+use App\Models\MealPlan;
 use App\Models\ShoppingListEntry;
+use App\Support\Addons;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -60,6 +63,7 @@ new #[Layout('layouts.app')] class extends Component
             ->sortBy(fn (Item $todo) => [$dueProperty && $todo->propertyValue($dueProperty) ? 0 : 1, $dueProperty ? (string) $todo->propertyValue($dueProperty) : '', $todo->position])
             ->values();
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
+        $hasRecipes = (bool) Household::find($this->householdId)?->hasAddon(Addons::RECIPES);
 
         return $data + [
             'tasksCollection' => $tasks,
@@ -73,7 +77,28 @@ new #[Layout('layouts.app')] class extends Component
             'openShopping' => $openShopping->latest()->limit(self::LIST_LIMIT)->get(),
             'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
             'inboxEntries' => $this->visibleItems(Item::TYPE_INBOX)->latest()->limit(3)->get(),
+            'hasRecipes' => $hasRecipes,
+            'todaysMeals' => $hasRecipes ? $this->todaysMeals() : collect(),
         ];
+    }
+
+    /**
+     * Today's meal plan in meal order; recipes the user can't see show their title only.
+     *
+     * @return \Illuminate\Support\Collection<int, MealPlan>
+     */
+    private function todaysMeals(): \Illuminate\Support\Collection
+    {
+        $mealOrder = array_flip(MealPlan::MEAL_TYPES);
+        $meals = MealPlan::query()
+            ->visibleTo($this->currentUser(), (int) $this->householdId)
+            ->whereDate('date', today())
+            ->with('recipe')
+            ->get();
+
+        return MealPlan::withVisibleRecipes($meals, $this->currentUser(), (int) $this->householdId)
+            ->sortBy(fn (MealPlan $meal) => [$mealOrder[$meal->meal_type] ?? 9, $meal->id])
+            ->values();
     }
 }; ?>
 
@@ -174,6 +199,30 @@ new #[Layout('layouts.app')] class extends Component
                             @endforelse
                         </ul>
                     </section>
+
+                    {{-- Meal plan --}}
+                    @if ($hasRecipes)
+                        <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                            <x-dashboard-card-header :title="__('Today on the meal plan')" :href="route('recipes.plan')" />
+                            <ul class="mt-3 space-y-2">
+                                @forelse ($todaysMeals as $meal)
+                                    <li wire:key="dashboard-meal-{{ $meal->id }}" class="flex items-baseline gap-2">
+                                        <span class="w-20 shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ \App\Models\MealPlan::mealTypeLabel($meal->meal_type) }}</span>
+                                        @if ($meal->recipe)
+                                            <a href="{{ route('recipes.show', $meal->recipe) }}" wire:navigate class="min-w-0 truncate text-indigo-600 dark:text-indigo-400 hover:underline">{{ $meal->recipe->title }}</a>
+                                        @else
+                                            <span class="min-w-0 truncate text-gray-900 dark:text-gray-100">{{ $meal->title }}</span>
+                                        @endif
+                                    </li>
+                                @empty
+                                    <li class="text-sm text-gray-500 dark:text-gray-400">
+                                        {{ __('Nothing planned yet.') }}
+                                        <a href="{{ route('recipes.plan') }}" wire:navigate class="text-indigo-600 dark:text-indigo-400 underline">{{ __('Plan the week') }}</a>
+                                    </li>
+                                @endforelse
+                            </ul>
+                        </section>
+                    @endif
 
                     {{-- Inbox --}}
                     @if ($inboxCount > 0)

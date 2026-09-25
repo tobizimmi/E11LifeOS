@@ -34,6 +34,23 @@ class RecipeImages
         return $path;
     }
 
+    /**
+     * Copies a stored photo (e.g. when duplicating a recipe); null if it is missing.
+     */
+    public static function copy(?string $path, int $householdId): ?string
+    {
+        $disk = Storage::disk(Recipe::IMAGE_DISK);
+
+        if (! $path || ! $disk->exists($path)) {
+            return null;
+        }
+
+        $copy = sprintf('recipes/%d/%s.jpg', $householdId, Str::uuid());
+        $disk->copy($path, $copy);
+
+        return $copy;
+    }
+
     public static function delete(?string $path): void
     {
         if ($path) {

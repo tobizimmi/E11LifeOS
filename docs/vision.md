@@ -38,11 +38,16 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Seitenleiste statt oberer Navigation: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
 - Löschen einer Seite verschiebt ihre Unterseiten eine Ebene nach oben; Zyklen werden verhindert.
 
+### Notion-Ansatz – Schritt B: Editor ✅
+- Tiptap-Editor mit „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen und `[[`-Autovervollständigung.
+- Speicherformat bleibt Markdown (keine Datenmigration; Suche, Wikilinks, Export unverändert). Seiten mit Bildern/HTML öffnen im Markdown-Modus.
+- Checklisten lassen sich in der Leseansicht direkt abhaken.
+
 ## Nächste Schritte
 
-### Notion-Ansatz – Schritt B: Editor
-- Tiptap-Editor mit Slash-Menü, Formatierungsleiste und `[[`-Autovervollständigung (neue Abhängigkeit – Freigabe ausstehend).
+### Notion-Ansatz – nächste Ausbaustufen
 - Seiten per Drag & Drop im Seitenbaum verschieben und sortieren.
+- Bilder/Dateien in Seiten (Upload), danach auch im Editor darstellbar.
 
 ### Phase 3 – Organisation
 - Aufgaben mit Fälligkeit, Zuständigkeit und Wiederholung (z. B. „Müll rausbringen jeden Dienstag“).

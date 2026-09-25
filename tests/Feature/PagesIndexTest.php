@@ -221,4 +221,54 @@ class PagesIndexTest extends TestCase
             ->assertOk()
             ->assertSee('Urlaub 2027');
     }
+
+    public function test_checklist_items_can_be_ticked_off_in_the_read_view(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Item::factory()->note()->for($household)->create([
+            'content' => ['body' => "## Einkauf\n\n- [ ] Brot\n- [x] Milch\n\n```\n- [ ] kein Eintrag, nur Code\n```\n\n> - [ ] Im Zitat"],
+        ]);
+
+        Volt::test('pages.index', ['item' => $page->id])
+            ->assertSeeHtml('wire:click.prevent="toggleTask(0)"')
+            ->assertSeeHtml('wire:click.prevent="toggleTask(2)"')
+            ->assertDontSeeHtml('toggleTask(3)')
+            ->call('toggleTask', 0)
+            ->call('toggleTask', 1)
+            ->call('toggleTask', 2);
+
+        $this->assertSame(
+            "## Einkauf\n\n- [x] Brot\n- [ ] Milch\n\n```\n- [ ] kein Eintrag, nur Code\n```\n\n> - [x] Im Zitat",
+            $page->fresh()->body(),
+        );
+    }
+
+    public function test_ticking_a_checklist_item_that_does_not_exist_changes_nothing(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Item::factory()->note()->for($household)->create(['content' => ['body' => '- [ ] Einzige Aufgabe']]);
+        $updatedAt = $page->updated_at;
+
+        $this->travel(1)->minutes();
+        Volt::test('pages.index', ['item' => $page->id])->call('toggleTask', 5);
+
+        $this->assertSame('- [ ] Einzige Aufgabe', $page->fresh()->body());
+        $this->assertTrue($page->fresh()->updated_at->equalTo($updatedAt));
+    }
+
+    public function test_wiki_links_and_markdown_from_the_editor_are_saved_verbatim(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $markdown = "## Planung\n\n- [ ] Erste Aufgabe\n\nSiehe [[Rezepte]] und [[Urlaub|den Urlaub]]\n\n| A | B |\n| --- | --- |\n| 1 | 2 |";
+
+        Volt::test('pages.index')->set('title', 'Aus dem Editor')->set('body', $markdown)->call('save');
+
+        $this->assertSame($markdown, Item::where('title', 'Aus dem Editor')->firstOrFail()->body());
+    }
 }

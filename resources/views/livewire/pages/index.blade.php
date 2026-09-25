@@ -191,6 +191,19 @@ new #[Layout('layouts.app')] class extends Component
         $this->redirectRoute('pages.index', $parentStillVisible ? ['item' => $parentId] : [], navigate: true);
     }
 
+    /**
+     * Ticks or unticks the n-th checklist item of the open page (read view).
+     */
+    public function toggleTask(int $index): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+        $body = NoteMarkdown::toggleTask($page->body(), $index);
+
+        if ($body !== null) {
+            $page->update(['content' => ['body' => $body]]);
+        }
+    }
+
     public function cancelEdit(): void
     {
         $this->resetForm();
@@ -216,6 +229,7 @@ new #[Layout('layouts.app')] class extends Component
         $data = [
             'selectedPage' => null,
             'parentOptions' => [],
+            'pageTitles' => [],
             'canChangeVisibility' => true,
         ];
 
@@ -226,6 +240,13 @@ new #[Layout('layouts.app')] class extends Component
                 $tree->flatten(),
                 fn (array $row) => ! in_array($row['page']->id, $excludedIds, true),
             ));
+            // For the [[ autocomplete in the editor.
+            $data['pageTitles'] = collect($tree->flatten())
+                ->map(fn (array $row) => $row['page']->title)
+                ->reject(fn (string $title) => $this->editingId && $title === $tree->find($this->editingId)?->title)
+                ->unique()
+                ->values()
+                ->all();
             $data['canChangeVisibility'] = ! $this->editingId
                 || (bool) $this->visibleItems(Item::TYPE_NOTE)->find($this->editingId)?->visibilityCanBeChangedBy(Auth::user());
         }
@@ -237,7 +258,7 @@ new #[Layout('layouts.app')] class extends Component
                 'selectedPage' => $page,
                 'breadcrumbs' => $page ? $tree->ancestors($page->id) : [],
                 'subpages' => $page ? $tree->children($page->id) : [],
-                'pageHtml' => $page ? NoteMarkdown::toHtml($page, Auth::user()) : null,
+                'pageHtml' => $page ? NoteMarkdown::toHtml($page, Auth::user(), interactiveTasks: true) : null,
                 'backlinks' => $page ? $page->backlinksVisibleTo(Auth::user()) : collect(),
             ] + $data;
         }
@@ -301,11 +322,61 @@ new #[Layout('layouts.app')] class extends Component
                             <x-input-error :messages="$errors->get('parentId')" class="mt-2" />
                         </div>
 
-                        <div>
-                            <x-input-label for="body" :value="__('Content')" />
-                            <textarea wire:model="body" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm"></textarea>
+                        <div
+                            x-data="pageEditor(@js([
+                                'pageTitles' => $pageTitles,
+                                'translations' => [
+                                    'placeholder' => __('Write something, or type “/” for commands …'),
+                                    'editorLabel' => __('Content'),
+                                    'linkPrompt' => __('Link address (leave empty to remove the link):'),
+                                    'newPage' => __('New page'),
+                                    'text' => __('Text'),
+                                    'heading1' => __('Heading 1'),
+                                    'heading2' => __('Heading 2'),
+                                    'heading3' => __('Heading 3'),
+                                    'bulletList' => __('Bulleted list'),
+                                    'orderedList' => __('Numbered list'),
+                                    'taskList' => __('Checklist'),
+                                    'quote' => __('Quote'),
+                                    'codeBlock' => __('Code'),
+                                    'divider' => __('Divider'),
+                                    'table' => __('Table'),
+                                    'pageLink' => __('Link to page'),
+                                ],
+                            ]))"
+                            wire:key="editor-{{ $editingId ?? 'new' }}"
+                        >
+                            <div class="flex items-center justify-between gap-3">
+                                <x-input-label for="body" :value="__('Content')" />
+                                <button type="button" x-show="mode !== 'loading'" x-on:click="toggleMode()" class="text-xs text-gray-500 dark:text-gray-400 underline">
+                                    <span x-show="mode === 'rich'">{{ __('Edit as Markdown') }}</span>
+                                    <span x-show="mode === 'markdown'" x-cloak>{{ __('Back to editor') }}</span>
+                                </button>
+                            </div>
+
+                            <div wire:ignore x-show="mode !== 'markdown'" class="mt-1">
+                                <div x-ref="bubble" class="editor-bubble" style="visibility: hidden" role="toolbar" aria-label="{{ __('Formatting') }}">
+                                    <button type="button" x-on:click="run('toggleBold')" :class="isActive('bold') && 'is-active'" title="{{ __('Bold') }}"><strong>B</strong></button>
+                                    <button type="button" x-on:click="run('toggleItalic')" :class="isActive('italic') && 'is-active'" title="{{ __('Italic') }}"><em>I</em></button>
+                                    <button type="button" x-on:click="run('toggleStrike')" :class="isActive('strike') && 'is-active'" title="{{ __('Strikethrough') }}"><s>S</s></button>
+                                    <button type="button" x-on:click="run('toggleCode')" :class="isActive('code') && 'is-active'" title="{{ __('Code') }}"><code>&lt;/&gt;</code></button>
+                                    <button type="button" x-on:click="setLink()" :class="isActive('link') && 'is-active'" title="{{ __('Link') }}">🔗</button>
+                                    <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                    <button type="button" x-on:click="run('toggleHeading', { level: 2 })" :class="isActive('heading', { level: 2 }) && 'is-active'" title="{{ __('Heading 2') }}">H2</button>
+                                    <button type="button" x-on:click="run('toggleTaskList')" :class="isActive('taskList') && 'is-active'" title="{{ __('Checklist') }}">☐</button>
+                                </div>
+                                <div x-ref="editor" class="editor-frame">
+                                    <p x-show="mode === 'loading'" class="p-3 text-sm text-gray-400">{{ __('Loading editor …') }}</p>
+                                </div>
+                            </div>
+
+                            <p x-show="hasUnsupportedContent && mode === 'markdown'" x-cloak class="mt-1 rounded-md bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                                {{ __('This page contains images or HTML that the editor cannot show, so it opens as Markdown to keep them intact.') }}
+                            </p>
+                            <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm"></textarea>
+
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ __('Markdown is supported: **bold**, *italic*, # headings, - lists, [ ] checklists. Link other pages with [[Page title]].') }}
+                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type.') }}
                             </p>
                             <x-input-error :messages="$errors->get('body')" class="mt-2" />
                         </div>

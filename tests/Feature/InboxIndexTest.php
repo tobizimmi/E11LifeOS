@@ -56,7 +56,7 @@ class InboxIndexTest extends TestCase
         $this->assertDatabaseHas('items', ['id' => $entry->id, 'type' => Item::TYPE_TODO, 'position' => 5, 'done' => false]);
     }
 
-    public function test_an_entry_can_be_turned_into_a_note_and_keeps_its_visibility(): void
+    public function test_an_entry_can_be_turned_into_a_page_and_keeps_its_visibility(): void
     {
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
@@ -65,7 +65,7 @@ class InboxIndexTest extends TestCase
 
         Volt::test('inbox.index')
             ->call('convertToNote', $entry->id)
-            ->assertRedirect(route('notes.index', ['note' => $entry->id]));
+            ->assertRedirect(route('pages.index', ['item' => $entry->id]));
 
         $entry->refresh();
         $this->assertSame(Item::TYPE_NOTE, $entry->type);

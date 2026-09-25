@@ -132,19 +132,19 @@ new #[Layout('layouts.app')] class extends Component
 
                     {{-- Notes --}}
                     <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
-                        <x-dashboard-card-header :title="__('Recent notes')" :href="route('notes.index')" />
+                        <x-dashboard-card-header :title="__('Recent pages')" :href="route('pages.index')" />
                         <ul class="mt-3 space-y-2">
                             @forelse ($recentNotes as $note)
                                 <li wire:key="dashboard-note-{{ $note->id }}" class="flex items-center gap-2">
-                                    <a href="{{ route('notes.index', ['note' => $note->id]) }}" wire:navigate class="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
-                                        {{ $note->title }}
+                                    <a href="{{ route('pages.index', ['item' => $note->id]) }}" wire:navigate class="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
+                                        {{ $note->displayIcon() }} {{ $note->title }}
                                     </a>
                                     @if ($note->isPrivate())
                                         <x-private-badge />
                                     @endif
                                 </li>
                             @empty
-                                <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('No notes yet.') }}</li>
+                                <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('No pages yet.') }}</li>
                             @endforelse
                         </ul>
                     </section>

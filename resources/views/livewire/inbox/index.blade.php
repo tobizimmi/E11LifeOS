@@ -32,7 +32,7 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Turns the entry into a note and opens it in the editor, keeping its visibility.
+     * Turns the entry into a page and opens it, keeping its visibility.
      */
     public function convertToNote(int $id): void
     {
@@ -40,7 +40,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $item->update(['type' => Item::TYPE_NOTE, 'content' => ['body' => '']]);
 
-        $this->redirectRoute('notes.index', ['note' => $item->id], navigate: true);
+        $this->redirectRoute('pages.index', ['item' => $item->id], navigate: true);
     }
 
     /**
@@ -117,7 +117,7 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             <div class="mt-3 flex flex-wrap gap-2 text-sm">
                                 <x-secondary-button type="button" wire:click="convertToTodo({{ $entry->id }})">{{ __('As task') }}</x-secondary-button>
-                                <x-secondary-button type="button" wire:click="convertToNote({{ $entry->id }})">{{ __('As note') }}</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="convertToNote({{ $entry->id }})">{{ __('As page') }}</x-secondary-button>
                                 @unless ($entry->isPrivate())
                                     <x-secondary-button type="button" wire:click="moveToShoppingList({{ $entry->id }})">{{ __('To shopping list') }}</x-secondary-button>
                                 @endunless

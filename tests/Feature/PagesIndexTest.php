@@ -10,7 +10,7 @@ use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
 
-class NotesIndexTest extends TestCase
+class PagesIndexTest extends TestCase
 {
     use CreatesHouseholdMembers, RefreshDatabase;
 
@@ -19,7 +19,7 @@ class NotesIndexTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        Volt::test('notes.index')
+        Volt::test('pages.index')
             ->set('title', 'Geschenkidee Oma')
             ->set('body', 'Buch über Gartenarbeit')
             ->set('tagsInput', 'geschenk, oma')
@@ -50,14 +50,14 @@ class NotesIndexTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        Volt::test('notes.index')
+        Volt::test('pages.index')
             ->call('edit', $note->id)
             ->set('title', 'Neuer Titel')
             ->call('save');
 
         $this->assertDatabaseHas('items', ['id' => $note->id, 'title' => 'Neuer Titel']);
 
-        Volt::test('notes.index')->call('delete', $note->id);
+        Volt::test('pages.index')->call('delete', $note->id);
 
         $this->assertDatabaseMissing('items', ['id' => $note->id]);
     }
@@ -70,7 +70,7 @@ class NotesIndexTest extends TestCase
         Item::create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'title' => 'Urlaubsideen', 'created_by' => $user->id]);
         Item::create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'title' => 'Einkaufsliste Gedanken', 'created_by' => $user->id]);
 
-        $component = Volt::test('notes.index')->set('search', 'Urlaub');
+        $component = Volt::test('pages.index')->set('search', 'Urlaub');
 
         $component->assertSee('Urlaubsideen');
         $component->assertDontSee('Einkaufsliste Gedanken');
@@ -85,7 +85,7 @@ class NotesIndexTest extends TestCase
 
         $this->actingAs($user);
 
-        Volt::test('notes.index')->assertDontSee('Fremde Notiz');
+        Volt::test('pages.index')->assertDontSee('Fremde Notiz');
     }
 
     public function test_tags_are_normalized_and_shared_within_the_household(): void
@@ -93,8 +93,8 @@ class NotesIndexTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        Volt::test('notes.index')->set('title', 'Eins')->set('tagsInput', '#Urlaub, urlaub , Reise')->call('save');
-        Volt::test('notes.index')->set('title', 'Zwei')->set('tagsInput', 'URLAUB')->call('save');
+        Volt::test('pages.index')->set('title', 'Eins')->set('tagsInput', '#Urlaub, urlaub , Reise')->call('save');
+        Volt::test('pages.index')->set('title', 'Zwei')->set('tagsInput', 'URLAUB')->call('save');
 
         $this->assertSame(['reise', 'urlaub'], Tag::where('household_id', $household->id)->orderBy('name')->pluck('name')->all());
         $this->assertSame(['reise', 'urlaub'], Item::where('title', 'Eins')->firstOrFail()->tags->pluck('name')->sort()->values()->all());
@@ -109,7 +109,7 @@ class NotesIndexTest extends TestCase
         $tagged->syncTagNames(['urlaub']);
         Item::factory()->note()->for($household)->create(['title' => 'Steuererklärung']);
 
-        Volt::test('notes.index')
+        Volt::test('pages.index')
             ->call('filterByTag', 'urlaub')
             ->assertSee('Strandurlaub')
             ->assertDontSee('Steuererklärung');
@@ -121,20 +121,20 @@ class NotesIndexTest extends TestCase
         $partner = $this->addMemberTo($household);
 
         $this->actingAs($owner);
-        Volt::test('notes.index')->set('title', 'Geheime Geschenkidee')->set('isPrivate', true)->set('tagsInput', 'überraschung')->call('save');
+        Volt::test('pages.index')->set('title', 'Geheime Geschenkidee')->set('isPrivate', true)->set('tagsInput', 'überraschung')->call('save');
 
         $note = Item::where('title', 'Geheime Geschenkidee')->firstOrFail();
         $this->assertTrue($note->isPrivate());
 
-        Volt::test('notes.index')->assertSee('Geheime Geschenkidee');
+        Volt::test('pages.index')->assertSee('Geheime Geschenkidee');
 
         $this->actingAs($partner);
-        Volt::test('notes.index')
+        Volt::test('pages.index')
             ->assertDontSee('Geheime Geschenkidee')
             ->assertDontSee('überraschung');
 
-        $this->assertThrows(fn () => Volt::test('notes.index')->call('edit', $note->id), ModelNotFoundException::class);
-        $this->assertThrows(fn () => Volt::test('notes.index')->call('delete', $note->id), ModelNotFoundException::class);
+        $this->assertThrows(fn () => Volt::test('pages.index')->call('edit', $note->id), ModelNotFoundException::class);
+        $this->assertThrows(fn () => Volt::test('pages.index')->call('delete', $note->id), ModelNotFoundException::class);
         $this->assertDatabaseHas('items', ['id' => $note->id]);
     }
 
@@ -146,7 +146,7 @@ class NotesIndexTest extends TestCase
         $note = Item::factory()->note()->for($household)->create(['created_by' => $owner->id]);
 
         $this->actingAs($partner);
-        Volt::test('notes.index')->call('edit', $note->id)->set('isPrivate', true)->call('save');
+        Volt::test('pages.index')->call('edit', $note->id)->set('isPrivate', true)->call('save');
 
         $this->assertFalse($note->fresh()->isPrivate());
     }
@@ -161,7 +161,7 @@ class NotesIndexTest extends TestCase
             'content' => ['body' => "**Wichtig**\n\n<script>alert('x')</script>\n\n[Klick](javascript:alert(1))"],
         ]);
 
-        Volt::test('notes.index', ['selectedId' => $note->id])
+        Volt::test('pages.index', ['item' => $note->id])
             ->assertSeeHtml('<strong>Wichtig</strong>')
             ->assertDontSeeHtml('<script>alert')
             ->assertDontSeeHtml('javascript:alert');
@@ -178,10 +178,10 @@ class NotesIndexTest extends TestCase
             'content' => ['body' => 'Siehe [[rezepte|unsere Rezepte]] und [[Urlaub 2027]].'],
         ]);
 
-        Volt::test('notes.index', ['selectedId' => $source->id])
-            ->assertSeeHtml('href="'.e(route('notes.index', ['note' => $target->id])).'"')
+        Volt::test('pages.index', ['item' => $source->id])
+            ->assertSeeHtml('href="'.e(route('pages.index', ['item' => $target->id])).'"')
             ->assertSee('unsere Rezepte')
-            ->assertSeeHtml('href="'.e(route('notes.index', ['new' => 'Urlaub 2027'])).'"');
+            ->assertSeeHtml('href="'.e(route('pages.index', ['new' => 'Urlaub 2027'])).'"');
     }
 
     public function test_wiki_links_do_not_reveal_other_members_private_notes(): void
@@ -194,9 +194,9 @@ class NotesIndexTest extends TestCase
 
         $this->actingAs($partner);
 
-        Volt::test('notes.index', ['selectedId' => $source->id])
+        Volt::test('pages.index', ['item' => $source->id])
             ->assertDontSeeHtml('note='.$private->id)
-            ->assertSeeHtml('href="'.e(route('notes.index', ['new' => 'Tagebuch'])).'"');
+            ->assertSeeHtml('href="'.e(route('pages.index', ['new' => 'Tagebuch'])).'"');
     }
 
     public function test_a_note_shows_the_notes_linking_to_it(): void
@@ -208,7 +208,7 @@ class NotesIndexTest extends TestCase
         Item::factory()->note()->for($household)->create(['title' => 'Wochenplan', 'content' => ['body' => 'Heute aus [[Rezepte]] kochen']]);
         Item::factory()->note()->for($household)->create(['title' => 'Einkaufsideen', 'content' => ['body' => 'Rezepte ohne Link']]);
 
-        Volt::test('notes.index', ['selectedId' => $target->id])
+        Volt::test('pages.index', ['item' => $target->id])
             ->assertViewHas('backlinks', fn ($backlinks) => $backlinks->pluck('title')->all() === ['Wochenplan']);
     }
 
@@ -217,19 +217,8 @@ class NotesIndexTest extends TestCase
         [$user] = $this->memberWithHousehold();
 
         $this->actingAs($user)
-            ->get(route('notes.index', ['new' => 'Urlaub 2027']))
+            ->get(route('pages.index', ['new' => 'Urlaub 2027']))
             ->assertOk()
             ->assertSee('Urlaub 2027');
-    }
-
-    public function test_the_new_note_button_in_the_header_opens_the_form(): void
-    {
-        [$user] = $this->memberWithHousehold();
-        $this->actingAs($user);
-
-        Volt::test('notes.index')
-            ->assertSet('showForm', false)
-            ->dispatch('create-note')
-            ->assertSet('showForm', true);
     }
 }

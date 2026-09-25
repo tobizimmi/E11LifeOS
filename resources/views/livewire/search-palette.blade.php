@@ -46,7 +46,7 @@ new class extends Component
         }
 
         $groups = [
-            __('Notes') => $this->itemResults(Item::TYPE_NOTE, $term, fn (Item $item) => route('notes.index', ['note' => $item->id])),
+            __('Pages') => $this->itemResults(Item::TYPE_NOTE, $term, fn (Item $item) => route('pages.index', ['item' => $item->id])),
             __('To-Do') => $this->itemResults(Item::TYPE_TODO, $term, fn () => route('todos.index')),
             __('Inbox') => $this->itemResults(Item::TYPE_INBOX, $term, fn () => route('inbox.index')),
             __('Shopping List') => ShoppingListEntry::where('household_id', $this->householdId)
@@ -67,7 +67,7 @@ new class extends Component
                 ->get()
                 ->map(fn (Tag $tag) => [
                     'label' => '#'.$tag->name,
-                    'url' => route('notes.index', ['tag' => $tag->name]),
+                    'url' => route('pages.index', ['tag' => $tag->name]),
                     'private' => false,
                 ])
                 ->all(),
@@ -142,7 +142,7 @@ new class extends Component
                 x-ref="input"
                 wire:model.live.debounce.250ms="query"
                 type="search"
-                placeholder="{{ __('Search notes, tasks, inbox, shopping list...') }}"
+                placeholder="{{ __('Search pages, tasks, inbox, shopping list...') }}"
                 class="w-full border-0 border-b border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 px-4 py-3 focus:ring-0"
                 x-on:keydown.enter.prevent="results()[0]?.click()"
             />

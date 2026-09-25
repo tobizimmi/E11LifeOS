@@ -11,9 +11,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
-#[Fillable(['household_id', 'type', 'visibility', 'title', 'content', 'created_by', 'done', 'position'])]
+#[Fillable(['household_id', 'parent_id', 'type', 'visibility', 'title', 'icon', 'content', 'created_by', 'done', 'position'])]
 #[ObservedBy(ItemObserver::class)]
 class Item extends Model
 {
@@ -28,6 +29,11 @@ class Item extends Model
      * Quick-capture entries that have not been sorted into a module yet.
      */
     public const TYPE_INBOX = 'inbox';
+
+    /**
+     * Shown in front of pages without their own icon.
+     */
+    public const DEFAULT_PAGE_ICON = '📄';
 
     public const VISIBILITY_SHARED = 'shared';
 
@@ -58,6 +64,16 @@ class Item extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id');
     }
 
     public function tags(): BelongsToMany
@@ -108,6 +124,11 @@ class Item extends Model
                 ->orWhereRaw("LOWER(JSON_EXTRACT(items.content, '$.body')) LIKE ?", [$like])
                 ->orWhereHas('tags', fn (Builder $tags) => $tags->where('name', 'like', $like));
         });
+    }
+
+    public function displayIcon(): string
+    {
+        return $this->icon ?: self::DEFAULT_PAGE_ICON;
     }
 
     public function isPrivate(): bool

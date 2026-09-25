@@ -33,7 +33,16 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Globale Suche über alle Module (`Strg/Cmd + K`).
 - Inbox mit Umwandlung in Aufgabe, Notiz oder Einkaufslisten-Eintrag.
 
+### Notion-Ansatz – Schritt A: Seitenleiste & Seitenbaum ✅
+- Notizen heißen jetzt Seiten und lassen sich beliebig verschachteln (Unterseiten, Pfadanzeige, Icons).
+- Seitenleiste statt oberer Navigation: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
+- Löschen einer Seite verschiebt ihre Unterseiten eine Ebene nach oben; Zyklen werden verhindert.
+
 ## Nächste Schritte
+
+### Notion-Ansatz – Schritt B: Editor
+- Tiptap-Editor mit Slash-Menü, Formatierungsleiste und `[[`-Autovervollständigung (neue Abhängigkeit – Freigabe ausstehend).
+- Seiten per Drag & Drop im Seitenbaum verschieben und sortieren.
 
 ### Phase 3 – Organisation
 - Aufgaben mit Fälligkeit, Zuständigkeit und Wiederholung (z. B. „Müll rausbringen jeden Dienstag“).

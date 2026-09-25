@@ -42,13 +42,13 @@ class NoteMarkdown
             $links[$placeholder] = $targetId
                 ? sprintf(
                     '<a href="%s" class="wiki-link">%s</a>',
-                    e(route('notes.index', ['note' => $targetId])),
+                    e(route('pages.index', ['item' => $targetId])),
                     e($label),
                 )
                 : sprintf(
                     '<a href="%s" class="wiki-link wiki-link-missing" title="%s">%s</a>',
-                    e(route('notes.index', ['new' => $title])),
-                    e(__('Create note')),
+                    e(route('pages.index', ['new' => $title])),
+                    e(__('Create page')),
                     e($label),
                 );
 

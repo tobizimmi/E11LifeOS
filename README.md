@@ -1,6 +1,6 @@
 # E11LifeOS
 
-Ein „Second Brain“ für den Haushalt: Notizen, Aufgaben, Einkaufsliste und eine
+Ein „Second Brain“ für den Haushalt: Seiten, Aufgaben, Einkaufsliste und eine
 Inbox zum schnellen Erfassen – geteilt mit dem Haushalt oder privat, in Echtzeit
 synchronisiert und als PWA auf dem Handy nutzbar.
 
@@ -9,12 +9,13 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 
 ## Funktionen
 
-- **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Notizen und Inbox auf einen Blick, mit Schnellerfassung.
-- **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Notiz oder auf die Einkaufsliste.
-- **Notizen** – Markdown, Verknüpfungen mit `[[Notiztitel]]` (fehlende Notizen per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter.
+- **Seitenleiste** – Navigation wie in Notion: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
+- **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
+- **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste.
+- **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Markdown, Verknüpfungen mit `[[Seitentitel]]` (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter.
 - **Aufgaben** – sortierbar per Drag & Drop.
 - **Einkaufsliste** – abhaken, per Wischen löschen.
-- **Privat oder geteilt** – Notizen, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
+- **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
 - **Datenschutz** – JSON-Export aller eigenen Daten, Kontolöschung (private Einträge werden gelöscht, geteilte bleiben dem Haushalt erhalten).
@@ -54,6 +55,7 @@ ein Deploy (Push auf `main`/`develop`) startet nur, wenn beides grün ist.
 
 - `resources/views/livewire/` – Seiten und Komponenten (Volt, PHP und Blade in einer Datei)
 - `app/Livewire/Concerns/InteractsWithHousehold.php` – gemeinsame Haushaltslogik aller Module (Haushalt auflösen, Sichtbarkeit, Echtzeit-Refresh)
-- `app/Models/Item.php` – Notizen, Aufgaben und Inbox-Einträge (Feld `type`), inkl. Sichtbarkeit, Tags und Wikilinks
+- `app/Models/Item.php` – Seiten (`type = note`), Aufgaben und Inbox-Einträge, inkl. Sichtbarkeit, Hierarchie, Tags und Wikilinks
+- `app/Support/PageTree.php` – Seitenbaum (Unterseiten, Pfad, Zyklusschutz)
 - `app/Support/NoteMarkdown.php` – sicheres Markdown-Rendering mit Wikilinks
 - `lang/de.json`, `lang/de/` – deutsche Übersetzungen

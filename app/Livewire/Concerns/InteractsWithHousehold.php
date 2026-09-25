@@ -28,7 +28,18 @@ trait InteractsWithHousehold
 
     public function mountInteractsWithHousehold(): void
     {
-        $this->householdId = $this->currentUser()->currentHousehold()?->id;
+        $this->resolveHousehold();
+    }
+
+    /**
+     * Livewire runs trait mount hooks after the component's own mount(); a mount()
+     * that already needs the household calls this first. Safe to call twice.
+     */
+    protected function resolveHousehold(): void
+    {
+        if ($this->householdId === null) {
+            $this->householdId = $this->currentUser()->currentHousehold()?->id;
+        }
 
         abort_if($this->householdId === null && $this->requiresHousehold(), 403);
     }

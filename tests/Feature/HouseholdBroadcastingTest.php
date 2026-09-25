@@ -64,7 +64,7 @@ class HouseholdBroadcastingTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        foreach (['notes.index', 'todos.index', 'shopping-list.index', 'inbox.index', 'dashboard'] as $component) {
+        foreach (['pages.index', 'todos.index', 'shopping-list.index', 'inbox.index', 'dashboard', 'layout.navigation'] as $component) {
             $listeners = invade(Volt::test($component)->instance())->getListeners();
 
             $this->assertSame('$refresh', $listeners["echo-private:household.{$household->id},.items.updated"] ?? null, $component);

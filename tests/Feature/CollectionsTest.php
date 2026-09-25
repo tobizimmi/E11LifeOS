@@ -105,7 +105,7 @@ class CollectionsTest extends TestCase
         $this->assertTrue($tasks->isTasks());
         $this->assertSame($tasks->id, $todo->collection_id);
         $this->assertSame(Collection::TASK_STATUS_TODO, $todo->propertyValue($status));
-        $this->assertSame(['status', 'due', 'assignee'], $tasks->properties->pluck('system_key')->all());
+        $this->assertSame(['status', 'due', 'assignee', 'repeat'], $tasks->properties->pluck('system_key')->all());
 
         $component = Volt::test('collections.show', ['collection' => $tasks->id]);
 
@@ -283,6 +283,10 @@ class CollectionsTest extends TestCase
         $this->actingAs($user)
             ->get('/todos')
             ->assertRedirect(route('collections.show', Collection::tasksFor($household->id)));
+
+        $this->actingAs($user)
+            ->get('/todos?view=calendar')
+            ->assertRedirect(route('collections.show', ['collection' => Collection::tasksFor($household->id), 'view' => 'calendar']));
     }
 
     public function test_the_dashboard_lists_overdue_tasks_first(): void

@@ -13,7 +13,8 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste.
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken. Gespeichert wird Markdown.
-- **Aufgaben** – eingebaute Sammlung mit Status, Fälligkeit und Zuständigkeit; als Board (Drag & Drop zwischen Spalten) oder Tabelle; Überfälliges wird hervorgehoben.
+- **Aufgaben** – eingebaute Sammlung mit Status, Fälligkeit, Zuständigkeit und Wiederholung (täglich/wöchentlich/monatlich/jährlich – abgehakt springt die Aufgabe zum nächsten Termin); als Board, Tabelle oder Kalender; Überfälliges wird hervorgehoben.
+- **Kalender** – Monatsansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen.
 - **Sammlungen** – eigene Tabellen/Boards wie Notion-Datenbanken: Eigenschaften (Text, Zahl, Datum, Auswahl, Checkbox, Person, Link), Vorlagen (Projekte, Verträge, Leseliste), jeder Eintrag mit eigenen Notizen.
 - **Einkaufsliste** – abhaken, per Wischen löschen.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.

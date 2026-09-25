@@ -48,6 +48,10 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Vorlagen: Projekte, Verträge, Leseliste.
 - Aufgaben sind die eingebaute Sammlung mit Status, Fälligkeit und Zuständigkeit (Status und „erledigt“ bleiben synchron); Übersicht zeigt Überfälliges zuerst.
 
+### Phase 3 (Teil 1) – Kalender & wiederkehrende Aufgaben ✅
+- Kalenderansicht (Monat) für alle Sammlungen mit Datumsfeld; Drag & Drop zwischen Tagen und in „Ohne Datum“, Einträge direkt an einem Tag anlegen.
+- Aufgaben mit Wiederholung (täglich, wöchentlich, monatlich, jährlich): Abhaken verschiebt die Aufgabe auf den nächsten Termin nach heute und öffnet sie wieder; kurzer Hinweis mit dem neuen Datum.
+
 ## Nächste Schritte
 
 ### Notion-Ansatz – nächste Ausbaustufen
@@ -55,8 +59,7 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Bilder/Dateien in Seiten (Upload), danach auch im Editor darstellbar.
 
 ### Phase 3 – Organisation
-- Wiederkehrende Aufgaben (z. B. „Müll rausbringen jeden Dienstag“) – Fälligkeit und Zuständigkeit gibt es bereits.
-- Kalenderansicht für Sammlungen mit Datum (Termine, Fälligkeiten).
+- Kalender: Wochenansicht, künftige Wiederholungen als Vorschau anzeigen.
 - Erinnerungen per Web-Push oder E-Mail über den Laravel-Scheduler.
 - Offline-Modus für die Einkaufsliste (Service Worker mit Cache).
 - Tags auch in Aufgaben und Inbox pflegen.

@@ -72,13 +72,16 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Seiten in der Seitenleiste per Drag & Drop sortieren und in andere (aufgeklappte) Seiten verschieben; ohne Handsortierung bleibt es alphabetisch.
 - Bilder und Dateien in Seiten (Knopf, „/“-Befehl, Drag & Drop, Einfügen); Bilder im Editor sichtbar. Dateien liegen privat und sind so sichtbar wie die Seite.
 
+### Phase 3 (Teil 2) – Organisation ✅
+- Kalender mit Wochenansicht und Vorschau künftiger Termine wiederkehrender Aufgaben.
+- Tägliche Erinnerungs-E-Mail (Scheduler, im Profil einschaltbar).
+- Einkaufsliste offline lesbar (Service Worker, Kopie wird beim Abmelden gelöscht).
+- Tags in Aufgaben, Sammlungs-Einträgen und Inbox (`#tag` beim Erfassen), Tag-Filter in Sammlungen.
+
 ## Nächste Schritte
 
-### Phase 3 – Organisation
-- Kalender: Wochenansicht, künftige Wiederholungen als Vorschau anzeigen.
-- Erinnerungen per Web-Push oder E-Mail über den Laravel-Scheduler.
-- Offline-Modus für die Einkaufsliste (Service Worker mit Cache).
-- Tags auch in Aufgaben und Inbox pflegen.
+### Phase 3 – Organisation (Rest)
+- Erinnerungen zusätzlich per Web-Push (braucht VAPID-Schlüssel und ein Push-Paket).
 
 ### Phase 4 – Weitere Module
 - Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.

@@ -318,6 +318,19 @@ class Item extends Model
     }
 
     /**
+     * "Milch kaufen #einkauf #dringend" → ["Milch kaufen", ["einkauf", "dringend"]].
+     *
+     * @return array{0: string, 1: array<int, string>}
+     */
+    public static function splitHashtags(string $text): array
+    {
+        preg_match_all('/(?<=^|\s)#([\p{L}\p{N}_-]+)/u', $text, $matches);
+        $title = trim(preg_replace('/\s+/u', ' ', preg_replace('/(?<=^|\s)#[\p{L}\p{N}_-]+/u', '', $text)));
+
+        return [$title !== '' ? $title : trim($text), array_values(array_unique(array_map('mb_strtolower', $matches[1])))];
+    }
+
+    /**
      * Replaces the item's tags with the given names, creating missing household tags.
      *
      * @param  array<int, string>  $names

@@ -51,4 +51,27 @@ class Recurrence
 
         return $date->format('Y-m-d');
     }
+
+    /**
+     * Upcoming dates after $dueDate that fall into [$start, $end] (calendar preview).
+     *
+     * @return array<int, string>
+     */
+    public static function occurrencesBetween(string $dueDate, string $rule, Carbon $start, Carbon $end, int $limit = 62): array
+    {
+        $dates = [];
+        $current = $dueDate;
+
+        while (count($dates) < $limit && ($current = self::next($current, $rule, Carbon::createFromFormat('!Y-m-d', $current))) !== null) {
+            if ($current > $end->format('Y-m-d')) {
+                break;
+            }
+
+            if ($current >= $start->format('Y-m-d')) {
+                $dates[] = $current;
+            }
+        }
+
+        return $dates;
+    }
 }

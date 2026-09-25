@@ -19,13 +19,17 @@ new class extends Component
             'title' => ['required', 'string', 'max:255'],
         ]);
 
-        Item::create([
+        // "#tags" in the text become tags of the entry.
+        [$title, $tags] = Item::splitHashtags($validated['title']);
+
+        $item = Item::create([
             'household_id' => $this->householdId,
             'type' => Item::TYPE_INBOX,
             'visibility' => $this->isPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
-            'title' => $validated['title'],
+            'title' => $title,
             'created_by' => Auth::id(),
         ]);
+        $item->syncTagNames($tags);
 
         $this->reset('title');
         $this->dispatch('item-captured');
@@ -38,7 +42,7 @@ new class extends Component
             wire:model="title"
             class="block w-full"
             type="text"
-            placeholder="{{ __('What is on your mind?') }}"
+            placeholder="{{ __('What is on your mind? (#tags optional)') }}"
             aria-label="{{ __('Quick capture') }}"
         />
         <x-primary-button type="submit">{{ __('Capture') }}</x-primary-button>

@@ -32,10 +32,45 @@ new #[Layout('layouts.app')] class extends Component
     public bool $archived = false;
 
     /**
-     * "newest", "title", "time" or "cooked".
+     * "newest", "title", "time", "cooked" or "rating".
      */
     #[Url(except: 'newest')]
     public string $sort = 'newest';
+
+    /**
+     * Comma-separated ingredients at home ("What can I cook?").
+     */
+    #[Url(except: '')]
+    public string $pantry = '';
+
+    public bool $pantryMode = false;
+
+    public function mount(): void
+    {
+        $this->pantryMode = $this->pantry !== '';
+    }
+
+    public function togglePantryMode(): void
+    {
+        $this->pantryMode = ! $this->pantryMode;
+
+        if (! $this->pantryMode) {
+            $this->pantry = '';
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function pantryTerms(): array
+    {
+        return collect(explode(',', $this->pantry))
+            ->map(fn (string $term) => mb_strtolower(trim($term)))
+            ->filter(fn (string $term) => mb_strlen($term) >= 2)
+            ->unique()
+            ->values()
+            ->all();
+    }
 
     public function toggleFavorite(int $recipeId): void
     {
@@ -51,6 +86,7 @@ new #[Layout('layouts.app')] class extends Component
         $recipes = Recipe::query()
             ->visibleTo($user, $this->householdId)
             ->with(['categories', 'favoritedBy' => fn ($query) => $query->whereKey($user->id)])
+            ->withAvg('ratings', 'rating')
             ->when($this->archived, fn ($query) => $query->whereNotNull('archived_at'), fn ($query) => $query->whereNull('archived_at'))
             ->when($this->search !== '', fn ($query) => $query->matching($this->search))
             ->when(ctype_digit($this->category), fn ($query) => $query->whereHas('categories', fn ($categories) => $categories->whereKey((int) $this->category)))
@@ -59,17 +95,33 @@ new #[Layout('layouts.app')] class extends Component
             ->when($this->sort === 'title', fn ($query) => $query->orderBy('title'))
             ->when($this->sort === 'time', fn ($query) => $query->orderByRaw('COALESCE(prep_time, 0) + COALESCE(cook_time, 0) = 0')->orderByRaw('COALESCE(prep_time, 0) + COALESCE(cook_time, 0)'))
             ->when($this->sort === 'cooked', fn ($query) => $query->orderByDesc('cooked_count'))
+            ->when($this->sort === 'rating', fn ($query) => $query->orderByDesc('ratings_avg_rating'))
             ->latest('id')
             ->get();
 
+        // Pantry search: recipes using at least one of the ingredients, best coverage first.
+        $pantryTerms = $this->pantryTerms();
+        $pantryMatches = [];
+
+        if ($pantryTerms !== []) {
+            $recipes = $recipes
+                ->each(function (Recipe $recipe) use ($pantryTerms, &$pantryMatches) {
+                    $pantryMatches[$recipe->id] = $recipe->pantryMatch($pantryTerms);
+                })
+                ->filter(fn (Recipe $recipe) => $pantryMatches[$recipe->id]['matched'] !== [])
+                ->sortBy(fn (Recipe $recipe) => [-count($pantryMatches[$recipe->id]['matched']), -$pantryMatches[$recipe->id]['percent']])
+                ->values();
+        }
+
         return [
             'recipes' => $recipes,
+            'pantryMatches' => $pantryMatches,
             'categories' => RecipeCategory::where('household_id', $this->householdId)->orderBy('position')->orderBy('name')->get(),
             'tags' => Tag::where('household_id', $this->householdId)
                 ->whereHas('recipes', fn ($query) => $query->visibleTo($user, $this->householdId))
                 ->orderBy('name')
                 ->pluck('name'),
-            'filtered' => $this->search !== '' || $this->category !== '' || $this->tag !== '' || $this->favorites,
+            'filtered' => $this->search !== '' || $this->category !== '' || $this->tag !== '' || $this->favorites || $pantryTerms !== [],
         ];
     }
 }; ?>
@@ -90,13 +142,16 @@ new #[Layout('layouts.app')] class extends Component
                     <option value="title">{{ __('A–Z') }}</option>
                     <option value="time">{{ __('Quickest first') }}</option>
                     <option value="cooked">{{ __('Cooked most often') }}</option>
+                    <option value="rating">{{ __('Best rated') }}</option>
                 </select>
+                <a href="{{ route('recipes.plan') }}" wire:navigate class="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">📅 {{ __('Meal plan') }}</a>
                 <a href="{{ route('recipes.create') }}" wire:navigate class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white">
                     + {{ __('New recipe') }}
                 </a>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="togglePantryMode" @class(['rounded-full px-3 py-1 text-sm', 'bg-emerald-600 text-white' => $pantryMode, 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700' => ! $pantryMode]) aria-pressed="{{ $pantryMode ? 'true' : 'false' }}">🧺 {{ __('What can I cook?') }}</button>
                 <button type="button" wire:click="$toggle('favorites')" @class(['rounded-full px-3 py-1 text-sm', 'bg-rose-600 text-white' => $favorites, 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700' => ! $favorites]) aria-pressed="{{ $favorites ? 'true' : 'false' }}">♥ {{ __('Favorites') }}</button>
                 @foreach ($categories as $recipeCategory)
                     <button
@@ -113,6 +168,14 @@ new #[Layout('layouts.app')] class extends Component
                     {{ __('Archive') }}
                 </label>
             </div>
+
+            @if ($pantryMode)
+                <div class="rounded-lg bg-emerald-50 dark:bg-emerald-900/30 p-3">
+                    <x-input-label for="pantry" :value="__('Which ingredients do you have at home?')" />
+                    <x-text-input wire:model.live.debounce.400ms="pantry" id="pantry" class="mt-1 block w-full" placeholder="{{ __('e.g. potatoes, eggs, spinach') }}" autofocus />
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{{ __('Separate with commas. Recipes using the most of them come first.') }}</p>
+                </div>
+            @endif
 
             @if ($tags->isNotEmpty())
                 <div class="flex flex-wrap gap-1">
@@ -148,6 +211,16 @@ new #[Layout('layouts.app')] class extends Component
                                         <x-private-badge />
                                     @endif
                                 </p>
+                                @if ($recipe->ratings_avg_rating)
+                                    <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">★ {{ number_format((float) $recipe->ratings_avg_rating, 1, ',', '') }}</p>
+                                @endif
+                                @if (isset($pantryMatches[$recipe->id]))
+                                    @php($pantryMatch = $pantryMatches[$recipe->id])
+                                    <p class="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">{{ __(':matched of :total ingredients at home', ['matched' => count($pantryMatch['matched']), 'total' => count($pantryMatch['matched']) + count($pantryMatch['missing'])]) }} ({{ $pantryMatch['percent'] }} %)</p>
+                                    @if ($pantryMatch['missing'] !== [])
+                                        <p class="mt-0.5 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Missing') }}: {{ implode(', ', $pantryMatch['missing']) }}</p>
+                                    @endif
+                                @endif
                                 @if ($recipe->categories->isNotEmpty())
                                     <p class="mt-2 truncate text-xs text-gray-500 dark:text-gray-400">{{ $recipe->categories->map(fn ($c) => trim($c->icon.' '.$c->name))->implode(' · ') }}</p>
                                 @endif

@@ -61,6 +61,20 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $removePhoto = false;
 
+    /**
+     * New additional photos (multi upload).
+     *
+     * @var array<int, mixed>
+     */
+    public array $newPhotos = [];
+
+    /**
+     * Indexes of existing additional photos to delete on save.
+     *
+     * @var array<int, int>
+     */
+    public array $removedPhotos = [];
+
     public string $newCategoryName = '';
 
     public function mount(?int $recipe = null): void
@@ -152,6 +166,19 @@ new #[Layout('layouts.app')] class extends Component
         return array_values($list);
     }
 
+    public function removeNewPhoto(int $index): void
+    {
+        unset($this->newPhotos[$index]);
+        $this->newPhotos = array_values($this->newPhotos);
+    }
+
+    public function toggleRemovedPhoto(int $index): void
+    {
+        $this->removedPhotos = in_array($index, $this->removedPhotos, true)
+            ? array_values(array_diff($this->removedPhotos, [$index]))
+            : [...$this->removedPhotos, $index];
+    }
+
     public function createCategory(): void
     {
         $this->validate(['newCategoryName' => ['required', 'string', 'max:100']]);
@@ -186,6 +213,8 @@ new #[Layout('layouts.app')] class extends Component
             'categoryIds' => ['array'],
             'categoryIds.*' => ['integer', Rule::exists('recipe_categories', 'id')->where('household_id', $this->householdId)],
             'photo' => ['nullable', 'image', 'max:15360'],
+            'newPhotos' => ['array', 'max:'.Recipe::MAX_ADDITIONAL_IMAGES],
+            'newPhotos.*' => ['image', 'max:15360'],
         ]);
 
         $recipe = $this->recipeId ? $this->findRecipe($this->recipeId) : new Recipe([
@@ -232,6 +261,13 @@ new #[Layout('layouts.app')] class extends Component
             $attributes['image_path'] = null;
         }
 
+        $keptPhotos = collect($recipe->additional_images ?? [])->except($this->removedPhotos);
+        $droppedPhotos = collect($recipe->additional_images ?? [])->only($this->removedPhotos)->values()->all();
+        $addedPhotos = collect($this->newPhotos)
+            ->take(max(0, Recipe::MAX_ADDITIONAL_IMAGES - $keptPhotos->count()))
+            ->map(fn ($upload) => RecipeImages::store($upload, (int) $this->householdId));
+        $attributes['additional_images'] = $keptPhotos->merge($addedPhotos)->values()->all() ?: null;
+
         DB::transaction(function () use ($recipe, $attributes) {
             $recipe->fill($attributes)->save();
             $recipe->categories()->sync(array_map('intval', $this->categoryIds));
@@ -241,6 +277,8 @@ new #[Layout('layouts.app')] class extends Component
         if (array_key_exists('image_path', $attributes) && $oldImage && $oldImage !== $attributes['image_path']) {
             RecipeImages::delete($oldImage);
         }
+
+        array_map(RecipeImages::delete(...), $droppedPhotos);
 
         $this->redirectRoute('recipes.show', ['recipe' => $recipe->id], navigate: true);
     }
@@ -334,6 +372,33 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <x-input-error :messages="$errors->get('photo')" class="mt-1" />
                 </div>
+
+                {{-- Additional photos --}}
+                <div>
+                    <x-input-label for="newPhotos" :value="__('More photos')" />
+                    <div class="mt-1 flex flex-wrap gap-2">
+                        @foreach ($recipe?->additionalImageUrls() ?? [] as $photoIndex => $photoUrl)
+                            <div wire:key="existing-photo-{{ $photoIndex }}" class="relative">
+                                <img src="{{ $photoUrl }}" alt="" @class(['h-20 w-20 rounded-md object-cover', 'opacity-30' => in_array($photoIndex, $removedPhotos, true)]) />
+                                <button type="button" wire:click="toggleRemovedPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ in_array($photoIndex, $removedPhotos, true) ? __('Keep photo') : __('Remove photo') }}">{{ in_array($photoIndex, $removedPhotos, true) ? '↺' : '✕' }}</button>
+                            </div>
+                        @endforeach
+                        @foreach ($newPhotos as $photoIndex => $newPhoto)
+                            <div wire:key="new-photo-{{ $photoIndex }}" class="relative">
+                                @if (method_exists($newPhoto, 'isPreviewable') && $newPhoto->isPreviewable())
+                                    <img src="{{ $newPhoto->temporaryUrl() }}" alt="" class="h-20 w-20 rounded-md object-cover ring-2 ring-indigo-400" />
+                                @else
+                                    <div class="flex h-20 w-20 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 text-xs text-gray-500">{{ __('Photo') }}</div>
+                                @endif
+                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ __('Remove photo') }}">✕</button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <input type="file" wire:model="newPhotos" id="newPhotos" accept="image/*" multiple class="mt-2 block text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-indigo-700" />
+                    <p wire:loading wire:target="newPhotos" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Up to :count additional photos, e.g. of the steps.', ['count' => \App\Models\Recipe::MAX_ADDITIONAL_IMAGES]) }}</p>
+                    <x-input-error :messages="array_merge($errors->get('newPhotos'), $errors->get('newPhotos.*'))" class="mt-1" />
+                </div>
             </section>
 
             {{-- Ingredients --}}
@@ -418,7 +483,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             <div class="flex items-center gap-3">
-                <x-primary-button wire:loading.attr="disabled" wire:target="photo,save">{{ $recipeId ? __('Save changes') : __('Create recipe') }}</x-primary-button>
+                <x-primary-button wire:loading.attr="disabled" wire:target="photo,newPhotos,save">{{ $recipeId ? __('Save changes') : __('Create recipe') }}</x-primary-button>
                 <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>
             </div>
         </form>

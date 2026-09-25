@@ -1,9 +1,13 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Item;
+use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
@@ -29,6 +33,16 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $choosingIngredients = false;
 
+    public bool $planning = false;
+
+    public string $planDate = '';
+
+    public string $planMealType = 'dinner';
+
+    public int $myRating = 0;
+
+    public string $myComment = '';
+
     public function mount(int $recipe): void
     {
         $this->resolveHousehold();
@@ -36,6 +50,11 @@ new #[Layout('layouts.app')] class extends Component
         $model = $this->findRecipe($recipe);
         $this->recipeId = $model->id;
         $this->servings = max(1, (int) $model->servings);
+        $this->planDate = today()->toDateString();
+
+        $ownRating = $model->ratings()->where('user_id', Auth::id())->first();
+        $this->myRating = (int) $ownRating?->rating;
+        $this->myComment = (string) $ownRating?->comment;
     }
 
     private function findRecipe(?int $id = null): Recipe
@@ -91,6 +110,59 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: trans_choice(':count item added to the shopping list.|:count items added to the shopping list.', $added));
     }
 
+    /**
+     * Puts the recipe on the household meal plan (private recipes stay private there).
+     */
+    public function planMeal(): void
+    {
+        $this->validate([
+            'planDate' => ['required', 'date'],
+            'planMealType' => ['required', Rule::in(MealPlan::MEAL_TYPES)],
+        ]);
+
+        $recipe = $this->findRecipe();
+
+        MealPlan::create([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+            'visibility' => $recipe->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+            'date' => $this->planDate,
+            'meal_type' => $this->planMealType,
+            'recipe_id' => $recipe->id,
+            'title' => $recipe->title,
+            'servings' => $this->servings,
+        ]);
+
+        $this->planning = false;
+        $this->dispatch('toast', message: __('Planned for :day.', [
+            'day' => Carbon::parse($this->planDate)->translatedFormat('D, d.m.').' · '.MealPlan::mealTypeLabel($this->planMealType),
+        ]));
+    }
+
+    public function saveRating(): void
+    {
+        $this->validate([
+            'myRating' => ['required', 'integer', 'min:1', 'max:5'],
+            'myComment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $this->findRecipe()->rateBy(Auth::user(), $this->myRating, $this->myComment);
+        $this->dispatch('toast', message: __('Rating saved.'));
+    }
+
+    public function removeRating(): void
+    {
+        $this->findRecipe()->ratings()->where('user_id', Auth::id())->delete();
+        $this->reset('myRating', 'myComment');
+    }
+
+    public function duplicate(): void
+    {
+        $copy = $this->findRecipe()->duplicateFor(Auth::user());
+
+        $this->redirectRoute('recipes.edit', ['recipe' => $copy->id], navigate: true);
+    }
+
     public function markCooked(): void
     {
         $this->findRecipe()->increment('cooked_count');
@@ -112,10 +184,19 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $recipe = $this->findRecipe()->load(['categories', 'tags', 'creator']);
+        $recipe = $this->findRecipe()->load(['categories', 'tags', 'creator', 'ratings.user']);
 
         return [
             'recipe' => $recipe,
+            'averageRating' => $recipe->averageRating(),
+            'otherRatings' => $recipe->ratings->where('user_id', '!=', Auth::id())->sortByDesc('updated_at')->values(),
+            'photos' => $recipe->additionalImageUrls(),
+            'upcomingPlans' => MealPlan::query()->visibleTo(Auth::user(), (int) $this->householdId)
+                ->where('recipe_id', $recipe->id)
+                ->whereDate('date', '>=', today())
+                ->orderBy('date')
+                ->limit(3)
+                ->get(),
             'ingredients' => $recipe->scaledIngredients($this->servings),
             'steps' => $recipe->steps(),
             'isFavorite' => $recipe->isFavoriteOf(Auth::user()),
@@ -143,6 +224,12 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $recipe->title }}</h1>
+                            @if ($averageRating)
+                                <a href="#ratings" class="mt-1 inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+                                    <span class="text-amber-500" aria-hidden="true">{{ str_repeat('★', (int) round($averageRating)) }}<span class="text-gray-300 dark:text-gray-600">{{ str_repeat('★', 5 - (int) round($averageRating)) }}</span></span>
+                                    <span>{{ number_format($averageRating, 1, ',', '') }} ({{ trans_choice(':count rating|:count ratings', $recipe->ratings->count()) }})</span>
+                                </a>
+                            @endif
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 @if ($recipe->isPrivate())
                                     <x-private-badge />
@@ -159,17 +246,50 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-sm">
+                            @if ($steps !== [])
+                                <a href="{{ route('recipes.cook', ['recipe' => $recipe, 'servings' => $servings]) }}" wire:navigate class="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700">👩‍🍳 {{ __('Cooking mode') }}</a>
+                            @endif
+                            <button type="button" wire:click="$toggle('planning')" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-expanded="{{ $planning ? 'true' : 'false' }}">📅 {{ __('Plan') }}</button>
                             <button type="button" wire:click="toggleFavorite" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}">{{ $isFavorite ? '♥' : '♡' }} {{ __('Favorite') }}</button>
                             <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5">✎ {{ __('Edit') }}</a>
                             <div x-data="{ open: false }" class="relative">
                                 <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-label="{{ __('More') }}">⋯</button>
                                 <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
+                                    <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
                                     <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
                                     <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    @if ($planning)
+                        <form wire:submit="planMeal" class="flex flex-wrap items-end gap-3 rounded-md bg-indigo-50 dark:bg-indigo-900/30 p-3">
+                            <div>
+                                <x-input-label for="planDate" :value="__('Date')" />
+                                <x-text-input wire:model="planDate" id="planDate" type="date" class="mt-1 block" required />
+                            </div>
+                            <div>
+                                <x-input-label for="planMealType" :value="__('Meal')" />
+                                <select wire:model="planMealType" id="planMealType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                                    @foreach (\App\Models\MealPlan::MEAL_TYPES as $mealType)
+                                        <option value="{{ $mealType }}">{{ \App\Models\MealPlan::mealTypeLabel($mealType) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <p class="pb-2 text-sm text-gray-600 dark:text-gray-400">{{ trans_choice(':count serving|:count servings', $servings) }}</p>
+                            <x-primary-button>{{ __('Add to meal plan') }}</x-primary-button>
+                            <a href="{{ route('recipes.plan') }}" wire:navigate class="pb-2 text-sm text-indigo-700 dark:text-indigo-300 underline">{{ __('Open meal plan') }}</a>
+                            <x-input-error :messages="$errors->get('planDate')" class="w-full" />
+                        </form>
+                    @endif
+
+                    @if ($upcomingPlans->isNotEmpty())
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            📅 {{ __('On the meal plan') }}:
+                            {{ $upcomingPlans->map(fn ($plan) => $plan->date->translatedFormat('D, d.m.').' ('.\App\Models\MealPlan::mealTypeLabel($plan->meal_type).')')->implode(', ') }}
+                        </p>
+                    @endif
 
                     @if ($recipe->description)
                         <p class="whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $recipe->description }}</p>
@@ -268,6 +388,85 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="markCooked" class="mt-6 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm">✅ {{ __('Cooked it') }}</button>
                 </section>
             </div>
+
+            @if ($photos !== [])
+                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm" x-data="{ open: null, photos: @js(array_values($photos)) }">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('More photos') }}</h2>
+                    <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                        @foreach (array_values($photos) as $photoIndex => $photoUrl)
+                            <button type="button" x-on:click="open = {{ $photoIndex }}" class="aspect-square overflow-hidden rounded-md" aria-label="{{ __('Show photo :number', ['number' => $photoIndex + 1]) }}">
+                                <img src="{{ $photoUrl }}" alt="" loading="lazy" class="h-full w-full object-cover hover:opacity-90" />
+                            </button>
+                        @endforeach
+                    </div>
+                    <div
+                        x-show="open !== null"
+                        x-cloak
+                        x-on:keydown.escape.window="open = null"
+                        x-on:keydown.arrow-right.window="open !== null && (open = (open + 1) % photos.length)"
+                        x-on:keydown.arrow-left.window="open !== null && (open = (open + photos.length - 1) % photos.length)"
+                        x-on:click.self="open = null"
+                        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+                        role="dialog"
+                        aria-modal="true"
+                    >
+                        <img :src="open !== null ? photos[open] : ''" alt="" class="max-h-full max-w-full rounded-md object-contain" />
+                        <button type="button" x-on:click="open = null" class="absolute end-4 top-4 text-3xl text-white" aria-label="{{ __('Close') }}">✕</button>
+                        <template x-if="photos.length > 1">
+                            <div>
+                                <button type="button" x-on:click="open = (open + photos.length - 1) % photos.length" class="absolute start-2 top-1/2 -translate-y-1/2 px-3 text-4xl text-white" aria-label="{{ __('Previous photo') }}">‹</button>
+                                <button type="button" x-on:click="open = (open + 1) % photos.length" class="absolute end-2 top-1/2 -translate-y-1/2 px-3 text-4xl text-white" aria-label="{{ __('Next photo') }}">›</button>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            @endif
+
+            {{-- Ratings --}}
+            <section id="ratings" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Ratings') }}</h2>
+                    @if ($averageRating)
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Ø {{ number_format($averageRating, 1, ',', '') }} · {{ trans_choice(':count rating|:count ratings', $recipe->ratings->count()) }}</p>
+                    @endif
+                </div>
+
+                <form wire:submit="saveRating" class="space-y-2">
+                    <div class="flex items-center gap-1" role="radiogroup" aria-label="{{ __('Your rating') }}">
+                        <span class="me-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Your rating') }}:</span>
+                        @for ($star = 1; $star <= 5; $star++)
+                            <button type="button" wire:click="$set('myRating', {{ $star }})" role="radio" aria-checked="{{ $myRating === $star ? 'true' : 'false' }}" aria-label="{{ trans_choice(':count star|:count stars', $star) }}" @class(['text-2xl leading-none', 'text-amber-500' => $star <= $myRating, 'text-gray-300 dark:text-gray-600' => $star > $myRating])>★</button>
+                        @endfor
+                    </div>
+                    <x-input-error :messages="$errors->get('myRating')" />
+                    <textarea wire:model="myComment" rows="2" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm text-sm" placeholder="{{ __('Note for next time (optional)') }}" aria-label="{{ __('Comment') }}"></textarea>
+                    <div class="flex items-center gap-3">
+                        <x-secondary-button type="submit">{{ __('Save rating') }}</x-secondary-button>
+                        @if ($recipe->ratings->contains('user_id', auth()->id()))
+                            <button type="button" wire:click="removeRating" class="text-sm text-gray-500 underline">{{ __('Remove my rating') }}</button>
+                        @endif
+                    </div>
+                </form>
+
+                @if ($otherRatings->isNotEmpty())
+                    <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach ($otherRatings as $otherRating)
+                            <li wire:key="rating-{{ $otherRating->id }}" class="py-2 text-sm">
+                                <p class="flex flex-wrap items-center gap-2">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $otherRating->user?->name ?? __('Former member') }}</span>
+                                    <span class="text-amber-500" aria-label="{{ trans_choice(':count star|:count stars', $otherRating->rating) }}">{{ str_repeat('★', $otherRating->rating) }}<span class="text-gray-300 dark:text-gray-600">{{ str_repeat('★', 5 - $otherRating->rating) }}</span></span>
+                                    @if ($otherRating->cooked_at)
+                                        <span class="text-xs text-gray-500">{{ __('cooked on :date', ['date' => $otherRating->cooked_at->format('d.m.Y')]) }}</span>
+                                    @endif
+                                </p>
+                                @if ($otherRating->comment)
+                                    <p class="mt-1 whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $otherRating->comment }}</p>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </section>
 
             @if ($recipe->source_url)
                 <p class="text-sm text-gray-500 dark:text-gray-400">

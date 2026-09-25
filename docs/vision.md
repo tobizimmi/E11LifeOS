@@ -57,6 +57,12 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Zutaten-Auswahl umgerechnet auf die LifeOS-Einkaufsliste; Suche, Export, Kontolöschung berücksichtigen Rezepte.
 - Import aus der RezepteApp2 (`php artisan recipes:import-rezepteapp`).
 
+### Rezepte-Addon – Etappe R2 ✅
+- Kochmodus (Vollbild, Schritt für Schritt, mehrere Timer mit Alarm, Wake Lock, Bewertung am Ende).
+- Wochenplan pro Haushalt (Rezepte oder freie Einträge, Drag & Drop, Zutaten der Woche zusammengefasst auf die Einkaufsliste, Karte auf der Übersicht). Private Rezepte erzeugen private Planeinträge.
+- Bewertungen (1–5 Sterne + Notiz, eine pro Person), Sortierung „Beste Bewertung“; Suche nach vorhandenen Zutaten; Duplizieren; weitere Fotos mit Galerie.
+- Import übernimmt auch Bewertungen, Wochenplan und weitere Fotos; Export und Kontolöschung berücksichtigen die neuen Daten.
+
 ## Nächste Schritte
 
 ### Notion-Ansatz – nächste Ausbaustufen
@@ -72,7 +78,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 ### Phase 4 – Weitere Module
 - Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.
 - Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
-- Rezepte R2: Kochmodus mit Timer, Wochenplaner im Kalender, Bewertungen, Suche nach vorhandenen Zutaten, Duplizieren, weitere Fotos.
 - Rezepte R3: Import per URL/Screenshot/PDF (Claude-API), Nährwerte, PDF-Export (dompdf), öffentliche Links, Barcode-Scanner.
 - Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.
 

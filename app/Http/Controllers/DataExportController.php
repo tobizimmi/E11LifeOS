@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
+use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
 use App\Models\User;
@@ -40,7 +41,7 @@ class DataExportController extends Controller
                 : [],
             'collection_entries' => $this->exportItems($household, $user, Item::TYPE_ENTRY, ['id', 'collection_id', 'title', 'content', 'properties', 'visibility', 'created_at', 'updated_at']),
             'recipes' => $household
-                ? Recipe::query()->visibleTo($user, $household->id)->with('categories', 'tags')->orderBy('id')->get()
+                ? Recipe::query()->visibleTo($user, $household->id)->with(['categories', 'tags', 'ratings' => fn ($query) => $query->where('user_id', $user->id)])->orderBy('id')->get()
                     ->map(fn (Recipe $recipe) => $recipe->only([
                         'id', 'title', 'description', 'ingredients', 'instructions', 'prep_time', 'cook_time', 'servings',
                         'difficulty', 'source_url', 'visibility', 'cooked_count', 'archived_at', 'created_at', 'updated_at',
@@ -48,7 +49,13 @@ class DataExportController extends Controller
                         'categories' => $recipe->categories->pluck('name')->all(),
                         'tags' => $recipe->tags->pluck('name')->sort()->values()->all(),
                         'favorite' => $recipe->isFavoriteOf($user),
+                        'additional_photos' => count($recipe->additional_images ?? []),
+                        'my_rating' => $recipe->ratings->first()?->only(['rating', 'comment', 'cooked_at', 'updated_at']),
                     ])
+                : [],
+            'meal_plan' => $household
+                ? MealPlan::query()->visibleTo($user, $household->id)->orderBy('date')->orderBy('id')->get()
+                    ->map->only(['id', 'date', 'meal_type', 'recipe_id', 'title', 'servings', 'note', 'visibility', 'created_at'])
                 : [],
             'shopping_list' => $household
                 ? ShoppingListEntry::where('household_id', $household->id)->get()

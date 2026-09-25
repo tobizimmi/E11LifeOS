@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\Item;
+use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\RecipeCategory;
+use App\Models\RecipeRating;
 use App\Models\User;
 use App\Support\RecipeImages;
 use Illuminate\Console\Attributes\Description;
@@ -23,7 +25,7 @@ use Throwable;
     {--uploads-url= : Base URL of the RezepteApp2 uploads, to download photos from (fallback)}
     {--private : Import the recipes as private to the user instead of shared with the household}
     {--dry-run : Only show what would be imported}')]
-#[Description('Import recipes, categories, tags and favorites from the old RezepteApp2 database (safe to run again)')]
+#[Description('Import recipes, categories, tags, favorites, ratings and the meal plan from the old RezepteApp2 database (safe to run again)')]
 class ImportRezepteApp extends Command
 {
     private Connection $source;
@@ -89,7 +91,15 @@ class ImportRezepteApp extends Command
                 $imagePath ? $photos++ : $missingPhotos[] = $row->title;
             }
 
-            DB::transaction(function () use ($row, $household, $user, $favoriteIds, $imagePath) {
+            $additionalImages = collect($this->json($row->additionalImages ?? null) ?? [])
+                ->filter(fn ($url) => is_string($url) && trim($url) !== '')
+                ->take(Recipe::MAX_ADDITIONAL_IMAGES)
+                ->map(fn (string $url) => $this->importPhoto($url, $household->id))
+                ->filter()
+                ->values()
+                ->all();
+
+            DB::transaction(function () use ($row, $household, $user, $favoriteIds, $imagePath, $additionalImages) {
                 $recipe = new Recipe([
                     'household_id' => $household->id,
                     'created_by' => $user->id,
@@ -103,6 +113,7 @@ class ImportRezepteApp extends Command
                     'servings' => $row->servings ?: null,
                     'difficulty' => $row->difficulty ? mb_substr((string) $row->difficulty, 0, 50) : null,
                     'image_path' => $imagePath,
+                    'additional_images' => $additionalImages ?: null,
                     'source_url' => $row->sourceUrl ? mb_substr((string) $row->sourceUrl, 0, 2000) : null,
                     'source_type' => $row->sourceType ?: null,
                     'nutrition' => $this->json($row->nutrition),
@@ -131,14 +142,93 @@ class ImportRezepteApp extends Command
             });
         });
 
+        // Ratings and meal plan refer to all recipes of the account, including ones imported earlier.
+        $recipeMap = Recipe::where('household_id', $household->id)->whereIn('legacy_id', $recipeIds)->pluck('id', 'legacy_id')->all();
+        $ratings = $this->importRatings($user, $sourceUser->id, $recipeMap);
+        $mealPlans = $this->importMealPlans($household->id, $user, $sourceUser->id, $recipeMap);
+
         $this->newLine(2);
         $this->info(sprintf('Imported %d recipes (%d with photo) and %d categories.', $new->count(), $photos, count($this->categoryMap)));
+        $this->info(sprintf('Imported %d ratings and %d meal plan entries.', $ratings, $mealPlans));
 
         if ($missingPhotos !== []) {
             $this->warn('Photos not found for: '.implode(', ', $missingPhotos).' – pass --uploads-path or --uploads-url.');
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The account's own ratings; an existing LifeOS rating of the same recipe is kept.
+     *
+     * @param  array<string, int>  $recipeMap  RezepteApp2 recipe id => LifeOS recipe id
+     */
+    private function importRatings(User $user, string $sourceUserId, array $recipeMap): int
+    {
+        if (! $this->source->getSchemaBuilder()->hasTable('recipe_ratings')) {
+            return 0;
+        }
+
+        $imported = 0;
+
+        $this->source->table('recipe_ratings')->where('userId', $sourceUserId)->whereIn('recipeId', array_keys($recipeMap))->get()
+            ->each(function (object $row) use ($user, $recipeMap, &$imported) {
+                $rating = RecipeRating::firstOrCreate(
+                    ['recipe_id' => $recipeMap[$row->recipeId], 'user_id' => $user->id],
+                    [
+                        'rating' => max(1, min(5, (int) $row->rating)),
+                        'comment' => $row->comment ?: null,
+                        'cooked_at' => $row->cookedAt ? Carbon::parse($row->cookedAt) : null,
+                    ],
+                );
+                $imported += $rating->wasRecentlyCreated ? 1 : 0;
+            });
+
+        return $imported;
+    }
+
+    /**
+     * The account's meal plan (recipes and free-text entries), matched by id so it is imported once.
+     *
+     * @param  array<string, int>  $recipeMap  RezepteApp2 recipe id => LifeOS recipe id
+     */
+    private function importMealPlans(int $householdId, User $user, string $sourceUserId, array $recipeMap): int
+    {
+        if (! $this->source->getSchemaBuilder()->hasTable('meal_plans')) {
+            return 0;
+        }
+
+        $alreadyImported = MealPlan::where('household_id', $householdId)->whereNotNull('legacy_id')->pluck('legacy_id')->flip();
+        $recipes = Recipe::whereIn('id', $recipeMap)->get(['id', 'title', 'visibility'])->keyBy('id');
+        $imported = 0;
+
+        $this->source->table('meal_plans')->where('userId', $sourceUserId)->orderBy('date')->get()
+            ->reject(fn (object $row) => $alreadyImported->has($row->id))
+            ->each(function (object $row) use ($householdId, $user, $recipeMap, $recipes, &$imported) {
+                $recipe = $row->recipeId ? $recipes->get($recipeMap[$row->recipeId] ?? 0) : null;
+                $title = $recipe?->title ?? trim((string) ($row->customTitle ?? ''));
+
+                // Entries of recipes that belong to another account can't be linked; skip them.
+                if ($title === '') {
+                    return;
+                }
+
+                MealPlan::create([
+                    'household_id' => $householdId,
+                    'created_by' => $user->id,
+                    'visibility' => $this->option('private') || $recipe?->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+                    'date' => Carbon::parse($row->date)->startOfDay(),
+                    'meal_type' => in_array($row->mealType, MealPlan::MEAL_TYPES, true) ? $row->mealType : 'dinner',
+                    'recipe_id' => $recipe?->id,
+                    'title' => mb_substr($title, 0, 500),
+                    'servings' => $row->servings ?: null,
+                    'note' => ($row->note ?? null) ?: null,
+                    'legacy_id' => $row->id,
+                ]);
+                $imported++;
+            });
+
+        return $imported;
     }
 
     /**

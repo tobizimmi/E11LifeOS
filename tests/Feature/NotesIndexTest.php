@@ -221,4 +221,15 @@ class NotesIndexTest extends TestCase
             ->assertOk()
             ->assertSee('Urlaub 2027');
     }
+
+    public function test_the_new_note_button_in_the_header_opens_the_form(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('notes.index')
+            ->assertSet('showForm', false)
+            ->dispatch('create-note')
+            ->assertSet('showForm', true);
+    }
 }

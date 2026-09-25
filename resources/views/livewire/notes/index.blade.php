@@ -37,6 +37,11 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $isPrivate = false;
 
+    /**
+     * @var array<string, string>
+     */
+    protected $listeners = ['create-note' => 'create'];
+
     public function mount(): void
     {
         // Missing wiki links point here with ?new=Title to create that note.
@@ -173,7 +178,8 @@ new #[Layout('layouts.app')] class extends Component
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 {{ __('Notes') }}
             </h2>
-            <x-primary-button type="button" wire:click="create">{{ __('New note') }}</x-primary-button>
+            {{-- The header slot is rendered by the layout, outside this component, so wire:click would not reach it. --}}
+            <x-primary-button type="button" x-data x-on:click="Livewire.dispatch('create-note')">{{ __('New note') }}</x-primary-button>
         </div>
     </x-slot>
 

@@ -43,6 +43,11 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Speicherformat bleibt Markdown (keine Datenmigration; Suche, Wikilinks, Export unverändert). Seiten mit Bildern/HTML öffnen im Markdown-Modus.
 - Checklisten lassen sich in der Leseansicht direkt abhaken.
 
+### Notion-Ansatz – Schritt C: Sammlungen ✅
+- Sammlungen mit Eigenschaften (Text, Zahl, Datum, Auswahl, Checkbox, Person, Link), Tabellen- und Board-Ansicht, Detail-Panel mit Notizen.
+- Vorlagen: Projekte, Verträge, Leseliste.
+- Aufgaben sind die eingebaute Sammlung mit Status, Fälligkeit und Zuständigkeit (Status und „erledigt“ bleiben synchron); Übersicht zeigt Überfälliges zuerst.
+
 ## Nächste Schritte
 
 ### Notion-Ansatz – nächste Ausbaustufen
@@ -50,14 +55,14 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Bilder/Dateien in Seiten (Upload), danach auch im Editor darstellbar.
 
 ### Phase 3 – Organisation
-- Aufgaben mit Fälligkeit, Zuständigkeit und Wiederholung (z. B. „Müll rausbringen jeden Dienstag“).
-- Termine / Kalenderansicht.
+- Wiederkehrende Aufgaben (z. B. „Müll rausbringen jeden Dienstag“) – Fälligkeit und Zuständigkeit gibt es bereits.
+- Kalenderansicht für Sammlungen mit Datum (Termine, Fälligkeiten).
 - Erinnerungen per Web-Push oder E-Mail über den Laravel-Scheduler.
 - Offline-Modus für die Einkaufsliste (Service Worker mit Cache).
 - Tags auch in Aufgaben und Inbox pflegen.
 
 ### Phase 4 – Weitere Module
-- Eigene Sammlungen (frei definierbare Eigenschaften wie Text, Zahl, Datum, Auswahl, Checkbox, Person, Verknüpfung) mit Tabellen-, Board- und Kalenderansicht.
+- Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.
 - Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
 - Rezepte: Integration der bestehenden, separat entwickelten Rezepte-App (inkl. „Zutaten auf die Einkaufsliste“).
 - Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.

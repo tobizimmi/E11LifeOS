@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DataExportController;
+use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -31,7 +32,15 @@ Route::middleware(['auth'])->group(function () {
             ? redirect()->route('pages.index', ['item' => (int) $noteId])
             : redirect()->route('pages.index', $request->only(['new', 'tag', 'q']));
     })->name('notes.index');
-    Volt::route('todos', 'todos.index')->name('todos.index');
+    Volt::route('collections', 'collections.index')->name('collections.index');
+    Volt::route('collections/{collection}', 'collections.show')->whereNumber('collection')->name('collections.show');
+    // Tasks are the built-in collection now; keep the old URL working.
+    Route::get('todos', function (Request $request) {
+        $household = $request->user()->currentHousehold();
+        abort_if(! $household, 403);
+
+        return redirect()->route('collections.show', ['collection' => Collection::tasksFor($household->id)]);
+    })->name('todos.index');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
 });
 

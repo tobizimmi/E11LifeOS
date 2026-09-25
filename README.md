@@ -13,7 +13,8 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste.
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken. Gespeichert wird Markdown.
-- **Aufgaben** – sortierbar per Drag & Drop.
+- **Aufgaben** – eingebaute Sammlung mit Status, Fälligkeit und Zuständigkeit; als Board (Drag & Drop zwischen Spalten) oder Tabelle; Überfälliges wird hervorgehoben.
+- **Sammlungen** – eigene Tabellen/Boards wie Notion-Datenbanken: Eigenschaften (Text, Zahl, Datum, Auswahl, Checkbox, Person, Link), Vorlagen (Projekte, Verträge, Leseliste), jeder Eintrag mit eigenen Notizen.
 - **Einkaufsliste** – abhaken, per Wischen löschen.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags.
@@ -57,6 +58,7 @@ ein Deploy (Push auf `main`/`develop`) startet nur, wenn beides grün ist.
 - `app/Livewire/Concerns/InteractsWithHousehold.php` – gemeinsame Haushaltslogik aller Module (Haushalt auflösen, Sichtbarkeit, Echtzeit-Refresh)
 - `app/Models/Item.php` – Seiten (`type = note`), Aufgaben und Inbox-Einträge, inkl. Sichtbarkeit, Hierarchie, Tags und Wikilinks
 - `app/Support/PageTree.php` – Seitenbaum (Unterseiten, Pfad, Zyklusschutz)
+- `app/Models/Collection.php`, `CollectionProperty.php` – Sammlungen, Eigenschaften, Aufgaben-Sammlung (Status ↔ erledigt)
 - `app/Support/NoteMarkdown.php` – sicheres Markdown-Rendering mit Wikilinks und abhakbaren Checklisten
 - `resources/js/editor.js` – Tiptap-Editor (liest/schreibt Markdown, wird nur beim Bearbeiten nachgeladen)
 - `lang/de.json`, `lang/de/` – deutsche Übersetzungen

@@ -29,6 +29,11 @@ class User extends Authenticatable
             Item::where('created_by', $user->id)
                 ->where('visibility', Item::VISIBILITY_PRIVATE)
                 ->delete();
+
+            // Private collections go too (their entries are removed by the foreign key cascade).
+            Collection::where('created_by', $user->id)
+                ->where('visibility', Item::VISIBILITY_PRIVATE)
+                ->delete();
         });
     }
 

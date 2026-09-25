@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Collection;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use Illuminate\Support\Facades\Auth;
@@ -49,12 +50,23 @@ new #[Layout('layouts.app')] class extends Component
             return $data;
         }
 
-        $openTodos = $this->visibleItems(Item::TYPE_TODO)->where('done', false);
+        $tasks = Collection::tasksFor($this->householdId);
+        $dueProperty = $tasks->systemProperty('due');
+        $assigneeProperty = $tasks->systemProperty('assignee');
+
+        // Tasks with a due date first (overdue on top), then the rest in manual order.
+        $openTodos = $this->visibleItems(Item::TYPE_TODO)->where('done', false)->orderBy('position')->get()
+            ->sortBy(fn (Item $todo) => [$dueProperty && $todo->propertyValue($dueProperty) ? 0 : 1, $dueProperty ? (string) $todo->propertyValue($dueProperty) : '', $todo->position])
+            ->values();
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
 
         return $data + [
-            'openTodoCount' => (clone $openTodos)->count(),
-            'openTodos' => $openTodos->orderBy('position')->limit(self::LIST_LIMIT)->get(),
+            'tasksCollection' => $tasks,
+            'dueProperty' => $dueProperty,
+            'assigneeProperty' => $assigneeProperty,
+            'openTodoCount' => $openTodos->count(),
+            'overdueCount' => $dueProperty ? $openTodos->filter(fn (Item $todo) => ($todo->propertyValue($dueProperty) ?? '9999') < now()->toDateString())->count() : 0,
+            'openTodos' => $openTodos->take(self::LIST_LIMIT),
             'recentNotes' => $this->visibleItems(Item::TYPE_NOTE)->latest('updated_at')->limit(self::LIST_LIMIT)->get(),
             'openShoppingCount' => (clone $openShopping)->count(),
             'openShopping' => $openShopping->latest()->limit(self::LIST_LIMIT)->get(),
@@ -92,7 +104,10 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                     {{-- Tasks --}}
                     <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
-                        <x-dashboard-card-header :title="__('Open tasks')" :count="$openTodoCount" :href="route('todos.index')" />
+                        <x-dashboard-card-header :title="__('Open tasks')" :count="$openTodoCount" :href="route('collections.show', $tasksCollection)" />
+                        @if ($overdueCount > 0)
+                            <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ trans_choice(':count task is overdue|:count tasks are overdue', $overdueCount) }}</p>
+                        @endif
                         <ul class="mt-3 space-y-2">
                             @forelse ($openTodos as $todo)
                                 <li wire:key="dashboard-todo-{{ $todo->id }}" class="flex items-center gap-3">
@@ -102,9 +117,19 @@ new #[Layout('layouts.app')] class extends Component
                                         aria-label="{{ __('Mark as done') }}"
                                         class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500"
                                     />
-                                    <span class="text-gray-900 dark:text-gray-100 truncate">{{ $todo->title }}</span>
+                                    <a href="{{ route('collections.show', ['collection' => $tasksCollection, 'entry' => $todo->id]) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100 hover:underline">{{ $todo->title }}</a>
                                     @if ($todo->isPrivate())
                                         <x-private-badge />
+                                    @endif
+                                    @if ($dueProperty && ($due = $todo->propertyValue($dueProperty)))
+                                        <span @class([
+                                            'shrink-0 rounded px-1.5 py-0.5 text-xs',
+                                            'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' => $due < now()->toDateString(),
+                                            'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' => $due === now()->toDateString(),
+                                            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' => $due > now()->toDateString(),
+                                        ])>
+                                            {{ $due === now()->toDateString() ? __('Today') : \Illuminate\Support\Carbon::parse($due)->translatedFormat('j. M') }}
+                                        </span>
                                     @endif
                                 </li>
                             @empty

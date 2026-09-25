@@ -13,7 +13,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Spracheingabe** – 🎤 in Schnellerfassung, bei neuen Aufgaben/Einträgen und in der Einkaufsliste (Spracherkennung des Browsers).
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
-- **Erinnerungen** – tägliche E-Mail um 7:00 mit fälligen und überfälligen Aufgaben sowie Terminen aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten).
+- **Erinnerungen** – täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.
 - **Aufgaben** – eingebaute Sammlung mit Status, Fälligkeit, Zuständigkeit und Wiederholung (täglich/wöchentlich/monatlich/jährlich – abgehakt springt die Aufgabe zum nächsten Termin); als Board, Tabelle oder Kalender; Überfälliges wird hervorgehoben.
 - **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
@@ -96,6 +96,14 @@ Die täglichen E-Mails verschickt der Laravel-Scheduler. Auf dem Server einmalig
 ```
 
 Dazu müssen die `MAIL_*`-Einstellungen in der `.env` auf einen echten Mailserver zeigen.
+
+Für Push-Benachrichtigungen einmalig ein Schlüsselpaar erzeugen und die ausgegebenen Zeilen in die `.env` übernehmen (danach `php artisan config:cache`, falls genutzt):
+
+```bash
+php artisan webpush:vapid
+```
+
+Die Schlüssel später nicht mehr ändern, sonst muss jedes Gerät die Benachrichtigungen neu einschalten. Pushes enthalten selbst keinen Text; der Service Worker holt die Nachricht nach dem Wecken aus der App. Es ist also kein zusätzliches Paket nötig, und über die Push-Dienste von Google, Apple oder Mozilla laufen keine Inhalte.
 
 ## Tests & Code-Stil
 

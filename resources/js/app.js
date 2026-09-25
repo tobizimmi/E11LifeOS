@@ -398,4 +398,92 @@ document.addEventListener('alpine:init', () => {
             },
         };
     });
+
+    /**
+     * Turns push notifications on/off for this browser (profile page). The subscription
+     * is registered with the app, which then wakes the device for reminders.
+     */
+    window.Alpine.data('pushSettings', (publicKey, subscribeUrl) => {
+        const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        const keyBytes = (base64) => {
+            const raw = atob((base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+            return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+        };
+        const send = (method, body) => fetch(subscribeUrl, {
+            method,
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+            body: JSON.stringify(body),
+        });
+
+        return {
+            supported,
+            needsHomeScreen: isAppleMobile && !standalone,
+            permission: supported ? Notification.permission : 'default',
+            subscribed: false,
+            busy: false,
+            failed: false,
+
+            async init() {
+                if (!supported) {
+                    return;
+                }
+
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                this.subscribed = !!subscription;
+
+                // Keep the server in sync (e.g. after another person used this device).
+                if (subscription) {
+                    send('POST', subscription.toJSON());
+                }
+            },
+
+            async enable() {
+                this.busy = true;
+                this.failed = false;
+
+                try {
+                    this.permission = await Notification.requestPermission();
+
+                    if (this.permission !== 'granted') {
+                        return;
+                    }
+
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) });
+                    const response = await send('POST', subscription.toJSON());
+                    this.subscribed = response.ok;
+                    this.failed = !response.ok;
+                    this.$wire.$refresh();
+                } catch (error) {
+                    console.error(error);
+                    this.failed = true;
+                } finally {
+                    this.busy = false;
+                }
+            },
+
+            async disable() {
+                this.busy = true;
+
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.getSubscription();
+
+                    if (subscription) {
+                        await send('DELETE', { endpoint: subscription.endpoint });
+                        await subscription.unsubscribe();
+                    }
+
+                    this.subscribed = false;
+                    this.$wire.$refresh();
+                } finally {
+                    this.busy = false;
+                }
+            },
+        };
+    });
 });

@@ -1,4 +1,4 @@
-// Service worker: offline view of the shopping list.
+// Service worker: offline view of the shopping list and push notifications.
 // - Built assets (/build/…) are cached on first use (their file names change with every build).
 // - The shopping list page is fetched from the network first; without a connection the last
 //   loaded version is shown. Everything else always goes to the network.
@@ -64,4 +64,46 @@ self.addEventListener('fetch', (event) => {
                 .catch(async () => (await caches.match(scope + path, { cacheName: PAGE_CACHE })) ?? Response.error()),
         );
     }
+});
+
+// Push notifications carry no payload: fetch the texts from the app and show them.
+// Every push must show a notification (Safari revokes the permission otherwise).
+self.addEventListener('push', (event) => {
+    const scope = self.registration.scope;
+
+    event.waitUntil(
+        fetch(scope + 'push/pending', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+            .then((response) => (response.ok ? response.json() : { messages: [] }))
+            .catch(() => ({ messages: [] }))
+            .then(({ messages }) => {
+                if (!messages || messages.length === 0) {
+                    messages = [{ title: 'E11LifeOS', body: '', url: scope, tag: 'e11-generic' }];
+                }
+
+                return Promise.all(messages.map((message) => self.registration.showNotification(message.title, {
+                    body: message.body,
+                    tag: message.tag,
+                    icon: scope + 'icons/icon-192.png',
+                    badge: scope + 'icons/icon-192.png',
+                    data: { url: message.url },
+                })));
+            }),
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = event.notification.data?.url || self.registration.scope;
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+            const open = windows.find((client) => client.url.startsWith(self.registration.scope));
+
+            if (open) {
+                return open.focus().then((client) => client.navigate(url));
+            }
+
+            return self.clients.openWindow(url);
+        }),
+    );
 });

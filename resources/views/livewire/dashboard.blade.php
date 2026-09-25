@@ -32,6 +32,7 @@ new #[Layout('layouts.app')] class extends Component
         $todo = $this->findVisibleItem(Item::TYPE_TODO, $id);
 
         $todo->update(['done' => ! $todo->done]);
+        $this->announceReschedule($todo);
     }
 
     public function with(): array
@@ -110,7 +111,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                         <ul class="mt-3 space-y-2">
                             @forelse ($openTodos as $todo)
-                                <li wire:key="dashboard-todo-{{ $todo->id }}" class="flex items-center gap-3">
+                                <li wire:key="dashboard-todo-{{ $todo->id }}-{{ $todo->updated_at?->timestamp }}" class="flex items-center gap-3">
                                     <input
                                         type="checkbox"
                                         wire:click="toggleTodo({{ $todo->id }})"

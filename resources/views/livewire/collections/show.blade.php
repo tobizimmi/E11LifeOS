@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Support\NoteMarkdown;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -49,6 +50,18 @@ new #[Layout('layouts.app')] class extends Component
      */
     #[Url(as: 'entry', except: '')]
     public string $openEntryId = '';
+
+    /**
+     * Calendar month as "YYYY-MM" (empty = current month).
+     */
+    #[Url(except: '')]
+    public string $month = '';
+
+    /**
+     * Date property the calendar uses (id as string; empty = first date property).
+     */
+    #[Url(as: 'date', except: '')]
+    public string $dateBy = '';
 
     public bool $hideDone = false;
 
@@ -155,6 +168,56 @@ new #[Layout('layouts.app')] class extends Component
         $this->resetErrorBag('newTitle');
     }
 
+    /**
+     * Calendar: new entry on a given day.
+     */
+    public function addEntryOnDate(string $date, string $title): void
+    {
+        $collection = $this->findCollection();
+        $dateProperty = $this->dateProperty($collection) ?? abort(422);
+        $date = $dateProperty->normalizeValue($date);
+        $title = trim($title);
+
+        if ($date === null || $title === '') {
+            return;
+        }
+
+        $this->addEntry(null, $title);
+
+        $entry = $this->entries()->latest('id')->firstOrFail();
+        $entry->setPropertyValue($dateProperty, $date);
+        $entry->save();
+    }
+
+    /**
+     * Calendar drag & drop: the entry moves to $date ("" = remove the date).
+     */
+    public function moveToDate(int $entryId, string $date): void
+    {
+        $dateProperty = $this->dateProperty($this->findCollection()) ?? abort(422);
+        $entry = $this->findEntry($entryId);
+
+        $entry->setPropertyValue($dateProperty, $dateProperty->normalizeValue($date));
+        $entry->save();
+    }
+
+    public function changeMonth(int $offset): void
+    {
+        $this->month = $this->calendarMonth()->addMonthsNoOverflow($offset)->format('Y-m');
+    }
+
+    public function currentMonth(): void
+    {
+        $this->reset('month');
+    }
+
+    private function calendarMonth(): Carbon
+    {
+        return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->month)
+            ? Carbon::createFromFormat('!Y-m', $this->month)
+            : now()->startOfMonth();
+    }
+
     public function updateTitle(int $entryId, string $title): void
     {
         $title = trim($title);
@@ -171,6 +234,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $entry->setPropertyValue($property, $property->normalizeValue($value, $this->memberIds()));
         $entry->save();
+        $this->announceReschedule($entry);
     }
 
     public function addOptionAndSet(int $entryId, int $propertyId, string $name): void
@@ -189,6 +253,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $entry = $this->findEntry($entryId);
         $entry->update(['done' => ! $entry->done]);
+        $this->announceReschedule($entry);
     }
 
     /**
@@ -202,6 +267,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $entry->setPropertyValue($groupProperty, $groupProperty->normalizeValue($optionId));
         $entry->save();
+        $this->announceReschedule($entry);
 
         $column = $this->entries()->orderBy('position')->get()
             ->filter(fn (Item $item) => (string) $item->propertyValue($groupProperty) === (string) $entry->propertyValue($groupProperty))
@@ -421,6 +487,13 @@ new #[Layout('layouts.app')] class extends Component
 
     // ── Rendering ────────────────────────────────────────────────────────
 
+    private function dateProperty(Collection $collection): ?CollectionProperty
+    {
+        $dates = $collection->properties->where('type', CollectionProperty::TYPE_DATE);
+
+        return $dates->firstWhere('id', (int) $this->dateBy) ?? $dates->firstWhere('system_key', 'due') ?? $dates->first();
+    }
+
     private function groupProperty(Collection $collection): ?CollectionProperty
     {
         $selects = $collection->properties->where('type', CollectionProperty::TYPE_SELECT);
@@ -428,14 +501,49 @@ new #[Layout('layouts.app')] class extends Component
         return $selects->firstWhere('id', (int) $this->groupBy) ?? $selects->first();
     }
 
+    /**
+     * Weeks (Monday first) covering the calendar month, each day with its entries.
+     *
+     * @return array{month: Carbon, weeks: array<int, array<int, array{date: string, day: int, inMonth: bool, isToday: bool, entries: array<int, Item>}>>, undated: array<int, Item>}
+     */
+    private function calendarData($entries, CollectionProperty $dateProperty): array
+    {
+        $month = $this->calendarMonth();
+        $byDate = $entries->groupBy(fn (Item $entry) => (string) $entry->propertyValue($dateProperty));
+        $day = $month->copy()->startOfWeek(Carbon::MONDAY);
+        $end = $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        $weeks = [];
+
+        while ($day->lte($end)) {
+            $week = [];
+
+            for ($i = 0; $i < 7; $i++) {
+                $date = $day->format('Y-m-d');
+                $week[] = [
+                    'date' => $date,
+                    'day' => $day->day,
+                    'inMonth' => $day->month === $month->month,
+                    'isToday' => $day->isToday(),
+                    'entries' => ($byDate[$date] ?? collect())->all(),
+                ];
+                $day->addDay();
+            }
+
+            $weeks[] = $week;
+        }
+
+        return ['month' => $month, 'weeks' => $weeks, 'undated' => ($byDate[''] ?? collect())->all()];
+    }
+
     public function with(): array
     {
         $collection = $this->findCollection();
         $properties = $collection->properties;
         $groupProperty = $this->groupProperty($collection);
-        $view = in_array($this->viewMode, ['table', 'board'], true) ? $this->viewMode : ($collection->isTasks() ? 'board' : 'table');
+        $dateProperty = $this->dateProperty($collection);
+        $view = in_array($this->viewMode, ['table', 'board', 'calendar'], true) ? $this->viewMode : ($collection->isTasks() ? 'board' : 'table');
 
-        if ($view === 'board' && ! $groupProperty) {
+        if (($view === 'board' && ! $groupProperty) || ($view === 'calendar' && ! $dateProperty)) {
             $view = 'table';
         }
 
@@ -474,6 +582,9 @@ new #[Layout('layouts.app')] class extends Component
             'properties' => $properties,
             'entries' => $entries->values(),
             'currentView' => $view,
+            'dateProperty' => $dateProperty,
+            'dateProperties' => $properties->where('type', CollectionProperty::TYPE_DATE)->values(),
+            'calendar' => $view === 'calendar' ? $this->calendarData($entries->values(), $dateProperty) : null,
             'groupProperty' => $groupProperty,
             'selectProperties' => $properties->where('type', CollectionProperty::TYPE_SELECT)->values(),
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
@@ -516,10 +627,18 @@ new #[Layout('layouts.app')] class extends Component
                 </h1>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    @if ($selectProperties->isNotEmpty())
+                    @php
+                        $views = array_filter([
+                            'table' => '▤ '.__('Table'),
+                            'board' => $selectProperties->isNotEmpty() ? '▥ '.__('Board') : null,
+                            'calendar' => $dateProperty ? '📅 '.__('Calendar') : null,
+                        ]);
+                    @endphp
+                    @if (count($views) > 1)
                         <div class="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden text-sm" role="group" aria-label="{{ __('View') }}">
-                            <button type="button" wire:click="$set('viewMode', 'table')" @class(['px-3 py-1.5', 'bg-indigo-600 text-white' => $currentView === 'table', 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300' => $currentView !== 'table']) aria-pressed="{{ $currentView === 'table' ? 'true' : 'false' }}">▤ {{ __('Table') }}</button>
-                            <button type="button" wire:click="$set('viewMode', 'board')" @class(['px-3 py-1.5', 'bg-indigo-600 text-white' => $currentView === 'board', 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300' => $currentView !== 'board']) aria-pressed="{{ $currentView === 'board' ? 'true' : 'false' }}">▥ {{ __('Board') }}</button>
+                            @foreach ($views as $viewKey => $viewLabel)
+                                <button type="button" wire:click="$set('viewMode', '{{ $viewKey }}')" @class(['px-3 py-1.5', 'bg-indigo-600 text-white' => $currentView === $viewKey, 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300' => $currentView !== $viewKey]) aria-pressed="{{ $currentView === $viewKey ? 'true' : 'false' }}">{{ $viewLabel }}</button>
+                            @endforeach
                         </div>
                     @endif
                     <x-secondary-button type="button" wire:click="$toggle('showSettings')">⚙ {{ __('Properties') }}</x-secondary-button>
@@ -662,7 +781,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <tr wire:key="row-{{ $entry->id }}" @class(['hover:bg-gray-50 dark:hover:bg-gray-700/40', 'bg-indigo-50/60 dark:bg-gray-700/60' => $openEntry?->id === $entry->id])>
                                     @if ($collection->isTasks())
                                         <td class="px-3 py-1.5">
-                                            <input type="checkbox" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) aria-label="{{ __('Mark as done') }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                                            <input type="checkbox" wire:key="done-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}-{{ (int) $entry->done }}" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) aria-label="{{ __('Mark as done') }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
                                         </td>
                                     @endif
                                     <td class="px-3 py-1.5">
@@ -697,6 +816,86 @@ new #[Layout('layouts.app')] class extends Component
                         </tbody>
                     </table>
                 </div>
+            @elseif ($currentView === 'calendar')
+                {{-- Calendar --}}
+                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-3 sm:p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <button type="button" wire:click="changeMonth(-1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ __('Previous month') }}">‹</button>
+                            <h2 class="min-w-[10rem] text-center font-semibold text-gray-900 dark:text-gray-100">{{ $calendar['month']->translatedFormat('F Y') }}</h2>
+                            <button type="button" wire:click="changeMonth(1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ __('Next month') }}">›</button>
+                            <button type="button" wire:click="currentMonth" class="text-sm text-indigo-600 dark:text-indigo-400 underline">{{ __('Today') }}</button>
+                        </div>
+                        @if ($dateProperties->count() > 1)
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ __('Date field') }}
+                                <select wire:model.live="dateBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                                    @foreach ($dateProperties as $candidate)
+                                        <option value="{{ $candidate->id }}" @selected($candidate->id === $dateProperty->id)>{{ $candidate->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endif
+                    </div>
+
+                    <div class="grid grid-cols-7 text-center text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                        @foreach ([__('Mon'), __('Tue'), __('Wed'), __('Thu'), __('Fri'), __('Sat'), __('Sun')] as $weekday)
+                            <div class="py-1">{{ $weekday }}</div>
+                        @endforeach
+                    </div>
+                    <div class="grid grid-cols-7 border-s border-t border-gray-200 dark:border-gray-700">
+                        @foreach ($calendar['weeks'] as $week)
+                            @foreach ($week as $day)
+                                <div
+                                    wire:key="day-{{ $day['date'] }}"
+                                    @class([
+                                        'group relative min-h-[5.5rem] border-e border-b border-gray-200 dark:border-gray-700 p-1',
+                                        'bg-gray-50 dark:bg-gray-900/40' => ! $day['inMonth'],
+                                    ])
+                                >
+                                    <div class="flex items-center justify-between">
+                                        <span @class([
+                                            'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
+                                            'bg-indigo-600 text-white font-semibold' => $day['isToday'],
+                                            'text-gray-700 dark:text-gray-300' => ! $day['isToday'] && $day['inMonth'],
+                                            'text-gray-400' => ! $day['isToday'] && ! $day['inMonth'],
+                                        ])>{{ $day['day'] }}</span>
+                                        <button
+                                            type="button"
+                                            x-data
+                                            x-on:click="const title = window.prompt(@js(__('New entry on :date:', ['date' => \Illuminate\Support\Carbon::parse($day['date'])->translatedFormat('j. F')]))); if (title && title.trim()) { $wire.addEntryOnDate('{{ $day['date'] }}', title.trim()) }"
+                                            class="px-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
+                                            title="{{ __('New entry on this day') }}"
+                                        >+</button>
+                                    </div>
+                                    <ul
+                                        x-sort="$wire.moveToDate($item, '{{ $day['date'] }}')"
+                                        x-sort:group="calendar-{{ $collection->id }}"
+                                        class="mt-0.5 min-h-[2rem] space-y-0.5"
+                                    >
+                                        @foreach ($day['entries'] as $calendarEntry)
+                                            <x-calendar-chip :entry="$calendarEntry" :collection="$collection" :group-property="$groupProperty" />
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4">
+                        <h3 class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{{ __('Without :name', ['name' => $dateProperty->name]) }} ({{ count($calendar['undated']) }})</h3>
+                        <ul
+                            x-sort="$wire.moveToDate($item, '')"
+                            x-sort:group="calendar-{{ $collection->id }}"
+                            class="mt-1 max-h-48 min-h-[2.25rem] space-y-0.5 overflow-y-auto rounded-md border border-dashed border-gray-300 dark:border-gray-600 p-1 sm:max-w-sm"
+                        >
+                            @foreach ($calendar['undated'] as $calendarEntry)
+                                <x-calendar-chip :entry="$calendarEntry" :collection="$collection" :group-property="$groupProperty" />
+                            @endforeach
+                        </ul>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Drag entries onto a day to give them a date.') }}</p>
+                    </div>
+                </section>
             @else
                 {{-- Board --}}
                 @php
@@ -807,7 +1006,7 @@ new #[Layout('layouts.app')] class extends Component
                 <dl class="grid grid-cols-[8rem_1fr] items-center gap-x-3 gap-y-2 text-sm">
                     @if ($collection->isTasks())
                         <dt class="text-gray-500 dark:text-gray-400">{{ __('Done') }}</dt>
-                        <dd><input type="checkbox" wire:click="toggleDone({{ $openEntry->id }})" @checked($openEntry->done) aria-label="{{ __('Mark as done') }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" /></dd>
+                        <dd><input type="checkbox" wire:key="panel-done-{{ $openEntry->id }}-{{ $openEntry->updated_at?->timestamp }}-{{ (int) $openEntry->done }}" wire:click="toggleDone({{ $openEntry->id }})" @checked($openEntry->done) aria-label="{{ __('Mark as done') }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" /></dd>
                     @endif
                     @foreach ($properties as $property)
                         <dt class="text-gray-500 dark:text-gray-400" wire:key="dt-{{ $property->id }}">{{ $property->name }}</dt>

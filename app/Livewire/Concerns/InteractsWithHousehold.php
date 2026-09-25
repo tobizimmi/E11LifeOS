@@ -5,6 +5,7 @@ namespace App\Livewire\Concerns;
 use App\Models\Item;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
 
@@ -74,6 +75,18 @@ trait InteractsWithHousehold
             ->forHousehold((int) $this->householdId)
             ->visibleTo($this->currentUser())
             ->ofType($type);
+    }
+
+    /**
+     * Tells the user when completing a repeating task moved it to its next date.
+     */
+    protected function announceReschedule(Item $item): void
+    {
+        if ($item->rescheduledTo) {
+            $this->dispatch('toast', message: __('Repeats – next due date: :date', [
+                'date' => Carbon::parse($item->rescheduledTo)->translatedFormat('l, j. F Y'),
+            ]));
+        }
     }
 
     protected function findVisibleItem(string $type, int $id): Item

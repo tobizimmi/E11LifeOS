@@ -39,7 +39,7 @@ Route::middleware(['auth'])->group(function () {
         $household = $request->user()->currentHousehold();
         abort_if(! $household, 403);
 
-        return redirect()->route('collections.show', ['collection' => Collection::tasksFor($household->id)]);
+        return redirect()->route('collections.show', ['collection' => Collection::tasksFor($household->id)] + $request->only(['view', 'entry', 'month']));
     })->name('todos.index');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
 });

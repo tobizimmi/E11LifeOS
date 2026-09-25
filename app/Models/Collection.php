@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Recurrence;
 use Database\Factories\CollectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -128,6 +129,18 @@ class Collection extends Model
             ],
             ['name' => __('Due'), 'type' => CollectionProperty::TYPE_DATE, 'system_key' => 'due', 'position' => 1],
             ['name' => __('Assignee'), 'type' => CollectionProperty::TYPE_PERSON, 'system_key' => 'assignee', 'position' => 2],
+            [
+                'name' => __('Repeat'),
+                'type' => CollectionProperty::TYPE_SELECT,
+                'options' => [
+                    ['id' => Recurrence::DAILY, 'name' => __('Daily'), 'color' => 'gray'],
+                    ['id' => Recurrence::WEEKLY, 'name' => __('Weekly'), 'color' => 'blue'],
+                    ['id' => Recurrence::MONTHLY, 'name' => __('Monthly'), 'color' => 'purple'],
+                    ['id' => Recurrence::YEARLY, 'name' => __('Yearly'), 'color' => 'orange'],
+                ],
+                'system_key' => 'repeat',
+                'position' => 3,
+            ],
         ]);
 
         return $collection;

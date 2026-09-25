@@ -39,6 +39,19 @@
                 <main>
                     {{ $slot }}
                 </main>
+
+                <!-- Short confirmations dispatched by components ($this->dispatch('toast', message: ...)) -->
+                <div
+                    x-data="{ message: '', visible: false, timer: null }"
+                    x-on:toast.window="message = $event.detail.message; visible = true; clearTimeout(timer); timer = setTimeout(() => visible = false, 4000)"
+                    x-show="visible"
+                    x-cloak
+                    x-transition.opacity
+                    role="status"
+                    aria-live="polite"
+                    class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-100 dark:text-gray-900"
+                    x-text="message"
+                ></div>
             </div>
         </div>
     </body>

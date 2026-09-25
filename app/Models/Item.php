@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\ItemObserver;
+use App\Support\Recurrence;
 use Database\Factories\ItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -96,17 +97,53 @@ class Item extends Model
 
         if ($status !== null && $status !== $originalStatus) {
             $this->done = $status === Collection::TASK_STATUS_DONE;
+        } else {
+            if ($this->done) {
+                $values[$statusProperty->id] = Collection::TASK_STATUS_DONE;
+            } elseif ($status === null || $status === Collection::TASK_STATUS_DONE) {
+                $values[$statusProperty->id] = Collection::TASK_STATUS_TODO;
+            }
 
+            $this->properties = $values;
+        }
+
+        $this->rescheduleIfRepeating($statusProperty);
+    }
+
+    /**
+     * Set when completing a repeating task moved it to its next due date
+     * (the UI tells the user); holds the new date.
+     */
+    public ?string $rescheduledTo = null;
+
+    /**
+     * A repeating task that gets completed is not closed: it moves to its
+     * next due date and opens again (one task, not a growing list of copies).
+     */
+    private function rescheduleIfRepeating(CollectionProperty $statusProperty): void
+    {
+        $wasDone = $this->exists && (bool) $this->getOriginal('done');
+
+        if (! $this->done || $wasDone) {
             return;
         }
 
-        if ($this->done) {
-            $values[$statusProperty->id] = Collection::TASK_STATUS_DONE;
-        } elseif ($status === null || $status === Collection::TASK_STATUS_DONE) {
-            $values[$statusProperty->id] = Collection::TASK_STATUS_TODO;
+        $repeatProperty = $this->collection->systemProperty('repeat');
+        $dueProperty = $this->collection->systemProperty('due');
+        $rule = $repeatProperty ? $this->propertyValue($repeatProperty) : null;
+        $due = $dueProperty ? $this->propertyValue($dueProperty) : null;
+
+        if (! $rule || ! $due || ! ($next = Recurrence::next($due, $rule))) {
+            return;
         }
 
+        $values = $this->properties ?? [];
+        $values[$dueProperty->id] = $next;
+        $values[$statusProperty->id] = Collection::TASK_STATUS_TODO;
+
         $this->properties = $values;
+        $this->done = false;
+        $this->rescheduledTo = $next;
     }
 
     public function household(): BelongsTo

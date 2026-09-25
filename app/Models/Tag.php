@@ -26,6 +26,11 @@ class Tag extends Model
         return $this->belongsToMany(Item::class);
     }
 
+    public function recipes(): BelongsToMany
+    {
+        return $this->belongsToMany(Recipe::class);
+    }
+
     /**
      * Normalizes user input ("#Urlaub ", "urlaub") to one canonical tag name.
      */

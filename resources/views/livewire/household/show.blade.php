@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\HouseholdInvite;
+use App\Support\Addons;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -24,6 +25,23 @@ new #[Layout('layouts.app')] class extends Component
         $this->newInviteCode = $invite->code;
     }
 
+    /**
+     * Only the household owner switches addons on or off.
+     */
+    public function toggleAddon(string $addon): void
+    {
+        $household = Auth::user()->currentHousehold();
+        abort_if(! $household || ! array_key_exists($addon, Addons::all()), 404);
+
+        $membership = $household->members()->where('user_id', Auth::id())->first();
+        abort_unless($membership?->isOwner(), 403);
+
+        $household->setAddon($addon, ! $household->hasAddon($addon));
+
+        // Full navigation so the sidebar reflects the change.
+        $this->redirectRoute('household.show', navigate: true);
+    }
+
     public function with(): array
     {
         $household = Auth::user()->currentHousehold();
@@ -34,6 +52,8 @@ new #[Layout('layouts.app')] class extends Component
             'household' => $household,
             'members' => $household->users()->orderBy('household_members.role')->get(),
             'invites' => $household->invites()->latest()->get(),
+            'addons' => Addons::all(),
+            'isOwner' => (bool) $household->members()->where('user_id', Auth::id())->first()?->isOwner(),
         ];
     }
 }; ?>
@@ -95,6 +115,35 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </div>
 
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Addons') }}</h3>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Optional modules for your household. Switching one off hides it; its data is kept.') }}</p>
+                <ul class="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
+                    @foreach ($addons as $key => $addon)
+                        <li wire:key="addon-{{ $key }}" class="flex items-center justify-between gap-4 py-3">
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $addon['icon'] }} {{ $addon['label'] }}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $addon['description'] }}</p>
+                            </div>
+                            @if ($isOwner)
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked="{{ $household->hasAddon($key) ? 'true' : 'false' }}"
+                                    aria-label="{{ $addon['label'] }}"
+                                    wire:click="toggleAddon('{{ $key }}')"
+                                    @class(['relative inline-flex h-6 w-11 shrink-0 rounded-full transition', 'bg-indigo-600' => $household->hasAddon($key), 'bg-gray-300 dark:bg-gray-600' => ! $household->hasAddon($key)])
+                                >
+                                    <span @class(['inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition', 'translate-x-5' => $household->hasAddon($key), 'translate-x-0.5' => ! $household->hasAddon($key)])></span>
+                                </button>
+                            @else
+                                <span class="text-sm text-gray-500 dark:text-gray-400">{{ $household->hasAddon($key) ? __('On') : __('Off') }}</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     </div>
 </div>

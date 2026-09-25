@@ -11,7 +11,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('reminders:send')]
-#[Description('E-mail everyone who opted in their tasks that are due today or overdue (runs daily via the scheduler)')]
+#[Description('E-mail everyone who opted in their due/overdue tasks and date reminders from collections (runs daily via the scheduler)')]
 class SendTaskReminders extends Command
 {
     public function handle(): int
@@ -27,9 +27,10 @@ class SendTaskReminders extends Command
 
             $collection = Collection::tasksFor($household->id);
             $tasks = $this->dueTasksFor($user, $collection);
+            $dates = $this->dateRemindersFor($user, $household->id);
 
-            if ($tasks->isNotEmpty()) {
-                $user->notify(new TaskReminder($tasks, $collection));
+            if ($tasks->isNotEmpty() || $dates->isNotEmpty()) {
+                $user->notify(new TaskReminder($tasks, $collection, $dates));
                 $sent++;
             }
         });
@@ -37,6 +38,42 @@ class SendTaskReminders extends Command
         $this->info("Reminders sent: {$sent}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Entries of the user's visible collections whose date property has a reminder
+     * and falls on today + the reminder's days (or on today itself).
+     *
+     * @return \Illuminate\Support\Collection<int, array{entry: Item, collection: Collection, property: string, date: string}>
+     */
+    private function dateRemindersFor(User $user, int $householdId): \Illuminate\Support\Collection
+    {
+        $rows = collect();
+
+        Collection::query()->visibleTo($user, $householdId)->with('properties')->get()->each(function (Collection $collection) use ($user, $rows) {
+            $properties = $collection->properties->filter(fn ($property) => $property->remindDays() !== null);
+
+            if ($properties->isEmpty()) {
+                return;
+            }
+
+            $entries = Item::query()->forHousehold($collection->household_id)->visibleTo($user)
+                ->where('collection_id', $collection->id)->where('done', false)->get();
+
+            foreach ($properties as $property) {
+                $dates = array_unique([now()->addDays($property->remindDays())->toDateString(), now()->toDateString()]);
+
+                foreach ($entries as $entry) {
+                    $value = (string) $entry->propertyValue($property);
+
+                    if (in_array($value, $dates, true)) {
+                        $rows->push(['entry' => $entry, 'collection' => $collection, 'property' => $property->name, 'date' => $value]);
+                    }
+                }
+            }
+        });
+
+        return $rows->sortBy('date')->values();
     }
 
     /**

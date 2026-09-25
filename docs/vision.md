@@ -78,6 +78,11 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Einkaufsliste offline lesbar (Service Worker, Kopie wird beim Abmelden gelöscht).
 - Tags in Aufgaben, Sammlungs-Einträgen und Inbox (`#tag` beim Erfassen), Tag-Filter in Sammlungen.
 
+### Phase 4 (Teil 1) – Haushalts-Module ✅
+- Module als strukturierte Sammlungs-Vorlagen: Verträge & Dokumente, Haushaltsbuch, Vorräte, Lesezeichen / Später lesen, Tagebuch (privat), Gewohnheiten.
+- E-Mail-Erinnerung für Datumsfelder (z. B. „Kündigen bis“ 30 Tage vorher, „Haltbar bis“ 3 Tage vorher) in der täglichen Mail.
+- Summen in Tabellen (Zahlen, abgehakte Checkboxen) und pro Board-Spalte; Dateien in Eintrags-Notizen; Einträge auf die Einkaufsliste.
+
 ## Nächste Schritte
 
 ### Phase 3 – Organisation (Rest)
@@ -85,8 +90,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 
 ### Phase 4 – Weitere Module
 - Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.
-- Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
-- Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.
 
 ### Phase 5 – KI (optional)
 - Tag-Vorschläge, Zusammenfassungen, Fragen an das eigene Second Brain (z. B. über die Claude-API). Neue Abhängigkeiten nur nach Absprache.

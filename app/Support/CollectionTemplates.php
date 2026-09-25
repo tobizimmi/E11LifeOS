@@ -6,19 +6,26 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 
 /**
- * Starting points offered when a new collection is created.
+ * Starting points offered when a new collection is created – also the household
+ * "modules" (contracts, budget, pantry, bookmarks, journal, habits), which are
+ * ordinary collections with fitting properties.
  */
 class CollectionTemplates
 {
     /**
-     * @return array<string, array{label: string, icon: string, description: string}>
+     * @return array<string, array{label: string, icon: string, description: string, private?: bool}>
      */
     public static function all(): array
     {
         return [
             'blank' => ['label' => __('Blank'), 'icon' => '🗂️', 'description' => __('Start without properties and add your own.')],
             'projects' => ['label' => __('Projects'), 'icon' => '🚀', 'description' => __('Status, due date and assignee – ideal as a board.')],
-            'contracts' => ['label' => __('Contracts'), 'icon' => '📑', 'description' => __('Provider, monthly cost, notice period and renewal date.')],
+            'contracts' => ['label' => __('Contracts & documents'), 'icon' => '📑', 'description' => __('Provider, cost, customer number and cancellation deadline with e-mail reminder; attach the documents to each contract.')],
+            'budget' => ['label' => __('Household budget'), 'icon' => '💶', 'description' => __('Expenses and income with category and date – the table adds up the amounts.')],
+            'pantry' => ['label' => __('Pantry'), 'icon' => '🥫', 'description' => __('Stock, minimum stock, storage place and best-before date with reminder.')],
+            'bookmarks' => ['label' => __('Bookmarks / read later'), 'icon' => '🔖', 'description' => __('Links to read later with status – ideal as a board.')],
+            'journal' => ['label' => __('Journal'), 'icon' => '📔', 'description' => __('One entry per day with mood and your notes – private by default.'), 'private' => true],
+            'habits' => ['label' => __('Habits'), 'icon' => '✅', 'description' => __('One row per day, tick off your habits – the table counts how often.')],
             'reading' => ['label' => __('Reading list'), 'icon' => '📚', 'description' => __('Author, status and rating.')],
         ];
     }
@@ -32,11 +39,43 @@ class CollectionTemplates
                 ['name' => __('Assignee'), 'type' => CollectionProperty::TYPE_PERSON],
             ],
             'contracts' => [
+                self::select(__('Category'), [__('Insurance'), __('Energy'), __('Internet & phone'), __('Subscriptions'), __('Mobility'), __('Other')]),
                 ['name' => __('Provider'), 'type' => CollectionProperty::TYPE_TEXT],
                 ['name' => __('Monthly cost (€)'), 'type' => CollectionProperty::TYPE_NUMBER],
+                ['name' => __('Customer number'), 'type' => CollectionProperty::TYPE_TEXT],
                 ['name' => __('Notice period'), 'type' => CollectionProperty::TYPE_TEXT],
-                ['name' => __('Renews on'), 'type' => CollectionProperty::TYPE_DATE],
+                ['name' => __('Ends on'), 'type' => CollectionProperty::TYPE_DATE],
+                ['name' => __('Cancel by'), 'type' => CollectionProperty::TYPE_DATE, 'options' => ['remind_days' => 30]],
                 ['name' => __('Website'), 'type' => CollectionProperty::TYPE_URL],
+            ],
+            'budget' => [
+                ['name' => __('Amount (€)'), 'type' => CollectionProperty::TYPE_NUMBER],
+                self::select(__('Type'), [__('Expense'), __('Income')]),
+                self::select(__('Category'), [__('Groceries'), __('Home'), __('Mobility'), __('Leisure'), __('Health'), __('Other')]),
+                ['name' => __('Date'), 'type' => CollectionProperty::TYPE_DATE],
+                ['name' => __('Paid by'), 'type' => CollectionProperty::TYPE_PERSON],
+            ],
+            'pantry' => [
+                ['name' => __('Quantity'), 'type' => CollectionProperty::TYPE_NUMBER],
+                ['name' => __('Unit'), 'type' => CollectionProperty::TYPE_TEXT],
+                ['name' => __('Minimum stock'), 'type' => CollectionProperty::TYPE_NUMBER],
+                self::select(__('Place'), [__('Fridge'), __('Cupboard'), __('Freezer'), __('Cellar')]),
+                ['name' => __('Best before'), 'type' => CollectionProperty::TYPE_DATE, 'options' => ['remind_days' => 3]],
+            ],
+            'bookmarks' => [
+                self::select(__('Status'), [__('Read later'), __('Read'), __('Archived')]),
+                ['name' => __('Link'), 'type' => CollectionProperty::TYPE_URL],
+            ],
+            'journal' => [
+                ['name' => __('Date'), 'type' => CollectionProperty::TYPE_DATE],
+                self::select(__('Mood'), ['😄', '🙂', '😐', '🙁', '😞']),
+            ],
+            'habits' => [
+                ['name' => __('Date'), 'type' => CollectionProperty::TYPE_DATE],
+                ['name' => __('Exercise'), 'type' => CollectionProperty::TYPE_CHECKBOX],
+                ['name' => __('Reading'), 'type' => CollectionProperty::TYPE_CHECKBOX],
+                ['name' => __('Meditation'), 'type' => CollectionProperty::TYPE_CHECKBOX],
+                ['name' => __('Enough water'), 'type' => CollectionProperty::TYPE_CHECKBOX],
             ],
             'reading' => [
                 ['name' => __('Author'), 'type' => CollectionProperty::TYPE_TEXT],

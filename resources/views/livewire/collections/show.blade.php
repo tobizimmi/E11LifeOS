@@ -7,6 +7,7 @@ use App\Models\Attachment;
 use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
+use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
 use App\Support\Recurrence;
 use Illuminate\Support\Carbon;
@@ -351,6 +352,22 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * Puts the entry's title on the household shopping list (e.g. a pantry item that runs low).
+     */
+    public function addToShoppingList(int $entryId): void
+    {
+        $entry = $this->findEntry($entryId);
+
+        ShoppingListEntry::create([
+            'household_id' => $this->householdId,
+            'label' => mb_substr($entry->title, 0, 255),
+            'created_by' => Auth::id(),
+        ]);
+
+        $this->dispatch('toast', message: __(':name is on the shopping list.', ['name' => $entry->title]));
+    }
+
     public function deleteEntry(int $entryId): void
     {
         $this->findEntry($entryId)->delete();
@@ -440,6 +457,18 @@ new #[Layout('layouts.app')] class extends Component
         ]);
 
         $this->reset('newPropertyName', 'newPropertyType');
+        $this->schemaChanged();
+    }
+
+    /**
+     * Reminder e-mail for a date property: days before the date ("" = no reminder).
+     */
+    public function setPropertyReminder(int $propertyId, string $days): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->type === CollectionProperty::TYPE_DATE, 422);
+
+        $property->update(['options' => $days === '' ? null : ['remind_days' => max(0, min(365, (int) $days))]]);
         $this->schemaChanged();
     }
 
@@ -787,6 +816,17 @@ new #[Layout('layouts.app')] class extends Component
                                             <button type="button" wire:click="deleteProperty({{ $property->id }})" wire:confirm="{{ __('Delete this property and its values?') }}" class="text-xs text-red-600 dark:text-red-400 underline">{{ __('Delete') }}</button>
                                         @endif
                                     </div>
+                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_DATE && $property->system_key === null)
+                                        <label class="flex flex-wrap items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
+                                            🔔 {{ __('E-mail reminder') }}
+                                            <select wire:change="setPropertyReminder({{ $property->id }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-0.5 text-xs">
+                                                <option value="" @selected($property->remindDays() === null)>{{ __('none') }}</option>
+                                                @foreach ([0, 1, 3, 7, 14, 30, 60, 90] as $days)
+                                                    <option value="{{ $days }}" @selected($property->remindDays() === $days)>{{ $days === 0 ? __('on the day') : trans_choice(':count day before|:count days before', $days) }}</option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                    @endif
                                     @if ($property->type === \App\Models\CollectionProperty::TYPE_SELECT)
                                         <div class="flex flex-wrap items-center gap-2 ps-2">
                                             @foreach ($property->selectOptions() as $option)
@@ -928,6 +968,24 @@ new #[Layout('layouts.app')] class extends Component
                                 </tr>
                             @endforelse
                         </tbody>
+                        @if ($entries->isNotEmpty() && $properties->contains(fn ($property) => in_array($property->type, [\App\Models\CollectionProperty::TYPE_NUMBER, \App\Models\CollectionProperty::TYPE_CHECKBOX], true)))
+                            <tfoot class="border-t-2 border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
+                                <tr>
+                                    @if ($collection->isTasks())
+                                        <td></td>
+                                    @endif
+                                    <td class="px-3 py-2 font-medium">{{ trans_choice(':count entry|:count entries', $entries->count()) }}</td>
+                                    @foreach ($properties as $property)
+                                        <td class="px-3 py-2 font-semibold" wire:key="tf-{{ $property->id }}">
+                                            @if (($aggregate = $property->aggregate($entries)) !== null)
+                                                {{ $property->type === \App\Models\CollectionProperty::TYPE_NUMBER ? 'Σ ' : '' }}{{ $aggregate }}
+                                            @endif
+                                        </td>
+                                    @endforeach
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        @endif
                     </table>
                 </div>
             @elseif ($currentView === 'calendar')
@@ -1045,7 +1103,12 @@ new #[Layout('layouts.app')] class extends Component
                                 @else
                                     <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('No :name', ['name' => $groupProperty->name]) }}</span>
                                 @endif
-                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $cards->count() }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ $cards->count() }}
+                                    @if (($numberProperty = $properties->firstWhere('type', \App\Models\CollectionProperty::TYPE_NUMBER)) && ($sum = $numberProperty->aggregate($cards)) !== null)
+                                        · Σ {{ $sum }}
+                                    @endif
+                                </span>
                             </header>
 
                             <ul
@@ -1125,6 +1188,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="sticky top-0 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3">
                 <span class="text-sm text-gray-500 dark:text-gray-400">{{ $collection->displayIcon() }} {{ $collection->name }}</span>
                 <div class="flex items-center gap-3 text-sm">
+                    <button type="button" wire:click="addToShoppingList({{ $openEntry->id }})" class="text-gray-600 dark:text-gray-300 underline" title="{{ __('Add to shopping list') }}">🛒 <span class="hidden sm:inline">{{ __('Shopping list') }}</span></button>
                     <button type="button" wire:click="deleteEntry({{ $openEntry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-red-600 dark:text-red-400 underline">{{ __('Delete') }}</button>
                     <button type="button" wire:click="closeEntry" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="{{ __('Close') }}">✕</button>
                 </div>

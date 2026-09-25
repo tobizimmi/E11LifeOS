@@ -33,6 +33,14 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * Templates meant for personal notes (journal) start private.
+     */
+    public function updatedTemplate(string $template): void
+    {
+        $this->isPrivate = (bool) (CollectionTemplates::all()[$template]['private'] ?? false);
+    }
+
     public function create(): void
     {
         $validated = $this->validate([

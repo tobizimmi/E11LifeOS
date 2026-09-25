@@ -33,8 +33,8 @@ new class extends Component
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>
-                        {{ __('Household') }}
+                    <x-nav-link :href="route('inbox.index')" :active="request()->routeIs('inbox.index')" wire:navigate>
+                        {{ __('Inbox') }}
                     </x-nav-link>
                     <x-nav-link :href="route('notes.index')" :active="request()->routeIs('notes.index')" wire:navigate>
                         {{ __('Notes') }}
@@ -45,11 +45,25 @@ new class extends Component
                     <x-nav-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.index')" wire:navigate>
                         {{ __('Shopping List') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>
+                        {{ __('Household') }}
+                    </x-nav-link>
                 </div>
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-6 sm:gap-2">
+                <button
+                    type="button"
+                    x-on:click="$dispatch('open-search')"
+                    class="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 rounded-md border border-gray-200 dark:border-gray-700"
+                    title="{{ __('Search') }} (Ctrl+K)"
+                >
+                    <x-search-icon />
+                    <span class="hidden lg:inline">{{ __('Search') }}</span>
+                    <kbd class="hidden lg:inline text-xs text-gray-400">Ctrl K</kbd>
+                </button>
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
@@ -79,7 +93,10 @@ new class extends Component
             </div>
 
             <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
+            <div class="-me-2 flex items-center gap-1 sm:hidden">
+                <button type="button" x-on:click="$dispatch('open-search')" class="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-900" aria-label="{{ __('Search') }}">
+                    <x-search-icon class="h-6 w-6" />
+                </button>
                 <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:text-gray-400 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -96,8 +113,8 @@ new class extends Component
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>
-                {{ __('Household') }}
+            <x-responsive-nav-link :href="route('inbox.index')" :active="request()->routeIs('inbox.index')" wire:navigate>
+                {{ __('Inbox') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('notes.index')" :active="request()->routeIs('notes.index')" wire:navigate>
                 {{ __('Notes') }}
@@ -107,6 +124,9 @@ new class extends Component
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.index')" wire:navigate>
                 {{ __('Shopping List') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>
+                {{ __('Household') }}
             </x-responsive-nav-link>
         </div>
 
@@ -131,4 +151,6 @@ new class extends Component
             </div>
         </div>
     </div>
+
+    <livewire:search-palette />
 </nav>

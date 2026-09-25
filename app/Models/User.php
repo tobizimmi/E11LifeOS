@@ -20,6 +20,19 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Shared items outlive their creator (created_by is nulled), but private ones
+     * would become invisible orphans nobody can see or delete — remove them.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            Item::where('created_by', $user->id)
+                ->where('visibility', Item::VISIBILITY_PRIVATE)
+                ->delete();
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

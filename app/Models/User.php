@@ -26,6 +26,12 @@ class User extends Authenticatable
     protected static function booted(): void
     {
         static::deleting(function (User $user) {
+            // Files of private pages and unsaved uploads first (the query delete below skips model events).
+            Attachment::where('created_by', $user->id)
+                ->where(fn ($query) => $query->whereNull('item_id')->orWhereIn('item_id', Item::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->select('id')))
+                ->get()
+                ->each->delete();
+
             Item::where('created_by', $user->id)
                 ->where('visibility', Item::VISIBILITY_PRIVATE)
                 ->delete();

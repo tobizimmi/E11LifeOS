@@ -1,15 +1,23 @@
-@props(['tree', 'pages', 'currentId' => null, 'openIds' => [], 'depth' => 0, 'privateSection' => false])
+@props(['tree', 'pages', 'currentId' => null, 'openIds' => [], 'depth' => 0, 'privateSection' => false, 'sortGroup' => 'pages', 'parentId' => null])
 
-{{-- Recursive page tree for the sidebar. $tree is an App\Support\PageTree, $pages one level of it. --}}
-<ul @class(['space-y-0.5', 'ms-3 border-s border-gray-200 dark:border-gray-700 ps-1' => $depth > 0])>
+{{--
+    Recursive page tree for the sidebar. $tree is an App\Support\PageTree, $pages one level of it.
+    Pages can be dragged by their handle to another position or into another open list (desktop).
+--}}
+<ul
+    @class(['space-y-0.5', 'ms-3 border-s border-gray-200 dark:border-gray-700 ps-1' => $depth > 0])
+    x-sort="$wire.movePage($item, {{ $parentId ?? 'null' }}, $position)"
+    x-sort:group="{{ $sortGroup }}"
+>
     @foreach ($pages as $page)
         @php($children = $tree->children($page->id))
-        <li wire:key="tree-{{ $page->id }}" x-data="{ open: @js(in_array($page->id, $openIds, true)) }">
+        <li wire:key="tree-{{ $page->id }}" x-data="{ open: @js(in_array($page->id, $openIds, true)) }" x-sort:item="{{ $page->id }}">
             <div @class([
                 'group flex items-center gap-1 rounded-md pe-1 text-sm',
                 'bg-indigo-50 text-indigo-700 font-medium dark:bg-gray-700 dark:text-white' => $page->id === $currentId,
                 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60' => $page->id !== $currentId,
             ])>
+                <span x-sort:handle class="hidden lg:block cursor-grab px-0.5 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-gray-500 dark:text-gray-600" title="{{ __('Drag to move') }}" aria-hidden="true">⠿</span>
                 @if ($children !== [])
                     <button type="button" x-on:click="open = ! open" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" :aria-expanded="open" aria-label="{{ __('Show subpages') }}">
                         <svg class="h-3 w-3 transition-transform" :class="open && 'rotate-90'" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -38,7 +46,7 @@
 
             @if ($children !== [])
                 <div x-show="open" x-cloak>
-                    <x-page-tree :tree="$tree" :pages="$children" :current-id="$currentId" :open-ids="$openIds" :depth="$depth + 1" :private-section="$privateSection" />
+                    <x-page-tree :tree="$tree" :pages="$children" :current-id="$currentId" :open-ids="$openIds" :depth="$depth + 1" :private-section="$privateSection" :sort-group="$sortGroup" :parent-id="$page->id" />
                 </div>
             @endif
         </li>

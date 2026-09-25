@@ -184,6 +184,7 @@ return [
 
     'attributes' => [
         'addingServings' => 'Portionen',
+        'attachmentUpload' => 'Datei',
         'body' => 'Inhalt',
         'comment' => 'Kommentar',
         'cookTime' => 'Kochzeit',

@@ -4,7 +4,7 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
-import { PluginKey } from '@tiptap/pm/state';
+import { PluginKey, TextSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import { Suggestion } from '@tiptap/suggestion';
 
@@ -97,6 +97,44 @@ const WikiLink = Node.create({
                 },
             }),
         ];
+    },
+});
+
+/**
+ * ![alt](src) as an inline image (e.g. uploaded page attachments), written back as Markdown.
+ */
+const MarkdownImage = Node.create({
+    name: 'image',
+    group: 'inline',
+    inline: true,
+    atom: true,
+    draggable: true,
+
+    addAttributes() {
+        return {
+            src: { default: '' },
+            alt: { default: '' },
+            title: { default: null },
+        };
+    },
+
+    parseHTML() {
+        return [{ tag: 'img[src]' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['img', mergeAttributes(HTMLAttributes, { class: 'editor-image', loading: 'lazy' })];
+    },
+
+    markdownTokenName: 'image',
+
+    parseMarkdown: (token, helpers) => helpers.createNode('image', { src: token.href, alt: token.text || '', title: token.title || null }),
+
+    renderMarkdown: (node) => {
+        const alt = (node.attrs?.alt ?? '').replace(/[\[\]]/g, '');
+        const title = node.attrs?.title ? ` "${node.attrs.title}"` : '';
+
+        return `![${alt}](${node.attrs?.src ?? ''}${title})`;
     },
 });
 
@@ -206,7 +244,7 @@ function suggestionPopup(renderItem) {
     };
 }
 
-function slashCommands(t) {
+function slashCommands(t, onPickFile) {
     return [
         { title: t.text, hint: '¶', run: (c) => c.setParagraph() },
         { title: t.heading1, hint: 'H1', run: (c) => c.setHeading({ level: 1 }) },
@@ -220,6 +258,7 @@ function slashCommands(t) {
         { title: t.divider, hint: '—', run: (c) => c.setHorizontalRule() },
         { title: t.table, hint: '▦', run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
         { title: t.pageLink, hint: '[[ ]]', run: (c) => c.insertContent('[[') },
+        ...(onPickFile ? [{ title: t.attachment, hint: '📎', run: (c) => { onPickFile(); return c; } }] : []),
     ];
 }
 
@@ -227,11 +266,11 @@ const SlashMenu = Extension.create({
     name: 'slashMenu',
 
     addOptions() {
-        return { translations: {} };
+        return { translations: {}, onPickFile: null };
     },
 
     addProseMirrorPlugins() {
-        const commands = slashCommands(this.options.translations);
+        const commands = slashCommands(this.options.translations, this.options.onPickFile);
 
         return [
             Suggestion({
@@ -308,9 +347,9 @@ const PageLinkAutocomplete = Extension.create({
 /**
  * @param {HTMLElement} element     Mount point for the editable area.
  * @param {HTMLElement} bubbleMenu  Toolbar shown above selected text.
- * @param {object} options          { markdown, pageTitles, translations, onChange(markdown) }
+ * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile() }
  */
-export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange }) {
+export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile }) {
     // The bubble menu plugin attaches the toolbar itself when text is selected
     // (and only ever hides it after having shown it), so start detached.
     bubbleMenu.remove();
@@ -332,13 +371,44 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             // bindings) but is positioned against the viewport, so nothing covers it.
             BubbleMenu.configure({ element: bubbleMenu, options: { strategy: 'fixed', placement: 'top' } }),
             WikiLink,
-            SlashMenu.configure({ translations }),
+            MarkdownImage,
+            SlashMenu.configure({ translations, onPickFile }),
             PageLinkAutocomplete.configure({ pageTitles, translations }),
         ],
         content: markdown,
         contentType: 'markdown',
         editorProps: {
             attributes: { class: 'note-content note-editor', 'aria-label': translations.editorLabel },
+            // Files dropped or pasted into the text are uploaded as page attachments.
+            handleDrop: (view, event) => {
+                const files = event.dataTransfer?.files;
+
+                if (!files?.length) {
+                    return false;
+                }
+
+                event.preventDefault();
+                const position = view.posAtCoords({ left: event.clientX, top: event.clientY });
+
+                if (position) {
+                    view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(position.pos))));
+                }
+
+                onFiles?.(files);
+
+                return true;
+            },
+            handlePaste: (view, event) => {
+                const files = event.clipboardData?.files;
+
+                if (!files?.length) {
+                    return false;
+                }
+
+                onFiles?.(files);
+
+                return true;
+            },
         },
         onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
     });

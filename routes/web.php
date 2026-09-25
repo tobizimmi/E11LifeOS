@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\RecipeImageController;
@@ -35,6 +36,7 @@ Route::middleware(['auth'])->group(function () {
             ? redirect()->route('pages.index', ['item' => (int) $noteId])
             : redirect()->route('pages.index', $request->only(['new', 'tag', 'q']));
     })->name('notes.index');
+    Route::get('attachments/{attachment}/{name?}', AttachmentController::class)->whereNumber('attachment')->name('attachments.show');
     Volt::route('collections', 'collections.index')->name('collections.index');
     Volt::route('collections/{collection}', 'collections.show')->whereNumber('collection')->name('collections.show');
     // Tasks are the built-in collection now; keep the old URL working.

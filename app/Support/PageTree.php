@@ -30,7 +30,8 @@ class PageTree
     {
         $this->pagesById = $pages->keyBy('id');
 
-        $sorted = $pages->sortBy(fn (Item $page) => mb_strtolower($page->title))->values();
+        // Arranged by hand first (position), alphabetical otherwise.
+        $sorted = $pages->sortBy(fn (Item $page) => [(int) $page->position, mb_strtolower($page->title)])->values();
 
         foreach ($sorted as $page) {
             $parentKey = $page->parent_id !== null && $this->pagesById->has($page->parent_id)

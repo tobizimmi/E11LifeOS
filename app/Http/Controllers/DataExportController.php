@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attachment;
 use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
@@ -56,6 +57,10 @@ class DataExportController extends Controller
             'meal_plan' => $household
                 ? MealPlan::query()->visibleTo($user, $household->id)->orderBy('date')->orderBy('id')->get()
                     ->map->only(['id', 'date', 'meal_type', 'recipe_id', 'title', 'servings', 'note', 'visibility', 'created_at'])
+                : [],
+            'attachments' => $household
+                ? Attachment::where('household_id', $household->id)->where('created_by', $user->id)->orderBy('id')->get()
+                    ->map(fn (Attachment $attachment) => $attachment->only(['id', 'item_id', 'original_name', 'mime_type', 'size', 'created_at']) + ['url' => $attachment->url()])
                 : [],
             'shopping_list' => $household
                 ? ShoppingListEntry::where('household_id', $household->id)->get()

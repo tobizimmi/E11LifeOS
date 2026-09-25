@@ -1,19 +1,24 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Attachment;
 use App\Models\Item;
 use App\Models\Tag;
 use App\Support\NoteMarkdown;
+use App\Support\PageMover;
 use App\Support\PageTree;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+    use WithFileUploads;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -42,6 +47,11 @@ new #[Layout('layouts.app')] class extends Component
     public string $tagsInput = '';
 
     public bool $isPrivate = false;
+
+    /**
+     * File picked, dropped or pasted into the editor (see storeAttachment).
+     */
+    public $attachmentUpload = null;
 
     /**
      * Also reached via ?create=1&parent=ID&private=1 (sidebar "+") and
@@ -121,9 +131,14 @@ new #[Layout('layouts.app')] class extends Component
                 $attributes['visibility'] = $visibility;
             }
 
+            if ($page->parent_id !== $attributes['parent_id']) {
+                $attributes['position'] = PageMover::positionForNewChild((int) $this->householdId, $attributes['parent_id']);
+            }
+
             $page->update($attributes);
         } else {
             $page = Item::create($attributes + [
+                'position' => PageMover::positionForNewChild((int) $this->householdId, $attributes['parent_id']),
                 'household_id' => $this->householdId,
                 'type' => Item::TYPE_NOTE,
                 'visibility' => $visibility,
@@ -132,36 +147,47 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $page->syncTagNames(explode(',', $this->tagsInput));
+        Attachment::attachReferencedTo($page, Auth::user());
 
         // A full navigation also refreshes the page tree in the sidebar.
         $this->redirectRoute('pages.index', ['item' => $page->id], navigate: true);
     }
 
     /**
-     * The parent must be a page the user can see, and a page may not become
-     * its own ancestor. Descendants are computed over all household pages, so
-     * a cycle cannot be built through someone else's private page either.
+     * Stores the uploaded file and returns what the editor inserts.
+     *
+     * @return array{markdown: string, url: string, name: string, isImage: bool}|null
      */
+    public function storeAttachment(): ?array
+    {
+        $this->validate([
+            'attachmentUpload' => ['required', 'file', 'max:'.Attachment::MAX_KILOBYTES, 'mimes:'.implode(',', Attachment::EXTENSIONS)],
+        ]);
+
+        $upload = $this->attachmentUpload;
+        $extension = strtolower($upload->guessExtension() ?: $upload->getClientOriginalExtension());
+        $page = $this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null;
+
+        $attachment = Attachment::create([
+            'household_id' => $this->householdId,
+            'item_id' => $page?->id,
+            'created_by' => Auth::id(),
+            'path' => $upload->storeAs('attachments/'.$this->householdId, Str::uuid().'.'.$extension, Attachment::DISK),
+            'original_name' => mb_substr($upload->getClientOriginalName(), 0, 255),
+            'mime_type' => $upload->getMimeType() ?: 'application/octet-stream',
+            'size' => $upload->getSize(),
+        ]);
+
+        $this->reset('attachmentUpload');
+
+        return ['markdown' => $attachment->markdown(), 'url' => $attachment->url(), 'name' => $attachment->original_name, 'isImage' => $attachment->isImage()];
+    }
+
     private function parentIsAllowed(?int $parentId): bool
     {
-        if ($parentId === null) {
-            return true;
-        }
+        $page = $this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null;
 
-        if (! $this->visibleItems(Item::TYPE_NOTE)->whereKey($parentId)->exists()) {
-            return false;
-        }
-
-        if ($this->editingId === null) {
-            return true;
-        }
-
-        $allPages = new PageTree(
-            Item::query()->forHousehold($this->householdId)->ofType(Item::TYPE_NOTE)->get(['id', 'parent_id', 'title'])
-        );
-
-        return $parentId !== $this->editingId
-            && ! in_array($parentId, $allPages->descendantIds($this->editingId), true);
+        return PageMover::parentIsAllowed($page, $parentId, Auth::user(), (int) $this->householdId);
     }
 
     public function edit(int $id): void
@@ -223,7 +249,7 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $tree = new PageTree(
-            $this->visibleItems(Item::TYPE_NOTE)->get(['id', 'parent_id', 'title', 'icon', 'visibility', 'created_by'])
+            $this->visibleItems(Item::TYPE_NOTE)->get(['id', 'parent_id', 'title', 'icon', 'visibility', 'created_by', 'position'])
         );
 
         $data = [
@@ -342,12 +368,18 @@ new #[Layout('layouts.app')] class extends Component
                                     'divider' => __('Divider'),
                                     'table' => __('Table'),
                                     'pageLink' => __('Link to page'),
+                                    'attachment' => __('Image or file'),
+                                    'uploading' => __('Uploading …'),
+                                    'uploadFailed' => __('The file could not be uploaded (max. 20 MB; images, PDF, Office, text, ZIP).'),
                                 ],
                             ]))"
                             wire:key="editor-{{ $editingId ?? 'new' }}"
                         >
                             <div class="flex items-center justify-between gap-3">
                                 <x-input-label for="body" :value="__('Content')" />
+                                <span class="flex-1"></span>
+                                <button type="button" x-show="mode !== 'loading'" x-on:click="pickFile()" class="text-xs text-gray-500 dark:text-gray-400 underline">📎 {{ __('Image or file') }}</button>
+                                <input type="file" x-ref="file" class="hidden" x-on:change="uploadFiles($event.target.files); $event.target.value = ''" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" />
                                 <button type="button" x-show="mode !== 'loading'" x-on:click="toggleMode()" class="text-xs text-gray-500 dark:text-gray-400 underline">
                                     <span x-show="mode === 'rich'">{{ __('Edit as Markdown') }}</span>
                                     <span x-show="mode === 'markdown'" x-cloak>{{ __('Back to editor') }}</span>
@@ -370,13 +402,14 @@ new #[Layout('layouts.app')] class extends Component
                                 </div>
                             </div>
 
+                            <p x-show="uploadStatus" x-cloak x-text="uploadStatus" class="mt-1 text-xs text-gray-500 dark:text-gray-400" role="status"></p>
                             <p x-show="hasUnsupportedContent && mode === 'markdown'" x-cloak class="mt-1 rounded-md bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-                                {{ __('This page contains images or HTML that the editor cannot show, so it opens as Markdown to keep them intact.') }}
+                                {{ __('This page contains HTML that the editor cannot show, so it opens as Markdown to keep it intact.') }}
                             </p>
                             <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm"></textarea>
 
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type.') }}
+                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
                             </p>
                             <x-input-error :messages="$errors->get('body')" class="mt-2" />
                         </div>

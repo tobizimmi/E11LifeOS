@@ -278,7 +278,7 @@ const SlashMenu = Extension.create({
                 pluginKey: new PluginKey('slashMenu'),
                 char: '/',
                 allowedPrefixes: [' ', ' '],
-                items: ({ query }) => commands.filter((item) => item.title.toLowerCase().includes(query.toLowerCase())),
+                items: ({ query }) => commands.filter((item) => (item.title ?? '').toLowerCase().includes(query.toLowerCase())),
                 command: ({ editor, range, props }) => props.run(editor.chain().focus().deleteRange(range)).run(),
                 render: () =>
                     suggestionPopup((button, item) => {

@@ -33,7 +33,7 @@ class CollectionsTest extends TestCase
         $this->assertTrue($collection->isPrivate());
         $this->assertSame('📑', $collection->icon);
         $this->assertSame(
-            [CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_NUMBER, CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_DATE, CollectionProperty::TYPE_URL],
+            [CollectionProperty::TYPE_SELECT, CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_NUMBER, CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_DATE, CollectionProperty::TYPE_DATE, CollectionProperty::TYPE_URL],
             $collection->properties->pluck('type')->all(),
         );
     }

@@ -74,6 +74,36 @@ class CollectionProperty extends Model
     }
 
     /**
+     * Days before a date value on which a reminder e-mail goes out (0 = on the day),
+     * null if this date property has no reminder.
+     */
+    public function remindDays(): ?int
+    {
+        $days = $this->type === self::TYPE_DATE ? ($this->options['remind_days'] ?? null) : null;
+
+        return is_int($days) ? $days : null;
+    }
+
+    /**
+     * Summary shown under a table column / on a board column: sum of numbers,
+     * "ticked / total" for checkboxes; null for other types.
+     *
+     * @param  iterable<int, Item>  $entries
+     */
+    public function aggregate(iterable $entries): ?string
+    {
+        $values = collect($entries)->map(fn (Item $entry) => $entry->propertyValue($this));
+
+        return match ($this->type) {
+            self::TYPE_NUMBER => $values->filter(fn ($value) => is_numeric($value))->isEmpty()
+                ? null
+                : rtrim(rtrim(number_format((float) $values->filter(fn ($value) => is_numeric($value))->sum(), 2, ',', '.'), '0'), ','),
+            self::TYPE_CHECKBOX => $values->filter()->count().' / '.$values->count(),
+            default => null,
+        };
+    }
+
+    /**
      * Adds a select option (new ids are random, so renaming never breaks values).
      *
      * @return array{id: string, name: string, color: string}

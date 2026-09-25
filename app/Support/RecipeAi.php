@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use Anthropic\Client;
 use App\Models\Recipe;
 use Throwable;
 
@@ -10,7 +9,7 @@ use Throwable;
  * Claude API calls of the recipes addon: reading recipes from text, photos/screenshots
  * or PDFs, and estimating nutrition. Answers are forced into a JSON schema.
  */
-class RecipeAi
+class RecipeAi extends StructuredAi
 {
     public const MAX_IMAGES = 5;
 
@@ -65,13 +64,6 @@ class RecipeAi
     private const RECIPE_INSTRUCTIONS = 'Extract the recipe. Keep the original language (usually German) and wording; '
         .'split amount, unit and ingredient name; keep ingredient group headings as sections; '
         .'one preparation step per entry without numbering. Do not invent missing information.';
-
-    public function __construct(private ?Client $client = null) {}
-
-    public static function isConfigured(): bool
-    {
-        return filled(config('services.anthropic.key'));
-    }
 
     /**
      * @return array<string, mixed>
@@ -140,58 +132,14 @@ class RecipeAi
         $recipe = $this->ask($content, self::RECIPE_SCHEMA, 16000);
 
         if (! ($recipe['found'] ?? false)) {
-            throw new RecipeAiException(__('No recipe was found in the source.'));
+            $this->fail(__('No recipe was found in the source.'));
         }
 
         return $recipe;
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $content
-     * @param  array<string, mixed>  $schema
-     * @return array<string, mixed>
-     */
-    private function ask(array $content, array $schema, int $maxTokens): array
+    protected function fail(string $message, ?Throwable $previous = null): never
     {
-        if (! self::isConfigured()) {
-            throw new RecipeAiException(__('The AI import is not set up (ANTHROPIC_API_KEY).'));
-        }
-
-        try {
-            $message = $this->client()->beta->messages->create(
-                maxTokens: $maxTokens,
-                messages: [['role' => 'user', 'content' => $content]],
-                model: (string) config('services.anthropic.model'),
-                outputConfig: ['effort' => 'low', 'format' => ['type' => 'json_schema', 'schema' => $schema]],
-                // Server-side retry on a substitute model if the request is declined.
-                fallbacks: 'default',
-                betas: ['server-side-fallback-2026-07-01'],
-            );
-        } catch (Throwable $exception) {
-            report($exception);
-
-            throw new RecipeAiException(__('The AI service is not reachable right now. Please try again later.'), previous: $exception);
-        }
-
-        if ($message->stopReason === 'refusal' || $message->stopReason === 'max_tokens') {
-            throw new RecipeAiException(__('The AI could not process this source.'));
-        }
-
-        foreach ($message->content as $block) {
-            if ($block->type === 'text') {
-                $data = json_decode($block->text, true);
-
-                if (is_array($data)) {
-                    return $data;
-                }
-            }
-        }
-
-        throw new RecipeAiException(__('The AI could not process this source.'));
-    }
-
-    private function client(): Client
-    {
-        return $this->client ??= new Client(apiKey: (string) config('services.anthropic.key'));
+        throw new RecipeAiException($message, previous: $previous);
     }
 }

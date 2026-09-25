@@ -7,6 +7,7 @@ use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
 use App\Models\Tag;
 use App\Support\Addons;
+use App\Support\BrainAi;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -111,6 +112,7 @@ new class extends Component
         return [
             'groups' => $this->results(),
             'searched' => mb_strlen(trim($this->query)) >= self::MIN_QUERY_LENGTH,
+            'canAsk' => $this->householdId !== null && BrainAi::isConfigured(),
         ];
     }
 }; ?>
@@ -182,6 +184,15 @@ new class extends Component
                         {{ $searched ? __('No results.') : __('Type at least two characters.') }}
                     </p>
                 @endforelse
+                @if ($searched && $canAsk)
+                    <a
+                        href="{{ route('brain.ask', ['q' => trim($query)]) }}"
+                        wire:navigate
+                        data-search-result
+                        x-on:click="open = false"
+                        class="flex items-center gap-2 px-4 py-2 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-gray-700 focus:bg-indigo-50 dark:focus:bg-gray-700 focus:outline-none"
+                    >✨ <span class="truncate">{{ __('Ask your Second Brain: “:question”', ['question' => trim($query)]) }}</span></a>
+                @endif
             </div>
 
             <p class="px-4 py-2 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700">

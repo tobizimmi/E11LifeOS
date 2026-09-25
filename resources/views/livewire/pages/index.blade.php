@@ -3,9 +3,11 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\ProvidesLinkTargets;
 use App\Livewire\Concerns\StoresAttachments;
+use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
 use App\Models\Item;
 use App\Models\Tag;
+use App\Support\BrainAi;
 use App\Support\NoteMarkdown;
 use App\Support\PageMover;
 use App\Support\PageTree;
@@ -21,6 +23,7 @@ new #[Layout('layouts.app')] class extends Component
     use InteractsWithHousehold;
     use ProvidesLinkTargets;
     use StoresAttachments;
+    use SuggestsTags;
     use WithFileUploads;
 
     #[Url(as: 'q', except: '')]
@@ -50,6 +53,13 @@ new #[Layout('layouts.app')] class extends Component
     public string $tagsInput = '';
 
     public bool $isPrivate = false;
+
+    /**
+     * AI tag suggestions for the open form, added with one click.
+     *
+     * @var array<int, string>
+     */
+    public array $tagSuggestions = [];
 
     /**
      * File picked, dropped or pasted into the editor (see storeAttachment).
@@ -221,9 +231,22 @@ new #[Layout('layouts.app')] class extends Component
         $this->tag = $this->tag === $name ? '' : $name;
     }
 
+    public function suggestTags(): void
+    {
+        $this->tagSuggestions = $this->tagSuggestionsFor($this->title, $this->body, explode(',', $this->tagsInput));
+    }
+
+    public function addSuggestedTag(string $name): void
+    {
+        $tags = array_filter(array_map('trim', explode(',', $this->tagsInput)));
+        $tags[] = $name;
+        $this->tagsInput = implode(', ', array_unique($tags));
+        $this->tagSuggestions = array_values(array_diff($this->tagSuggestions, [$name]));
+    }
+
     private function resetForm(): void
     {
-        $this->reset(['title', 'icon', 'parentId', 'body', 'tagsInput', 'isPrivate', 'editingId', 'showForm']);
+        $this->reset(['title', 'icon', 'parentId', 'body', 'tagsInput', 'isPrivate', 'editingId', 'showForm', 'tagSuggestions']);
         $this->resetValidation();
     }
 
@@ -238,6 +261,7 @@ new #[Layout('layouts.app')] class extends Component
             'parentOptions' => [],
             'pageTitles' => [],
             'canChangeVisibility' => true,
+            'aiAvailable' => BrainAi::isConfigured(),
         ];
 
         if ($this->showForm) {
@@ -376,7 +400,22 @@ new #[Layout('layouts.app')] class extends Component
 
                         <div>
                             <x-input-label for="tagsInput" :value="__('Tags (comma-separated)')" />
-                            <x-text-input wire:model="tagsInput" id="tagsInput" class="block mt-1 w-full" type="text" placeholder="{{ __('idea, gift, travel') }}" />
+                            <div class="mt-1 flex gap-2">
+                                <x-text-input wire:model="tagsInput" id="tagsInput" class="block w-full" type="text" placeholder="{{ __('idea, gift, travel') }}" />
+                                @if ($aiAvailable)
+                                    <button type="button" wire:click="suggestTags" wire:loading.attr="disabled" wire:target="suggestTags" class="shrink-0 rounded-md px-3 text-sm ring-1 ring-gray-300 dark:ring-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <span wire:loading.remove wire:target="suggestTags">✨ {{ __('Suggest') }}</span>
+                                        <span wire:loading wire:target="suggestTags">…</span>
+                                    </button>
+                                @endif
+                            </div>
+                            @if ($tagSuggestions !== [])
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    @foreach ($tagSuggestions as $suggestion)
+                                        <button type="button" wire:key="tag-suggestion-{{ $suggestion }}" wire:click="addSuggestedTag(@js($suggestion))" class="rounded-full bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100">+ #{{ $suggestion }}</button>
+                                    @endforeach
+                                </div>
+                            @endif
                             <x-input-error :messages="$errors->get('tagsInput')" class="mt-2" />
                         </div>
 

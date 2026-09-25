@@ -4,6 +4,7 @@ use App\Events\HouseholdItemsChanged;
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\ProvidesLinkTargets;
 use App\Livewire\Concerns\StoresAttachments;
+use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
 use App\Models\Collection;
 use App\Models\CollectionProperty;
@@ -11,6 +12,7 @@ use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
 use App\Models\CollectionView;
+use App\Support\BrainAi;
 use App\Support\EntryFilters;
 use App\Support\Links;
 use App\Support\Recurrence;
@@ -28,6 +30,7 @@ new #[Layout('layouts.app')] class extends Component
     use InteractsWithHousehold;
     use ProvidesLinkTargets;
     use StoresAttachments;
+    use SuggestsTags;
     use WithFileUploads;
 
     #[Locked]
@@ -62,6 +65,13 @@ new #[Layout('layouts.app')] class extends Component
      */
     #[Url(as: 'entry', except: '')]
     public string $openEntryId = '';
+
+    /**
+     * AI tag suggestions for the open entry.
+     *
+     * @var array<int, string>
+     */
+    public array $entryTagSuggestions = [];
 
     /**
      * Calendar month as "YYYY-MM" (empty = current month).
@@ -226,6 +236,19 @@ new #[Layout('layouts.app')] class extends Component
     public function updateTags(int $entryId, string $tags): void
     {
         $this->findEntry($entryId)->syncTagNames(explode(',', $tags));
+    }
+
+    public function suggestEntryTags(int $entryId): void
+    {
+        $entry = $this->findEntry($entryId);
+        $this->entryTagSuggestions = $this->tagSuggestionsFor($entry->title, $entry->body(), $entry->tags->pluck('name')->all());
+    }
+
+    public function addEntryTag(int $entryId, string $name): void
+    {
+        $entry = $this->findEntry($entryId);
+        $entry->syncTagNames([...$entry->tags->pluck('name')->all(), $name]);
+        $this->entryTagSuggestions = array_values(array_diff($this->entryTagSuggestions, [$name]));
     }
 
     /**
@@ -404,11 +427,12 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->openEntryId = (string) $this->findEntry($entryId)->id;
         $this->editingBody = false;
+        $this->entryTagSuggestions = [];
     }
 
     public function closeEntry(): void
     {
-        $this->reset('openEntryId', 'editingBody', 'body');
+        $this->reset('openEntryId', 'editingBody', 'body', 'entryTagSuggestions');
     }
 
     public function editBody(): void
@@ -873,6 +897,7 @@ new #[Layout('layouts.app')] class extends Component
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
             'openEntry' => $openEntry,
             'savedViews' => $collection->views,
+            'aiAvailable' => BrainAi::isConfigured(),
             'activeViewModel' => $this->activeView !== '' ? $collection->views->firstWhere('id', (int) $this->activeView) : null,
             'filterRows' => collect($this->filters)->map(function ($filter) use ($properties) {
                 $property = ($filter['property'] ?? 'title') === 'title' ? null : $properties->firstWhere('id', (int) $filter['property']);
@@ -1460,15 +1485,30 @@ new #[Layout('layouts.app')] class extends Component
                     @endforeach
                     <dt class="text-gray-500 dark:text-gray-400">{{ __('Tags') }}</dt>
                     <dd>
-                        <input
-                            type="text"
-                            value="{{ $openEntry->tags->sortBy('name')->pluck('name')->implode(', ') }}"
-                            wire:change="updateTags({{ $openEntry->id }}, $event.target.value)"
-                            wire:key="panel-tags-{{ $openEntry->id }}"
-                            placeholder="{{ __('e.g. garden, urgent') }}"
-                            aria-label="{{ __('Tags') }}"
-                            class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm"
-                        />
+                        <div class="flex gap-1.5">
+                            <input
+                                type="text"
+                                value="{{ $openEntry->tags->sortBy('name')->pluck('name')->implode(', ') }}"
+                                wire:change="updateTags({{ $openEntry->id }}, $event.target.value)"
+                                wire:key="panel-tags-{{ $openEntry->id }}-{{ md5($openEntry->tags->sortBy('name')->pluck('name')->implode(',')) }}"
+                                placeholder="{{ __('e.g. garden, urgent') }}"
+                                aria-label="{{ __('Tags') }}"
+                                class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm"
+                            />
+                            @if ($aiAvailable)
+                                <button type="button" wire:click="suggestEntryTags({{ $openEntry->id }})" wire:loading.attr="disabled" wire:target="suggestEntryTags" title="{{ __('Suggest tags') }}" aria-label="{{ __('Suggest tags') }}" class="shrink-0 rounded-md px-2 text-sm ring-1 ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <span wire:loading.remove wire:target="suggestEntryTags">✨</span>
+                                    <span wire:loading wire:target="suggestEntryTags">…</span>
+                                </button>
+                            @endif
+                        </div>
+                        @if ($entryTagSuggestions !== [])
+                            <div class="mt-1.5 flex flex-wrap gap-1.5">
+                                @foreach ($entryTagSuggestions as $suggestion)
+                                    <button type="button" wire:key="entry-tag-suggestion-{{ $suggestion }}" wire:click="addEntryTag({{ $openEntry->id }}, @js($suggestion))" class="rounded-full bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100">+ #{{ $suggestion }}</button>
+                                @endforeach
+                            </div>
+                        @endif
                     </dd>
                     @if (! $collection->isPrivate() && $openEntry->visibilityCanBeChangedBy(auth()->user()))
                         <dt class="text-gray-500 dark:text-gray-400">{{ __('Visibility') }}</dt>

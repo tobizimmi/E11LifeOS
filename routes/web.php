@@ -28,6 +28,7 @@ Route::get('profile/export', DataExportController::class)
 Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');
     Volt::route('inbox', 'inbox.index')->name('inbox.index');
+    Volt::route('ask', 'brain.ask')->name('brain.ask');
     Volt::route('pages/{item?}', 'pages.index')->whereNumber('item')->name('pages.index');
     // Notes became pages: keep old bookmarks (/notes?note=ID) working.
     Route::get('notes', function (Request $request) {

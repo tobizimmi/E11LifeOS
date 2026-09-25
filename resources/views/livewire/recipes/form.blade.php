@@ -1,0 +1,426 @@
+<?php
+
+use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Item;
+use App\Models\Recipe;
+use App\Models\RecipeCategory;
+use App\Support\RecipeImages;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
+
+new #[Layout('layouts.app')] class extends Component
+{
+    use InteractsWithHousehold;
+    use WithFileUploads;
+
+    /**
+     * Null while creating a new recipe.
+     */
+    #[Locked]
+    public ?int $recipeId = null;
+
+    public string $title = '';
+
+    public string $description = '';
+
+    public ?int $prepTime = null;
+
+    public ?int $cookTime = null;
+
+    public ?int $servings = null;
+
+    public string $difficulty = '';
+
+    public string $sourceUrl = '';
+
+    public string $tagsInput = '';
+
+    public bool $isPrivate = false;
+
+    /**
+     * @var array<int, array{amount: string, unit: string, name: string, isSection: bool}>
+     */
+    public array $ingredients = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $steps = [];
+
+    /**
+     * @var array<int, int|string>
+     */
+    public array $categoryIds = [];
+
+    public $photo = null;
+
+    public bool $removePhoto = false;
+
+    public string $newCategoryName = '';
+
+    public function mount(?int $recipe = null): void
+    {
+        $this->resolveHousehold();
+
+        if ($recipe === null) {
+            $this->ingredients = [$this->emptyIngredient()];
+            $this->steps = [''];
+
+            return;
+        }
+
+        $model = $this->findRecipe($recipe);
+        $this->recipeId = $model->id;
+        $this->title = $model->title;
+        $this->description = (string) $model->description;
+        $this->prepTime = $model->prep_time;
+        $this->cookTime = $model->cook_time;
+        $this->servings = $model->servings;
+        $this->difficulty = (string) $model->difficulty;
+        $this->sourceUrl = (string) $model->source_url;
+        $this->isPrivate = $model->isPrivate();
+        $this->tagsInput = $model->tags->sortBy('name')->pluck('name')->implode(', ');
+        $this->categoryIds = $model->categories->pluck('id')->all();
+        $this->ingredients = collect($model->scaledIngredients())->map(fn (array $ingredient) => $ingredient)->all() ?: [$this->emptyIngredient()];
+        $this->steps = $model->steps() ?: [''];
+    }
+
+    private function findRecipe(int $id): Recipe
+    {
+        return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->with('tags', 'categories')->findOrFail($id);
+    }
+
+    /**
+     * @return array{amount: string, unit: string, name: string, isSection: bool}
+     */
+    private function emptyIngredient(bool $isSection = false): array
+    {
+        return ['amount' => '', 'unit' => '', 'name' => '', 'isSection' => $isSection];
+    }
+
+    public function addIngredient(bool $isSection = false): void
+    {
+        $this->ingredients[] = $this->emptyIngredient($isSection);
+    }
+
+    public function removeIngredient(int $index): void
+    {
+        unset($this->ingredients[$index]);
+        $this->ingredients = array_values($this->ingredients);
+    }
+
+    public function moveIngredient(int $index, int $direction): void
+    {
+        $this->ingredients = $this->move($this->ingredients, $index, $direction);
+    }
+
+    public function addStep(): void
+    {
+        $this->steps[] = '';
+    }
+
+    public function removeStep(int $index): void
+    {
+        unset($this->steps[$index]);
+        $this->steps = array_values($this->steps);
+    }
+
+    public function moveStep(int $index, int $direction): void
+    {
+        $this->steps = $this->move($this->steps, $index, $direction);
+    }
+
+    /**
+     * @template T
+     *
+     * @param  array<int, T>  $list
+     * @return array<int, T>
+     */
+    private function move(array $list, int $index, int $direction): array
+    {
+        $target = $index + $direction;
+
+        if (isset($list[$index], $list[$target])) {
+            [$list[$index], $list[$target]] = [$list[$target], $list[$index]];
+        }
+
+        return array_values($list);
+    }
+
+    public function createCategory(): void
+    {
+        $this->validate(['newCategoryName' => ['required', 'string', 'max:100']]);
+
+        $category = RecipeCategory::firstOrCreate(
+            ['household_id' => $this->householdId, 'name' => trim($this->newCategoryName)],
+            ['position' => (int) RecipeCategory::where('household_id', $this->householdId)->max('position') + 1],
+        );
+
+        $this->categoryIds[] = $category->id;
+        $this->categoryIds = array_values(array_unique(array_map('intval', $this->categoryIds)));
+        $this->reset('newCategoryName');
+    }
+
+    public function save(): void
+    {
+        $validated = $this->validate([
+            'title' => ['required', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:10000'],
+            'prepTime' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'cookTime' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'servings' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'difficulty' => ['nullable', 'string', 'max:50'],
+            'sourceUrl' => ['nullable', 'string', 'max:2000'],
+            'tagsInput' => ['nullable', 'string', 'max:1000'],
+            'ingredients' => ['array', 'max:200'],
+            'ingredients.*.amount' => ['nullable', 'string', 'max:50'],
+            'ingredients.*.unit' => ['nullable', 'string', 'max:50'],
+            'ingredients.*.name' => ['nullable', 'string', 'max:255'],
+            'steps' => ['array', 'max:100'],
+            'steps.*' => ['nullable', 'string', 'max:5000'],
+            'categoryIds' => ['array'],
+            'categoryIds.*' => ['integer', Rule::exists('recipe_categories', 'id')->where('household_id', $this->householdId)],
+            'photo' => ['nullable', 'image', 'max:15360'],
+        ]);
+
+        $recipe = $this->recipeId ? $this->findRecipe($this->recipeId) : new Recipe([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+        ]);
+
+        $attributes = [
+            'title' => trim($validated['title']),
+            'description' => trim((string) $validated['description']) ?: null,
+            'prep_time' => $validated['prepTime'] ?: null,
+            'cook_time' => $validated['cookTime'] ?: null,
+            'servings' => $validated['servings'] ?: null,
+            'difficulty' => trim((string) $validated['difficulty']) ?: null,
+            'source_url' => trim((string) $validated['sourceUrl']) ?: null,
+            'ingredients' => collect($validated['ingredients'])
+                ->map(fn (array $ingredient, int $index) => [
+                    'amount' => trim((string) ($ingredient['amount'] ?? '')),
+                    'unit' => trim((string) ($ingredient['unit'] ?? '')),
+                    'name' => trim((string) ($ingredient['name'] ?? '')),
+                    'isSection' => (bool) ($this->ingredients[$index]['isSection'] ?? false),
+                ])
+                ->filter(fn (array $ingredient) => $ingredient['name'] !== '')
+                ->map(fn (array $ingredient) => $ingredient['isSection'] ? ['name' => $ingredient['name'], 'isSection' => true] : array_diff_key($ingredient, ['isSection' => true]))
+                ->values()
+                ->all(),
+            'instructions' => collect($validated['steps'])
+                ->map(fn ($step) => trim((string) $step))
+                ->filter()
+                ->map(fn (string $step) => ['text' => $step])
+                ->values()
+                ->all(),
+        ];
+
+        if (! $recipe->exists || $recipe->visibilityCanBeChangedBy(Auth::user())) {
+            $attributes['visibility'] = $this->isPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED;
+        }
+
+        $oldImage = $recipe->image_path;
+
+        if ($this->photo) {
+            $attributes['image_path'] = RecipeImages::store($this->photo, (int) $this->householdId);
+        } elseif ($this->removePhoto) {
+            $attributes['image_path'] = null;
+        }
+
+        DB::transaction(function () use ($recipe, $attributes) {
+            $recipe->fill($attributes)->save();
+            $recipe->categories()->sync(array_map('intval', $this->categoryIds));
+            $recipe->syncTagNames(explode(',', $this->tagsInput));
+        });
+
+        if (array_key_exists('image_path', $attributes) && $oldImage && $oldImage !== $attributes['image_path']) {
+            RecipeImages::delete($oldImage);
+        }
+
+        $this->redirectRoute('recipes.show', ['recipe' => $recipe->id], navigate: true);
+    }
+
+    public function with(): array
+    {
+        $recipe = $this->recipeId ? $this->findRecipe($this->recipeId) : null;
+
+        return [
+            'recipe' => $recipe,
+            'categories' => RecipeCategory::where('household_id', $this->householdId)->orderBy('position')->orderBy('name')->get(),
+            'canChangeVisibility' => ! $recipe || $recipe->visibilityCanBeChangedBy(Auth::user()),
+        ];
+    }
+}; ?>
+
+<div>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('Recipes') }}
+        </h2>
+    </x-slot>
+
+    <div class="py-6 sm:py-8">
+        <form wire:submit="save" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $recipeId ? __('Edit recipe') : __('New recipe') }}</h1>
+                <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>
+            </div>
+
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+                <div>
+                    <x-input-label for="title" :value="__('Title')" />
+                    <x-text-input wire:model="title" id="title" class="mt-1 block w-full text-lg" required autofocus />
+                    <x-input-error :messages="$errors->get('title')" class="mt-1" />
+                </div>
+
+                <div>
+                    <x-input-label for="description" :value="__('Description')" />
+                    <textarea wire:model="description" id="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div>
+                        <x-input-label for="prepTime" :value="__('Prep (min)')" />
+                        <x-text-input wire:model="prepTime" id="prepTime" type="number" min="0" class="mt-1 block w-full" />
+                        <x-input-error :messages="$errors->get('prepTime')" class="mt-1" />
+                    </div>
+                    <div>
+                        <x-input-label for="cookTime" :value="__('Cooking (min)')" />
+                        <x-text-input wire:model="cookTime" id="cookTime" type="number" min="0" class="mt-1 block w-full" />
+                        <x-input-error :messages="$errors->get('cookTime')" class="mt-1" />
+                    </div>
+                    <div>
+                        <x-input-label for="servings" :value="__('Servings')" />
+                        <x-text-input wire:model="servings" id="servings" type="number" min="1" class="mt-1 block w-full" />
+                        <x-input-error :messages="$errors->get('servings')" class="mt-1" />
+                    </div>
+                    <div>
+                        <x-input-label for="difficulty" :value="__('Difficulty')" />
+                        <select wire:model="difficulty" id="difficulty" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                            <option value="">—</option>
+                            <option value="easy">{{ __('Easy') }}</option>
+                            <option value="medium">{{ __('Medium') }}</option>
+                            <option value="hard">{{ __('Hard') }}</option>
+                            @if ($difficulty !== '' && ! in_array($difficulty, \App\Models\Recipe::DIFFICULTIES, true))
+                                <option value="{{ $difficulty }}">{{ $difficulty }}</option>
+                            @endif
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Photo --}}
+                <div>
+                    <x-input-label for="photo" :value="__('Photo')" />
+                    <div class="mt-1 flex flex-wrap items-center gap-4">
+                        @if ($photo && method_exists($photo, 'isPreviewable') && $photo->isPreviewable())
+                            <img src="{{ $photo->temporaryUrl() }}" alt="" class="h-24 w-32 rounded-md object-cover" />
+                        @elseif ($recipe?->imageUrl() && ! $removePhoto)
+                            <img src="{{ $recipe->imageUrl() }}" alt="" class="h-24 w-32 rounded-md object-cover" />
+                        @endif
+                        <div class="space-y-1">
+                            <input type="file" wire:model="photo" id="photo" accept="image/*" class="block text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-indigo-700" />
+                            <p wire:loading wire:target="photo" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                            @if ($recipe?->image_path && ! $photo)
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <input type="checkbox" wire:model.live="removePhoto" class="rounded border-gray-300 text-indigo-600" /> {{ __('Remove photo') }}
+                                </label>
+                            @endif
+                        </div>
+                    </div>
+                    <x-input-error :messages="$errors->get('photo')" class="mt-1" />
+                </div>
+            </section>
+
+            {{-- Ingredients --}}
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Ingredients') }}</h2>
+                <div class="space-y-2">
+                    @foreach ($ingredients as $index => $ingredient)
+                        <div wire:key="ingredient-row-{{ $index }}" class="flex items-center gap-2">
+                            @if ($ingredient['isSection'] ?? false)
+                                <span class="text-indigo-600" aria-hidden="true">▸</span>
+                                <x-text-input wire:model="ingredients.{{ $index }}.name" class="block flex-1 font-semibold" placeholder="{{ __('Section, e.g. Dough') }}" aria-label="{{ __('Section') }}" />
+                            @else
+                                <x-text-input wire:model="ingredients.{{ $index }}.amount" class="block w-20" placeholder="200" aria-label="{{ __('Amount') }}" />
+                                <x-text-input wire:model="ingredients.{{ $index }}.unit" class="block w-20" placeholder="g" aria-label="{{ __('Unit') }}" />
+                                <x-text-input wire:model="ingredients.{{ $index }}.name" class="block flex-1 min-w-0" placeholder="{{ __('Flour') }}" aria-label="{{ __('Ingredient') }}" />
+                            @endif
+                            <div class="flex shrink-0 items-center text-gray-400">
+                                <button type="button" wire:click="moveIngredient({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
+                                <button type="button" wire:click="moveIngredient({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
+                                <button type="button" wire:click="removeIngredient({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="flex gap-2">
+                    <x-secondary-button type="button" wire:click="addIngredient">+ {{ __('Ingredient') }}</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="addIngredient(true)">+ {{ __('Section') }}</x-secondary-button>
+                </div>
+            </section>
+
+            {{-- Steps --}}
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Preparation') }}</h2>
+                <div class="space-y-3">
+                    @foreach ($steps as $index => $step)
+                        <div wire:key="step-row-{{ $index }}" class="flex items-start gap-2">
+                            <span class="mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">{{ $index + 1 }}</span>
+                            <textarea wire:model="steps.{{ $index }}" rows="2" class="block flex-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" placeholder="{{ __('Step :number …', ['number' => $index + 1]) }}" aria-label="{{ __('Step :number', ['number' => $index + 1]) }}"></textarea>
+                            <div class="mt-2 flex shrink-0 flex-col text-gray-400">
+                                <button type="button" wire:click="moveStep({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
+                                <button type="button" wire:click="moveStep({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
+                                <button type="button" wire:click="removeStep({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <x-secondary-button type="button" wire:click="addStep">+ {{ __('Step') }}</x-secondary-button>
+            </section>
+
+            {{-- Organisation --}}
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+                <div>
+                    <span class="block font-medium text-sm text-gray-700 dark:text-gray-300">{{ __('Categories') }}</span>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach ($categories as $recipeCategory)
+                            <label wire:key="category-{{ $recipeCategory->id }}" class="cursor-pointer">
+                                <input type="checkbox" wire:model.live="categoryIds" value="{{ $recipeCategory->id }}" class="peer sr-only" />
+                                <span class="inline-block rounded-full px-3 py-1 text-sm ring-1 ring-gray-200 dark:ring-gray-700 text-gray-700 dark:text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:ring-indigo-600 peer-focus-visible:ring-2">{{ $recipeCategory->icon }} {{ $recipeCategory->name }}</span>
+                            </label>
+                        @endforeach
+                        <div class="inline-flex items-center gap-1">
+                            <x-text-input wire:model="newCategoryName" wire:keydown.enter.prevent="createCategory" class="block w-40 py-1 text-sm" placeholder="+ {{ __('New category') }}" aria-label="{{ __('New category') }}" />
+                            <button type="button" wire:click="createCategory" class="text-sm text-indigo-600 dark:text-indigo-400 underline">{{ __('Add') }}</button>
+                        </div>
+                    </div>
+                    <x-input-error :messages="$errors->get('newCategoryName')" class="mt-1" />
+                </div>
+
+                <div>
+                    <x-input-label for="tagsInput" :value="__('Tags (comma-separated)')" />
+                    <x-text-input wire:model="tagsInput" id="tagsInput" class="mt-1 block w-full" placeholder="{{ __('vegetarian, quick, family') }}" />
+                </div>
+
+                <div>
+                    <x-input-label for="sourceUrl" :value="__('Source (link or book)')" />
+                    <x-text-input wire:model="sourceUrl" id="sourceUrl" class="mt-1 block w-full" placeholder="https://" />
+                </div>
+
+                @if ($canChangeVisibility)
+                    <x-private-checkbox id="isPrivate" wire:model="isPrivate" />
+                @endif
+            </section>
+
+            <div class="flex items-center gap-3">
+                <x-primary-button wire:loading.attr="disabled" wire:target="photo,save">{{ $recipeId ? __('Save changes') : __('Create recipe') }}</x-primary-button>
+                <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>
+            </div>
+        </form>
+    </div>
+</div>

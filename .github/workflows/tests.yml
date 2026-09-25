@@ -22,7 +22,7 @@ jobs:
         with:
           # Matches the PHP version used on the Strato server (see deploy.yml).
           php-version: '8.4'
-          extensions: mbstring, pdo_sqlite, sqlite3
+          extensions: mbstring, pdo_sqlite, sqlite3, gd
           coverage: none
 
       - name: Install PHP dependencies

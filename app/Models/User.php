@@ -30,6 +30,12 @@ class User extends Authenticatable
                 ->where('visibility', Item::VISIBILITY_PRIVATE)
                 ->delete();
 
+            // Private recipes too (one by one, so their photos are removed as well).
+            Recipe::where('created_by', $user->id)
+                ->where('visibility', Item::VISIBILITY_PRIVATE)
+                ->get()
+                ->each->delete();
+
             // Private collections go too (their entries are removed by the foreign key cascade).
             Collection::where('created_by', $user->id)
                 ->where('visibility', Item::VISIBILITY_PRIVATE)

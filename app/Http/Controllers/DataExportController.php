@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
+use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -38,6 +39,17 @@ class DataExportController extends Controller
                     ])
                 : [],
             'collection_entries' => $this->exportItems($household, $user, Item::TYPE_ENTRY, ['id', 'collection_id', 'title', 'content', 'properties', 'visibility', 'created_at', 'updated_at']),
+            'recipes' => $household
+                ? Recipe::query()->visibleTo($user, $household->id)->with('categories', 'tags')->orderBy('id')->get()
+                    ->map(fn (Recipe $recipe) => $recipe->only([
+                        'id', 'title', 'description', 'ingredients', 'instructions', 'prep_time', 'cook_time', 'servings',
+                        'difficulty', 'source_url', 'visibility', 'cooked_count', 'archived_at', 'created_at', 'updated_at',
+                    ]) + [
+                        'categories' => $recipe->categories->pluck('name')->all(),
+                        'tags' => $recipe->tags->pluck('name')->sort()->values()->all(),
+                        'favorite' => $recipe->isFavoriteOf($user),
+                    ])
+                : [],
             'shopping_list' => $household
                 ? ShoppingListEntry::where('household_id', $household->id)->get()
                     ->map->only(['id', 'label', 'quantity', 'checked', 'created_at', 'updated_at'])

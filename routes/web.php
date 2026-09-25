@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DataExportController;
+use App\Http\Controllers\RecipeImageController;
 use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,16 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('collections.show', ['collection' => Collection::tasksFor($household->id)] + $request->only(['view', 'entry', 'month']));
     })->name('todos.index');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
+});
+
+// Recipes addon (can be switched off per household on the Household page).
+Route::middleware(['auth', 'addon:recipes'])->group(function () {
+    Volt::route('recipes', 'recipes.index')->name('recipes.index');
+    Volt::route('recipes/create', 'recipes.form')->name('recipes.create');
+    Volt::route('recipes/categories', 'recipes.categories')->name('recipes.categories');
+    Volt::route('recipes/{recipe}', 'recipes.show')->whereNumber('recipe')->name('recipes.show');
+    Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');
+    Route::get('recipes/{recipe}/image', RecipeImageController::class)->whereNumber('recipe')->name('recipes.image');
 });
 
 require __DIR__.'/auth.php';

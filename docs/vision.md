@@ -52,6 +52,11 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Kalenderansicht (Monat) für alle Sammlungen mit Datumsfeld; Drag & Drop zwischen Tagen und in „Ohne Datum“, Einträge direkt an einem Tag anlegen.
 - Aufgaben mit Wiederholung (täglich, wöchentlich, monatlich, jährlich): Abhaken verschiebt die Aufgabe auf den nächsten Termin nach heute und öffnet sie wieder; kurzer Hinweis mit dem neuen Datum.
 
+### Rezepte-Addon – Etappe R1 ✅
+- Addon-System (pro Haushalt ein-/ausschaltbar); Rezepte mit Foto, Zutaten/Abschnitten, Schritten, Portionsrechner, Kategorien, Tags, Favoriten, Archiv, „Gekocht“-Zähler.
+- Zutaten-Auswahl umgerechnet auf die LifeOS-Einkaufsliste; Suche, Export, Kontolöschung berücksichtigen Rezepte.
+- Import aus der RezepteApp2 (`php artisan recipes:import-rezepteapp`).
+
 ## Nächste Schritte
 
 ### Notion-Ansatz – nächste Ausbaustufen
@@ -67,7 +72,8 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 ### Phase 4 – Weitere Module
 - Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.
 - Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
-- Rezepte: Integration der bestehenden, separat entwickelten Rezepte-App (inkl. „Zutaten auf die Einkaufsliste“).
+- Rezepte R2: Kochmodus mit Timer, Wochenplaner im Kalender, Bewertungen, Suche nach vorhandenen Zutaten, Duplizieren, weitere Fotos.
+- Rezepte R3: Import per URL/Screenshot/PDF (Claude-API), Nährwerte, PDF-Export (dompdf), öffentliche Links, Barcode-Scanner.
 - Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.
 
 ### Phase 5 – KI (optional)

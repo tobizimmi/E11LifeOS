@@ -3,7 +3,9 @@
 use App\Livewire\Actions\Logout;
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Collection;
+use App\Models\Household;
 use App\Models\Item;
+use App\Support\Addons;
 use App\Support\PageTree;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
@@ -60,7 +62,7 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'tasksCollection' => null, 'collections' => collect()];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'hasRecipes' => false, 'tasksCollection' => null, 'collections' => collect()];
         }
 
         $tree = new PageTree(
@@ -76,6 +78,7 @@ new class extends Component
                 ? collect($tree->ancestors($this->currentPageId))->pluck('id')->push($this->currentPageId)->all()
                 : [],
             'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
+            'hasRecipes' => (bool) Household::find($this->householdId)?->hasAddon(Addons::RECIPES),
             'tasksCollection' => Collection::tasksFor($this->householdId),
             'collections' => Collection::query()
                 ->visibleTo(Auth::user(), $this->householdId)
@@ -144,6 +147,9 @@ new class extends Component
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
                     <x-sidebar-link :href="route('collections.show', $tasksCollection)" :active="$currentCollectionId === $tasksCollection->id" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.index')" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
+                    @if ($hasRecipes)
+                        <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>
+                    @endif
                     <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
                 </div>
 

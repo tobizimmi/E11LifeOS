@@ -64,6 +64,21 @@ return [
             ]) : [],
         ],
 
+        // Source database of the old RezepteApp2, only used by `php artisan recipes:import-rezepteapp`.
+        'rezepteapp' => [
+            'driver' => env('REZEPTEAPP_DB_DRIVER', 'mysql'),
+            'host' => env('REZEPTEAPP_DB_HOST', '127.0.0.1'),
+            'port' => env('REZEPTEAPP_DB_PORT', '3306'),
+            'database' => env('REZEPTEAPP_DB_DATABASE', 'rezepteapp2'),
+            'username' => env('REZEPTEAPP_DB_USERNAME', 'rezepteapp2'),
+            'password' => env('REZEPTEAPP_DB_PASSWORD', ''),
+            'unix_socket' => env('REZEPTEAPP_DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

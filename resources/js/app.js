@@ -191,4 +191,74 @@ document.addEventListener('alpine:init', () => {
             return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
         },
     }));
+
+    /**
+     * Barcode scanner for the shopping list: the browser's BarcodeDetector reads EAN/UPC codes
+     * from the rear camera; where it is missing (e.g. Safari) the number can be typed.
+     */
+    window.Alpine.data('barcodeScanner', () => {
+        let stream = null;
+        let timer = null;
+
+        return {
+            visible: false,
+            supported: 'BarcodeDetector' in window,
+            failed: false,
+            manualCode: '',
+
+            async open() {
+                this.visible = true;
+                this.failed = false;
+                this.manualCode = '';
+
+                if (! this.supported) {
+                    return;
+                }
+
+                try {
+                    const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    this.$refs.video.srcObject = stream;
+                    await this.$refs.video.play();
+
+                    timer = setInterval(async () => {
+                        const codes = await detector.detect(this.$refs.video).catch(() => []);
+                        if (codes.length > 0) {
+                            this.found(codes[0].rawValue);
+                        }
+                    }, 300);
+                } catch (error) {
+                    this.failed = true;
+                    this.stop();
+                }
+            },
+
+            found(code) {
+                navigator.vibrate?.(100);
+                this.close();
+                this.$wire.lookupBarcode(code);
+            },
+
+            submitManual() {
+                if (this.manualCode.trim() !== '') {
+                    this.found(this.manualCode.trim());
+                }
+            },
+
+            stop() {
+                clearInterval(timer);
+                stream?.getTracks().forEach((track) => track.stop());
+                stream = null;
+            },
+
+            close() {
+                this.stop();
+                this.visible = false;
+            },
+
+            destroy() {
+                this.stop();
+            },
+        };
+    });
 });

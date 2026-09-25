@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
-    'household_id', 'created_by', 'visibility', 'title', 'description', 'ingredients', 'instructions',
+    'household_id', 'created_by', 'visibility', 'public_token', 'title', 'description', 'ingredients', 'instructions',
     'prep_time', 'cook_time', 'servings', 'difficulty', 'image_path', 'additional_images', 'source_url', 'source_type',
     'nutrition', 'cooked_count', 'archived_at', 'legacy_id',
 ])]
@@ -124,6 +124,42 @@ class Recipe extends Model
         return $this->visibility === Item::VISIBILITY_PRIVATE;
     }
 
+    public function publicUrl(): ?string
+    {
+        return $this->public_token ? route('recipes.public', $this->public_token) : null;
+    }
+
+    /**
+     * Label and unit of a nutrition value ("calories" → "Kalorien", "kcal").
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function nutritionLabel(string $key): array
+    {
+        return match ($key) {
+            'calories' => [__('Calories'), 'kcal'],
+            'protein' => [__('Protein'), 'g'],
+            'carbs' => [__('Carbohydrates'), 'g'],
+            'fat' => [__('Fat'), 'g'],
+            'fiber' => [__('Fiber'), 'g'],
+            default => [$key, ''],
+        };
+    }
+
+    /**
+     * Nutrition values per serving for display, in a fixed order; empty if none are known.
+     *
+     * @return array<string, int|float>
+     */
+    public function nutritionValues(): array
+    {
+        return collect(['calories', 'protein', 'carbs', 'fat', 'fiber'])
+            ->mapWithKeys(fn (string $key) => [$key => $this->nutrition[$key] ?? null])
+            ->filter(fn ($value) => is_numeric($value))
+            ->map(fn ($value) => round((float) $value, 1))
+            ->all();
+    }
+
     public function isArchived(): bool
     {
         return $this->archived_at !== null;
@@ -210,7 +246,7 @@ class Recipe extends Model
     public function duplicateFor(User $user): Recipe
     {
         return DB::transaction(function () use ($user) {
-            $copy = $this->replicate(['cooked_count', 'archived_at', 'legacy_id', 'image_path', 'additional_images']);
+            $copy = $this->replicate(['cooked_count', 'archived_at', 'legacy_id', 'public_token', 'image_path', 'additional_images']);
             $copy->title = mb_substr(__(':title (copy)', ['title' => $this->title]), 0, 500);
             $copy->created_by = $user->id;
             $copy->image_path = RecipeImages::copy($this->image_path, $this->household_id);

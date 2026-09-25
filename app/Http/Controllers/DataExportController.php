@@ -44,7 +44,7 @@ class DataExportController extends Controller
                 ? Recipe::query()->visibleTo($user, $household->id)->with(['categories', 'tags', 'ratings' => fn ($query) => $query->where('user_id', $user->id)])->orderBy('id')->get()
                     ->map(fn (Recipe $recipe) => $recipe->only([
                         'id', 'title', 'description', 'ingredients', 'instructions', 'prep_time', 'cook_time', 'servings',
-                        'difficulty', 'source_url', 'visibility', 'cooked_count', 'archived_at', 'created_at', 'updated_at',
+                        'difficulty', 'source_url', 'source_type', 'nutrition', 'visibility', 'cooked_count', 'archived_at', 'created_at', 'updated_at',
                     ]) + [
                         'categories' => $recipe->categories->pluck('name')->all(),
                         'tags' => $recipe->tags->pluck('name')->sort()->values()->all(),

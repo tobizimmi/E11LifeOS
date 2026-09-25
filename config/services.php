@@ -18,6 +18,12 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    // Claude API for the recipe import (URL, photo, PDF, text) and nutrition estimates.
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-5'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

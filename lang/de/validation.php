@@ -203,6 +203,10 @@ return [
         'name' => 'Name',
         'newCategoryName' => 'Neue Kategorie',
         'newPhotos' => 'Weitere Fotos',
+        'nutrition.*' => 'Nährwert',
+        'pdf' => 'PDF',
+        'photos' => 'Fotos',
+        'photos.*' => 'Foto',
         'newPhotos.*' => 'Foto',
         'newPropertyName' => 'Name der Eigenschaft',
         'newPropertyType' => 'Typ',
@@ -217,8 +221,10 @@ return [
         'rating' => 'Bewertung',
         'servings' => 'Portionen',
         'tagsInput' => 'Tags',
+        'text' => 'Rezepttext',
         'template' => 'Vorlage',
         'title' => 'Titel',
+        'url' => 'Link',
     ],
 
 ];

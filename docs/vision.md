@@ -33,7 +33,21 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Globale Suche über alle Module (`Strg/Cmd + K`).
 - Inbox mit Umwandlung in Aufgabe, Notiz oder Einkaufslisten-Eintrag.
 
+### Notion-Ansatz – Schritt A: Seitenleiste & Seitenbaum ✅
+- Notizen heißen jetzt Seiten und lassen sich beliebig verschachteln (Unterseiten, Pfadanzeige, Icons).
+- Seitenleiste statt oberer Navigation: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
+- Löschen einer Seite verschiebt ihre Unterseiten eine Ebene nach oben; Zyklen werden verhindert.
+
+### Notion-Ansatz – Schritt B: Editor ✅
+- Tiptap-Editor mit „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen und `[[`-Autovervollständigung.
+- Speicherformat bleibt Markdown (keine Datenmigration; Suche, Wikilinks, Export unverändert). Seiten mit Bildern/HTML öffnen im Markdown-Modus.
+- Checklisten lassen sich in der Leseansicht direkt abhaken.
+
 ## Nächste Schritte
+
+### Notion-Ansatz – nächste Ausbaustufen
+- Seiten per Drag & Drop im Seitenbaum verschieben und sortieren.
+- Bilder/Dateien in Seiten (Upload), danach auch im Editor darstellbar.
 
 ### Phase 3 – Organisation
 - Aufgaben mit Fälligkeit, Zuständigkeit und Wiederholung (z. B. „Müll rausbringen jeden Dienstag“).
@@ -43,8 +57,9 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Tags auch in Aufgaben und Inbox pflegen.
 
 ### Phase 4 – Weitere Module
+- Eigene Sammlungen (frei definierbare Eigenschaften wie Text, Zahl, Datum, Auswahl, Checkbox, Person, Verknüpfung) mit Tabellen-, Board- und Kalenderansicht.
 - Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
-- Rezepte mit „Zutaten auf die Einkaufsliste“.
+- Rezepte: Integration der bestehenden, separat entwickelten Rezepte-App (inkl. „Zutaten auf die Einkaufsliste“).
 - Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.
 
 ### Phase 5 – KI (optional)

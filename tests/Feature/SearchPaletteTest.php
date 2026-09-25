@@ -28,7 +28,7 @@ class SearchPaletteTest extends TestCase
         Volt::test('search-palette')
             ->set('query', 'tomat')
             ->assertSee(['Gartenplanung', 'Tomaten gießen', 'Tomatensorten recherchieren', 'Tomaten', '#tomatenzucht', 'Steuern'])
-            ->assertSeeHtml(e(route('notes.index', ['note' => $note->id])));
+            ->assertSeeHtml(e(route('pages.index', ['item' => $note->id])));
     }
 
     public function test_search_needs_at_least_two_characters(): void
@@ -66,6 +66,6 @@ class SearchPaletteTest extends TestCase
     {
         [$user] = $this->memberWithHousehold();
 
-        $this->actingAs($user)->get(route('notes.index'))->assertOk()->assertSeeVolt('search-palette');
+        $this->actingAs($user)->get(route('pages.index'))->assertOk()->assertSeeVolt('search-palette');
     }
 }

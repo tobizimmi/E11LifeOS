@@ -23,10 +23,19 @@ class NoteMarkdown
     ];
 
     /**
+     * Matches a checklist marker ("- [ ]", "1. [x]", also inside "> " quotes);
+     * group 1 is everything before the state character, group 2 the state.
+     */
+    private const TASK_MARKER = '/^((?:\s*>)*\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(?=\])/';
+
+    /**
      * Wiki links resolve against the notes the viewer can see: existing ones open
      * the note, missing ones offer to create a note with that title.
+     *
+     * With $interactiveTasks, checklist boxes become clickable and call the
+     * Livewire action toggleTask(n), n being the box's position in the page.
      */
-    public static function toHtml(Item $note, User $viewer): string
+    public static function toHtml(Item $note, User $viewer, bool $interactiveTasks = false): string
     {
         $noteIdsByTitle = self::visibleNoteIdsByTitle($note->household_id, $viewer);
         $links = [];
@@ -42,22 +51,86 @@ class NoteMarkdown
             $links[$placeholder] = $targetId
                 ? sprintf(
                     '<a href="%s" class="wiki-link">%s</a>',
-                    e(route('notes.index', ['note' => $targetId])),
+                    e(route('pages.index', ['item' => $targetId])),
                     e($label),
                 )
                 : sprintf(
                     '<a href="%s" class="wiki-link wiki-link-missing" title="%s">%s</a>',
-                    e(route('notes.index', ['new' => $title])),
-                    e(__('Create note')),
+                    e(route('pages.index', ['new' => $title])),
+                    e(__('Create page')),
                     e($label),
                 );
 
             return $placeholder;
         }, $note->body());
 
-        $html = (string) Str::markdown($markdown, self::MARKDOWN_OPTIONS);
+        $html = strtr((string) Str::markdown($markdown, self::MARKDOWN_OPTIONS), $links);
 
-        return strtr($html, $links);
+        if ($interactiveTasks) {
+            // Only the task-list renderer emits <input> tags: raw HTML from the note is stripped.
+            $taskIndex = 0;
+            $html = (string) preg_replace_callback(
+                '/<input (checked="" )?disabled="" type="checkbox">/',
+                function (array $match) use (&$taskIndex) {
+                    $isChecked = ($match[1] ?? '') !== '';
+                    $index = $taskIndex++;
+
+                    // The key changes with the state, so Livewire replaces the box instead of
+                    // morphing it (a prevented click leaves the old checked state on screen).
+                    return sprintf(
+                        '<input %stype="checkbox" wire:key="task-%d-%s" wire:click.prevent="toggleTask(%d)" aria-label="%s">',
+                        $isChecked ? 'checked="" ' : '',
+                        $index,
+                        $isChecked ? 'done' : 'open',
+                        $index,
+                        e(__('Tick off')),
+                    );
+                },
+                $html,
+            );
+        }
+
+        return $html;
+    }
+
+    /**
+     * Flips the n-th checklist item in the Markdown source, counted the same way
+     * the rendered page counts its checkboxes (fenced code blocks are skipped).
+     * Returns null when there is no such item.
+     */
+    public static function toggleTask(string $markdown, int $index): ?string
+    {
+        $lines = preg_split('/(\r\n|\n|\r)/', $markdown, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $fence = null;
+        $taskIndex = 0;
+
+        foreach ($lines as $i => $line) {
+            if ($i % 2 === 1) {
+                continue; // line separator captured by preg_split
+            }
+
+            if (preg_match('/^\s*(`{3,}|~{3,})/', $line, $match)) {
+                if ($fence === null) {
+                    $fence = $match[1][0];
+                } elseif ($match[1][0] === $fence) {
+                    $fence = null;
+                }
+
+                continue;
+            }
+
+            if ($fence !== null || ! preg_match(self::TASK_MARKER, $line, $match)) {
+                continue;
+            }
+
+            if ($taskIndex++ === $index) {
+                $lines[$i] = $match[1].($match[2] === ' ' ? 'x' : ' ').substr($line, strlen($match[0]));
+
+                return implode('', $lines);
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -27,7 +27,7 @@ class DataExportController extends Controller
             'household' => $household?->only(['id', 'name', 'created_at']),
             'household_members' => $household?->members()->with('user:id,name,email')->get()
                 ->map->only(['role', 'joined_at', 'user']),
-            'notes' => $this->exportItems($household, $user, Item::TYPE_NOTE, ['id', 'title', 'content', 'visibility', 'created_at', 'updated_at']),
+            'notes' => $this->exportItems($household, $user, Item::TYPE_NOTE, ['id', 'parent_id', 'icon', 'title', 'content', 'visibility', 'created_at', 'updated_at']),
             'todos' => $this->exportItems($household, $user, Item::TYPE_TODO, ['id', 'title', 'done', 'position', 'visibility', 'created_at', 'updated_at']),
             'inbox' => $this->exportItems($household, $user, Item::TYPE_INBOX, ['id', 'title', 'visibility', 'created_at', 'updated_at']),
             'shopping_list' => $household

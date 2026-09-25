@@ -10,6 +10,8 @@ use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
+use App\Models\CollectionView;
+use App\Support\EntryFilters;
 use App\Support\Links;
 use App\Support\Recurrence;
 use Illuminate\Support\Carbon;
@@ -92,6 +94,22 @@ new #[Layout('layouts.app')] class extends Component
      */
     #[Url(except: '')]
     public string $tag = '';
+
+    /**
+     * Property filters, see App\Support\EntryFilters.
+     *
+     * @var array<int, array{property: string, operator: string, value: string}>
+     */
+    #[Url(as: 'f', except: [])]
+    public array $filters = [];
+
+    /**
+     * Saved view currently applied (id as string, empty = none).
+     */
+    #[Url(as: 'v', except: '')]
+    public string $activeView = '';
+
+    public bool $showFilters = false;
 
     public string $newTitle = '';
 
@@ -444,6 +462,110 @@ new #[Layout('layouts.app')] class extends Component
         $entry->update(['visibility' => $entry->isPrivate() ? Item::VISIBILITY_SHARED : Item::VISIBILITY_PRIVATE]);
     }
 
+    // ── Filters & saved views ────────────────────────────────────────────
+
+    public function addFilter(): void
+    {
+        $property = $this->findCollection()->properties->first();
+        $this->filters[] = ['property' => $property ? (string) $property->id : 'title', 'operator' => array_key_first(EntryFilters::operators($property)), 'value' => ''];
+        $this->showFilters = true;
+    }
+
+    /**
+     * Picking another property resets the operator to the first one that fits.
+     */
+    public function setFilterProperty(int $index, string $propertyId): void
+    {
+        $property = $propertyId === 'title' ? null : $this->findCollection()->properties->firstWhere('id', (int) $propertyId);
+        $this->filters[$index] = ['property' => $property ? (string) $property->id : 'title', 'operator' => array_key_first(EntryFilters::operators($property)), 'value' => ''];
+    }
+
+    public function removeFilter(int $index): void
+    {
+        unset($this->filters[$index]);
+        $this->filters = array_values($this->filters);
+    }
+
+    public function saveView(string $name): void
+    {
+        $name = mb_substr(trim($name), 0, 100);
+
+        if ($name === '') {
+            return;
+        }
+
+        $collection = $this->findCollection();
+        $view = $collection->views()->create([
+            'created_by' => Auth::id(),
+            'name' => $name,
+            'settings' => $this->currentViewSettings(),
+            'position' => (int) $collection->views()->max('position') + 1,
+        ]);
+
+        $this->activeView = (string) $view->id;
+    }
+
+    /**
+     * Overwrites the active view with the current layout and filters.
+     */
+    public function updateView(): void
+    {
+        $this->findView((int) $this->activeView)->update(['settings' => $this->currentViewSettings()]);
+        $this->dispatch('toast', message: __('View saved.'));
+    }
+
+    public function applyView(int $viewId): void
+    {
+        $view = $this->findView($viewId);
+
+        foreach (CollectionView::SETTINGS as $key) {
+            $default = (new ReflectionProperty($this, $key))->getDefaultValue();
+            $this->{$key} = $view->settings[$key] ?? $default;
+        }
+
+        $this->activeView = (string) $view->id;
+        $this->showFilters = false;
+    }
+
+    /**
+     * Back to the plain collection (no view, no filters).
+     */
+    public function clearView(): void
+    {
+        $this->reset(...CollectionView::SETTINGS);
+        $this->reset('activeView');
+    }
+
+    public function deleteView(int $viewId): void
+    {
+        $this->findView($viewId)->delete();
+
+        if ($this->activeView === (string) $viewId) {
+            $this->reset('activeView');
+        }
+    }
+
+    private function findView(int $viewId): CollectionView
+    {
+        return $this->findCollection()->views()->findOrFail($viewId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function currentViewSettings(): array
+    {
+        $settings = [];
+
+        foreach (CollectionView::SETTINGS as $key) {
+            $settings[$key] = $this->{$key};
+        }
+
+        $settings['filters'] = EntryFilters::sanitize($this->filters, $this->findCollection()->properties);
+
+        return $settings;
+    }
+
     // ── Schema & settings ────────────────────────────────────────────────
 
     public function addProperty(): void
@@ -706,6 +828,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $entries = $this->entries()->with('creator', 'tags')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
+            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
                 fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
             ))
@@ -749,6 +872,13 @@ new #[Layout('layouts.app')] class extends Component
             'selectProperties' => $properties->where('type', CollectionProperty::TYPE_SELECT)->values(),
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
             'openEntry' => $openEntry,
+            'savedViews' => $collection->views,
+            'activeViewModel' => $this->activeView !== '' ? $collection->views->firstWhere('id', (int) $this->activeView) : null,
+            'filterRows' => collect($this->filters)->map(function ($filter) use ($properties) {
+                $property = ($filter['property'] ?? 'title') === 'title' ? null : $properties->firstWhere('id', (int) $filter['property']);
+
+                return ['filter' => $filter, 'property' => $property, 'operators' => EntryFilters::operators($property)];
+            })->all(),
             'relationNodes' => $this->relationNodes($properties, $entries->concat($openEntry ? [$openEntry] : [])),
             'collectionTags' => \App\Models\Tag::query()
                 ->whereHas('items', fn ($items) => $items->whereIn('items.id', $this->entries()->select('items.id')))
@@ -902,6 +1032,72 @@ new #[Layout('layouts.app')] class extends Component
                         <x-input-error :messages="$errors->get('newPropertyName')" class="mt-1" />
                     </div>
                 </section>
+            @endif
+
+            {{-- Saved views and filters --}}
+            <div class="flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-2" role="tablist" aria-label="{{ __('Views') }}">
+                <button type="button" role="tab" aria-selected="{{ $activeView === '' ? 'true' : 'false' }}" wire:click="clearView" @class(['rounded-md px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $activeView === '', 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== ''])>{{ __('All') }}</button>
+                @foreach ($savedViews as $savedView)
+                    <span wire:key="view-{{ $savedView->id }}" class="group inline-flex items-center">
+                        <button type="button" role="tab" aria-selected="{{ $activeView === (string) $savedView->id ? 'true' : 'false' }}" wire:click="applyView({{ $savedView->id }})" @class(['rounded-md px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $activeView === (string) $savedView->id, 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== (string) $savedView->id])>{{ $savedView->name }}</button>
+                        <button type="button" wire:click="deleteView({{ $savedView->id }})" wire:confirm="{{ __('Delete this view?') }}" class="px-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600" aria-label="{{ __('Delete view :name', ['name' => $savedView->name]) }}">✕</button>
+                    </span>
+                @endforeach
+                <span class="flex-1"></span>
+                <button type="button" wire:click="$toggle('showFilters')" @class(['rounded-md px-3 py-1 text-sm ring-1', 'bg-indigo-50 text-indigo-700 ring-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-200' => $filterRows !== [], 'text-gray-600 dark:text-gray-300 ring-gray-300 dark:ring-gray-600' => $filterRows === []]) aria-expanded="{{ $showFilters ? 'true' : 'false' }}">
+                    ⚲ {{ __('Filter') }}@if ($filterRows !== []) ({{ count($filterRows) }})@endif
+                </button>
+                @if ($activeViewModel)
+                    <button type="button" wire:click="updateView" class="rounded-md px-3 py-1 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">💾 {{ __('Update view') }}</button>
+                @endif
+                <button type="button" x-data x-on:click="const name = window.prompt(@js(__('Name of the view, e.g. “My tasks this week”:'))); if (name && name.trim()) { $wire.saveView(name.trim()) }" class="rounded-md px-3 py-1 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700">+ {{ __('Save as view') }}</button>
+            </div>
+
+            @if ($showFilters || $filterRows !== [])
+                <div class="rounded-lg bg-white dark:bg-gray-800 p-3 shadow-sm space-y-2" aria-label="{{ __('Filter') }}">
+                    @foreach ($filterRows as $index => $row)
+                        <div wire:key="filter-{{ $index }}" class="flex flex-wrap items-center gap-2 text-sm">
+                            <span class="w-10 text-xs text-gray-500">{{ $index === 0 ? __('Where') : __('and') }}</span>
+                            <select wire:change="setFilterProperty({{ $index }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm" aria-label="{{ __('Property') }}">
+                                <option value="title" @selected($row['property'] === null)>{{ __('Title') }}</option>
+                                @foreach ($properties as $property)
+                                    <option value="{{ $property->id }}" @selected($row['property']?->id === $property->id)>{{ $property->name }}</option>
+                                @endforeach
+                            </select>
+                            <select wire:model.live="filters.{{ $index }}.operator" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm" aria-label="{{ __('Condition') }}">
+                                @foreach ($row['operators'] as $operator => $operatorLabel)
+                                    <option value="{{ $operator }}">{{ $operatorLabel }}</option>
+                                @endforeach
+                            </select>
+                            @if (\App\Support\EntryFilters::needsValue($row['filter']['operator'] ?? ''))
+                                @if ($row['property'] && $row['property']->hasOptions())
+                                    <select wire:model.live="filters.{{ $index }}.value" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm" aria-label="{{ __('Value') }}">
+                                        <option value="">—</option>
+                                        @foreach ($row['property']->selectOptions() as $option)
+                                            <option value="{{ $option['id'] }}">{{ $option['name'] }}</option>
+                                        @endforeach
+                                    </select>
+                                @elseif ($row['property'] && $row['property']->type === \App\Models\CollectionProperty::TYPE_PERSON)
+                                    <select wire:model.live="filters.{{ $index }}.value" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm" aria-label="{{ __('Value') }}">
+                                        <option value="">—</option>
+                                        @foreach ($members as $member)
+                                            <option value="{{ $member->id }}">{{ $member->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <input
+                                        type="{{ $row['property']?->type === \App\Models\CollectionProperty::TYPE_DATE ? 'date' : ($row['property']?->type === \App\Models\CollectionProperty::TYPE_NUMBER ? 'number' : 'text') }}"
+                                        wire:model.live.debounce.400ms="filters.{{ $index }}.value"
+                                        class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm"
+                                        aria-label="{{ __('Value') }}"
+                                    />
+                                @endif
+                            @endif
+                            <button type="button" wire:click="removeFilter({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove filter') }}">✕</button>
+                        </div>
+                    @endforeach
+                    <button type="button" wire:click="addFilter" class="text-sm text-indigo-600 dark:text-indigo-400 underline">+ {{ __('Add filter') }}</button>
+                </div>
             @endif
 
             @if ($collectionTags->isNotEmpty())

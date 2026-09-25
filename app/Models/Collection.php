@@ -53,6 +53,11 @@ class Collection extends Model
         return $this->hasMany(CollectionProperty::class)->orderBy('position')->orderBy('id');
     }
 
+    public function views(): HasMany
+    {
+        return $this->hasMany(CollectionView::class)->orderBy('position')->orderBy('id');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(Item::class);

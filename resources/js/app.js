@@ -2,6 +2,11 @@ import sort from '@alpinejs/sort';
 
 import './echo';
 
+// Offline copies of pages belong to the signed-in user: drop them on the login/welcome pages.
+if (!document.querySelector('meta[name="e11-authenticated"]') && 'caches' in window) {
+    caches.delete('e11lifeos-pages').catch(() => {});
+}
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         // Base URL is injected server-side (works whether the app is deployed

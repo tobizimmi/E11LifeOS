@@ -9,6 +9,7 @@
 
         <!-- PWA (app.url()/asset() so this also works when deployed under a URL path, e.g. /E11LifeOS) -->
         <meta name="app-base-url" content="{{ url('/') }}">
+        <meta name="e11-authenticated" content="1">
         <link rel="manifest" href="{{ asset('manifest.json') }}">
         <meta name="theme-color" content="#4f46e5">
         <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
@@ -24,6 +25,19 @@
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             <livewire:layout.navigation />
+
+            {{-- Shown while the device is offline (the shopping list stays readable from the cache). --}}
+            <div
+                x-data="{ online: navigator.onLine }"
+                x-on:online.window="online = true"
+                x-on:offline.window="online = false"
+                x-show="! online"
+                x-cloak
+                role="status"
+                class="lg:ps-64 sticky top-0 z-20 bg-amber-100 dark:bg-amber-900/60 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100"
+            >
+                {{ __('You are offline – you see the last loaded state. Changes are possible again once you are online.') }}
+            </div>
 
             <div class="lg:ps-64">
                 <!-- Page Heading -->

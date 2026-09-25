@@ -70,7 +70,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         return [
             'entries' => $this->visibleItems(Item::TYPE_INBOX)
-                ->with('creator')
+                ->with('creator', 'tags')
                 ->latest()
                 ->get(),
         ];
@@ -110,6 +110,13 @@ new #[Layout('layouts.app')] class extends Component
                                             <x-private-badge />
                                         @endif
                                     </p>
+                                    @if ($entry->tags->isNotEmpty())
+                                        <p class="mt-1 flex flex-wrap gap-1">
+                                            @foreach ($entry->tags->sortBy('name') as $entryTag)
+                                                <span class="rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300">#{{ $entryTag->name }}</span>
+                                            @endforeach
+                                        </p>
+                                    @endif
                                 </div>
                                 <button type="button" wire:click="delete({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-sm text-red-600 dark:text-red-400 underline shrink-0">
                                     {{ __('Delete') }}

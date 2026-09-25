@@ -11,12 +11,13 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 
 - **Seitenleiste** – Navigation wie in Notion: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
-- **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste.
+- **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
+- **Erinnerungen** – tägliche E-Mail um 7:00 mit fälligen und überfälligen Aufgaben (im Profil einschalten).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.
 - **Aufgaben** – eingebaute Sammlung mit Status, Fälligkeit, Zuständigkeit und Wiederholung (täglich/wöchentlich/monatlich/jährlich – abgehakt springt die Aufgabe zum nächsten Termin); als Board, Tabelle oder Kalender; Überfälliges wird hervorgehoben.
-- **Kalender** – Monatsansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen.
+- **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
 - **Sammlungen** – eigene Tabellen/Boards wie Notion-Datenbanken: Eigenschaften (Text, Zahl, Datum, Auswahl, Checkbox, Person, Link), Vorlagen (Projekte, Verträge, Leseliste), jeder Eintrag mit eigenen Notizen.
-- **Einkaufsliste** – abhaken, per Wischen löschen, Produkte per Barcode-Scanner (Kamera oder Nummer, Daten von Open Food Facts) eintragen.
+- **Einkaufsliste** – abhaken, per Wischen löschen, auch offline lesbar (zuletzt geladener Stand), Produkte per Barcode-Scanner (Kamera oder Nummer, Daten von Open Food Facts) eintragen.
 - **Rezepte (Addon)** – Rezeptsammlung mit Foto und weiteren Bildern (Galerie), Zutaten (mit Abschnitten), Zubereitungsschritten, Portionsrechner, Kategorien, Tags, Favoriten, Bewertungen (Sterne + Notiz pro Person), Archiv und Duplizieren; ausgewählte Zutaten landen mit einem Klick (umgerechnet) auf der Einkaufsliste. „Was kann ich kochen?“ sucht nach vorhandenen Zutaten. Pro Haushalt ein-/ausschaltbar (Haushalt → Addons).
 - **Rezepte importieren** – per Link (liest die Rezeptdaten der Seite direkt, sonst die KI), Foto/Screenshot (auch Kochbuchseiten und Handschrift), PDF oder eingefügtem Text; das Formular öffnet vorausgefüllt zum Prüfen. Dazu Nährwerte pro Portion (von Hand oder per KI geschätzt), PDF-Export und öffentliche Links zum Teilen (jederzeit abschaltbar).
 - **Kochmodus** – Schritt für Schritt im Vollbild, Timer aus dem Schritttext („10 Minuten“) oder per Schnellwahl, Alarm mit Ton/Vibration, Bildschirm bleibt an; am Ende bewerten.
@@ -81,6 +82,16 @@ php artisan recipes:import-rezepteapp deine@email.de \
 - Die Rezepte landen geteilt im Haushalt der angegebenen Person (`--private` für nur privat).
 - Der Befehl kann gefahrlos mehrfach laufen: Bereits übernommene Rezepte werden übersprungen, in LifeOS geänderte bleiben unangetastet.
 - Fotos, die nicht im Upload-Ordner liegen, werden per URL geladen (`--uploads-url=https://zimmimail.de/RezepteApp2/uploads` als Fallback).
+
+## Geplante Aufgaben (Erinnerungen)
+
+Die täglichen E-Mails verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
+
+```bash
+* * * * * cd /pfad/zur/app && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Dazu müssen die `MAIL_*`-Einstellungen in der `.env` auf einen echten Mailserver zeigen.
 
 ## Tests & Code-Stil
 

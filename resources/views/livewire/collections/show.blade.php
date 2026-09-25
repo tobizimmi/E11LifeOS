@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Support\NoteMarkdown;
+use App\Support\Recurrence;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -58,12 +59,30 @@ new #[Layout('layouts.app')] class extends Component
     public string $month = '';
 
     /**
+     * Calendar range: "month" or "week".
+     */
+    #[Url(as: 'range', except: 'month')]
+    public string $calendarRange = 'month';
+
+    /**
+     * Any day of the calendar week as "YYYY-MM-DD" (empty = this week).
+     */
+    #[Url(except: '')]
+    public string $week = '';
+
+    /**
      * Date property the calendar uses (id as string; empty = first date property).
      */
     #[Url(as: 'date', except: '')]
     public string $dateBy = '';
 
     public bool $hideDone = false;
+
+    /**
+     * Only entries with this tag (empty = all).
+     */
+    #[Url(except: '')]
+    public string $tag = '';
 
     public string $newTitle = '';
 
@@ -137,7 +156,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function addEntry(?string $optionId = null, ?string $title = null): void
     {
-        $title = trim($title ?? $this->newTitle);
+        [$title, $tags] = Item::splitHashtags(trim($title ?? $this->newTitle));
 
         if ($title === '') {
             $this->addError('newTitle', __('Please enter a title.'));
@@ -163,9 +182,18 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $entry->save();
+        $entry->syncTagNames($this->tag !== '' ? [...$tags, $this->tag] : $tags);
 
         $this->reset('newTitle');
         $this->resetErrorBag('newTitle');
+    }
+
+    /**
+     * Tags of an entry from the side panel (comma-separated, "#" optional).
+     */
+    public function updateTags(int $entryId, string $tags): void
+    {
+        $this->findEntry($entryId)->syncTagNames(explode(',', $tags));
     }
 
     /**
@@ -203,12 +231,43 @@ new #[Layout('layouts.app')] class extends Component
 
     public function changeMonth(int $offset): void
     {
+        if ($this->calendarRange === 'week') {
+            $this->week = $this->calendarWeek()->addWeeks($offset)->format('Y-m-d');
+
+            return;
+        }
+
         $this->month = $this->calendarMonth()->addMonthsNoOverflow($offset)->format('Y-m');
     }
 
     public function currentMonth(): void
     {
-        $this->reset('month');
+        $this->reset('month', 'week');
+    }
+
+    /**
+     * Switches between month and week, keeping the shown period roughly in place.
+     */
+    public function setCalendarRange(string $range): void
+    {
+        if ($range === 'week' && $this->calendarRange !== 'week') {
+            $month = $this->calendarMonth();
+            $this->week = $month->isSameMonth(now()) ? '' : $month->format('Y-m-d');
+        } elseif ($range === 'month' && $this->calendarRange === 'week') {
+            $this->month = $this->week !== '' ? $this->calendarWeek()->format('Y-m') : '';
+        }
+
+        $this->calendarRange = $range === 'week' ? 'week' : 'month';
+    }
+
+    /**
+     * Monday of the shown calendar week.
+     */
+    private function calendarWeek(): Carbon
+    {
+        $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->week) ? Carbon::createFromFormat('!Y-m-d', $this->week) : null;
+
+        return ($date ?: now())->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
     }
 
     private function calendarMonth(): Carbon
@@ -502,17 +561,36 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Weeks (Monday first) covering the calendar month, each day with its entries.
+     * Weeks (Monday first) covering the calendar month (or the one week), each day with its
+     * entries and, for repeating tasks, a preview of their upcoming dates.
      *
-     * @return array{month: Carbon, weeks: array<int, array<int, array{date: string, day: int, inMonth: bool, isToday: bool, entries: array<int, Item>}>>, undated: array<int, Item>}
+     * @return array{month: Carbon, isWeek: bool, weekStart: Carbon, weeks: array<int, array<int, array{date: string, day: int, inMonth: bool, isToday: bool, entries: array<int, Item>, previews: array<int, Item>}>>, undated: array<int, Item>}
      */
-    private function calendarData($entries, CollectionProperty $dateProperty): array
+    private function calendarData($entries, CollectionProperty $dateProperty, ?CollectionProperty $repeatProperty = null): array
     {
-        $month = $this->calendarMonth();
+        $isWeek = $this->calendarRange === 'week';
+        $month = $isWeek ? $this->calendarWeek()->copy()->startOfMonth() : $this->calendarMonth();
         $byDate = $entries->groupBy(fn (Item $entry) => (string) $entry->propertyValue($dateProperty));
-        $day = $month->copy()->startOfWeek(Carbon::MONDAY);
-        $end = $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        $day = $isWeek ? $this->calendarWeek() : $month->copy()->startOfWeek(Carbon::MONDAY);
+        $end = $isWeek ? $day->copy()->addDays(6) : $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        $weekStart = $day->copy();
         $weeks = [];
+
+        $previews = [];
+
+        if ($repeatProperty) {
+            foreach ($entries as $entry) {
+                $rule = $entry->propertyValue($repeatProperty);
+                $date = (string) $entry->propertyValue($dateProperty);
+
+                if ($rule && $date !== '' && ! $entry->done) {
+                    foreach (Recurrence::occurrencesBetween($date, $rule, $day, $end) as $upcoming) {
+                        $previews[$upcoming][] = $entry;
+                    }
+                }
+            }
+        }
+
 
         while ($day->lte($end)) {
             $week = [];
@@ -522,9 +600,10 @@ new #[Layout('layouts.app')] class extends Component
                 $week[] = [
                     'date' => $date,
                     'day' => $day->day,
-                    'inMonth' => $day->month === $month->month,
+                    'inMonth' => $isWeek || $day->month === $month->month,
                     'isToday' => $day->isToday(),
                     'entries' => ($byDate[$date] ?? collect())->all(),
+                    'previews' => $previews[$date] ?? [],
                 ];
                 $day->addDay();
             }
@@ -532,7 +611,7 @@ new #[Layout('layouts.app')] class extends Component
             $weeks[] = $week;
         }
 
-        return ['month' => $month, 'weeks' => $weeks, 'undated' => ($byDate[''] ?? collect())->all()];
+        return ['month' => $month, 'isWeek' => $isWeek, 'weekStart' => $weekStart, 'weeks' => $weeks, 'undated' => ($byDate[''] ?? collect())->all()];
     }
 
     public function with(): array
@@ -547,7 +626,8 @@ new #[Layout('layouts.app')] class extends Component
             $view = 'table';
         }
 
-        $entries = $this->entries()->with('creator')->orderBy('position')->orderBy('id')->get()
+        $entries = $this->entries()->with('creator', 'tags')->orderBy('position')->orderBy('id')->get()
+            ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
                 fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
             ))
@@ -574,7 +654,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $openEntry = $this->openEntryId !== '' && ctype_digit($this->openEntryId)
-            ? $this->entries()->with('creator')->find((int) $this->openEntryId)
+            ? $this->entries()->with('creator', 'tags')->find((int) $this->openEntryId)
             : null;
 
         return [
@@ -584,11 +664,15 @@ new #[Layout('layouts.app')] class extends Component
             'currentView' => $view,
             'dateProperty' => $dateProperty,
             'dateProperties' => $properties->where('type', CollectionProperty::TYPE_DATE)->values(),
-            'calendar' => $view === 'calendar' ? $this->calendarData($entries->values(), $dateProperty) : null,
+            'calendar' => $view === 'calendar' ? $this->calendarData($entries->values(), $dateProperty, $collection->isTasks() ? $collection->systemProperty('repeat') : null) : null,
             'groupProperty' => $groupProperty,
             'selectProperties' => $properties->where('type', CollectionProperty::TYPE_SELECT)->values(),
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
             'openEntry' => $openEntry,
+            'collectionTags' => \App\Models\Tag::query()
+                ->whereHas('items', fn ($items) => $items->whereIn('items.id', $this->entries()->select('items.id')))
+                ->orderBy('name')
+                ->pluck('name'),
             'openEntryHtml' => $openEntry ? NoteMarkdown::toHtml($openEntry, Auth::user(), interactiveTasks: true) : null,
             'propertyTypes' => [
                 CollectionProperty::TYPE_TEXT => __('Text'),
@@ -726,10 +810,18 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endif
 
+            @if ($collectionTags->isNotEmpty())
+                <div class="flex flex-wrap items-center gap-1" aria-label="{{ __('Filter by tag') }}">
+                    @foreach ($collectionTags as $tagName)
+                        <button type="button" wire:key="tag-filter-{{ $tagName }}" wire:click="$set('tag', @js($tag === $tagName ? '' : $tagName))" aria-pressed="{{ $tag === $tagName ? 'true' : 'false' }}" @class(['rounded-full px-2 py-0.5 text-xs', 'bg-indigo-600 text-white' => $tag === $tagName, 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' => $tag !== $tagName])>#{{ $tagName }}</button>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- Toolbar --}}
             <div class="flex flex-wrap items-center gap-3">
                 <form wire:submit="addEntry()" class="flex flex-1 min-w-[16rem] gap-2">
-                    <x-text-input wire:model="newTitle" class="block w-full" placeholder="{{ $collection->isTasks() ? __('New task...') : __('New entry...') }}" aria-label="{{ __('Title') }}" />
+                    <x-text-input wire:model="newTitle" class="block w-full" placeholder="{{ $collection->isTasks() ? __('New task... (#tags optional)') : __('New entry... (#tags optional)') }}" aria-label="{{ __('Title') }}" />
                     <x-primary-button>{{ __('Add') }}</x-primary-button>
                 </form>
                 <x-text-input wire:model.live.debounce.300ms="search" type="search" class="block w-48" placeholder="{{ __('Filter...') }}" aria-label="{{ __('Filter') }}" />
@@ -789,6 +881,9 @@ new #[Layout('layouts.app')] class extends Component
                                             <button type="button" wire:click="openEntry({{ $entry->id }})" @class(['text-start font-medium hover:underline', 'line-through text-gray-400' => $collection->isTasks() && $entry->done, 'text-gray-900 dark:text-gray-100' => ! ($collection->isTasks() && $entry->done)])>
                                                 {{ $entry->title }}
                                             </button>
+                                            @foreach ($entry->tags->sortBy('name') as $entryTag)
+                                                <span class="text-xs text-indigo-600 dark:text-indigo-300">#{{ $entryTag->name }}</span>
+                                            @endforeach
                                             @if ($entry->isPrivate() && ! $collection->isPrivate())
                                                 <x-private-badge />
                                             @endif
@@ -821,10 +916,21 @@ new #[Layout('layouts.app')] class extends Component
                 <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-3 sm:p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div class="flex items-center gap-2">
-                            <button type="button" wire:click="changeMonth(-1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ __('Previous month') }}">‹</button>
-                            <h2 class="min-w-[10rem] text-center font-semibold text-gray-900 dark:text-gray-100">{{ $calendar['month']->translatedFormat('F Y') }}</h2>
-                            <button type="button" wire:click="changeMonth(1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ __('Next month') }}">›</button>
+                            <button type="button" wire:click="changeMonth(-1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ $calendar['isWeek'] ? __('Previous week') : __('Previous month') }}">‹</button>
+                            <h2 class="min-w-[10rem] text-center font-semibold text-gray-900 dark:text-gray-100">
+                                @if ($calendar['isWeek'])
+                                    {{ $calendar['weekStart']->translatedFormat('j. M') }} – {{ $calendar['weekStart']->copy()->addDays(6)->translatedFormat('j. M Y') }}
+                                    <span class="text-xs font-normal text-gray-500">· {{ __('Week :number', ['number' => $calendar['weekStart']->isoWeek()]) }}</span>
+                                @else
+                                    {{ $calendar['month']->translatedFormat('F Y') }}
+                                @endif
+                            </h2>
+                            <button type="button" wire:click="changeMonth(1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ $calendar['isWeek'] ? __('Next week') : __('Next month') }}">›</button>
                             <button type="button" wire:click="currentMonth" class="text-sm text-indigo-600 dark:text-indigo-400 underline">{{ __('Today') }}</button>
+                            <div class="ms-2 inline-flex rounded-md ring-1 ring-gray-300 dark:ring-gray-600 text-sm" role="group" aria-label="{{ __('Calendar range') }}">
+                                <button type="button" wire:click="setCalendarRange('month')" aria-pressed="{{ $calendar['isWeek'] ? 'false' : 'true' }}" @class(['rounded-s-md px-2 py-1', 'bg-indigo-600 text-white' => ! $calendar['isWeek'], 'text-gray-700 dark:text-gray-300' => $calendar['isWeek']])>{{ __('Month') }}</button>
+                                <button type="button" wire:click="setCalendarRange('week')" aria-pressed="{{ $calendar['isWeek'] ? 'true' : 'false' }}" @class(['rounded-e-md px-2 py-1', 'bg-indigo-600 text-white' => $calendar['isWeek'], 'text-gray-700 dark:text-gray-300' => ! $calendar['isWeek']])>{{ __('Week') }}</button>
+                            </div>
                         </div>
                         @if ($dateProperties->count() > 1)
                             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -849,7 +955,9 @@ new #[Layout('layouts.app')] class extends Component
                                 <div
                                     wire:key="day-{{ $day['date'] }}"
                                     @class([
-                                        'group relative min-h-[5.5rem] border-e border-b border-gray-200 dark:border-gray-700 p-1',
+                                        'group relative border-e border-b border-gray-200 dark:border-gray-700 p-1',
+                                        'min-h-[5.5rem]' => ! $calendar['isWeek'],
+                                        'min-h-[16rem]' => $calendar['isWeek'],
                                         'bg-gray-50 dark:bg-gray-900/40' => ! $day['inMonth'],
                                     ])
                                 >
@@ -877,6 +985,11 @@ new #[Layout('layouts.app')] class extends Component
                                             <x-calendar-chip :entry="$calendarEntry" :collection="$collection" :group-property="$groupProperty" />
                                         @endforeach
                                     </ul>
+                                    @foreach ($day['previews'] as $previewEntry)
+                                        <button type="button" wire:key="preview-{{ $day['date'] }}-{{ $previewEntry->id }}" wire:click="openEntry({{ $previewEntry->id }})" class="mt-0.5 flex w-full items-center gap-1 truncate rounded border border-dashed border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 text-start text-xs text-indigo-400 dark:text-indigo-300/70" title="{{ __('Repeats: :title', ['title' => $previewEntry->title]) }}">
+                                            <span aria-hidden="true">↻</span><span class="truncate">{{ $previewEntry->title }}</span>
+                                        </button>
+                                    @endforeach
                                 </div>
                             @endforeach
                         @endforeach
@@ -934,6 +1047,9 @@ new #[Layout('layouts.app')] class extends Component
                                             @if ($card->isPrivate() && ! $collection->isPrivate())
                                                 <x-private-badge />
                                             @endif
+                                            @foreach ($card->tags->sortBy('name') as $cardTag)
+                                                <span class="text-indigo-600 dark:text-indigo-300">#{{ $cardTag->name }}</span>
+                                            @endforeach
                                             @foreach ($properties as $property)
                                                 @continue($property->id === $groupProperty->id)
                                                 @php($value = $card->propertyValue($property))
@@ -1012,6 +1128,18 @@ new #[Layout('layouts.app')] class extends Component
                         <dt class="text-gray-500 dark:text-gray-400" wire:key="dt-{{ $property->id }}">{{ $property->name }}</dt>
                         <dd wire:key="dd-{{ $openEntry->id }}-{{ $property->id }}"><x-property-input :property="$property" :item="$openEntry" :members="$members" /></dd>
                     @endforeach
+                    <dt class="text-gray-500 dark:text-gray-400">{{ __('Tags') }}</dt>
+                    <dd>
+                        <input
+                            type="text"
+                            value="{{ $openEntry->tags->sortBy('name')->pluck('name')->implode(', ') }}"
+                            wire:change="updateTags({{ $openEntry->id }}, $event.target.value)"
+                            wire:key="panel-tags-{{ $openEntry->id }}"
+                            placeholder="{{ __('e.g. garden, urgent') }}"
+                            aria-label="{{ __('Tags') }}"
+                            class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm"
+                        />
+                    </dd>
                     @if (! $collection->isPrivate() && $openEntry->visibilityCanBeChangedBy(auth()->user()))
                         <dt class="text-gray-500 dark:text-gray-400">{{ __('Visibility') }}</dt>
                         <dd>

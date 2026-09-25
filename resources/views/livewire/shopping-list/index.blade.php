@@ -116,7 +116,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div x-show="supported && ! failed" class="pointer-events-none absolute inset-0 flex items-center justify-center">
                             <div class="h-28 w-64 rounded-lg border-4 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
                         </div>
-                        <p x-show="! supported || failed" class="p-6 text-center text-gray-300" x-text="failed ? @js(__('The camera could not be started. Please allow camera access or type the number.')) : @js(__('This browser cannot read barcodes with the camera. Type the number below the barcode instead.'))"></p>
+                        <p x-show="! supported || failed" class="p-6 text-center text-gray-300" x-text="failed ? @js(__('The camera could not be started. Please allow camera access or type the number.')) : @js(__('This browser cannot open the camera here. Type the number below the barcode instead.'))"></p>
                     </div>
                     <form x-on:submit.prevent="submitManual()" class="flex gap-2 bg-gray-900 p-4">
                         <input x-model="manualCode" inputmode="numeric" pattern="[0-9]*" class="block flex-1 rounded-md border-gray-700 bg-gray-800 text-white" placeholder="{{ __('Barcode number, e.g. 4000417025005') }}" aria-label="{{ __('Barcode number') }}" />

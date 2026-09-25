@@ -496,7 +496,7 @@
     "The planned recipes have no ingredients.": "Die geplanten Rezepte haben keine Zutaten.",
     "The public link no longer works.": "Der öffentliche Link funktioniert nicht mehr.",
     "This address cannot be imported.": "Diese Adresse kann nicht importiert werden.",
-    "This browser cannot read barcodes with the camera. Type the number below the barcode instead.": "Dieser Browser kann Barcodes nicht mit der Kamera lesen. Tippe stattdessen die Nummer unter dem Barcode ein.",
+    "This browser cannot open the camera here. Type the number below the barcode instead.": "Dieser Browser kann die Kamera hier nicht öffnen. Tippe stattdessen die Nummer unter dem Barcode ein.",
     "This invite code is invalid or has expired.": "Dieser Einladungscode ist ungültig oder abgelaufen.",
     "This is a secure area of the application. Please confirm your password before continuing.": "Dies ist ein geschützter Bereich. Bitte bestätige dein Passwort, um fortzufahren.",
     "This page cannot be moved there.": "Die Seite kann dort nicht einsortiert werden.",

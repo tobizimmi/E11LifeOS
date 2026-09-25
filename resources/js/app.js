@@ -243,16 +243,18 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
-     * Barcode scanner for the shopping list: the browser's BarcodeDetector reads EAN/UPC codes
-     * from the rear camera; where it is missing (e.g. Safari) the number can be typed.
+     * Barcode scanner for the shopping list: reads EAN/UPC codes from the rear camera with the
+     * browser's BarcodeDetector, or with the ZXing library where it is missing (e.g. Safari on
+     * iPhone – loaded only then). The number can always be typed instead.
      */
     window.Alpine.data('barcodeScanner', () => {
         let stream = null;
         let timer = null;
+        let controls = null;
 
         return {
             visible: false,
-            supported: 'BarcodeDetector' in window,
+            supported: !!navigator.mediaDevices?.getUserMedia,
             failed: false,
             manualCode: '',
 
@@ -261,29 +263,55 @@ document.addEventListener('alpine:init', () => {
                 this.failed = false;
                 this.manualCode = '';
 
-                if (! this.supported) {
+                if (!this.supported) {
                     return;
                 }
 
                 try {
-                    const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    this.$refs.video.srcObject = stream;
-                    await this.$refs.video.play();
-
-                    timer = setInterval(async () => {
-                        const codes = await detector.detect(this.$refs.video).catch(() => []);
-                        if (codes.length > 0) {
-                            this.found(codes[0].rawValue);
-                        }
-                    }, 300);
+                    if ('BarcodeDetector' in window) {
+                        await this.scanWithDetector();
+                    } else {
+                        await this.scanWithZxing();
+                    }
                 } catch (error) {
                     this.failed = true;
                     this.stop();
                 }
             },
 
+            async scanWithDetector() {
+                const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                this.$refs.video.srcObject = stream;
+                await this.$refs.video.play();
+
+                timer = setInterval(async () => {
+                    const codes = await detector.detect(this.$refs.video).catch(() => []);
+                    if (codes.length > 0) {
+                        this.found(codes[0].rawValue);
+                    }
+                }, 300);
+            },
+
+            async scanWithZxing() {
+                const { BrowserMultiFormatReader } = await import('@zxing/browser');
+
+                if (!this.visible) {
+                    return;
+                }
+
+                controls = await new BrowserMultiFormatReader().decodeFromConstraints(
+                    { video: { facingMode: 'environment' } },
+                    this.$refs.video,
+                    (result) => result && this.found(result.getText()),
+                );
+            },
+
             found(code) {
+                if (!this.visible) {
+                    return;
+                }
+
                 navigator.vibrate?.(100);
                 this.close();
                 this.$wire.lookupBarcode(code);
@@ -297,6 +325,8 @@ document.addEventListener('alpine:init', () => {
 
             stop() {
                 clearInterval(timer);
+                controls?.stop();
+                controls = null;
                 stream?.getTracks().forEach((track) => track.stop());
                 stream = null;
             },

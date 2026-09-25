@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
 use App\Support\Addons;
+use App\Support\PageMover;
 use App\Support\PageTree;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
@@ -50,6 +51,18 @@ new class extends Component
     }
 
     /**
+     * Drag & drop in the page tree: new parent (null = top level) and index among its children.
+     */
+    public function movePage(int $pageId, ?int $parentId, int $index): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, $pageId);
+
+        if (! PageMover::move($page, $parentId, $index, Auth::user())) {
+            $this->dispatch('toast', message: __('This page cannot be moved there.'));
+        }
+    }
+
+    /**
      * Log the current user out of the application.
      */
     public function logout(Logout $logout): void
@@ -66,7 +79,7 @@ new class extends Component
         }
 
         $tree = new PageTree(
-            $this->visibleItems(Item::TYPE_NOTE)->get(['id', 'parent_id', 'title', 'icon', 'visibility', 'created_by'])
+            $this->visibleItems(Item::TYPE_NOTE)->get(['id', 'parent_id', 'title', 'icon', 'visibility', 'created_by', 'position'])
         );
         $roots = collect($tree->roots());
 
@@ -155,7 +168,7 @@ new class extends Component
 
                 <x-sidebar-section :title="__('Pages')" :add-href="route('pages.index', ['create' => 1])" :all-href="route('pages.index')">
                     @if ($sharedRoots !== [])
-                        <x-page-tree :tree="$tree" :pages="$sharedRoots" :current-id="$currentPageId" :open-ids="$openIds" />
+                        <x-page-tree :tree="$tree" :pages="$sharedRoots" :current-id="$currentPageId" :open-ids="$openIds" sort-group="pages-shared" />
                     @else
                         <p class="px-2 text-xs text-gray-400">{{ __('No shared pages yet.') }}</p>
                     @endif
@@ -163,7 +176,7 @@ new class extends Component
 
                 <x-sidebar-section :title="__('Private')" :add-href="route('pages.index', ['create' => 1, 'private' => 1])">
                     @if ($privateRoots !== [])
-                        <x-page-tree :tree="$tree" :pages="$privateRoots" :current-id="$currentPageId" :open-ids="$openIds" :private-section="true" />
+                        <x-page-tree :tree="$tree" :pages="$privateRoots" :current-id="$currentPageId" :open-ids="$openIds" :private-section="true" sort-group="pages-private" />
                     @else
                         <p class="px-2 text-xs text-gray-400">{{ __('Only you can see pages here.') }}</p>
                     @endif

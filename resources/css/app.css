@@ -84,6 +84,14 @@
         @apply cursor-pointer;
     }
 
+    .note-content img {
+        @apply my-2 inline-block max-h-[32rem] max-w-full rounded-md;
+    }
+
+    .note-editor img.ProseMirror-selectednode {
+        @apply ring-2 ring-indigo-500;
+    }
+
     /* Tiptap page editor */
     .editor-frame {
         @apply rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500;

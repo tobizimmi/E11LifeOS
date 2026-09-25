@@ -26,8 +26,9 @@ document.addEventListener('alpine:init', () => {
         return {
             mode: 'loading',
             selectionTick: 0,
-            // Images and raw HTML have no editor equivalent and would be dropped on save.
+            // Raw HTML has no editor equivalent and would be dropped on save.
             hasUnsupportedContent: false,
+            uploadStatus: '',
 
             async init() {
                 try {
@@ -38,10 +39,12 @@ document.addEventListener('alpine:init', () => {
                         pageTitles,
                         translations,
                         onChange: (markdown) => this.$wire.$set('body', markdown, false),
+                        onFiles: (files) => this.uploadFiles(files),
+                        onPickFile: () => this.pickFile(),
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
                     editor.on('transaction', () => this.selectionTick++);
-                    this.hasUnsupportedContent = /!\[|<[a-z!/]/i.test(this.$wire.body ?? '');
+                    this.hasUnsupportedContent = /<[a-z!/]/i.test(this.$wire.body ?? '');
                     this.mode = this.hasUnsupportedContent ? 'markdown' : 'rich';
                 } catch (error) {
                     console.error(error);
@@ -65,6 +68,48 @@ document.addEventListener('alpine:init', () => {
                     editor.commands.setContent(this.$wire.body ?? '', { contentType: 'markdown', emitUpdate: false });
                     this.mode = 'rich';
                     editor.commands.focus();
+                }
+            },
+
+            pickFile() {
+                this.$refs.file.click();
+            },
+
+            /**
+             * Uploads files one after another and inserts each at the cursor
+             * (images inline, other files as a link).
+             */
+            async uploadFiles(files) {
+                for (const file of Array.from(files)) {
+                    this.uploadStatus = `${translations.uploading} ${file.name}`;
+
+                    try {
+                        await new Promise((resolve, reject) => this.$wire.upload('attachmentUpload', file, resolve, reject));
+                        const result = await this.$wire.storeAttachment();
+
+                        if (!result) {
+                            throw new Error('rejected');
+                        }
+
+                        this.insertAttachment(result);
+                        this.uploadStatus = '';
+                    } catch (error) {
+                        this.uploadStatus = translations.uploadFailed;
+                    }
+                }
+            },
+
+            insertAttachment({ markdown, url, name, isImage }) {
+                if (editor && this.mode === 'rich') {
+                    const content = isImage
+                        ? { type: 'image', attrs: { src: url, alt: name } }
+                        : { type: 'text', text: `📎 ${name}`, marks: [{ type: 'link', attrs: { href: url } }] };
+
+                    editor.chain().focus().insertContent([content, { type: 'text', text: ' ' }]).run();
+                } else {
+                    const body = (this.$wire.body ?? '').trimEnd();
+                    this.$wire.$set('body', (body ? `${body}\n\n` : '') + markdown + '\n', false);
+                    this.$wire.$refresh();
                 }
             },
 

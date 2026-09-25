@@ -68,11 +68,11 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Nährwerte pro Portion (manuell oder per KI geschätzt, gekennzeichnet), PDF-Export (dompdf), öffentliche Links (`/r/{token}`, abschaltbar, nicht indexiert).
 - Barcode-Scanner in der Einkaufsliste (BarcodeDetector des Browsers, Eingabe als Fallback, Open Food Facts).
 
-## Nächste Schritte
+### Notion-Ansatz – Seitenbaum & Dateien ✅
+- Seiten in der Seitenleiste per Drag & Drop sortieren und in andere (aufgeklappte) Seiten verschieben; ohne Handsortierung bleibt es alphabetisch.
+- Bilder und Dateien in Seiten (Knopf, „/“-Befehl, Drag & Drop, Einfügen); Bilder im Editor sichtbar. Dateien liegen privat und sind so sichtbar wie die Seite.
 
-### Notion-Ansatz – nächste Ausbaustufen
-- Seiten per Drag & Drop im Seitenbaum verschieben und sortieren.
-- Bilder/Dateien in Seiten (Upload), danach auch im Editor darstellbar.
+## Nächste Schritte
 
 ### Phase 3 – Organisation
 - Kalender: Wochenansicht, künftige Wiederholungen als Vorschau anzeigen.

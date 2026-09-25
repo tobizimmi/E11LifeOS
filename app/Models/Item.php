@@ -81,6 +81,17 @@ class Item extends Model
 
             $item->syncTaskStatusWithDone();
         });
+
+        // Embedded files go with the page (one by one, so the stored files are removed too).
+        // (No return value: a non-null result would stop the other "deleting" listeners.)
+        static::deleting(function (Item $item): void {
+            $item->attachments()->get()->each->delete();
+        });
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
     }
 
     private function syncTaskStatusWithDone(): void

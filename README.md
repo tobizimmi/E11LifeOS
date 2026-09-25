@@ -11,6 +11,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 
 - **Seitenleiste** – Navigation wie in Notion: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
+- **Spracheingabe** – 🎤 in Schnellerfassung, bei neuen Aufgaben/Einträgen und in der Einkaufsliste (Spracherkennung des Browsers).
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
 - **Erinnerungen** – tägliche E-Mail um 7:00 mit fälligen und überfälligen Aufgaben sowie Terminen aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.

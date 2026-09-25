@@ -88,8 +88,9 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <form wire:submit="add" class="flex gap-3">
-                    <x-text-input wire:model="label" class="block w-full" type="text" placeholder="{{ __('Item...') }}" />
+                    <x-text-input id="shopping-label" wire:model="label" class="block w-full" type="text" placeholder="{{ __('Item...') }}" />
                     <x-text-input wire:model="quantity" class="block w-32" type="text" placeholder="{{ __('Qty') }}" />
+                    <x-voice-button for="shopping-label" />
                     <button type="button" x-data x-on:click="$dispatch('open-barcode-scanner')" class="shrink-0 rounded-md border border-gray-300 dark:border-gray-600 px-3 text-lg" aria-label="{{ __('Scan barcode') }}" title="{{ __('Scan barcode') }}">📷</button>
                     <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>
                 </form>

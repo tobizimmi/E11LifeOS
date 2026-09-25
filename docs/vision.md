@@ -43,8 +43,9 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Tags auch in Aufgaben und Inbox pflegen.
 
 ### Phase 4 – Weitere Module
+- Eigene Sammlungen (frei definierbare Eigenschaften wie Text, Zahl, Datum, Auswahl, Checkbox, Person, Verknüpfung) mit Tabellen-, Board- und Kalenderansicht.
 - Verträge & Dokumente mit Kündigungsfristen und Erinnerung.
-- Rezepte mit „Zutaten auf die Einkaufsliste“.
+- Rezepte: Integration der bestehenden, separat entwickelten Rezepte-App (inkl. „Zutaten auf die Einkaufsliste“).
 - Vorräte, Haushaltsbuch, Lesezeichen / Später lesen, Tagebuch & Gewohnheiten.
 
 ### Phase 5 – KI (optional)

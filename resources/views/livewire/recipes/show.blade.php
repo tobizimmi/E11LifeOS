@@ -509,6 +509,10 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endif
 
+            <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <livewire:links-panel type="recipe" :id="$recipe->id" :wire:key="'links-recipe-'.$recipe->id" />
+            </div>
+
             {{-- Ratings --}}
             <section id="ratings" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">

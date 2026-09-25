@@ -83,13 +83,18 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - E-Mail-Erinnerung für Datumsfelder (z. B. „Kündigen bis“ 30 Tage vorher, „Haltbar bis“ 3 Tage vorher) in der täglichen Mail.
 - Summen in Tabellen (Zahlen, abgehakte Checkboxen) und pro Board-Spalte; Dateien in Eintrags-Notizen; Einträge auf die Einkaufsliste.
 
+### Verknüpfungen überall ✅
+- Gemeinsame Link-Tabelle (`links`) für Seiten, Aufgaben, Einträge, Inbox und Rezepte; Quellen: Text (`[[Seite]]`, interne Links `/items/{id}`, `/recipes/{id}`), Eigenschaft „Verknüpfung“, Knopf „Verknüpfen“.
+- Panel „Verknüpfungen / Verlinkt von“ auf Seiten, Einträgen und Rezepten; `[[`-Vorschläge im Editor für alle Typen; Sichtbarkeit wird auf beiden Seiten geprüft.
+- Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“.
+
 ## Nächste Schritte
 
 ### Phase 3 – Organisation (Rest)
 - Erinnerungen zusätzlich per Web-Push (braucht VAPID-Schlüssel und ein Push-Paket).
 
 ### Phase 4 – Weitere Module
-- Sammlungen: Eigenschaftstypen „Mehrfachauswahl“ und „Verknüpfung“ (zu Seiten/Einträgen), gespeicherte Filter.
+- Sammlungen: gespeicherte Filter.
 
 ### Phase 5 – KI (optional)
 - Tag-Vorschläge, Zusammenfassungen, Fragen an das eigene Second Brain (z. B. über die Claude-API). Neue Abhängigkeiten nur nach Absprache.

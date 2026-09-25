@@ -208,8 +208,9 @@ class PagesIndexTest extends TestCase
         Item::factory()->note()->for($household)->create(['title' => 'Wochenplan', 'content' => ['body' => 'Heute aus [[Rezepte]] kochen']]);
         Item::factory()->note()->for($household)->create(['title' => 'Einkaufsideen', 'content' => ['body' => 'Rezepte ohne Link']]);
 
-        Volt::test('pages.index', ['item' => $target->id])
-            ->assertViewHas('backlinks', fn ($backlinks) => $backlinks->pluck('title')->all() === ['Wochenplan']);
+        Volt::test('links-panel', ['type' => 'item', 'id' => $target->id])
+            ->assertViewHas('linkedFrom', fn (array $nodes) => array_column($nodes, 'title') === ['Wochenplan']);
+        $this->get(route('pages.index', ['item' => $target->id]))->assertSee('Wochenplan');
     }
 
     public function test_a_missing_wiki_link_prefills_the_new_note_form(): void

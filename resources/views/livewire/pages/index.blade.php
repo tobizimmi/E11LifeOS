@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Livewire\Concerns\ProvidesLinkTargets;
 use App\Livewire\Concerns\StoresAttachments;
 use App\Models\Attachment;
 use App\Models\Item;
@@ -18,6 +19,7 @@ use Livewire\WithFileUploads;
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+    use ProvidesLinkTargets;
     use StoresAttachments;
     use WithFileUploads;
 
@@ -264,7 +266,6 @@ new #[Layout('layouts.app')] class extends Component
                 'breadcrumbs' => $page ? $tree->ancestors($page->id) : [],
                 'subpages' => $page ? $tree->children($page->id) : [],
                 'pageHtml' => $page ? NoteMarkdown::toHtml($page, Auth::user(), interactiveTasks: true) : null,
-                'backlinks' => $page ? $page->backlinksVisibleTo(Auth::user()) : collect(),
             ] + $data;
         }
 
@@ -468,16 +469,9 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </section>
 
-                        <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
-                            <h2 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Linked from') }}</h2>
-                            @forelse ($backlinks as $backlink)
-                                <a href="{{ route('pages.index', ['item' => $backlink->id]) }}" wire:navigate wire:key="backlink-{{ $backlink->id }}" class="block mt-1 text-sm text-indigo-600 dark:text-indigo-400 underline">
-                                    {{ $backlink->displayIcon() }} {{ $backlink->title }}
-                                </a>
-                            @empty
-                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('No other page links here yet.') }}</p>
-                            @endforelse
-                        </section>
+                        <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+                            <livewire:links-panel type="item" :id="$selectedPage->id" :wire:key="'links-page-'.$selectedPage->id" />
+                        </div>
                     </article>
                 @else
                     <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-600 dark:text-gray-400">

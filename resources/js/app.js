@@ -46,6 +46,7 @@ document.addEventListener('alpine:init', () => {
                         onChange: (markdown) => this.$wire.$set('body', markdown, false),
                         onFiles: (files) => this.uploadFiles(files),
                         onPickFile: () => this.pickFile(),
+                        searchLinks: (term) => this.$wire.linkTargets(term),
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
                     editor.on('transaction', () => this.selectionTick++);

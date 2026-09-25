@@ -296,11 +296,11 @@ const PageLinkAutocomplete = Extension.create({
     name: 'pageLinkAutocomplete',
 
     addOptions() {
-        return { pageTitles: [], translations: {} };
+        return { pageTitles: [], translations: {}, searchLinks: null };
     },
 
     addProseMirrorPlugins() {
-        const { pageTitles, translations } = this.options;
+        const { pageTitles, translations, searchLinks } = this.options;
 
         return [
             Suggestion({
@@ -309,35 +309,56 @@ const PageLinkAutocomplete = Extension.create({
                 char: '[[',
                 allowSpaces: true,
                 allowedPrefixes: null,
-                items: ({ query }) => {
+                // Pages become [[wiki links]]; tasks, entries and recipes (found on the server)
+                // become regular links to their stable URL.
+                items: async ({ query }) => {
                     const term = query.replace(/\]+$/, '').trim();
-                    const matches = pageTitles.filter((title) => title.toLowerCase().includes(term.toLowerCase())).slice(0, 8);
+                    const matches = pageTitles.filter((title) => title.toLowerCase().includes(term.toLowerCase())).slice(0, 6);
                     const exists = pageTitles.some((title) => title.toLowerCase() === term.toLowerCase());
+                    let others = [];
 
-                    return term !== '' && !exists
-                        ? [...matches.map((title) => ({ title })), { title: term, isNew: true }]
-                        : matches.map((title) => ({ title }));
+                    if (searchLinks && term !== '') {
+                        try {
+                            others = (await searchLinks(term)).filter((node) => !node.page).slice(0, 6);
+                        } catch (error) {
+                            others = [];
+                        }
+                    }
+
+                    return [
+                        ...matches.map((title) => ({ title })),
+                        ...others.map((node) => ({ title: node.title, url: node.url, icon: node.icon, kind: node.kind })),
+                        ...(term !== '' && !exists ? [{ title: term, isNew: true }] : []),
+                    ];
                 },
                 command: ({ editor, range, props }) => {
                     // Swallow a "]]" that may already follow the cursor.
                     const after = editor.state.doc.textBetween(range.to, Math.min(range.to + 2, editor.state.doc.content.size), '');
                     const to = after === ']]' ? range.to + 2 : range.to;
 
+                    const link = props.url
+                        ? { type: 'text', text: `${props.icon} ${props.title}`, marks: [{ type: 'link', attrs: { href: props.url } }] }
+                        : { type: 'wikiLink', attrs: { target: props.title } };
+
                     editor
                         .chain()
                         .focus()
-                        .insertContentAt({ from: range.from, to }, [
-                            { type: 'wikiLink', attrs: { target: props.title } },
-                            { type: 'text', text: ' ' },
-                        ])
+                        .insertContentAt({ from: range.from, to }, [link, { type: 'text', text: ' ' }])
                         .run();
                 },
                 render: () =>
                     suggestionPopup((button, item) => {
                         const hint = document.createElement('span');
                         hint.className = 'editor-popup-hint';
-                        hint.textContent = item.isNew ? '+' : '📄';
+                        hint.textContent = item.isNew ? '+' : (item.icon ?? '📄');
                         button.append(hint, document.createTextNode(item.isNew ? `${translations.newPage}: ${item.title}` : item.title));
+
+                        if (item.kind) {
+                            const kind = document.createElement('span');
+                            kind.className = 'editor-popup-kind';
+                            kind.textContent = item.kind;
+                            button.append(kind);
+                        }
                     }),
             }),
         ];
@@ -347,9 +368,9 @@ const PageLinkAutocomplete = Extension.create({
 /**
  * @param {HTMLElement} element     Mount point for the editable area.
  * @param {HTMLElement} bubbleMenu  Toolbar shown above selected text.
- * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile() }
+ * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile(), searchLinks(term) }
  */
-export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile }) {
+export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile, searchLinks }) {
     // The bubble menu plugin attaches the toolbar itself when text is selected
     // (and only ever hides it after having shown it), so start detached.
     bubbleMenu.remove();
@@ -373,7 +394,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             WikiLink,
             MarkdownImage,
             SlashMenu.configure({ translations, onPickFile }),
-            PageLinkAutocomplete.configure({ pageTitles, translations }),
+            PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
         ],
         content: markdown,
         contentType: 'markdown',

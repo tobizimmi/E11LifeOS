@@ -2,6 +2,7 @@
 
 use App\Events\HouseholdItemsChanged;
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Livewire\Concerns\ProvidesLinkTargets;
 use App\Livewire\Concerns\StoresAttachments;
 use App\Models\Attachment;
 use App\Models\Collection;
@@ -9,6 +10,7 @@ use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
+use App\Support\Links;
 use App\Support\Recurrence;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +24,7 @@ use Livewire\WithFileUploads;
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+    use ProvidesLinkTargets;
     use StoresAttachments;
     use WithFileUploads;
 
@@ -311,10 +314,12 @@ new #[Layout('layouts.app')] class extends Component
     {
         $entry = $this->findEntry($entryId);
         $property = $this->findProperty($propertyId);
-        abort_unless($property->type === CollectionProperty::TYPE_SELECT, 422);
+        abort_unless($property->hasOptions(), 422);
 
         $option = $property->addOption(mb_substr(trim($name), 0, 100));
-        $entry->setPropertyValue($property, $option['id']);
+        $entry->setPropertyValue($property, $property->type === CollectionProperty::TYPE_MULTI_SELECT
+            ? [...(array) $entry->propertyValue($property), $option['id']]
+            : $option['id']);
         $entry->save();
         $this->schemaChanged();
     }
@@ -452,7 +457,7 @@ new #[Layout('layouts.app')] class extends Component
         $collection->properties()->create([
             'name' => trim($this->newPropertyName),
             'type' => $this->newPropertyType,
-            'options' => $this->newPropertyType === CollectionProperty::TYPE_SELECT ? [] : null,
+            'options' => in_array($this->newPropertyType, [CollectionProperty::TYPE_SELECT, CollectionProperty::TYPE_MULTI_SELECT], true) ? [] : null,
             'position' => (int) $collection->properties->max('position') + 1,
         ]);
 
@@ -513,7 +518,7 @@ new #[Layout('layouts.app')] class extends Component
     public function addOption(int $propertyId, string $name): void
     {
         $property = $this->findProperty($propertyId);
-        abort_unless($property->type === CollectionProperty::TYPE_SELECT && ! $property->isSystem(), 403);
+        abort_unless($property->hasOptions() && ! $property->isSystem(), 403);
 
         if (trim($name) !== '') {
             $property->addOption(mb_substr(trim($name), 0, 100));
@@ -547,8 +552,10 @@ new #[Layout('layouts.app')] class extends Component
         $property->update(['options' => collect($property->selectOptions())->reject(fn (array $option) => $option['id'] === $optionId)->values()->all()]);
 
         Item::where('collection_id', $this->collectionId)->get()->each(function (Item $item) use ($property, $optionId) {
-            if ($item->propertyValue($property) === $optionId) {
-                $item->setPropertyValue($property, null);
+            $value = $item->propertyValue($property);
+
+            if ($value === $optionId || (is_array($value) && in_array($optionId, $value, true))) {
+                $item->setPropertyValue($property, is_array($value) ? (array_values(array_diff($value, [$optionId])) ?: null) : null);
                 $item->saveQuietly();
             }
         });
@@ -662,6 +669,29 @@ new #[Layout('layouts.app')] class extends Component
         return ['month' => $month, 'isWeek' => $isWeek, 'weekStart' => $weekStart, 'weeks' => $weeks, 'undated' => ($byDate[''] ?? collect())->all()];
     }
 
+    /**
+     * Titles/icons of everything the relation properties of these entries point to (visible ones only).
+     *
+     * @param  \Illuminate\Support\Collection<int, CollectionProperty>  $properties
+     * @param  \Illuminate\Support\Collection<int, Item>  $entries
+     * @return array<string, array<string, mixed>>
+     */
+    private function relationNodes($properties, $entries): array
+    {
+        $relations = $properties->where('type', CollectionProperty::TYPE_RELATION);
+
+        if ($relations->isEmpty()) {
+            return [];
+        }
+
+        $refs = $entries->flatMap(fn (Item $entry) => $relations->flatMap(fn ($property) => (array) $entry->propertyValue($property)))
+            ->map(fn ($key) => Links::parseKey($key))
+            ->filter()
+            ->values();
+
+        return Links::nodes($refs, Auth::user(), (int) $this->householdId);
+    }
+
     public function with(): array
     {
         $collection = $this->findCollection();
@@ -692,6 +722,8 @@ new #[Layout('layouts.app')] class extends Component
 
                 return match ($sortProperty->type) {
                     CollectionProperty::TYPE_SELECT => collect($sortProperty->selectOptions())->search(fn ($option) => $option['id'] === $value),
+                    CollectionProperty::TYPE_MULTI_SELECT => collect($sortProperty->selectOptions())->search(fn ($option) => $option['id'] === ((array) $value)[0] ?? null),
+                    CollectionProperty::TYPE_RELATION => is_array($value) ? count($value) : null,
                     default => is_string($value) ? mb_strtolower($value) : $value,
                 };
             };
@@ -717,6 +749,7 @@ new #[Layout('layouts.app')] class extends Component
             'selectProperties' => $properties->where('type', CollectionProperty::TYPE_SELECT)->values(),
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
             'openEntry' => $openEntry,
+            'relationNodes' => $this->relationNodes($properties, $entries->concat($openEntry ? [$openEntry] : [])),
             'collectionTags' => \App\Models\Tag::query()
                 ->whereHas('items', fn ($items) => $items->whereIn('items.id', $this->entries()->select('items.id')))
                 ->orderBy('name')
@@ -727,6 +760,8 @@ new #[Layout('layouts.app')] class extends Component
                 CollectionProperty::TYPE_NUMBER => __('Number'),
                 CollectionProperty::TYPE_DATE => __('Date'),
                 CollectionProperty::TYPE_SELECT => __('Select'),
+                CollectionProperty::TYPE_MULTI_SELECT => __('Multi-select'),
+                CollectionProperty::TYPE_RELATION => __('Relation'),
                 CollectionProperty::TYPE_CHECKBOX => __('Checkbox'),
                 CollectionProperty::TYPE_PERSON => __('Person'),
                 CollectionProperty::TYPE_URL => __('Link'),
@@ -827,7 +862,7 @@ new #[Layout('layouts.app')] class extends Component
                                             </select>
                                         </label>
                                     @endif
-                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_SELECT)
+                                    @if ($property->hasOptions())
                                         <div class="flex flex-wrap items-center gap-2 ps-2">
                                             @foreach ($property->selectOptions() as $option)
                                                 <span wire:key="option-{{ $property->id }}-{{ $option['id'] }}" class="inline-flex items-center gap-1">
@@ -953,7 +988,7 @@ new #[Layout('layouts.app')] class extends Component
                                     </td>
                                     @foreach ($properties as $property)
                                         <td class="px-1 py-1" wire:key="cell-{{ $entry->id }}-{{ $property->id }}">
-                                            <x-property-input :property="$property" :item="$entry" :members="$members" compact />
+                                            <x-property-input :property="$property" :item="$entry" :members="$members" :nodes="$relationNodes" compact />
                                         </td>
                                     @endforeach
                                     <td class="px-3 py-1.5 text-end">
@@ -1142,6 +1177,20 @@ new #[Layout('layouts.app')] class extends Component
                                                             <x-option-badge :option="$option" />
                                                         @endif
                                                         @break
+                                                    @case(\App\Models\CollectionProperty::TYPE_MULTI_SELECT)
+                                                        @foreach ((array) $value as $optionId)
+                                                            @if ($option = $property->option($optionId))
+                                                                <x-option-badge :option="$option" />
+                                                            @endif
+                                                        @endforeach
+                                                        @break
+                                                    @case(\App\Models\CollectionProperty::TYPE_RELATION)
+                                                        @foreach ((array) $value as $key)
+                                                            @if ($node = $relationNodes[$key] ?? null)
+                                                                <span class="rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">{{ $node['icon'] }} {{ $node['title'] }}</span>
+                                                            @endif
+                                                        @endforeach
+                                                        @break
                                                     @case(\App\Models\CollectionProperty::TYPE_DATE)
                                                         <span @class(['rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5', 'text-red-600 dark:text-red-400 font-medium' => $property->system_key === 'due' && ! $card->done && $value < now()->toDateString()])>
                                                             📅 {{ \Illuminate\Support\Carbon::parse($value)->translatedFormat('j. M') }}
@@ -1210,7 +1259,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                     @foreach ($properties as $property)
                         <dt class="text-gray-500 dark:text-gray-400" wire:key="dt-{{ $property->id }}">{{ $property->name }}</dt>
-                        <dd wire:key="dd-{{ $openEntry->id }}-{{ $property->id }}"><x-property-input :property="$property" :item="$openEntry" :members="$members" /></dd>
+                        <dd wire:key="dd-{{ $openEntry->id }}-{{ $property->id }}"><x-property-input :property="$property" :item="$openEntry" :members="$members" :nodes="$relationNodes" /></dd>
                     @endforeach
                     <dt class="text-gray-500 dark:text-gray-400">{{ __('Tags') }}</dt>
                     <dd>
@@ -1235,6 +1284,10 @@ new #[Layout('layouts.app')] class extends Component
                     <dt class="text-gray-500 dark:text-gray-400">{{ __('Created') }}</dt>
                     <dd class="text-gray-600 dark:text-gray-300">{{ $openEntry->created_at->translatedFormat('j. F Y') }}@if ($openEntry->creator) · {{ $openEntry->creator->name }}@endif</dd>
                 </dl>
+
+                <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <livewire:links-panel type="item" :id="$openEntry->id" :wire:key="'links-entry-'.$openEntry->id" />
+                </div>
 
                 <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
                     @if ($editingBody)

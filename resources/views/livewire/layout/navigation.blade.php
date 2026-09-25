@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Support\Addons;
 use App\Support\PageMover;
 use App\Support\PageTree;
+use App\Support\TaskLists;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
@@ -75,13 +76,14 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'hasRecipes' => false, 'tasksCollection' => null, 'collections' => collect()];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'hasRecipes' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect()];
         }
 
         $tree = new PageTree(
             $this->visibleItems(Item::TYPE_NOTE)->get(['id', 'parent_id', 'title', 'icon', 'visibility', 'created_by', 'position'])
         );
         $roots = collect($tree->roots());
+        $tasksCollection = Collection::tasksFor($this->householdId)->load('properties');
 
         return [
             'tree' => $tree,
@@ -92,7 +94,8 @@ new class extends Component
                 : [],
             'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
             'hasRecipes' => (bool) Household::find($this->householdId)?->hasAddon(Addons::RECIPES),
-            'tasksCollection' => Collection::tasksFor($this->householdId),
+            'tasksCollection' => $tasksCollection,
+            'todayTaskCount' => (new TaskLists($tasksCollection, Auth::user()))->counts()[TaskLists::TODAY],
             'collections' => Collection::query()
                 ->visibleTo(Auth::user(), $this->householdId)
                 ->whereNull('system_key')
@@ -159,7 +162,7 @@ new class extends Component
             @if ($householdId !== null)
                 <div class="space-y-0.5">
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
-                    <x-sidebar-link :href="route('collections.show', $tasksCollection)" :active="$currentCollectionId === $tasksCollection->id" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.index')" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
                     @if ($hasRecipes)
                         <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>

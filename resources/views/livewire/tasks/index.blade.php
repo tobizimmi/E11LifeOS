@@ -1,0 +1,861 @@
+<?php
+
+use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Livewire\Concerns\SuggestsTags;
+use App\Models\Collection;
+use App\Models\CollectionProperty;
+use App\Models\HouseholdMember;
+use App\Models\Item;
+use App\Models\Tag;
+use App\Models\User;
+use App\Support\BrainAi;
+use App\Support\Recurrence;
+use App\Support\TaskInput;
+use App\Support\TaskLists;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
+use Livewire\Volt\Component;
+
+new #[Layout('layouts.app')] class extends Component
+{
+    use InteractsWithHousehold;
+    use SuggestsTags;
+
+    private const MAX_SUBTASKS = 100;
+
+    #[Url(except: TaskLists::TODAY)]
+    public string $list = TaskLists::TODAY;
+
+    #[Url(except: '')]
+    public string $tag = '';
+
+    #[Url(as: 'q', except: '')]
+    public string $search = '';
+
+    /**
+     * Task shown in the detail panel (id as string, so a malformed URL can't break the page).
+     */
+    #[Url(as: 'task', except: '')]
+    public string $openTaskId = '';
+
+    /**
+     * Current text of the quick entry (only for the live preview; the input itself is not bound,
+     * so a late preview request can never bring back text that was already added).
+     */
+    public string $draft = '';
+
+    /**
+     * Recognised phrases of the quick entry the user wants to keep in the title.
+     *
+     * @var array<int, string>
+     */
+    public array $ignoredPhrases = [];
+
+    public bool $selecting = false;
+
+    /**
+     * Ids of the tasks picked in selection mode.
+     *
+     * @var array<int, int>
+     */
+    public array $selected = [];
+
+    /**
+     * AI tag suggestions for the open task.
+     *
+     * @var array<int, string>
+     */
+    public array $tagSuggestions = [];
+
+    public function mount(): void
+    {
+        if (! in_array($this->list, TaskLists::LISTS, true)) {
+            $this->list = TaskLists::TODAY;
+        }
+    }
+
+    private function collection(): Collection
+    {
+        return Collection::tasksFor((int) $this->householdId)->load('properties');
+    }
+
+    private function findTask(int $id): Item
+    {
+        return Item::query()
+            ->forHousehold((int) $this->householdId)
+            ->visibleTo($this->currentUser())
+            ->where('collection_id', $this->collection()->id)
+            ->find($id) ?? abort(404);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function members(): array
+    {
+        return User::whereIn('id', HouseholdMember::where('household_id', $this->householdId)->pluck('user_id'))
+            ->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    private function systemProperty(string $key): CollectionProperty
+    {
+        return $this->collection()->systemProperty($key) ?? abort(422);
+    }
+
+    private function setValue(Item $task, string $key, mixed $value): void
+    {
+        $property = $this->systemProperty($key);
+        $task->setPropertyValue($property, $property->normalizeValue($value, array_keys($this->members())));
+    }
+
+    /**
+     * "today", "tomorrow", "next_week", "weekend", "none" or a date (Y-m-d).
+     */
+    private function resolveDate(string $preset): ?string
+    {
+        $today = now()->startOfDay();
+
+        return match ($preset) {
+            'today' => $today->toDateString(),
+            'tomorrow' => $today->addDay()->toDateString(),
+            'next_week' => $today->next(Carbon::MONDAY)->toDateString(),
+            'weekend' => ($today->isSaturday() ? $today : $today->next(Carbon::SATURDAY))->toDateString(),
+            'none', '' => null,
+            default => preg_match('/^\d{4}-\d{2}-\d{2}$/', $preset) && strtotime($preset) ? $preset : abort(422),
+        };
+    }
+
+    // ── Lists ────────────────────────────────────────────────────────────
+
+    public function showList(string $list): void
+    {
+        abort_unless(in_array($list, TaskLists::LISTS, true), 404);
+
+        $this->list = $list;
+        $this->selected = [];
+    }
+
+    public function filterByTag(string $name): void
+    {
+        $this->tag = $this->tag === $name ? '' : $name;
+    }
+
+    // ── Quick entry ──────────────────────────────────────────────────────
+
+    public function ignorePhrase(string $phrase): void
+    {
+        $this->ignoredPhrases[] = mb_substr($phrase, 0, 100);
+    }
+
+    public function previewTask(string $text): void
+    {
+        $this->draft = mb_substr($text, 0, 500);
+    }
+
+    /**
+     * Returns whether a task was created (the input is cleared then).
+     */
+    public function addTask(string $text): bool
+    {
+        $parsed = TaskInput::parse(mb_substr($text, 0, 500), $this->members(), Auth::id(), $this->ignoredPhrases);
+
+        if ($parsed['title'] === '') {
+            $this->addError('newTask', __('Please enter a title.'));
+
+            return false;
+        }
+
+        $collection = $this->collection();
+        $task = new Item([
+            'household_id' => $this->householdId,
+            'collection_id' => $collection->id,
+            'type' => Item::TYPE_TODO,
+            'visibility' => $collection->entryVisibility(),
+            'title' => mb_substr($parsed['title'], 0, 255),
+            'created_by' => Auth::id(),
+            'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
+        ]);
+
+        // Added in "Today"/"Upcoming" without a date: it should show up where it was added.
+        $due = $parsed['due'] ?? match ($this->list) {
+            TaskLists::TODAY => $this->resolveDate('today'),
+            TaskLists::UPCOMING => $this->resolveDate('tomorrow'),
+            default => null,
+        };
+
+        foreach (['due' => $due, 'repeat' => $parsed['repeat'], 'priority' => $parsed['priority'], 'assignee' => $parsed['assignee']] as $key => $value) {
+            if ($value !== null && $collection->systemProperty($key)) {
+                $this->setValue($task, $key, $value);
+            }
+        }
+
+        $task->save();
+        $task->syncTagNames($this->tag !== '' ? [...$parsed['tags'], $this->tag] : $parsed['tags']);
+
+        $this->reset('draft', 'ignoredPhrases');
+        $this->resetErrorBag('newTask');
+        $this->dispatch('toast', message: __('Task added'));
+
+        return true;
+    }
+
+    // ── One task ─────────────────────────────────────────────────────────
+
+    public function toggleDone(int $taskId): void
+    {
+        $task = $this->findTask($taskId);
+        $task->update(['done' => ! $task->done]);
+
+        if ($task->rescheduledTo) {
+            $this->announceReschedule($task);
+        } elseif ($task->done) {
+            $this->dispatch('toast', message: __('Done: :title', ['title' => Str::limit($task->title, 40)]), action: ['label' => __('Undo'), 'event' => 'task-undo', 'params' => ['taskId' => $task->id]]);
+        }
+    }
+
+    #[On('task-undo')]
+    public function undoDone(int $taskId): void
+    {
+        $this->findTask($taskId)->update(['done' => false]);
+    }
+
+    public function openTask(int $taskId): void
+    {
+        $this->openTaskId = (string) $this->findTask($taskId)->id;
+        $this->tagSuggestions = [];
+    }
+
+    public function closeTask(): void
+    {
+        $this->reset('openTaskId', 'tagSuggestions');
+    }
+
+    public function updateTitle(int $taskId, string $title): void
+    {
+        $title = trim($title);
+
+        if ($title !== '') {
+            $this->findTask($taskId)->update(['title' => mb_substr($title, 0, 255)]);
+        }
+    }
+
+    public function setDue(int $taskId, string $preset): void
+    {
+        $task = $this->findTask($taskId);
+        $this->setValue($task, 'due', $this->resolveDate($preset));
+        $task->save();
+    }
+
+    /**
+     * Swipe left: move to tomorrow.
+     */
+    public function postpone(int $taskId): void
+    {
+        $this->setDue($taskId, 'tomorrow');
+        $this->dispatch('toast', message: __('Moved to tomorrow'));
+    }
+
+    public function setPriority(int $taskId, string $priority): void
+    {
+        $task = $this->findTask($taskId);
+        $this->setValue($task, 'priority', $priority !== '' ? $priority : null);
+        $task->save();
+    }
+
+    public function setRepeat(int $taskId, string $rule): void
+    {
+        $task = $this->findTask($taskId);
+        $this->setValue($task, 'repeat', $rule !== '' ? $rule : null);
+        $task->save();
+    }
+
+    public function setAssignee(int $taskId, string $userId): void
+    {
+        $task = $this->findTask($taskId);
+        $this->setValue($task, 'assignee', $userId !== '' ? (int) $userId : null);
+        $task->save();
+    }
+
+    public function updateTags(int $taskId, string $tags): void
+    {
+        $this->findTask($taskId)->syncTagNames(explode(',', $tags));
+    }
+
+    public function suggestTags(int $taskId): void
+    {
+        $task = $this->findTask($taskId);
+        $this->tagSuggestions = $this->tagSuggestionsFor($task->title, $task->body(), $task->tags->pluck('name')->all());
+    }
+
+    public function addSuggestedTag(int $taskId, string $name): void
+    {
+        $task = $this->findTask($taskId);
+        $task->syncTagNames([...$task->tags->pluck('name')->all(), $name]);
+        $this->tagSuggestions = array_values(array_diff($this->tagSuggestions, [$name]));
+    }
+
+    public function saveNotes(int $taskId, string $notes): void
+    {
+        $task = $this->findTask($taskId);
+        $task->update(['content' => ['body' => mb_substr($notes, 0, 100000)] + ($task->content ?? [])]);
+    }
+
+    public function addSubtask(int $taskId, string $text): void
+    {
+        $text = trim($text);
+        $task = $this->findTask($taskId);
+        $subtasks = $task->subtasks();
+
+        if ($text === '' || count($subtasks) >= self::MAX_SUBTASKS) {
+            return;
+        }
+
+        $subtasks[] = ['id' => Str::random(8), 'text' => mb_substr($text, 0, 255), 'done' => false];
+        $task->setSubtasks($subtasks);
+        $task->save();
+    }
+
+    public function toggleSubtask(int $taskId, string $subtaskId): void
+    {
+        $task = $this->findTask($taskId);
+        $task->setSubtasks(array_map(fn (array $subtask) => $subtask['id'] === $subtaskId ? array_merge($subtask, ['done' => ! ($subtask['done'] ?? false)]) : $subtask, $task->subtasks()));
+        $task->save();
+    }
+
+    public function removeSubtask(int $taskId, string $subtaskId): void
+    {
+        $task = $this->findTask($taskId);
+        $task->setSubtasks(array_filter($task->subtasks(), fn (array $subtask) => $subtask['id'] !== $subtaskId));
+        $task->save();
+    }
+
+    public function deleteTask(int $taskId): void
+    {
+        $this->findTask($taskId)->delete();
+
+        if ((int) $this->openTaskId === $taskId) {
+            $this->closeTask();
+        }
+    }
+
+    // ── Selection (several tasks at once) ────────────────────────────────
+
+    public function toggleSelecting(): void
+    {
+        $this->selecting = ! $this->selecting;
+        $this->selected = [];
+    }
+
+    /**
+     * @param  array<int, int>  $taskIds
+     */
+    public function selectTasks(array $taskIds): void
+    {
+        $this->selected = array_values(array_unique(array_map('intval', $taskIds)));
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Item>
+     */
+    private function selectedTasks()
+    {
+        return Item::query()
+            ->forHousehold((int) $this->householdId)
+            ->visibleTo($this->currentUser())
+            ->where('collection_id', $this->collection()->id)
+            ->whereIn('id', array_map('intval', $this->selected))
+            ->get();
+    }
+
+    /**
+     * "done", "open", "delete", "due:<preset>", "priority:<id>", "assignee:<user id>".
+     */
+    public function applyToSelected(string $action): void
+    {
+        [$verb, $argument] = array_pad(explode(':', $action, 2), 2, '');
+        $tasks = $this->selectedTasks();
+
+        foreach ($tasks as $task) {
+            match ($verb) {
+                'done' => $task->update(['done' => true]),
+                'open' => $task->update(['done' => false]),
+                'delete' => $task->delete(),
+                'due', 'priority', 'assignee' => (function () use ($task, $verb, $argument) {
+                    $value = match ($verb) {
+                        'due' => $this->resolveDate($argument),
+                        'assignee' => $argument !== '' ? (int) $argument : null,
+                        default => $argument !== '' ? $argument : null,
+                    };
+                    $this->setValue($task, $verb, $value);
+                    $task->save();
+                })(),
+                default => abort(422),
+            };
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count task updated|:count tasks updated', $tasks->count()));
+        $this->selected = [];
+        $this->selecting = false;
+    }
+
+    public function with(): array
+    {
+        $collection = $this->collection();
+        $lists = new TaskLists($collection, $this->currentUser());
+        $members = $this->members();
+        $openTask = $this->openTaskId !== '' && ctype_digit($this->openTaskId)
+            ? Item::query()->forHousehold((int) $this->householdId)->visibleTo($this->currentUser())
+                ->where('collection_id', $collection->id)->with('tags')->find((int) $this->openTaskId)
+            : null;
+
+        return [
+            'collection' => $collection,
+            'lists' => $lists,
+            'counts' => $lists->counts(),
+            'groups' => $lists->groups($this->list, $this->tag, $this->search),
+            'members' => $members,
+            'preview' => trim($this->draft) !== '' ? TaskInput::parse($this->draft, $members, Auth::id(), $this->ignoredPhrases) : null,
+            'openTask' => $openTask,
+            'tags' => Tag::usedOnItemsVisibleTo($this->currentUser(), $this->householdId, Item::TYPE_TODO)->orderBy('name')->pluck('name'),
+            'repeatRules' => [Recurrence::DAILY, Recurrence::WEEKLY, Recurrence::MONTHLY, Recurrence::YEARLY],
+            'priorities' => [Collection::TASK_PRIORITY_HIGH, Collection::TASK_PRIORITY_MEDIUM, Collection::TASK_PRIORITY_LOW],
+            'aiAvailable' => BrainAi::isConfigured(),
+        ];
+    }
+}; ?>
+
+@php
+    $priorityRing = [
+        'high' => 'border-red-500 dark:border-red-400',
+        'medium' => 'border-orange-400',
+        'low' => 'border-blue-400',
+    ];
+    $priorityText = [
+        'high' => 'text-red-600 dark:text-red-400',
+        'medium' => 'text-orange-500',
+        'low' => 'text-blue-500',
+    ];
+    $toneClass = [
+        'danger' => 'text-red-600 dark:text-red-400',
+        'accent' => 'text-indigo-600 dark:text-indigo-400',
+        'normal' => 'text-gray-700 dark:text-gray-300',
+        'muted' => 'text-gray-500 dark:text-gray-400',
+    ];
+    $initials = fn (string $name) => mb_strtoupper(collect(preg_split('/\s+/u', trim($name)))->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
+@endphp
+
+<div
+    x-data
+    x-on:keydown.window="if ($event.key === 'n' && ! ['INPUT', 'TEXTAREA', 'SELECT'].includes($event.target.tagName) && ! $event.target.isContentEditable && ! $event.metaKey && ! $event.ctrlKey) { $event.preventDefault(); document.getElementById('new-task').focus() }"
+>
+    <x-slot name="header">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✅ {{ __('Tasks') }}</h2>
+            <a href="{{ route('collections.show', $collection) }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">{{ __('Board · Table · Calendar') }} →</a>
+        </div>
+    </x-slot>
+
+    <div class="py-4 sm:py-6">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 lg:flex lg:gap-6">
+            {{-- Smart lists --}}
+            <nav class="lg:w-52 shrink-0 mb-4 lg:mb-0" aria-label="{{ __('Lists') }}">
+                <div class="flex lg:flex-col gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 lg:mx-0 lg:px-0">
+                    @foreach (\App\Support\TaskLists::LISTS as $key)
+                        <button
+                            type="button"
+                            wire:click="showList('{{ $key }}')"
+                            aria-current="{{ $list === $key ? 'page' : 'false' }}"
+                            @class([
+                                'shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left',
+                                'bg-indigo-600 text-white shadow-sm' => $list === $key,
+                                'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700 lg:ring-0 lg:bg-transparent lg:dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700' => $list !== $key,
+                            ])
+                        >
+                            <span aria-hidden="true">{{ \App\Support\TaskLists::icon($key) }}</span>
+                            <span class="lg:flex-1">{{ \App\Support\TaskLists::label($key) }}</span>
+                            @if (($counts[$key] ?? 0) > 0)
+                                <span @class(['text-xs tabular-nums', 'text-indigo-100' => $list === $key, 'text-gray-400' => $list !== $key])>{{ $counts[$key] }}</span>
+                            @endif
+                        </button>
+                    @endforeach
+                </div>
+
+                @if ($tags->isNotEmpty())
+                    <div class="mt-3 flex lg:flex-wrap gap-1.5 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+                        @foreach ($tags as $tagName)
+                            <button type="button" wire:key="task-tag-{{ $tagName }}" wire:click="filterByTag(@js($tagName))" @class([
+                                'shrink-0 rounded-full px-2.5 py-0.5 text-xs',
+                                'bg-indigo-600 text-white' => $tag === $tagName,
+                                'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200' => $tag !== $tagName,
+                            ])>#{{ $tagName }}</button>
+                        @endforeach
+                    </div>
+                @endif
+            </nav>
+
+            <div class="min-w-0 flex-1 space-y-4">
+                {{-- Quick entry --}}
+                @if ($list !== \App\Support\TaskLists::DONE)
+                    <form
+                        x-data
+                        x-on:submit.prevent="const input = $refs.input; $wire.addTask(input.value).then((added) => { if (added) { input.value = ''; input.focus() } })"
+                        class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm"
+                    >
+                        <div class="flex gap-2">
+                            <label for="new-task" class="sr-only">{{ __('New task') }}</label>
+                            <input
+                                id="new-task"
+                                type="text"
+                                x-ref="input"
+                                x-on:input.debounce.250ms="$wire.previewTask($event.target.value)"
+                                autocomplete="off"
+                                enterkeyhint="done"
+                                placeholder="{{ __('New task … e.g. “Call dentist tomorrow !high #health”') }}"
+                                class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            <x-voice-button for="new-task" submit />
+                            <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700" aria-label="{{ __('Add task') }}">＋</button>
+                        </div>
+                        <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
+                        @if ($preview && $preview['tokens'] !== [])
+                            <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs" aria-live="polite">
+                                <span class="text-gray-500 dark:text-gray-400">„{{ $preview['title'] }}“</span>
+                                @foreach ($preview['tokens'] as $token)
+                                    <span wire:key="token-{{ $loop->index }}-{{ $token['text'] }}" class="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 pl-2 pr-1 py-0.5 text-indigo-700 dark:text-indigo-300">
+                                        {{ ['due' => '📅', 'repeat' => '🔁', 'priority' => '⚑', 'assignee' => '', 'tag' => ''][$token['kind']] ?? '' }} {{ $token['label'] }}
+                                        @if ($token['kind'] !== 'tag')
+                                            <button type="button" wire:click="ignorePhrase(@js($token['text']))" class="rounded-full px-1 hover:bg-indigo-100 dark:hover:bg-indigo-800" title="{{ __('Keep “:text” in the title', ['text' => $token['text']]) }}" aria-label="{{ __('Keep “:text” in the title', ['text' => $token['text']]) }}">×</button>
+                                        @endif
+                                    </span>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="mt-1.5 text-xs text-gray-400">{{ __('Understands dates (today, tomorrow, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.') }}</p>
+                        @endif
+                    </form>
+                @endif
+
+                {{-- Toolbar --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search tasks …') }}" aria-label="{{ __('Search tasks') }}" class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 py-1.5 text-sm" />
+                    <button type="button" wire:click="toggleSelecting" @class(['rounded-lg px-3 py-1.5 text-sm ring-1', 'bg-indigo-600 text-white ring-indigo-600' => $selecting, 'ring-gray-300 dark:ring-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => ! $selecting])>
+                        {{ $selecting ? __('Cancel') : __('Select tasks') }}
+                    </button>
+                </div>
+
+                {{-- Groups --}}
+                @forelse ($groups as $group)
+                    <section wire:key="group-{{ $group['key'] }}" class="space-y-1.5">
+                        <div class="flex items-center justify-between px-1">
+                            <h3 class="text-sm font-semibold {{ $toneClass[$group['tone']] }}">{{ $group['label'] }} <span class="font-normal text-gray-400">{{ count($group['tasks']) }}</span></h3>
+                            @if ($selecting)
+                                <button type="button" wire:click="selectTasks(@js(array_values(array_unique([...$selected, ...array_map(fn ($task) => $task->id, $group['tasks'])]))))" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">{{ __('Select all') }}</button>
+                            @endif
+                        </div>
+
+                        <ul class="space-y-1.5">
+                            @foreach ($group['tasks'] as $task)
+                                @php
+                                    $due = $lists->due($task);
+                                    $priority = $lists->priority($task);
+                                    $subtasks = $task->subtasks();
+                                    $subtasksDone = count(array_filter($subtasks, fn ($subtask) => $subtask['done'] ?? false));
+                                    $assigneeId = $lists->assigneeId($task);
+                                    $isSelected = in_array($task->id, $selected, true);
+                                @endphp
+                                <li
+                                    wire:key="task-{{ $task->id }}-{{ $task->updated_at?->timestamp }}"
+                                    x-data="{
+                                        startX: 0, startY: 0, dx: 0, swiping: false, leaving: false,
+                                        start(e) { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; this.swiping = true },
+                                        move(e) {
+                                            if (! this.swiping) return;
+                                            const dx = e.touches[0].clientX - this.startX, dy = e.touches[0].clientY - this.startY;
+                                            if (Math.abs(dy) > Math.abs(dx) && Math.abs(this.dx) < 10) { this.swiping = false; this.dx = 0; return }
+                                            this.dx = Math.max(-110, Math.min(110, dx));
+                                        },
+                                        end() {
+                                            this.swiping = false;
+                                            if (this.dx > 80) { this.complete() }
+                                            else if (this.dx < -80) { $wire.postpone({{ $task->id }}) }
+                                            this.dx = 0;
+                                        },
+                                        complete() {
+                                            @if (! $task->done && $list !== \App\Support\TaskLists::DONE)
+                                                this.leaving = true;
+                                                setTimeout(() => $wire.toggleDone({{ $task->id }}), 350);
+                                            @else
+                                                $wire.toggleDone({{ $task->id }});
+                                            @endif
+                                        },
+                                    }"
+                                    class="relative overflow-hidden rounded-xl"
+                                >
+                                    <div class="absolute inset-0 flex items-center justify-between px-4 text-sm text-white" aria-hidden="true" :class="dx > 0 ? 'bg-green-600' : (dx < 0 ? 'bg-amber-500' : '')">
+                                        <span x-show="dx > 0">✓ {{ __('Done') }}</span>
+                                        <span x-show="dx < 0" class="ml-auto">{{ __('Tomorrow') }} →</span>
+                                    </div>
+                                    <div
+                                        x-on:touchstart.passive="start($event)"
+                                        x-on:touchmove.passive="move($event)"
+                                        x-on:touchend="end()"
+                                        :style="`transform: translateX(${dx}px)`"
+                                        :class="{ 'opacity-40 scale-[0.98]': leaving, 'transition-transform': ! swiping }"
+                                        @class([
+                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 duration-300',
+                                            'ring-indigo-500' => $isSelected || (int) $openTaskId === $task->id,
+                                            'ring-gray-200 dark:ring-gray-700' => ! $isSelected && (int) $openTaskId !== $task->id,
+                                        ])
+                                    >
+                                        @if ($selecting)
+                                            <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />
+                                        @else
+                                            <button
+                                                type="button"
+                                                x-on:click="complete()"
+                                                role="checkbox"
+                                                aria-checked="{{ $task->done ? 'true' : 'false' }}"
+                                                aria-label="{{ $task->done ? __('Mark as open') : __('Mark as done') }}"
+                                                @class([
+                                                    'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs transition',
+                                                    'bg-green-600 border-green-600 text-white' => $task->done,
+                                                    ($priorityRing[$priority] ?? 'border-gray-300 dark:border-gray-500').' hover:bg-green-50 dark:hover:bg-green-900/30' => ! $task->done,
+                                                ])
+                                                :class="leaving && 'bg-green-600 border-green-600 text-white'"
+                                            ><span x-show="leaving || {{ $task->done ? 'true' : 'false' }}">✓</span></button>
+                                        @endif
+
+                                        <button type="button" wire:click="{{ $selecting ? 'selectTasks('.json_encode($isSelected ? array_values(array_diff($selected, [$task->id])) : [...$selected, $task->id]).')' : 'openTask('.$task->id.')' }}" class="min-w-0 flex-1 text-left">
+                                            <span @class(['block break-words', 'line-through text-gray-400' => $task->done, 'text-gray-900 dark:text-gray-100' => ! $task->done])>{{ $task->title }}</span>
+                                            <span class="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                                @if ($due !== '')
+                                                    <span @class(['font-medium text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-indigo-600 dark:text-indigo-400' => ! $lists->isOverdue($task) && $due === now()->toDateString()])>📅 {{ \App\Support\TaskInput::dueLabel($due) }}</span>
+                                                @endif
+                                                @if ($lists->repeat($task))
+                                                    <span title="{{ \App\Support\TaskInput::repeatLabel($lists->repeat($task)) }}">🔁 {{ \App\Support\TaskInput::repeatLabel($lists->repeat($task)) }}</span>
+                                                @endif
+                                                @if ($priority)
+                                                    <span class="{{ $priorityText[$priority] }}">⚑ {{ \App\Support\TaskInput::priorityLabel($priority) }}</span>
+                                                @endif
+                                                @if ($subtasks !== [])
+                                                    <span>☑ {{ $subtasksDone }}/{{ count($subtasks) }}</span>
+                                                @endif
+                                                @if (trim($task->body()) !== '')
+                                                    <span title="{{ __('Notes') }}">📝</span>
+                                                @endif
+                                                @foreach ($task->tags as $taskTag)
+                                                    <span class="text-indigo-600 dark:text-indigo-400">#{{ $taskTag->name }}</span>
+                                                @endforeach
+                                                @if ($task->isPrivate())
+                                                    <x-private-badge />
+                                                @endif
+                                            </span>
+                                        </button>
+
+                                        @if ($assigneeId && isset($members[$assigneeId]))
+                                            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900 text-[10px] font-semibold text-indigo-700 dark:text-indigo-200" title="{{ $members[$assigneeId] }}">{{ $initials($members[$assigneeId]) }}</span>
+                                        @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @empty
+                    <div class="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
+                        <p class="text-3xl" aria-hidden="true">{{ $list === \App\Support\TaskLists::TODAY ? '🎉' : '🗒️' }}</p>
+                        <p class="mt-2 text-gray-600 dark:text-gray-300">
+                            @if ($search !== '' || $tag !== '')
+                                {{ __('No tasks match the filter.') }}
+                            @elseif ($list === \App\Support\TaskLists::TODAY)
+                                {{ __('Nothing due today. Enjoy your day!') }}
+                            @elseif ($list === \App\Support\TaskLists::DONE)
+                                {{ __('No completed tasks yet.') }}
+                            @else
+                                {{ __('No tasks here yet.') }}
+                            @endif
+                        </p>
+                    </div>
+                @endforelse
+
+                <p class="hidden sm:block text-xs text-gray-400">{{ __('Tip: on the phone, swipe a task right to complete it or left to move it to tomorrow.') }}</p>
+                <p class="sm:hidden text-xs text-gray-400">{{ __('Swipe right: done · Swipe left: tomorrow') }}</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- Actions for several tasks --}}
+    @if ($selecting && $selected !== [])
+        <div class="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur p-3 shadow-lg" role="toolbar" aria-label="{{ __('Actions for the selected tasks') }}">
+            <div class="max-w-5xl mx-auto flex flex-wrap items-center gap-2 text-sm">
+                <span class="font-medium text-gray-700 dark:text-gray-200">{{ trans_choice(':count selected|:count selected', count($selected)) }}</span>
+                @if ($list === \App\Support\TaskLists::DONE)
+                    <button type="button" wire:click="applyToSelected('open')" class="rounded-lg bg-gray-100 dark:bg-gray-700 px-3 py-1.5 hover:bg-gray-200">↺ {{ __('Reopen') }}</button>
+                @else
+                    <button type="button" wire:click="applyToSelected('done')" class="rounded-lg bg-green-600 px-3 py-1.5 text-white hover:bg-green-700">✓ {{ __('Done') }}</button>
+                @endif
+                <select x-data x-on:change="if ($event.target.value) { $wire.applyToSelected($event.target.value); $event.target.value = '' }" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 py-1.5 text-sm" aria-label="{{ __('Due') }}">
+                    <option value="">📅 {{ __('Date …') }}</option>
+                    <option value="due:today">{{ __('Today') }}</option>
+                    <option value="due:tomorrow">{{ __('Tomorrow') }}</option>
+                    <option value="due:weekend">{{ __('This weekend') }}</option>
+                    <option value="due:next_week">{{ __('Next week') }}</option>
+                    <option value="due:none">{{ __('No date') }}</option>
+                </select>
+                <select x-data x-on:change="if ($event.target.value) { $wire.applyToSelected($event.target.value); $event.target.value = '' }" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 py-1.5 text-sm" aria-label="{{ __('Priority') }}">
+                    <option value="">⚑ {{ __('Priority …') }}</option>
+                    @foreach ($priorities as $priorityOption)
+                        <option value="priority:{{ $priorityOption }}">{{ \App\Support\TaskInput::priorityLabel($priorityOption) }}</option>
+                    @endforeach
+                    <option value="priority:">{{ __('None') }}</option>
+                </select>
+                <select x-data x-on:change="if ($event.target.value) { $wire.applyToSelected($event.target.value); $event.target.value = '' }" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 py-1.5 text-sm" aria-label="{{ __('Assignee') }}">
+                    <option value="">👤 {{ __('Assign …') }}</option>
+                    @foreach ($members as $memberId => $memberName)
+                        <option value="assignee:{{ $memberId }}">{{ $memberName }}</option>
+                    @endforeach
+                    <option value="assignee:">{{ __('Nobody') }}</option>
+                </select>
+                <button type="button" wire:click="applyToSelected('delete')" wire:confirm="{{ __('Delete the selected tasks?') }}" class="ml-auto rounded-lg px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">🗑 {{ __('Delete') }}</button>
+            </div>
+        </div>
+    @endif
+
+    {{-- Detail panel --}}
+    @if ($openTask)
+        @php
+            $due = $lists->due($openTask);
+            $priority = $lists->priority($openTask);
+            $repeat = $lists->repeat($openTask);
+            $assigneeId = $lists->assigneeId($openTask);
+            $subtasks = $openTask->subtasks();
+        @endphp
+        <div class="fixed inset-0 z-40 flex justify-end" wire:key="task-panel-{{ $openTask->id }}" x-data x-on:keydown.escape.window="if (! ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) { $wire.closeTask() }">
+            <div class="absolute inset-0 bg-gray-900/30" wire:click="closeTask" aria-hidden="true"></div>
+            <aside class="relative h-full w-full sm:max-w-md overflow-y-auto bg-white dark:bg-gray-800 shadow-xl" role="dialog" aria-modal="true" aria-label="{{ $openTask->title }}">
+                <div class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 px-4 py-3 backdrop-blur">
+                    <button type="button" wire:click="toggleDone({{ $openTask->id }})" @class(['rounded-lg px-3 py-1.5 text-sm', 'bg-green-600 text-white' => $openTask->done, 'ring-1 ring-gray-300 dark:ring-gray-600 text-gray-700 dark:text-gray-200 hover:bg-green-50' => ! $openTask->done])>
+                        {{ $openTask->done ? '✓ '.__('Done') : '○ '.__('Mark as done') }}
+                    </button>
+                    <button type="button" wire:click="closeTask" class="rounded-lg px-2 py-1 text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Close') }}">×</button>
+                </div>
+
+                <div class="space-y-5 p-4">
+                    <textarea
+                        rows="2"
+                        wire:key="task-title-{{ $openTask->id }}-{{ md5($openTask->title) }}"
+                        x-on:change="$wire.updateTitle({{ $openTask->id }}, $event.target.value)"
+                        x-on:keydown.enter.prevent="$event.target.blur()"
+                        class="w-full resize-none border-0 bg-transparent p-0 text-lg font-semibold text-gray-900 dark:text-gray-100 focus:ring-0"
+                        aria-label="{{ __('Title') }}"
+                    >{{ $openTask->title }}</textarea>
+
+                    {{-- Date --}}
+                    <div>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📅 {{ __('Due') }} @if ($due !== '') · <span class="normal-case {{ $lists->isOverdue($openTask) ? 'text-red-600' : 'text-gray-600 dark:text-gray-300' }}">{{ \Illuminate\Support\Carbon::parse($due)->translatedFormat('l, j. F Y') }}</span>@endif</h4>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach (['today' => __('Today'), 'tomorrow' => __('Tomorrow'), 'weekend' => __('This weekend'), 'next_week' => __('Next week'), 'none' => __('No date')] as $preset => $label)
+                                <button type="button" wire:click="setDue({{ $openTask->id }}, '{{ $preset }}')" class="rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-gray-600">{{ $label }}</button>
+                            @endforeach
+                            <input type="date" value="{{ $due }}" wire:change="setDue({{ $openTask->id }}, $event.target.value || 'none')" class="rounded-full border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-0.5 text-sm" aria-label="{{ __('Pick a date') }}" />
+                        </div>
+                    </div>
+
+                    {{-- Priority --}}
+                    <div>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">⚑ {{ __('Priority') }}</h4>
+                        <div class="inline-flex rounded-lg ring-1 ring-gray-200 dark:ring-gray-600 overflow-hidden text-sm" role="radiogroup" aria-label="{{ __('Priority') }}">
+                            @foreach (['' => __('None'), 'low' => __('Low'), 'medium' => __('Medium'), 'high' => __('High')] as $value => $label)
+                                <button type="button" role="radio" aria-checked="{{ ($priority ?? '') === $value ? 'true' : 'false' }}" wire:click="setPriority({{ $openTask->id }}, '{{ $value }}')" @class([
+                                    'px-3 py-1.5 border-l first:border-l-0 border-gray-200 dark:border-gray-600',
+                                    'bg-indigo-600 text-white' => ($priority ?? '') === $value,
+                                    'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700' => ($priority ?? '') !== $value,
+                                ])>{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">🔁 {{ __('Repeat') }}</span>
+                            <select wire:change="setRepeat({{ $openTask->id }}, $event.target.value)" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm">
+                                <option value="">{{ __('Never') }}</option>
+                                @foreach ($repeatRules as $rule)
+                                    <option value="{{ $rule }}" @selected($repeat === $rule)>{{ \App\Support\TaskInput::repeatLabel($rule) }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">👤 {{ __('Assignee') }}</span>
+                            <select wire:change="setAssignee({{ $openTask->id }}, $event.target.value)" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm">
+                                <option value="">{{ __('Nobody') }}</option>
+                                @foreach ($members as $memberId => $memberName)
+                                    <option value="{{ $memberId }}" @selected($assigneeId === $memberId)>{{ $memberName }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+
+                    {{-- Subtasks --}}
+                    <div>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">☑ {{ __('Subtasks') }}</h4>
+                        <ul class="space-y-1">
+                            @foreach ($subtasks as $subtask)
+                                <li wire:key="subtask-{{ $subtask['id'] }}" class="group flex items-center gap-2">
+                                    <input type="checkbox" wire:click="toggleSubtask({{ $openTask->id }}, '{{ $subtask['id'] }}')" @checked($subtask['done'] ?? false) class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-green-600" aria-label="{{ $subtask['text'] }}" />
+                                    <span @class(['flex-1 text-sm', 'line-through text-gray-400' => $subtask['done'] ?? false, 'text-gray-800 dark:text-gray-200' => ! ($subtask['done'] ?? false)])>{{ $subtask['text'] }}</span>
+                                    <button type="button" wire:click="removeSubtask({{ $openTask->id }}, '{{ $subtask['id'] }}')" class="text-gray-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label="{{ __('Remove') }}">×</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <form x-data x-on:submit.prevent="const input = $refs.subtask; if (input.value.trim()) { $wire.addSubtask({{ $openTask->id }}, input.value); input.value = '' } input.focus()" class="mt-1.5 flex items-center gap-2">
+                            <span class="text-gray-300" aria-hidden="true">＋</span>
+                            <input x-ref="subtask" id="new-subtask" type="text" enterkeyhint="done" placeholder="{{ __('Add a subtask') }}" class="flex-1 border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-0 py-1 text-sm focus:border-indigo-500 focus:ring-0 dark:text-gray-100" aria-label="{{ __('Add a subtask') }}" />
+                            <x-voice-button for="new-subtask" class="py-0.5" />
+                        </form>
+                    </div>
+
+                    {{-- Notes --}}
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-400">📝 {{ __('Notes') }}</span>
+                        <textarea
+                            rows="4"
+                            wire:key="task-notes-{{ $openTask->id }}-{{ md5($openTask->body()) }}"
+                            x-on:change="$wire.saveNotes({{ $openTask->id }}, $event.target.value)"
+                            placeholder="{{ __('Add notes …') }}"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 text-sm"
+                        >{{ $openTask->body() }}</textarea>
+                    </label>
+
+                    {{-- Tags --}}
+                    <div>
+                        <label for="task-tags" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-400"># {{ __('Tags') }}</label>
+                        <div class="flex gap-1.5">
+                            <input id="task-tags" type="text" value="{{ $openTask->tags->sortBy('name')->pluck('name')->implode(', ') }}" wire:key="task-tags-{{ $openTask->id }}-{{ md5($openTask->tags->sortBy('name')->pluck('name')->implode(',')) }}" wire:change="updateTags({{ $openTask->id }}, $event.target.value)" placeholder="{{ __('e.g. garden, urgent') }}" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 text-sm" />
+                            @if ($aiAvailable)
+                                <button type="button" wire:click="suggestTags({{ $openTask->id }})" wire:loading.attr="disabled" wire:target="suggestTags" class="shrink-0 rounded-lg px-2.5 text-sm ring-1 ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" title="{{ __('Suggest tags') }}" aria-label="{{ __('Suggest tags') }}">✨</button>
+                            @endif
+                        </div>
+                        @if ($tagSuggestions !== [])
+                            <div class="mt-1.5 flex flex-wrap gap-1.5">
+                                @foreach ($tagSuggestions as $suggestion)
+                                    <button type="button" wire:key="task-tag-suggestion-{{ $suggestion }}" wire:click="addSuggestedTag({{ $openTask->id }}, @js($suggestion))" class="rounded-full bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 text-xs text-indigo-700 dark:text-indigo-300">+ #{{ $suggestion }}</button>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    <livewire:links-panel type="item" :id="$openTask->id" :key="'task-links-'.$openTask->id" />
+
+                    <div class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4 text-sm">
+                        <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
+                        <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="text-red-600 dark:text-red-400 hover:underline">🗑 {{ __('Delete') }}</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    @endif
+</div>

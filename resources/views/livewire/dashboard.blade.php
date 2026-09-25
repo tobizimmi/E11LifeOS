@@ -130,7 +130,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                     {{-- Tasks --}}
                     <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
-                        <x-dashboard-card-header :title="__('Open tasks')" :count="$openTodoCount" :href="route('collections.show', $tasksCollection)" />
+                        <x-dashboard-card-header :title="__('Open tasks')" :count="$openTodoCount" :href="route('tasks.index')" />
                         @if ($overdueCount > 0)
                             <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ trans_choice(':count task is overdue|:count tasks are overdue', $overdueCount) }}</p>
                         @endif
@@ -143,7 +143,7 @@ new #[Layout('layouts.app')] class extends Component
                                         aria-label="{{ __('Mark as done') }}"
                                         class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500"
                                     />
-                                    <a href="{{ route('collections.show', ['collection' => $tasksCollection, 'entry' => $todo->id]) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100 hover:underline">{{ $todo->title }}</a>
+                                    <a href="{{ route('tasks.index', ['task' => $todo->id]) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100 hover:underline">{{ $todo->title }}</a>
                                     @if ($todo->isPrivate())
                                         <x-private-badge />
                                     @endif

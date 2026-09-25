@@ -99,3 +99,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - ✅ „Frag dein Second Brain“: Stichwortsuche über alles, was die fragende Person sehen darf (Seiten, Aufgaben, Einträge mit Eigenschaften, Rezepte), die 15 besten Treffer gehen als Dokumente an Claude; Antwort mit verlinkten Quellen (nur sichtbare), Limit 30 Fragen pro Stunde.
 - ✅ Tag-Vorschläge für Seiten und Einträge (bevorzugt vorhandene Tags).
 - Offen: Zusammenfassungen, semantische Suche (Embeddings).
+
+### Aufgaben-UX (V6)
+- ✅ Eigene Seite `/tasks` auf Basis der Aufgaben-Sammlung: Smart-Listen (Heute, Geplant, Alle, Meine, Erledigt), natürliche Schnelleingabe (`TaskInput`: Datumsangaben, „jeden Montag“, `!hoch`, `@Name`, `#tag`), Priorität als Systemeigenschaft, Unteraufgaben (`content.subtasks`), Wischgesten, Rückgängig, Mehrfachauswahl.

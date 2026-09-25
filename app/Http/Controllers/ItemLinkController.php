@@ -24,6 +24,7 @@ class ItemLinkController extends Controller
         return match ($model->type) {
             Item::TYPE_NOTE => redirect()->route('pages.index', ['item' => $model->id]),
             Item::TYPE_INBOX => redirect()->route('inbox.index'),
+            Item::TYPE_TODO => redirect()->route('tasks.index', ['task' => $model->id]),
             default => $model->collection_id
                 ? redirect()->route('collections.show', ['collection' => $model->collection_id, 'entry' => $model->id])
                 : redirect()->route('dashboard'),

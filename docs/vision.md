@@ -94,7 +94,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 - Erinnerungen zusätzlich per Web-Push (braucht VAPID-Schlüssel und ein Push-Paket).
 
 ### Phase 4 – Weitere Module
-- Sammlungen: gespeicherte Filter.
 
 ### Phase 5 – KI (optional)
 - Tag-Vorschläge, Zusammenfassungen, Fragen an das eigene Second Brain (z. B. über die Claude-API). Neue Abhängigkeiten nur nach Absprache.

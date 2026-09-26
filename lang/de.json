@@ -691,5 +691,14 @@
     "Undo": "Rückgängig",
     "Upcoming": "Geplant",
     "Yesterday": "Gestern",
-    "Select tasks": "Auswählen"
+    "Select tasks": "Auswählen",
+    "Time": "Uhrzeit",
+    "Reminder at :time (push or e-mail)": "Erinnerung um :time (Push oder E-Mail)",
+    "Understands dates and times (tomorrow 6 pm, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.": "Versteht Termine und Uhrzeiten (morgen 18 Uhr, Freitag, 24.12., in 3 Tagen), „jeden Montag“, !hoch, @Name und #Tags. Mit N direkt lostippen.",
+    "Reminder": "Erinnerung",
+    ":title is due now (:time).": ":title ist jetzt fällig (:time).",
+    "Open task": "Aufgabe öffnen",
+    "Due now (:time)": "Jetzt fällig (:time)",
+    "New task for you": "Neue Aufgabe für dich",
+    "from :name": "von :name"
 }

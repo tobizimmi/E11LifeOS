@@ -13,7 +13,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Spracheingabe** – 🎤 in Schnellerfassung, bei neuen Aufgaben/Einträgen und in der Einkaufsliste (Spracherkennung des Browsers).
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
-- **Erinnerungen** – täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
+- **Erinnerungen** – Aufgaben mit Uhrzeit („morgen 18 Uhr“) erinnern genau dann per Push (ohne Push-Gerät per E-Mail); wer eine Aufgabe zugewiesen bekommt, erhält sofort einen Push. Dazu täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.
 - **Aufgaben** – eigene Aufgabenseite, einfach und schnell:
   - Smart-Listen „Heute“ (inkl. Überfälligem), „Geplant“, „Alle“, „Meine“ und „Erledigt“, gruppiert nach Datum.
@@ -95,7 +95,7 @@ php artisan recipes:import-rezepteapp deine@email.de \
 
 ## Geplante Aufgaben (Erinnerungen)
 
-Die täglichen E-Mails verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
+Die täglichen E-Mails und die Erinnerungen zur Uhrzeit (jede Minute geprüft) verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
 
 ```bash
 * * * * * cd /pfad/zur/app && php artisan schedule:run >> /dev/null 2>&1

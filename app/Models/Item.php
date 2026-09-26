@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
-#[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'position'])]
+#[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'due_time', 'reminded_at', 'position'])]
 #[ObservedBy(ItemObserver::class)]
 class Item extends Model
 {
@@ -59,6 +60,7 @@ class Item extends Model
             'content' => 'array',
             'properties' => 'array',
             'done' => 'boolean',
+            'reminded_at' => 'datetime',
         ];
     }
 
@@ -79,6 +81,11 @@ class Item extends Model
             }
 
             $item->syncTaskStatusWithDone();
+
+            // A new date or time means the reminder is due again.
+            if ($item->isDirty('due_time') || $item->dueDate() !== $item->originalDueDate()) {
+                $item->reminded_at = null;
+            }
         });
 
         // Embedded files go with the page (one by one, so the stored files are removed too).
@@ -154,6 +161,33 @@ class Item extends Model
         $this->properties = $values;
         $this->done = false;
         $this->rescheduledTo = $next;
+    }
+
+    /**
+     * Due date of a task (Y-m-d) from the tasks collection's "due" property.
+     */
+    public function dueDate(): ?string
+    {
+        $property = $this->collection?->systemProperty('due');
+
+        return $property ? ($this->propertyValue($property) ?: null) : null;
+    }
+
+    private function originalDueDate(): ?string
+    {
+        $property = $this->collection?->systemProperty('due');
+
+        return $property && $this->exists ? ((($this->getOriginal('properties') ?? [])[$property->id] ?? null) ?: null) : null;
+    }
+
+    /**
+     * Due date and time together, null without a date or without a time.
+     */
+    public function dueAt(): ?Carbon
+    {
+        $date = $this->dueDate();
+
+        return $date && $this->due_time ? Carbon::parse($date.' '.$this->due_time) : null;
     }
 
     public function household(): BelongsTo

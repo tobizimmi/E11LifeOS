@@ -34,7 +34,7 @@
                 x-show="! online"
                 x-cloak
                 role="status"
-                class="lg:ps-64 sticky top-0 z-20 bg-amber-100 dark:bg-amber-900/60 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100"
+                class="lg:ps-64 sticky top-14 lg:top-0 z-20 bg-amber-100 dark:bg-amber-900/60 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100"
             >
                 {{ __('You are offline – you see the last loaded state. Changes are possible again once you are online.') }}
             </div>

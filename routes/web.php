@@ -100,6 +100,16 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Route::get('recipes/{recipe}/photos/{index}', RecipeImageController::class)->whereNumber(['recipe', 'index'])->name('recipes.photo');
 });
 
+// Portfolio manager addon (personal securities accounts, prices, imports).
+Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portfolio.')->group(function () {
+    Volt::route('/', 'portfolio.index')->name('index');
+    Volt::route('transactions', 'portfolio.transactions')->name('transactions');
+    Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');
+    Volt::route('import', 'portfolio.import')->name('import');
+    Volt::route('settings', 'portfolio.settings')->name('settings');
+    Volt::route('securities/{symbol}', 'portfolio.security')->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('security');
+});
+
 // Public recipe links (no login; only recipes someone shared, see PublicRecipeController).
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');

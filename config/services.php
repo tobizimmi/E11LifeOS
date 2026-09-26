@@ -25,6 +25,19 @@ return [
     ],
 
     // Web push (generate the keys with "php artisan webpush:vapid").
+    // Market data for the portfolio manager (Yahoo Finance needs no key).
+    'twelve_data' => [
+        'key' => env('TWELVE_DATA_KEY'),
+    ],
+
+    'openfigi' => [
+        'key' => env('OPENFIGI_KEY'),
+    ],
+
+    'pushover' => [
+        'token' => env('PUSHOVER_APP_TOKEN'),
+    ],
+
     'webpush' => [
         'public_key' => env('VAPID_PUBLIC_KEY'),
         'private_key' => env('VAPID_PRIVATE_KEY'),

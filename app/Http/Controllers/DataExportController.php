@@ -14,12 +14,17 @@ use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\MealPlan;
+use App\Models\Portfolio;
+use App\Models\PortfolioSetting;
+use App\Models\PriceAlert;
 use App\Models\Product;
 use App\Models\Recipe;
 use App\Models\RecurringInvoice;
 use App\Models\ShoppingListEntry;
+use App\Models\TargetAllocation;
 use App\Models\TimeEntry;
 use App\Models\User;
+use App\Models\WatchlistItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection as SupportCollection;
@@ -82,6 +87,17 @@ class DataExportController extends Controller
                 ]),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'comments' => Comment::where('user_id', $user->id)->orderBy('id')->get()->map->only(['item_id', 'body', 'created_at']),
+            'portfolio' => [
+                'portfolios' => $user->portfolios()->with(['positions', 'transactions', 'savingsPlans'])->get()->map(fn (Portfolio $portfolio) => $portfolio->only(['name', 'description', 'broker', 'color']) + [
+                    'positions' => $portfolio->positions->map->only(['symbol', 'name', 'isin', 'quantity', 'avg_buy_price', 'currency', 'labels', 'notes', 'stop_loss_price', 'take_profit_price', 'manual'])->all(),
+                    'transactions' => $portfolio->transactions->sortBy('executed_on')->values()->map->only(['executed_on', 'type', 'symbol', 'name', 'isin', 'wkn', 'quantity', 'price', 'fees', 'taxes', 'currency', 'exchange_rate', 'broker', 'notes'])->all(),
+                    'savings_plans' => $portfolio->savingsPlans->map->only(['symbol', 'name', 'amount', 'frequency', 'day_of_month', 'next_date', 'active'])->all(),
+                ]),
+                'watchlist' => WatchlistItem::where('user_id', $user->id)->orderBy('symbol')->get()->map->only(['symbol', 'name', 'notes']),
+                'target_allocations' => TargetAllocation::where('user_id', $user->id)->get()->map->only(['symbol', 'name', 'target_percent']),
+                'price_alerts' => PriceAlert::where('user_id', $user->id)->get()->map->only(['symbol', 'name', 'condition', 'target_price', 'currency', 'triggered_at', 'active']),
+                'settings' => PortfolioSetting::where('user_id', $user->id)->first()?->makeHidden(['id', 'user_id', 'default_portfolio_id', 'pushover_app_token']),
+            ],
             'business' => [
                 'profile' => BusinessProfile::where('user_id', $user->id)->first()?->makeHidden(['id', 'user_id', 'household_id']),
                 'customers' => Customer::where('user_id', $user->id)->orderBy('id')->get()->map->only(['id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'buyer_reference', 'notes']),

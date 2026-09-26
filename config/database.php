@@ -79,6 +79,20 @@ return [
             'strict' => true,
         ],
 
+        // Database of the old portfolio manager, only used by `php artisan portfolio:import-legacy`.
+        'portfolio_legacy' => [
+            'driver' => env('PORTFOLIO_LEGACY_DB_DRIVER', 'mysql'),
+            'host' => env('PORTFOLIO_LEGACY_DB_HOST', '127.0.0.1'),
+            'port' => env('PORTFOLIO_LEGACY_DB_PORT', '3306'),
+            'database' => env('PORTFOLIO_LEGACY_DB_DATABASE', 'portfolio_manager'),
+            'username' => env('PORTFOLIO_LEGACY_DB_USERNAME', 'portfolio'),
+            'password' => env('PORTFOLIO_LEGACY_DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

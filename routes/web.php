@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
+use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicRecipeController;
@@ -60,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
             : redirect()->route('tasks.index', $request->filled('entry') ? ['task' => $request->query('entry')] : []);
     })->name('todos.index');
     Volt::route('tasks', 'tasks.index')->name('tasks.index');
+    Volt::route('finance', 'finance.index')->name('finance.index');
+    Route::get('finance/report.pdf', FinanceReportPdfController::class)->name('finance.report');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
 });
 

@@ -38,6 +38,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Wochenplan** – Rezepte oder freie Einträge („Reste“) pro Tag und Mahlzeit planen, per Drag & Drop verschieben; die Zutaten der Woche zusammengefasst auf die Einkaufsliste; „Heute auf dem Speiseplan“ auf der Übersicht.
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
 - **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
+- **Finanzen (privat)** – Kontoauszüge als CSV importieren (Sparkasse, Volksbank, ING, DKB, comdirect, N26 u. a.; doppelte Buchungen werden übersprungen), automatische Kategorien mit lernenden Regeln („immer“), Bericht mit Einnahmen/Ausgaben pro Monat, Kategorien, 50/30/20-Check, wiederkehrenden Zahlungen inkl. Preiserhöhungen und konkretem Sparpotenzial; optional eine KI-Finanzanalystin und KI-Kategorisierung, Bericht als PDF. Bankdaten sieht nur die Person, die sie importiert hat.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
@@ -66,14 +67,14 @@ Registrierung unter `/register` mit dem erzeugten Code.
 
 ## KI-Funktionen (optional)
 
-Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“ und Tag-Vorschläge nutzen die Claude-API. Dafür in der `.env` auf dem Server:
+Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“, Tag-Vorschläge und die Finanzanalystin nutzen die Claude-API. Dafür in der `.env` auf dem Server:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5   # optional, Standard
 ```
 
-Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden; bei einer Frage die bis zu 15 passendsten Inhalte, die die fragende Person sehen darf, bei Tag-Vorschlägen Titel und Text der Seite bzw. des Eintrags.
+Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden; bei einer Frage die bis zu 15 passendsten Inhalte, die die fragende Person sehen darf, bei Tag-Vorschlägen Titel und Text der Seite bzw. des Eintrags; für die Finanzanalyse nur Summen pro Kategorie und wiederkehrende Zahlungen (beim KI-Kategorisieren Empfänger, Verwendungszweck und Betrag offener Buchungen – nie Kontonummern).
 
 ## Rezepte aus der RezepteApp2 übernehmen
 

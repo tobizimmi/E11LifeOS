@@ -700,5 +700,14 @@
     "Open task": "Aufgabe öffnen",
     "Due now (:time)": "Jetzt fällig (:time)",
     "New task for you": "Neue Aufgabe für dich",
-    "from :name": "von :name"
+    "from :name": "von :name",
+    "Calendar subscription": "Kalender-Abo",
+    "Show your open tasks and dates with a reminder (e.g. cancellation deadlines) in the calendar on your phone or computer. The calendar updates itself.": "Zeige deine offenen Aufgaben und Termine mit Erinnerung (z. B. Kündigungsfristen) im Kalender auf Handy oder Computer. Der Kalender aktualisiert sich selbst.",
+    "Calendar link": "Kalender-Link",
+    "Open in calendar app": "In Kalender-App öffnen",
+    "iPhone: Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar, paste the link. Google Calendar: “Other calendars” → “From URL”. Keep the link private – anyone who has it can see these dates.": "iPhone: Einstellungen → Kalender → Accounts → Account hinzufügen → Andere → Kalenderabo hinzufügen, Link einfügen. Google Kalender: „Weitere Kalender“ → „Per URL“. Halte den Link privat – wer ihn kennt, sieht diese Termine.",
+    "Create a new link? The old one stops working.": "Neuen Link erstellen? Der alte funktioniert dann nicht mehr.",
+    "New link": "Neuer Link",
+    "Switch off": "Ausschalten",
+    "Create calendar link": "Kalender-Link erstellen"
 }

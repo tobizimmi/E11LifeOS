@@ -22,6 +22,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
   - Abhaken mit „Rückgängig“; auf dem Handy nach rechts wischen = erledigt, nach links = auf morgen.
   - Mehrfachauswahl: mehrere Aufgaben auf einmal erledigen, verschieben, priorisieren, zuweisen oder löschen.
   - Dieselben Aufgaben bleiben als Board, Tabelle oder Kalender verfügbar.
+- **Kalender-Abo** – offene Aufgaben (mit Uhrzeit und Wiederholung) und Termine mit Erinnerung, z. B. Kündigungsfristen, als abonnierbarer Kalender für iPhone, Google oder Outlook (persönlicher Link im Profil, jederzeit erneuer- oder abschaltbar).
 - **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
 - **Sammlungen** – eigene Tabellen/Boards wie Notion-Datenbanken: Eigenschaften (Text, Zahl, Datum, Auswahl, Mehrfachauswahl, Checkbox, Person, Link, Verknüpfung), jeder Eintrag mit eigenen Notizen und Dateien; Filter pro Eigenschaft (z. B. „Fällig: überfällig“, „Zuständig: ich“) und gespeicherte Ansichten als Reiter, Summen für Zahlen und Checkboxen, E-Mail-Erinnerung für Datumsfelder, Einträge per Klick auf die Einkaufsliste.
 - **Module als Vorlagen** – Verträge & Dokumente (Kündigungsfrist mit Erinnerung), Haushaltsbuch, Vorräte (Haltbarkeit mit Erinnerung), Lesezeichen / Später lesen, Tagebuch (privat), Gewohnheiten, Projekte, Leseliste.

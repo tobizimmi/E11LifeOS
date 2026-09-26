@@ -48,11 +48,18 @@ new #[Layout('layouts.app')] class extends Component
     public string $newAccountName = '';
 
     /**
-     * @var array{imported: int, skipped: int, errors: int}|null
+     * @var array{imported: int, skipped: int, errors: int, accounts?: array<int, string>}|null
      */
     public ?array $importResult = null;
 
     public ?string $importError = null;
+
+    /**
+     * What the uploaded file contains (format and account names), shown before importing.
+     *
+     * @var array{format: string, accounts: array<int, string>}|null
+     */
+    public ?array $detected = null;
 
     /**
      * The AI analyst's assessment of the current report (not stored).
@@ -104,6 +111,30 @@ new #[Layout('layouts.app')] class extends Component
 
     // ── Import ───────────────────────────────────────────────────────────
 
+    /**
+     * Looks into the uploaded file: Outbank exports with several accounts are split automatically.
+     */
+    public function updatedStatement(BankCsvImporter $importer): void
+    {
+        $this->reset('importResult', 'importError', 'detected');
+
+        if (! $this->statement || $this->getErrorBag()->has('statement')) {
+            return;
+        }
+
+        try {
+            $this->detected = $importer->inspect((string) file_get_contents($this->statement->getRealPath()));
+        } catch (RuntimeException $exception) {
+            $this->importError = $exception->getMessage();
+
+            return;
+        }
+
+        if ($this->detected['accounts'] !== []) {
+            $this->importAccount = 'auto';
+        }
+    }
+
     public function importStatement(BankCsvImporter $importer): void
     {
         $this->reset('importResult', 'importError');
@@ -112,6 +143,21 @@ new #[Layout('layouts.app')] class extends Component
             'importAccount' => ['required', 'string'],
             'newAccountName' => [Rule::requiredIf($this->importAccount === 'new'), 'nullable', 'string', 'max:100'],
         ], attributes: ['newAccountName' => __('Account name')]);
+
+        if ($this->importAccount === 'auto') {
+            try {
+                $this->importResult = $importer->importByAccountColumn($this->currentUser()->id, (int) $this->householdId, (string) file_get_contents($this->statement->getRealPath()), new Categorizer($this->currentUser()->id));
+            } catch (RuntimeException $exception) {
+                $this->importError = $exception->getMessage();
+
+                return;
+            }
+
+            $this->importAccount = (string) ($this->accounts()->where('name', $this->importResult['accounts'][0] ?? '')->value('id') ?? 'new');
+            $this->reset('statement', 'newAccountName', 'advice', 'detected');
+
+            return;
+        }
 
         $account = $this->importAccount === 'new'
             ? BankAccount::create(['household_id' => $this->householdId, 'user_id' => $this->currentUser()->id, 'name' => trim($this->newAccountName)])
@@ -130,7 +176,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->importAccount = (string) $account->id;
-        $this->reset('statement', 'newAccountName', 'advice');
+        $this->reset('statement', 'newAccountName', 'advice', 'detected');
     }
 
     // ── Bookings ─────────────────────────────────────────────────────────
@@ -319,7 +365,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🏦</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Import your first bank statement') }}</h3>
-                    <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Export the transactions of your account as CSV in online banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) and import the file here. The analysis then shows where your money goes and where you can save.') }}</p>
+                    <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Export the transactions of your account as CSV in online banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) or in Outbank and import the file here. The analysis then shows where your money goes and where you can save.') }}</p>
                     <x-primary-button type="button" wire:click="$set('tab', 'import')" class="mt-4">⬆ {{ __('Import statement') }}</x-primary-button>
                 </div>
             @elseif ($tab === 'report')

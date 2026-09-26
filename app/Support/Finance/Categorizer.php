@@ -5,8 +5,9 @@ namespace App\Support\Finance;
 use App\Models\FinanceRule;
 
 /**
- * Assigns a category to a booking: the user's own rules first, then a catalogue of
- * common German merchants and booking texts; the rest becomes "other".
+ * Assigns a category to a booking: the user's own rules first, then the category of the
+ * source app (e.g. Outbank), then a catalogue of common German merchants and booking texts;
+ * the rest becomes "other".
  */
 class Categorizer
 {
@@ -41,13 +42,46 @@ class Categorizer
     ];
 
     /**
+     * Category names of banking apps like Outbank or Finanzguru (lower case substrings), most specific first.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const SOURCE_CATEGORIES = [
+        'transfer' => ['umbuchung', 'übertrag', 'uebertrag', 'transfer', 'kreditkartenabrechnung'],
+        'salary' => ['gehalt', 'lohn', 'einkommen', 'salary', 'income', 'rente', 'kindergeld'],
+        'refunds' => ['erstattung', 'refund'],
+        'savings' => ['sparen', 'geldanlage', 'investment', 'depot', 'wertpapier', 'savings'],
+        'cash' => ['bargeld', 'geldautomat', 'cash', 'atm'],
+        'restaurants' => ['restaurant', 'café', 'cafe', 'lieferdienst', 'fast food', 'essen gehen', 'bars', 'gastronomie', 'dining'],
+        'groceries' => ['lebensmittel', 'supermarkt', 'drogerie', 'groceries', 'bäcker', 'baecker'],
+        'energy' => ['strom', 'energie', 'heizung', 'gas', 'wasser', 'utilities'],
+        'housing' => ['miete', 'wohnen', 'nebenkosten', 'hausgeld', 'rundfunk', 'housing', 'rent'],
+        'telecom' => ['telefon', 'internet', 'mobilfunk', 'handy', 'phone'],
+        'insurance' => ['versicherung', 'insurance'],
+        'subscriptions' => ['abo', 'streaming', 'medien', 'subscription', 'mitgliedschaft'],
+        'mobility' => ['tank', 'kraftstoff', 'auto', 'kfz', 'mobilität', 'mobilitaet', 'verkehr', 'bahn', 'parken', 'taxi', 'transport', 'fuel'],
+        'health' => ['gesundheit', 'apotheke', 'arzt', 'medizin', 'health', 'pharmacy'],
+        'children' => ['kinder', 'kita', 'schule', 'baby', 'children'],
+        'pets' => ['haustier', 'tier', 'pets'],
+        'travel' => ['reise', 'urlaub', 'hotel', 'flug', 'travel', 'vacation'],
+        'leisure' => ['freizeit', 'hobby', 'sport', 'fitness', 'kultur', 'unterhaltung', 'bücher', 'buecher', 'leisure', 'entertainment'],
+        'shopping' => ['shopping', 'kleidung', 'elektronik', 'haushalt', 'einkauf', 'online', 'clothing'],
+        'donations' => ['spende', 'geschenk', 'donation', 'gift'],
+        'taxes' => ['steuer', 'behörde', 'behoerde', 'tax'],
+        'bank_fees' => ['bankgebühr', 'bankgebuehr', 'kontoführung', 'kontofuehrung', 'gebühren', 'gebuehren', 'zinsen', 'fees'],
+    ];
+
+    /**
      * @var array<string, string>|null
      */
     private ?array $rules = null;
 
     public function __construct(private int $userId) {}
 
-    public function categorize(?string $counterparty, ?string $purpose, float $amount): string
+    /**
+     * @param  string|null  $sourceCategory  Category from the exporting app, e.g. "Mobilität / Tanken" (Outbank).
+     */
+    public function categorize(?string $counterparty, ?string $purpose, float $amount, ?string $sourceCategory = null): string
     {
         $text = ' '.mb_strtolower(trim(($counterparty ?? '').' '.($purpose ?? ''))).' ';
 
@@ -57,7 +91,27 @@ class Categorizer
             }
         }
 
-        foreach (self::KEYWORDS as $category => $keywords) {
+        if ($sourceCategory !== null && trim($sourceCategory) !== '') {
+            // The most specific part (subcategory) first, then the whole path.
+            $parts = array_values(array_filter(array_map('trim', preg_split('/[\/>|]/', mb_strtolower($sourceCategory)) ?: [])));
+
+            foreach ([...array_reverse($parts), implode(' ', $parts)] as $part) {
+                if (($category = $this->match(' '.$part.' ', self::SOURCE_CATEGORIES, $amount)) !== null) {
+                    return $category;
+                }
+            }
+        }
+
+        return $this->match($text, self::KEYWORDS, $amount)
+            ?? ($amount >= 0 ? FinanceCategories::OTHER_INCOME : FinanceCategories::OTHER);
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $catalogue
+     */
+    private function match(string $text, array $catalogue, float $amount): ?string
+    {
+        foreach ($catalogue as $category => $keywords) {
             // Income categories only for money coming in, spending categories only for money going out.
             $group = FinanceCategories::group($category);
 
@@ -72,7 +126,7 @@ class Categorizer
             }
         }
 
-        return $amount >= 0 ? FinanceCategories::OTHER_INCOME : FinanceCategories::OTHER;
+        return null;
     }
 
     /**

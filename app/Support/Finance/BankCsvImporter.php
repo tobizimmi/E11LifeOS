@@ -9,8 +9,9 @@ use RuntimeException;
 
 /**
  * Reads CSV exports of German banks (Sparkasse CSV-CAMT, ING, DKB, comdirect, N26,
- * Volksbank/VR, Postbank, Consorsbank …): finds the header row, recognises the columns by
- * their names, converts German number/date formats and skips bookings already imported.
+ * Volksbank/VR, Postbank, Consorsbank …) and banking apps (Outbank, with several accounts and
+ * categories in one file): finds the header row, recognises the columns by their names,
+ * converts German number/date formats and skips bookings already imported.
  */
 class BankCsvImporter
 {
@@ -29,8 +30,16 @@ class BankCsvImporter
         'payee' => ['zahlungsempfänger', 'zahlungsempfaenger', 'empfänger', 'empfaenger', 'payee', 'beguenstigter', 'begünstigter'],
         'payer' => ['zahlungspflichtige', 'auftraggeber', 'zahlungspflichtiger'],
         'counterparty' => ['beguenstigter/zahlungspflichtiger', 'auftraggeber/empfänger', 'auftraggeber / begünstigter', 'name', 'gegenkonto name', 'partner name'],
-        'purpose' => ['verwendungszweck', 'payment reference', 'buchungstext', 'purpose', 'reference', 'beschreibung', 'vorgang', 'umsatzart'],
+        'purpose' => ['verwendungszweck', 'payment reference', 'buchungstext', 'purpose', 'reason', 'reference', 'beschreibung', 'vorgang', 'umsatzart'],
+        'category_path' => ['kategorie-pfad', 'category-path', 'category path', 'kategoriepfad'],
+        'category' => ['kategorie', 'category', 'hauptkategorie'],
+        'subcategory' => ['unterkategorie', 'subcategory', 'sub-category'],
     ];
+
+    /**
+     * Exact names of a column holding the own account (banking apps export several accounts at once).
+     */
+    private const ACCOUNT_COLUMNS = ['konto', 'account', 'kontoname', 'account name', 'konto-name', 'bankkonto'];
 
     /**
      * @return array{imported: int, skipped: int, errors: int}
@@ -39,9 +48,65 @@ class BankCsvImporter
     {
         $rows = $this->rows($contents);
         [$headerIndex, $columns] = $this->findHeader($rows);
+
+        return $this->importRows(array_slice($rows, $headerIndex + 1, self::MAX_ROWS), $columns, fn () => $account, $categorizer);
+    }
+
+    /**
+     * Imports a file with an account column (e.g. an Outbank export of several accounts): the
+     * bookings go to the owner's account of the same name, which is created when missing.
+     *
+     * @return array{imported: int, skipped: int, errors: int, accounts: array<int, string>}
+     */
+    public function importByAccountColumn(int $userId, int $householdId, string $contents, Categorizer $categorizer): array
+    {
+        $rows = $this->rows($contents);
+        [$headerIndex, $columns] = $this->findHeader($rows);
+
+        if (! isset($columns['account'])) {
+            throw new RuntimeException(__('The file has no account column – please choose the account to import into.'));
+        }
+
+        $accounts = [];
+        $resolve = function (array $row) use (&$accounts, $columns, $userId, $householdId): BankAccount {
+            $name = mb_substr(trim((string) ($row[$columns['account']] ?? '')), 0, 100) ?: __('Imported account');
+
+            return $accounts[$name] ??= BankAccount::firstOrCreate(['user_id' => $userId, 'household_id' => $householdId, 'name' => $name]);
+        };
+
+        $result = $this->importRows(array_slice($rows, $headerIndex + 1, self::MAX_ROWS), $columns, $resolve, $categorizer);
+
+        return $result + ['accounts' => array_keys($accounts)];
+    }
+
+    /**
+     * What a file contains before importing it: the recognised format and the accounts named in it.
+     *
+     * @return array{format: string, accounts: array<int, string>}
+     */
+    public function inspect(string $contents): array
+    {
+        $rows = $this->rows($contents);
+        [$headerIndex, $columns] = $this->findHeader($rows);
+        $accounts = isset($columns['account'])
+            ? collect(array_slice($rows, $headerIndex + 1, self::MAX_ROWS))->map(fn (array $row) => trim((string) ($row[$columns['account']] ?? '')))->filter()->unique()->values()->all()
+            : [];
+        $isOutbank = isset($columns['category_path']) || (isset($columns['account'], $columns['category']));
+
+        return ['format' => $isOutbank ? 'outbank' : 'bank', 'accounts' => $accounts];
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $rows
+     * @param  array<string, int>  $columns
+     * @param  callable(array<int, string>): BankAccount  $accountFor
+     * @return array{imported: int, skipped: int, errors: int}
+     */
+    private function importRows(array $rows, array $columns, callable $accountFor, Categorizer $categorizer): array
+    {
         $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0];
 
-        foreach (array_slice($rows, $headerIndex + 1, self::MAX_ROWS) as $row) {
+        foreach ($rows as $row) {
             if (count(array_filter($row, fn ($cell) => trim((string) $cell) !== '')) < 2) {
                 continue;
             }
@@ -53,6 +118,8 @@ class BankCsvImporter
 
                 continue;
             }
+
+            $account = $accountFor($row);
 
             $hash = sha1(implode('|', [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')]));
 
@@ -71,7 +138,7 @@ class BankCsvImporter
                 'amount' => $booking['amount'],
                 'counterparty' => $booking['counterparty'] !== null ? mb_substr($booking['counterparty'], 0, 255) : null,
                 'purpose' => $booking['purpose'] !== null ? mb_substr($booking['purpose'], 0, 2000) : null,
-                'category' => $categorizer->categorize($booking['counterparty'], $booking['purpose'], $booking['amount']),
+                'category' => $categorizer->categorize($booking['counterparty'], $booking['purpose'], $booking['amount'], $booking['source_category']),
             ])->save();
 
             $result['imported']++;
@@ -126,10 +193,19 @@ class BankCsvImporter
         $columns = [];
         $used = [];
 
+        foreach ($names as $index => $name) {
+            if (in_array($name, self::ACCOUNT_COLUMNS, true)) {
+                $columns['account'] = $index;
+                $used[] = $index;
+
+                break;
+            }
+        }
+
         foreach (self::COLUMNS as $field => $fragments) {
-            foreach ($fragments as $fragment) {
-                // An exact column name beats one that merely contains the fragment.
-                foreach ([true, false] as $exact) {
+            // An exact column name (for any fragment) beats one that merely contains a fragment.
+            foreach ([true, false] as $exact) {
+                foreach ($fragments as $fragment) {
                     foreach ($names as $index => $name) {
                         if (in_array($index, $used, true) || $name === '' || ($exact ? $name !== $fragment : ! str_contains($name, $fragment))) {
                             continue;
@@ -155,7 +231,7 @@ class BankCsvImporter
     /**
      * @param  array<int, string>  $row
      * @param  array<string, int>  $columns
-     * @return array{date: string, amount: float, counterparty: ?string, purpose: ?string}|null
+     * @return array{date: string, amount: float, counterparty: ?string, purpose: ?string, source_category: ?string}|null
      */
     private function booking(array $row, array $columns): ?array
     {
@@ -183,6 +259,7 @@ class BankCsvImporter
             'amount' => round($amount, 2),
             'counterparty' => $counterparty !== '' ? preg_replace('/\s+/u', ' ', $counterparty) : null,
             'purpose' => $cell('purpose') !== '' ? preg_replace('/\s+/u', ' ', $cell('purpose')) : null,
+            'source_category' => ($cell('category_path') ?: trim($cell('category').' / '.$cell('subcategory'), ' /')) ?: null,
         ];
     }
 

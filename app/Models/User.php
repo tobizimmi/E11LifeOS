@@ -89,6 +89,11 @@ class User extends Authenticatable
         return $this->hasMany(PushSubscription::class);
     }
 
+    public function portfolios(): HasMany
+    {
+        return $this->hasMany(Portfolio::class)->orderBy('id');
+    }
+
     public function currentHousehold(): ?Household
     {
         return $this->households()->first();

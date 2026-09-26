@@ -76,7 +76,7 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'hasRecipes' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect()];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect()];
         }
 
         $tree = new PageTree(
@@ -93,7 +93,8 @@ new class extends Component
                 ? collect($tree->ancestors($this->currentPageId))->pluck('id')->push($this->currentPageId)->all()
                 : [],
             'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
-            'hasRecipes' => (bool) Household::find($this->householdId)?->hasAddon(Addons::RECIPES),
+            'hasRecipes' => (bool) ($household = Household::find($this->householdId))?->hasAddon(Addons::RECIPES),
+            'hasPortfolio' => (bool) $household?->hasAddon(Addons::PORTFOLIO),
             'tasksCollection' => $tasksCollection,
             'todayTaskCount' => (new TaskLists($tasksCollection, Auth::user()))->counts()[TaskLists::TODAY],
             'collections' => Collection::query()
@@ -169,6 +170,9 @@ new class extends Component
                         <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>
                     @endif
                     <x-sidebar-link :href="route('finance.index')" :active="request()->routeIs('finance.*')" wire:navigate>💶 {{ __('Finances') }}</x-sidebar-link>
+                    @if ($hasPortfolio)
+                        <x-sidebar-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*')" wire:navigate>📈 {{ __('Portfolio') }}</x-sidebar-link>
+                    @endif
                     <x-sidebar-link :href="route('business.index')" :active="request()->routeIs('business.*')" wire:navigate>💼 {{ __('Small business') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
                 </div>

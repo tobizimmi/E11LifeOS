@@ -27,7 +27,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function emptyForm(): array
     {
-        return ['name' => '', 'contact_person' => '', 'street' => '', 'postal_code' => '', 'city' => '', 'country' => '', 'email' => '', 'vat_id' => '', 'notes' => ''];
+        return ['name' => '', 'contact_person' => '', 'street' => '', 'postal_code' => '', 'city' => '', 'country' => '', 'email' => '', 'vat_id' => '', 'buyer_reference' => '', 'notes' => ''];
     }
 
     public function newCustomer(): void
@@ -63,6 +63,7 @@ new #[Layout('layouts.app')] class extends Component
             'form.country' => ['nullable', 'string', 'max:64'],
             'form.email' => ['nullable', 'email', 'max:255'],
             'form.vat_id' => ['nullable', 'string', 'max:32'],
+            'form.buyer_reference' => ['nullable', 'string', 'max:64'],
             'form.notes' => ['nullable', 'string', 'max:2000'],
         ], attributes: ['form.name' => __('Name')])['form'];
 
@@ -149,6 +150,7 @@ new #[Layout('layouts.app')] class extends Component
                     'city' => [__('City'), ''],
                     'country' => [__('Country (if not Germany)'), ''],
                     'vat_id' => [__('VAT ID (optional)'), ''],
+                    'buyer_reference' => [__('Buyer reference / Leitweg-ID (e-invoices, optional)'), ''],
                 ] as $field => [$label, $span])
                     <div class="{{ $span }}">
                         <x-input-label :for="'customer-'.$field" :value="$label" />

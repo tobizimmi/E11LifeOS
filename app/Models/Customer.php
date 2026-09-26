@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A customer of the small business.
  */
-#[Fillable(['user_id', 'household_id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'notes'])]
+#[Fillable(['user_id', 'household_id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'buyer_reference', 'notes'])]
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */

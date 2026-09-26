@@ -4,6 +4,7 @@ use App\Livewire\Concerns\InteractsWithBusiness;
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Support\Business\BookkeepingCategories;
 use App\Support\Business\EuerReport;
+use App\Support\Business\VatReturn;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -15,6 +16,10 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(except: 0)]
     public int $year = 0;
+
+    /** Filing interval of the VAT advance return: quarter or month. */
+    #[Url(except: 'quarter')]
+    public string $vatInterval = 'quarter';
 
     public function mount(): void
     {
@@ -34,6 +39,9 @@ new #[Layout('layouts.app')] class extends Component
             'report' => EuerReport::build($this->currentUser(), (int) $this->householdId, $this->year, $profile),
             'lineDefinitions' => BookkeepingCategories::euerLines(),
             'years' => $years,
+            'vatPeriods' => $profile && ! $profile->small_business
+                ? VatReturn::periods($this->currentUser(), (int) $this->householdId, $this->year, $this->vatInterval === 'month' ? 'month' : 'quarter')
+                : [],
         ];
     }
 }; ?>
@@ -204,6 +212,48 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 </div>
             </div>
+
+            @if ($vatPeriods)
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('VAT advance return (USt-VA)') }}</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Fields of the ELSTER form, based on payments received (cash accounting). Due on the 10th of the following month.') }}</p>
+                        </div>
+                        <select wire:model.live="vatInterval" aria-label="{{ __('Interval') }}" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                            <option value="quarter">{{ __('Quarterly') }}</option>
+                            <option value="month">{{ __('Monthly') }}</option>
+                        </select>
+                    </div>
+                    <div class="mt-3 overflow-x-auto">
+                        <table class="w-full min-w-[36rem] text-sm">
+                            <thead>
+                                <tr class="text-left text-xs text-gray-500 dark:text-gray-400">
+                                    <th class="py-1.5 pe-3 font-medium">{{ __('Period') }}</th>
+                                    <th class="py-1.5 pe-3 text-end font-medium" title="{{ __('Net revenue at 19 %') }}">Kz 81</th>
+                                    <th class="py-1.5 pe-3 text-end font-medium" title="{{ __('Net revenue at 7 %') }}">Kz 86</th>
+                                    <th class="py-1.5 pe-3 text-end font-medium">{{ __('VAT') }}</th>
+                                    <th class="py-1.5 pe-3 text-end font-medium" title="{{ __('Input VAT') }}">Kz 66</th>
+                                    <th class="py-1.5 text-end font-medium" title="{{ __('Advance payment') }}">Kz 83</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 tabular-nums dark:divide-gray-700">
+                                @foreach ($vatPeriods as $period)
+                                    <tr class="{{ $period['from']->isFuture() ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100' }}">
+                                        <td class="py-1.5 pe-3">{{ $period['label'] }}</td>
+                                        <td class="py-1.5 pe-3 text-end">{{ $euro($period['kz81']) }}</td>
+                                        <td class="py-1.5 pe-3 text-end">{{ $euro($period['kz86']) }}</td>
+                                        <td class="py-1.5 pe-3 text-end">{{ $euro($period['kz81_vat'] + $period['kz86_vat'] + $period['other_vat']) }}</td>
+                                        <td class="py-1.5 pe-3 text-end">{{ $euro($period['kz66']) }}</td>
+                                        <td class="py-1.5 text-end font-semibold">{{ $euro($period['kz83']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Kz 81: net revenue at 19 %, Kz 86: net revenue at 7 %, Kz 66: input VAT from receipts, Kz 83: amount to pay (negative = refund).') }}</p>
+                </section>
+            @endif
         </div>
     </div>
 </div>

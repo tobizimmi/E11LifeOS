@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * A business document: invoice, quote or credit note (also cancellation invoices). Drafts can be
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * (GoBD). Invoices are then paid (also in parts) or cancelled; quotes accepted, declined or
  * turned into an invoice.
  */
-#[Fillable(['user_id', 'household_id', 'type', 'customer_id', 'related_invoice_id', 'number', 'status', 'issued_on', 'service_period', 'due_on', 'valid_until', 'paid_on', 'recipient', 'subject', 'intro', 'closing', 'small_business', 'net_total', 'vat_total', 'gross_total', 'paid_total'])]
+#[Fillable(['user_id', 'household_id', 'type', 'customer_id', 'related_invoice_id', 'number', 'status', 'issued_on', 'service_period', 'due_on', 'valid_until', 'paid_on', 'recipient', 'subject', 'intro', 'closing', 'small_business', 'net_total', 'vat_total', 'gross_total', 'paid_total', 'sent_at', 'reminder_level', 'last_reminder_at', 'public_token', 'recurring_invoice_id'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
@@ -58,6 +59,9 @@ class Invoice extends Model
             'vat_total' => 'float',
             'gross_total' => 'float',
             'paid_total' => 'float',
+            'sent_at' => 'datetime',
+            'reminder_level' => 'integer',
+            'last_reminder_at' => 'date',
         ];
     }
 
@@ -90,6 +94,11 @@ class Invoice extends Model
     public function derived(): HasMany
     {
         return $this->hasMany(self::class, 'related_invoice_id');
+    }
+
+    public function recurringInvoice(): BelongsTo
+    {
+        return $this->belongsTo(RecurringInvoice::class);
     }
 
     public function household(): BelongsTo
@@ -278,5 +287,25 @@ class Invoice extends Model
         $copy->recalculate();
 
         return $copy;
+    }
+
+    /**
+     * Token of the customer portal link, created on first use.
+     */
+    public function publicToken(): string
+    {
+        if (! $this->public_token) {
+            $this->forceFill(['public_token' => Str::random(40)])->save();
+        }
+
+        return $this->public_token;
+    }
+
+    /**
+     * Next dunning step for an overdue invoice: 1 payment reminder, 2 and 3 dunning letters.
+     */
+    public function nextReminderLevel(): ?int
+    {
+        return $this->type === self::INVOICE && $this->status === self::OPEN && $this->reminder_level < 3 ? $this->reminder_level + 1 : null;
     }
 }

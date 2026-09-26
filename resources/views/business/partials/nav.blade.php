@@ -3,6 +3,8 @@
     <div class="inline-flex min-w-max rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
         @foreach ([
             'business.index' => '🧾 '.__('Documents'),
+            'business.recurring' => '🔁 '.__('Recurring'),
+            'business.time' => '⏱ '.__('Time tracking'),
             'business.bookings' => '📥 '.__('Receipts'),
             'business.customers' => '👥 '.__('Customers'),
             'business.products' => '📦 '.__('Catalogue'),

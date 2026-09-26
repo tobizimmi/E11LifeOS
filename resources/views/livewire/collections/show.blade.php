@@ -13,6 +13,8 @@ use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
 use App\Models\CollectionView;
 use App\Support\BrainAi;
+use App\Support\AiException;
+use App\Support\EntryAi;
 use App\Support\EntryFilters;
 use App\Support\Links;
 use App\Support\Recurrence;
@@ -166,6 +168,22 @@ new #[Layout('layouts.app')] class extends Component
      * @var array{title: string, values: array<int|string, mixed>, tags: string, body: string}
      */
     public array $form = ['title' => '', 'values' => [], 'tags' => '', 'body' => ''];
+
+    /**
+     * Documents picked in the entry form (stored with the entry on save).
+     *
+     * @var array<int, mixed>
+     */
+    public array $formDocuments = [];
+
+    /**
+     * Documents added in the detail popup (stored right away).
+     *
+     * @var array<int, mixed>
+     */
+    public array $documentUploads = [];
+
+    public ?string $aiFillMessage = null;
 
     public function mount(int $collection): void
     {
@@ -500,8 +518,89 @@ new #[Layout('layouts.app')] class extends Component
 
     public function closeEntryForm(): void
     {
-        $this->reset('showEntryForm', 'formEntryId', 'form');
+        $this->reset('showEntryForm', 'formEntryId', 'form', 'formDocuments', 'aiFillMessage');
         $this->resetValidation();
+    }
+
+    public function removeFormDocument(int $index): void
+    {
+        unset($this->formDocuments[$index]);
+        $this->formDocuments = array_values($this->formDocuments);
+    }
+
+    /**
+     * "✨ Fill in from document": the AI reads the (last) picked PDF or photo and fills empty fields.
+     */
+    public function fillFormFromDocument(EntryAi $ai): void
+    {
+        $this->aiFillMessage = null;
+        $this->validate(['formDocuments' => ['array', 'max:10'], 'formDocuments.*' => Attachment::rules()]);
+
+        $document = collect($this->formDocuments)->reverse()->first(fn ($file) => in_array($file->getMimeType(), EntryAi::MEDIA_TYPES, true));
+
+        if (! $document) {
+            $this->aiFillMessage = __('Add a PDF or a photo of the document first.');
+
+            return;
+        }
+
+        $collection = $this->findCollection();
+
+        try {
+            $result = $ai->extract($collection, (string) file_get_contents($document->getRealPath()), $document->getMimeType());
+        } catch (AiException $exception) {
+            $this->aiFillMessage = $exception->getMessage();
+
+            return;
+        }
+
+        $filled = 0;
+        $formatted = $this->formValues($collection, $result['values']);
+
+        foreach (array_keys($result['values']) as $propertyId) {
+            $current = $this->form['values'][$propertyId] ?? null;
+
+            if ($current === null || $current === '' || $current === [] || $current === false) {
+                $this->form['values'][$propertyId] = $formatted[$propertyId];
+                $filled++;
+            }
+        }
+
+        if (trim($this->form['title']) === '' && $result['title'] !== '') {
+            $this->form['title'] = $result['title'];
+            $filled++;
+        }
+
+        if (trim($this->form['body']) === '' && $result['notes'] !== '') {
+            $this->form['body'] = $result['notes'];
+        }
+
+        $this->aiFillMessage = trans_choice('Filled in :count field from the document – please check.|Filled in :count fields from the document – please check.', $filled);
+    }
+
+    /**
+     * Detail popup: files are stored as soon as they are picked.
+     */
+    public function updatedDocumentUploads(): void
+    {
+        $this->validate(['documentUploads' => ['array', 'max:10'], 'documentUploads.*' => Attachment::rules()]);
+        $entry = $this->findEntry((int) $this->openEntryId);
+
+        foreach ($this->documentUploads as $upload) {
+            Attachment::storeUpload($upload, (int) $this->householdId, $entry->id, (int) Auth::id());
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count document added|:count documents added', count($this->documentUploads)));
+        $this->reset('documentUploads');
+    }
+
+    public function deleteDocument(int $attachmentId): void
+    {
+        Attachment::query()
+            ->where('household_id', $this->householdId)
+            ->whereIn('item_id', $this->entries()->select('items.id'))
+            ->find($attachmentId)
+            ?->delete() ?? abort(404);
     }
 
     /**
@@ -513,6 +612,8 @@ new #[Layout('layouts.app')] class extends Component
             'form.title' => ['required', 'string', 'max:255'],
             'form.tags' => ['nullable', 'string', 'max:1000'],
             'form.body' => ['nullable', 'string', 'max:100000'],
+            'formDocuments' => ['array', 'max:10'],
+            'formDocuments.*' => Attachment::rules(),
         ], attributes: ['form.title' => __('Title')]);
 
         $collection = $this->findCollection();
@@ -536,6 +637,12 @@ new #[Layout('layouts.app')] class extends Component
         $entry->save();
         $entry->syncTagNames(explode(',', (string) $this->form['tags']));
         Attachment::attachReferencedTo($entry, Auth::user());
+
+        foreach ($this->formDocuments as $document) {
+            Attachment::storeUpload($document, (int) $this->householdId, $entry->id, (int) Auth::id());
+        }
+
+        $this->reset('formDocuments', 'aiFillMessage');
         $this->announceReschedule($entry);
 
         $this->dispatch('toast', message: $isNew ? __('Entry added') : __('Changes saved'));
@@ -1017,7 +1124,7 @@ new #[Layout('layouts.app')] class extends Component
         $hidden = array_map('intval', $this->hiddenProperties);
         $visibleProperties = $properties->reject(fn (CollectionProperty $property) => in_array($property->id, $hidden, true))->values();
 
-        $entries = $this->entries()->with('creator', 'tags')->orderBy('position')->orderBy('id')->get()
+        $entries = $this->entries()->with('creator', 'tags')->withCount('attachments')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
             ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
@@ -1048,7 +1155,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $openEntry = $this->openEntryId !== '' && ctype_digit($this->openEntryId)
-            ? $this->entries()->with('creator', 'tags')->find((int) $this->openEntryId)
+            ? $this->entries()->with('creator', 'tags', 'attachments')->find((int) $this->openEntryId)
             : null;
 
         return [
@@ -1410,9 +1517,14 @@ new #[Layout('layouts.app')] class extends Component
                                         </p>
                                     @endif
                                 </div>
-                                @if ($badge)
-                                    <x-option-badge :option="$badge['options'][0]" class="shrink-0" />
-                                @endif
+                                <span class="flex shrink-0 items-center gap-1.5">
+                                    @if ($entry->attachments_count > 0)
+                                        <span class="text-xs text-gray-400" title="{{ __('Documents') }}">📎 {{ $entry->attachments_count }}</span>
+                                    @endif
+                                    @if ($badge)
+                                        <x-option-badge :option="$badge['options'][0]" />
+                                    @endif
+                                </span>
                             </div>
 
                             @if ($rows->isNotEmpty())
@@ -1462,7 +1574,7 @@ new #[Layout('layouts.app')] class extends Component
                         <li wire:key="list-{{ $entry->id }}">
                             <button type="button" wire:click="openEntry({{ $entry->id }})" class="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-gray-50 dark:hover:bg-gray-700/40">
                                 <div class="min-w-0 flex-1">
-                                    <p @class(['truncate font-medium', 'line-through text-gray-400' => $isDone, 'text-gray-900 dark:text-gray-100' => ! $isDone])>{{ $entry->title }}</p>
+                                    <p @class(['truncate font-medium', 'line-through text-gray-400' => $isDone, 'text-gray-900 dark:text-gray-100' => ! $isDone])>{{ $entry->title }}{{ $entry->attachments_count > 0 ? ' 📎' : '' }}</p>
                                     @if ($secondary->isNotEmpty())
                                         <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                             @foreach ($secondary as $display)
@@ -1866,6 +1978,40 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                 </div>
 
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📎 {{ __('Documents') }}</h3>
+                        <label class="cursor-pointer text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+                            + {{ __('Add files') }}
+                            <input type="file" multiple wire:model="documentUploads" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
+                        </label>
+                    </div>
+                    <p wire:loading wire:target="documentUploads" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                    <x-input-error :messages="array_merge($errors->get('documentUploads'), $errors->get('documentUploads.*'))" />
+                    @if ($openEntry->attachments->isNotEmpty())
+                        <ul class="grid gap-2 sm:grid-cols-2">
+                            @foreach ($openEntry->attachments->sortByDesc('id') as $document)
+                                <li wire:key="document-{{ $document->id }}" class="group flex items-center gap-3 rounded-xl bg-gray-50 p-2 dark:bg-gray-900/40">
+                                    <a href="{{ $document->url() }}" target="_blank" rel="noopener" class="flex min-w-0 flex-1 items-center gap-3">
+                                        @if ($document->isImage())
+                                            <img src="{{ $document->url() }}" alt="" class="h-12 w-12 shrink-0 rounded-lg object-cover" loading="lazy" />
+                                        @else
+                                            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-2xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" aria-hidden="true">{{ $document->isPdf() ? '📄' : '📎' }}</span>
+                                        @endif
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ $document->original_name }}</span>
+                                            <span class="block text-xs text-gray-500">{{ $document->sizeLabel() }} · {{ $document->created_at->translatedFormat('j. M Y') }}</span>
+                                        </span>
+                                    </a>
+                                    <button type="button" wire:click="deleteDocument({{ $document->id }})" wire:confirm="{{ __('Delete this document?') }}" class="px-1 text-gray-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label="{{ __('Delete') }}">×</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="text-sm text-gray-400">{{ __('No documents yet.') }}</p>
+                    @endif
+                </div>
+
                 <div class="border-t border-gray-100 pt-4 dark:border-gray-700">
                     <livewire:links-panel type="item" :id="$openEntry->id" :wire:key="'links-entry-'.$openEntry->id" />
                 </div>
@@ -1958,6 +2104,40 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </div>
                 @endif
+
+                <div class="rounded-xl border border-dashed border-gray-300 p-4 dark:border-gray-600">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📎 {{ __('Documents') }}</p>
+                        <label class="cursor-pointer rounded-lg px-3 py-1.5 text-sm text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">
+                            + {{ __('Add files') }}
+                            <input type="file" multiple wire:model="formDocuments" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
+                        </label>
+                    </div>
+                    <p wire:loading wire:target="formDocuments" class="mt-2 text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                    @if ($formDocuments !== [])
+                        <ul class="mt-2 space-y-1 text-sm">
+                            @foreach ($formDocuments as $index => $document)
+                                <li wire:key="form-document-{{ $index }}" class="flex items-center gap-2">
+                                    <span aria-hidden="true">{{ str_starts_with((string) $document->getMimeType(), 'image/') ? '🖼️' : '📄' }}</span>
+                                    <span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">{{ $document->getClientOriginalName() }}</span>
+                                    <button type="button" wire:click="removeFormDocument({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($aiAvailable)
+                            <button type="button" wire:click="fillFormFromDocument" wire:loading.attr="disabled" wire:target="fillFormFromDocument" class="mt-3 inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200">
+                                <span wire:loading.remove wire:target="fillFormFromDocument">✨ {{ __('Fill in from document') }}</span>
+                                <span wire:loading wire:target="fillFormFromDocument">{{ __('Reading the document …') }}</span>
+                            </button>
+                        @endif
+                    @else
+                        <p class="mt-1 text-xs text-gray-400">{{ $aiAvailable ? __('Contract, policy, invoice or photo – the AI can fill in the fields from it.') : __('Contract, policy, invoice or photo.') }}</p>
+                    @endif
+                    @if ($aiFillMessage)
+                        <p class="mt-2 text-sm text-gray-700 dark:text-gray-200" role="status">{{ $aiFillMessage }}</p>
+                    @endif
+                    <x-input-error :messages="array_merge($errors->get('formDocuments'), $errors->get('formDocuments.*'))" class="mt-1" />
+                </div>
 
                 <div>
                     <label for="form-tags" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"># {{ __('Tags') }}</label>

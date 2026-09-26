@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -36,6 +37,44 @@ class Attachment extends Model
     protected static function booted(): void
     {
         static::deleted(fn (Attachment $attachment) => Storage::disk(self::DISK)->delete($attachment->path));
+    }
+
+    /**
+     * Stores an uploaded file for a household (and optionally an item right away).
+     */
+    public static function storeUpload(UploadedFile $upload, int $householdId, ?int $itemId, int $userId): self
+    {
+        $extension = strtolower($upload->guessExtension() ?: $upload->getClientOriginalExtension());
+
+        return self::create([
+            'household_id' => $householdId,
+            'item_id' => $itemId,
+            'created_by' => $userId,
+            'path' => $upload->storeAs('attachments/'.$householdId, Str::uuid().'.'.$extension, self::DISK),
+            'original_name' => mb_substr($upload->getClientOriginalName(), 0, 255),
+            'mime_type' => $upload->getMimeType() ?: 'application/octet-stream',
+            'size' => $upload->getSize(),
+        ]);
+    }
+
+    /**
+     * Upload validation rules for one file.
+     *
+     * @return array<int, string>
+     */
+    public static function rules(): array
+    {
+        return ['file', 'max:'.self::MAX_KILOBYTES, 'mimes:'.implode(',', self::EXTENSIONS)];
+    }
+
+    public function isPdf(): bool
+    {
+        return $this->mime_type === 'application/pdf';
+    }
+
+    public function sizeLabel(): string
+    {
+        return $this->size >= 1048576 ? number_format($this->size / 1048576, 1, ',', '.').' MB' : max(1, (int) round($this->size / 1024)).' KB';
     }
 
     public function household(): BelongsTo

@@ -14,8 +14,11 @@ use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\MealPlan;
+use App\Models\Product;
 use App\Models\Recipe;
+use App\Models\RecurringInvoice;
 use App\Models\ShoppingListEntry;
+use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,11 +84,17 @@ class DataExportController extends Controller
             'comments' => Comment::where('user_id', $user->id)->orderBy('id')->get()->map->only(['item_id', 'body', 'created_at']),
             'business' => [
                 'profile' => BusinessProfile::where('user_id', $user->id)->first()?->makeHidden(['id', 'user_id', 'household_id']),
-                'customers' => Customer::where('user_id', $user->id)->orderBy('id')->get()->map->only(['id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'notes']),
-                'invoices' => Invoice::where('user_id', $user->id)->with('items')->orderBy('id')->get()
-                    ->map(fn (Invoice $invoice) => $invoice->only(['number', 'status', 'customer_id', 'issued_on', 'service_period', 'due_on', 'paid_on', 'recipient', 'subject', 'small_business', 'net_total', 'vat_total', 'gross_total']) + [
-                        'items' => $invoice->items->map->only(['position', 'description', 'quantity', 'unit', 'unit_price', 'vat_rate'])->all(),
+                'customers' => Customer::where('user_id', $user->id)->orderBy('id')->get()->map->only(['id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'buyer_reference', 'notes']),
+                'invoices' => Invoice::where('user_id', $user->id)->with(['items', 'payments'])->orderBy('id')->get()
+                    ->map(fn (Invoice $invoice) => $invoice->only(['type', 'number', 'status', 'customer_id', 'issued_on', 'service_period', 'due_on', 'valid_until', 'paid_on', 'recipient', 'subject', 'small_business', 'net_total', 'vat_total', 'gross_total', 'paid_total', 'sent_at', 'reminder_level']) + [
+                        'items' => $invoice->items->map->only(['position', 'description', 'quantity', 'unit', 'unit_price', 'discount_percent', 'vat_rate'])->all(),
+                        'payments' => $invoice->payments->map->only(['paid_on', 'amount', 'method', 'note'])->all(),
                     ]),
+                'products' => Product::where('user_id', $user->id)->orderBy('name')->get()->makeHidden(['id', 'user_id', 'household_id']),
+                'recurring_invoices' => RecurringInvoice::where('user_id', $user->id)->orderBy('id')->get()
+                    ->map->only(['name', 'customer_id', 'recipient', 'subject', 'intro', 'closing', 'items', 'frequency', 'next_run_on', 'ends_on', 'auto_issue', 'auto_send', 'active']),
+                'time_entries' => TimeEntry::where('user_id', $user->id)->orderBy('started_at')->get()
+                    ->map->only(['customer_id', 'description', 'started_at', 'ended_at', 'minutes', 'hourly_rate', 'invoice_id']),
                 'bookkeeping' => BookkeepingEntry::where('user_id', $user->id)->orderBy('booked_on')->get()
                     ->map->only(['kind', 'booked_on', 'description', 'counterparty', 'category', 'amount', 'vat_amount', 'receipt_name']),
             ],

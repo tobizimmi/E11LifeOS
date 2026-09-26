@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Master data of a person's small business (Kleingewerbe), printed on every invoice.
  */
-#[Fillable(['user_id', 'household_id', 'company_name', 'owner_name', 'street', 'postal_code', 'city', 'email', 'phone', 'website', 'tax_number', 'vat_id', 'small_business', 'default_vat_rate', 'bank_name', 'iban', 'bic', 'invoice_prefix', 'quote_prefix', 'credit_note_prefix', 'payment_days', 'invoice_footer', 'logo_path', 'accent_color'])]
+#[Fillable(['user_id', 'household_id', 'company_name', 'owner_name', 'street', 'postal_code', 'city', 'email', 'phone', 'website', 'tax_number', 'vat_id', 'small_business', 'default_vat_rate', 'hourly_rate', 'reminder_days', 'reminder_fee_1', 'reminder_fee_2', 'reminder_fee_3', 'bank_name', 'iban', 'bic', 'invoice_prefix', 'quote_prefix', 'credit_note_prefix', 'payment_days', 'invoice_footer', 'logo_path', 'accent_color'])]
 class BusinessProfile extends Model
 {
     /** @use HasFactory<BusinessProfileFactory> */
@@ -24,10 +24,20 @@ class BusinessProfile extends Model
             'small_business' => 'boolean',
             'default_vat_rate' => 'float',
             'payment_days' => 'integer',
+            'hourly_rate' => 'float',
+            'reminder_days' => 'integer',
+            'reminder_fee_1' => 'float',
+            'reminder_fee_2' => 'float',
+            'reminder_fee_3' => 'float',
         ];
     }
 
     public const LOGO_DISK = 'local';
+
+    public function reminderFee(int $level): float
+    {
+        return (float) ($this->{'reminder_fee_'.max(1, min(3, $level))} ?? 0);
+    }
 
     /**
      * The logo as data URI for PDFs (no remote requests), or null.

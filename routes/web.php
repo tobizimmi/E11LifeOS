@@ -9,10 +9,12 @@ use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\OfflineCaptureController;
+use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
+use App\Http\Controllers\XRechnungController;
 use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +72,9 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('business/invoices/create', 'business.invoice-form')->name('business.invoices.create');
     Volt::route('business/invoices/{invoice}/edit', 'business.invoice-form')->whereNumber('invoice')->name('business.invoices.edit');
     Route::get('business/invoices/{invoice}/pdf', InvoicePdfController::class)->whereNumber('invoice')->name('business.invoices.pdf');
+    Route::get('business/invoices/{invoice}/xrechnung', XRechnungController::class)->whereNumber('invoice')->name('business.invoices.xrechnung');
+    Volt::route('business/recurring', 'business.recurring')->name('business.recurring');
+    Volt::route('business/time', 'business.time')->name('business.time');
     Volt::route('business/receipts', 'business.bookings')->name('business.bookings');
     Route::get('business/receipts/{entry}/file', BookkeepingReceiptController::class)->whereNumber('entry')->name('business.receipts.show');
     Volt::route('business/customers', 'business.customers')->name('business.customers');
@@ -100,6 +105,9 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
     Route::get('calendar/{token}.ics', CalendarFeedController::class)->where('token', '[A-Za-z0-9]+')->name('calendar.feed');
+    Route::get('d/{token}', [PublicDocumentController::class, 'show'])->where('token', '[A-Za-z0-9]+')->name('documents.public');
+    Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->where('token', '[A-Za-z0-9]+')->name('documents.public.pdf');
+    Route::post('d/{token}/accept', [PublicDocumentController::class, 'accept'])->where('token', '[A-Za-z0-9]+')->name('documents.public.accept');
 });
 
 require __DIR__.'/auth.php';

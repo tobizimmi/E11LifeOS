@@ -3,7 +3,12 @@
 use App\Livewire\Concerns\InteractsWithBusiness;
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Invoice;
+use App\Mail\BusinessDocumentMail;
 use App\Models\InvoicePayment;
+use App\Models\RecurringInvoice;
+use App\Models\Transaction;
+use App\Support\Business\MailTemplates;
+use Illuminate\Support\Facades\Mail;
 use App\Support\Business\EuerReport;
 use App\Support\Finance\BankCsvImporter;
 use Illuminate\Support\Carbon;
@@ -37,6 +42,13 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $payment = ['paid_on' => '', 'amount' => '', 'method' => 'transfer', 'note' => ''];
 
+    public bool $composing = false;
+
+    /**
+     * @var array{to: string, subject: string, body: string, copy: bool, reminder: int}
+     */
+    public array $mail = ['to' => '', 'subject' => '', 'body' => '', 'copy' => false, 'reminder' => 0];
+
     public function mount(): void
     {
         $this->resolveHousehold();
@@ -62,6 +74,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $invoice = $this->findInvoice($invoiceId);
         $this->openDocumentId = $invoice->id;
+        $this->composing = false;
         $this->resetValidation();
         $this->payment = ['paid_on' => today()->toDateString(), 'amount' => number_format($invoice->outstanding(), 2, ',', ''), 'method' => 'transfer', 'note' => ''];
     }
@@ -98,6 +111,94 @@ new #[Layout('layouts.app')] class extends Component
         ($invoice->payments()->find($paymentId) ?? abort(404))->delete();
         $invoice->refreshPaymentStatus();
         $this->openDocument($invoice->id);
+    }
+
+    /**
+     * Takes over a bank booking from Finances as payment.
+     */
+    public function matchTransaction(int $transactionId): void
+    {
+        $invoice = $this->findInvoice($this->openDocumentId);
+        abort_unless($invoice->isPayable(), 422);
+        $transaction = Transaction::where('user_id', $this->currentUser()->id)->find($transactionId) ?? abort(404);
+        abort_if(InvoicePayment::where('transaction_id', $transaction->id)->exists(), 422);
+
+        $invoice->recordPayment($transaction->booked_on, min($transaction->amount, max($invoice->outstanding(), 0.01)), 'transfer', mb_substr((string) $transaction->counterparty, 0, 255) ?: null, $transaction->id);
+        $this->openDocument($invoice->id);
+        $this->dispatch('toast', message: __('Payment recorded.'));
+    }
+
+    // ── E-mail & dunning ─────────────────────────────────────────────────
+
+    public function composeMail(int $reminderLevel = 0): void
+    {
+        $invoice = $this->findInvoice($this->openDocumentId);
+        abort_if($invoice->isDraft(), 422);
+        abort_if($reminderLevel > 0 && $invoice->nextReminderLevel() === null, 422);
+
+        $template = MailTemplates::for($invoice, $this->businessProfile() ?? abort(404), $reminderLevel ?: null);
+        $this->mail = ['to' => (string) $invoice->customer?->email, 'subject' => $template['subject'], 'body' => $template['body'], 'copy' => false, 'reminder' => $reminderLevel];
+        $this->composing = true;
+        $this->resetValidation();
+    }
+
+    public function sendMail(): void
+    {
+        $invoice = $this->findInvoice($this->openDocumentId);
+        $profile = $this->businessProfile() ?? abort(404);
+        abort_if($invoice->isDraft(), 422);
+
+        $this->validate([
+            'mail.to' => ['required', 'email', 'max:255'],
+            'mail.subject' => ['required', 'string', 'max:255'],
+            'mail.body' => ['required', 'string', 'max:5000'],
+            'mail.reminder' => ['integer', 'between:0,3'],
+        ], attributes: ['mail.to' => __('Recipient'), 'mail.subject' => __('Subject'), 'mail.body' => __('Message')]);
+
+        $level = (int) $this->mail['reminder'] ?: null;
+        $message = Mail::to($this->mail['to']);
+
+        if ($this->mail['copy'] && ($profile->email || $this->currentUser()->email)) {
+            $message->bcc($profile->email ?: $this->currentUser()->email);
+        }
+
+        $message->send(new BusinessDocumentMail($invoice, $profile, $this->mail['subject'], $this->mail['body'], $level));
+
+        $invoice->update(['sent_at' => now()] + ($level ? ['reminder_level' => $level, 'last_reminder_at' => today()] : []));
+
+        if ($invoice->customer && ! $invoice->customer->email) {
+            $invoice->customer->update(['email' => $this->mail['to']]);
+        }
+
+        $this->composing = false;
+        $this->dispatch('toast', message: __('Sent to :email.', ['email' => $this->mail['to']]));
+    }
+
+    /**
+     * Records a dunning level sent by post (after downloading the letter).
+     */
+    public function markReminded(int $level): void
+    {
+        $invoice = $this->findInvoice($this->openDocumentId);
+        abort_unless($invoice->nextReminderLevel() === $level, 422);
+        $invoice->update(['reminder_level' => $level, 'last_reminder_at' => today()]);
+    }
+
+    public function makeRecurring(string $frequency): void
+    {
+        $invoice = $this->findInvoice($this->openDocumentId);
+        abort_unless($invoice->type === Invoice::INVOICE && array_key_exists($frequency, RecurringInvoice::FREQUENCIES), 422);
+
+        $recurring = RecurringInvoice::fromInvoice($invoice->load('items'), $frequency);
+        $this->redirectRoute('business.recurring', ['edit' => $recurring->id], navigate: true);
+    }
+
+    public function portalLink(): string
+    {
+        $invoice = $this->findInvoice($this->openDocumentId);
+        abort_if($invoice->isDraft(), 422);
+
+        return route('documents.public', $invoice->publicToken());
     }
 
     // ── Document actions ─────────────────────────────────────────────────
@@ -199,7 +300,18 @@ new #[Layout('layouts.app')] class extends Component
 
         $open = $this->invoices()->where('type', Invoice::INVOICE)->where('status', Invoice::OPEN)->get();
         $report = $profile ? EuerReport::build($this->currentUser(), (int) $this->householdId, $kpiYear, $profile) : null;
-        $openDocument = $this->openDocumentId ? $this->invoices()->with(['payments', 'related', 'derived'])->find($this->openDocumentId) : null;
+        $openDocument = $this->openDocumentId ? $this->invoices()->with(['payments', 'related', 'derived', 'customer'])->find($this->openDocumentId) : null;
+        $matches = collect();
+
+        if ($openDocument?->isPayable() && $openDocument->outstanding() > 0) {
+            $number = mb_strtolower((string) $openDocument->number);
+            $matches = Transaction::where('user_id', $this->currentUser()->id)->where('amount', '>', 0)
+                ->whereDate('booked_on', '>=', ($openDocument->issued_on ?? today())->copy()->subDays(3))
+                ->whereNotIn('id', InvoicePayment::whereNotNull('transaction_id')->select('transaction_id'))
+                ->where(fn ($query) => $query->whereBetween('amount', [$openDocument->outstanding() - 0.01, $openDocument->outstanding() + 0.01])
+                    ->orWhereRaw('LOWER(purpose) LIKE ?', ['%'.$number.'%']))
+                ->orderByDesc('booked_on')->limit(5)->get();
+        }
 
         return [
             'profile' => $profile,
@@ -212,6 +324,7 @@ new #[Layout('layouts.app')] class extends Component
             'typeCounts' => $this->invoices()->selectRaw('type, count(*) as aggregate')->groupBy('type')->pluck('aggregate', 'type')->all(),
             'openQuotes' => $this->invoices()->where('type', Invoice::QUOTE)->where('status', Invoice::OPEN)->count(),
             'openDocument' => $openDocument,
+            'matches' => $matches,
             'years' => $this->invoices()->whereNotNull('issued_on')->pluck('issued_on')->map->year->push(now()->year)->unique()->sortDesc()->values(),
         ];
     }
@@ -440,6 +553,83 @@ new #[Layout('layouts.app')] class extends Component
                                 <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 sm:col-span-2">{{ $openDocument->isCreditNote() ? __('Record refund') : __('Record payment') }}</button>
                             </form>
                             <x-input-error :messages="array_merge($errors->get('payment.amount'), $errors->get('payment.paid_on'))" class="mt-1" />
+                        @endif
+                    </section>
+                @endif
+
+                @if ($matches->isNotEmpty())
+                    <section class="rounded-xl bg-indigo-50 p-3 dark:bg-indigo-900/30">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-indigo-900 dark:text-indigo-100">🏦 {{ __('Matching bank bookings from Finances') }}</h3>
+                        <ul class="mt-2 space-y-1">
+                            @foreach ($matches as $match)
+                                <li wire:key="match-{{ $match->id }}" class="flex items-center gap-3 text-sm">
+                                    <span class="w-20 tabular-nums text-indigo-900/70 dark:text-indigo-100/70">{{ $match->booked_on->format('d.m.Y') }}</span>
+                                    <span class="min-w-0 flex-1 truncate text-indigo-950 dark:text-indigo-50">{{ $match->counterparty }} · {{ $match->purpose }}</span>
+                                    <span class="tabular-nums font-medium text-indigo-950 dark:text-indigo-50">{{ $euro($match->amount) }}</span>
+                                    <button type="button" wire:click="matchTransaction({{ $match->id }})" class="rounded-lg bg-white px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-gray-800 dark:text-indigo-300 dark:ring-indigo-800">{{ __('Take over') }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+
+                @if (! $openDocument->isDraft())
+                    <section class="space-y-3">
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            <button type="button" wire:click="composeMail" class="rounded-lg px-3 py-1.5 text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">✉ {{ __('Send by e-mail') }}</button>
+                            <button type="button" x-data="{ copied: false }" x-on:click="$wire.portalLink().then(url => navigator.clipboard.writeText(url).then(() => { copied = true; setTimeout(() => copied = false, 2000) }))" class="rounded-lg px-3 py-1.5 text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700">
+                                <span x-show="! copied">🔗 {{ __('Copy customer link') }}</span><span x-show="copied" x-cloak>✓ {{ __('Copied') }}</span>
+                            </button>
+                            @if (in_array($openDocument->type, ['invoice', 'credit_note'], true))
+                                <a href="{{ route('business.invoices.xrechnung', $openDocument) }}" class="rounded-lg px-3 py-1.5 text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('E-invoice (XRechnung, CII format)') }}">⬇ XRechnung</a>
+                            @endif
+                            @if ($openDocument->type === 'invoice')
+                                <select x-data x-on:change="if ($event.target.value) { $wire.makeRecurring($event.target.value) }" aria-label="{{ __('Repeat invoice') }}" class="rounded-lg border-gray-300 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                    <option value="">🔁 {{ __('Repeat …') }}</option>
+                                    <option value="monthly">{{ __('monthly') }}</option>
+                                    <option value="quarterly">{{ __('quarterly') }}</option>
+                                    <option value="halfyearly">{{ __('half-yearly') }}</option>
+                                    <option value="yearly">{{ __('yearly') }}</option>
+                                </select>
+                            @endif
+                        </div>
+                        @if ($openDocument->sent_at)
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Last sent on :date.', ['date' => $openDocument->sent_at->format('d.m.Y H:i')]) }}</p>
+                        @endif
+
+                        @if ($openDocument->isOverdue() && ($nextLevel = $openDocument->nextReminderLevel()))
+                            <div class="rounded-xl bg-red-50 p-3 text-sm text-red-900 dark:bg-red-900/30 dark:text-red-100">
+                                <p class="font-medium">⚠ {{ __('Overdue since :date', ['date' => $openDocument->due_on->format('d.m.Y')]) }}@if ($openDocument->reminder_level) · {{ trans_choice('reminded once|reminded :count times', $openDocument->reminder_level) }} ({{ $openDocument->last_reminder_at?->format('d.m.Y') }})@endif</p>
+                                <div class="mt-2 flex flex-wrap items-center gap-2">
+                                    <button type="button" wire:click="composeMail({{ $nextLevel }})" class="rounded-lg bg-white px-3 py-1.5 font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-gray-800 dark:text-red-300 dark:ring-red-800">✉ {{ $nextLevel === 1 ? __('Send payment reminder') : ($nextLevel === 2 ? __('Send first dunning letter') : __('Send second dunning letter')) }}</button>
+                                    <a href="{{ route('business.invoices.pdf', ['invoice' => $openDocument, 'reminder' => $nextLevel]) }}" target="_blank" class="rounded-lg px-3 py-1.5 text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-gray-700">📄 {{ __('Letter as PDF') }}</a>
+                                    <button type="button" wire:click="markReminded({{ $nextLevel }})" class="text-xs text-red-700 underline dark:text-red-300">{{ __('Sent by post') }}</button>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($composing)
+                            <form wire:submit="sendMail" class="space-y-2 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/40">
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    <div>
+                                        <x-input-label for="mail-to" :value="__('To')" />
+                                        <x-text-input id="mail-to" type="email" wire:model="mail.to" class="mt-1 block w-full" />
+                                        <x-input-error :messages="$errors->get('mail.to')" class="mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="mail-subject" :value="__('Subject')" />
+                                        <x-text-input id="mail-subject" wire:model="mail.subject" class="mt-1 block w-full" />
+                                    </div>
+                                </div>
+                                <textarea wire:model="mail.body" rows="7" aria-label="{{ __('Message') }}" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"></textarea>
+                                <x-input-error :messages="$errors->get('mail.body')" />
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <x-primary-button wire:loading.attr="disabled" wire:target="sendMail">✉ {{ __('Send') }}</x-primary-button>
+                                    <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="mail.copy" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Copy to me') }}</label>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('The PDF and a link to view it online are included.') }}</span>
+                                    <button type="button" wire:click="$set('composing', false)" class="ms-auto text-xs text-gray-500 hover:underline">{{ __('Cancel') }}</button>
+                                </div>
+                            </form>
                         @endif
                     </section>
                 @endif

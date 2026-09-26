@@ -57,6 +57,12 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
   - Angebote mit Gültigkeit, Status angenommen/abgelehnt und Umwandlung in eine Rechnung.
   - Rechnungen mit Positionen, Rabatten, Entwürfen, lückenlosen Nummernkreisen (Rechnungen, Angebote, Gutschriften), PDF im DIN-5008-Layout mit allen Pflichtangaben, Teilzahlungen, Status offen/teilbezahlt/überfällig/bezahlt.
   - Storno per Stornorechnung und Gutschriften mit Erstattung.
+  - Versand per E-Mail mit PDF-Anhang und Kundenportal-Link (Rechnung ansehen, PDF laden, Angebot online annehmen).
+  - Mahnwesen: Zahlungserinnerung, 1. und 2. Mahnung mit Frist und Gebühren, per E-Mail oder als Brief-PDF; Push bei neu überfälligen Rechnungen (`business:overdue-notices`).
+  - Wiederkehrende Rechnungen (monatlich bis jährlich), automatisch gestellt und auf Wunsch verschickt (`business:run-recurring`, täglich).
+  - Zeiterfassung mit Timer, Stundensätzen und Abrechnung als Rechnungsentwurf.
+  - Bankabgleich: passende Kontobewegungen aus Finanzen werden als Zahlung vorgeschlagen.
+  - E-Rechnung als XRechnung (CII) mit Leitweg-ID; Umsatzsteuer-Voranmeldung (Kz 81/86/66/83) je Monat oder Quartal.
   - Belege für Ausgaben und Einnahmen ohne Rechnung, mit Foto/PDF und optionalem KI-Auslesen.
   - Jahresabschluss als Einnahmenüberschussrechnung nach tatsächlichen Zahlungseingängen, gegliedert wie die Anlage EÜR (Bewirtung 70 %, Vorsteuer, Kleinunternehmer-Grenzen, Checkliste für ELSTER), als PDF und CSV.
   - Keine Steuerberatung.

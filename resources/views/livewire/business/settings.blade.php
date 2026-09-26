@@ -46,6 +46,11 @@ new #[Layout('layouts.app')] class extends Component
             'credit_note_prefix' => $profile->credit_note_prefix ?? 'GS-',
             'accent_color' => $profile->accent_color ?? '#4338ca',
             'payment_days' => (string) ($profile->payment_days ?? 14),
+            'hourly_rate' => $profile?->hourly_rate !== null ? (string) $profile->hourly_rate : '',
+            'reminder_days' => (string) ($profile->reminder_days ?? 7),
+            'reminder_fee_1' => (string) ($profile->reminder_fee_1 ?? 0),
+            'reminder_fee_2' => (string) ($profile->reminder_fee_2 ?? 5),
+            'reminder_fee_3' => (string) ($profile->reminder_fee_3 ?? 10),
             'invoice_footer' => $profile->invoice_footer ?? '',
         ];
     }
@@ -76,6 +81,11 @@ new #[Layout('layouts.app')] class extends Component
             'form.credit_note_prefix' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z0-9\-_\/]*$/', 'different:form.invoice_prefix', 'different:form.quote_prefix'],
             'form.accent_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'form.payment_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'form.hourly_rate' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'form.reminder_days' => ['required', 'integer', 'min:1', 'max:90'],
+            'form.reminder_fee_1' => ['required', 'numeric', 'min:0', 'max:1000'],
+            'form.reminder_fee_2' => ['required', 'numeric', 'min:0', 'max:1000'],
+            'form.reminder_fee_3' => ['required', 'numeric', 'min:0', 'max:1000'],
             'form.invoice_footer' => ['nullable', 'string', 'max:1000'],
         ], attributes: [
             'form.company_name' => __('Business name'),
@@ -89,6 +99,8 @@ new #[Layout('layouts.app')] class extends Component
         foreach (['invoice_prefix', 'quote_prefix', 'credit_note_prefix'] as $prefix) {
             $data[$prefix] = (string) ($data[$prefix] ?? '');
         }
+
+        $data['hourly_rate'] = ($data['hourly_rate'] ?? '') === '' ? null : $data['hourly_rate'];
 
         BusinessProfile::updateOrCreate(
             ['user_id' => $this->currentUser()->id],
@@ -250,6 +262,31 @@ new #[Layout('layouts.app')] class extends Component
                             <x-input-label for="profile-footer" :value="__('Closing text on invoices (optional)')" />
                             <textarea id="profile-footer" wire:model="form.invoice_footer" rows="2" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('Thank you for your order!') }}"></textarea>
                         </div>
+                    </div>
+                </section>
+
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Dunning & time tracking') }}</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Deadline and fees for payment reminders and dunning letters, default hourly rate for tracked time.') }}</p>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <x-input-label for="profile-hourly" :value="__('Hourly rate (€)')" />
+                            <x-text-input id="profile-hourly" type="number" step="0.01" min="0" wire:model="form.hourly_rate" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.hourly_rate')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="profile-reminder-days" :value="__('Deadline per reminder (days)')" />
+                            <x-text-input id="profile-reminder-days" type="number" min="1" wire:model="form.reminder_days" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.reminder_days')" class="mt-1" />
+                        </div>
+                        <div class="hidden sm:block"></div>
+                        @foreach ([1 => __('Fee payment reminder (€)'), 2 => __('Fee 1st dunning letter (€)'), 3 => __('Fee 2nd dunning letter (€)')] as $level => $label)
+                            <div>
+                                <x-input-label :for="'profile-fee-'.$level" :value="$label" />
+                                <x-text-input :id="'profile-fee-'.$level" type="number" step="0.01" min="0" wire:model="form.reminder_fee_{{ $level }}" class="mt-1 block w-full" />
+                                <x-input-error :messages="$errors->get('form.reminder_fee_'.$level)" class="mt-1" />
+                            </div>
+                        @endforeach
                     </div>
                 </section>
 

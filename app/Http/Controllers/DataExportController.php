@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
 use App\Models\Collection;
+use App\Models\Comment;
 use App\Models\Customer;
 use App\Models\FinanceRule;
 use App\Models\Household;
@@ -77,6 +78,7 @@ class DataExportController extends Controller
                     'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category'])->all(),
                 ]),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
+            'comments' => Comment::where('user_id', $user->id)->orderBy('id')->get()->map->only(['item_id', 'body', 'created_at']),
             'business' => [
                 'profile' => BusinessProfile::where('user_id', $user->id)->first()?->makeHidden(['id', 'user_id', 'household_id']),
                 'customers' => Customer::where('user_id', $user->id)->orderBy('id')->get()->map->only(['id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'notes']),

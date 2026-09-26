@@ -100,6 +100,16 @@ class Item extends Model
         });
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(ItemActivity::class);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);

@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Events\HouseholdItemsChanged;
 use App\Models\Item;
 use App\Models\User;
+use App\Support\ActivityLog;
 use App\Support\Links;
 use App\Support\WebPush;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,7 @@ class ItemObserver
     {
         $this->syncLinks($item, true);
         $this->notifyNewAssignee($item, true);
+        ActivityLog::record($item, true);
         $this->broadcast($item);
     }
 
@@ -22,6 +24,7 @@ class ItemObserver
     {
         $this->syncLinks($item, false);
         $this->notifyNewAssignee($item, false);
+        ActivityLog::record($item, false);
         $this->broadcast($item);
     }
 

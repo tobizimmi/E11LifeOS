@@ -8,6 +8,7 @@ use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
 use App\Models\Collection;
 use App\Models\CollectionProperty;
+use App\Models\CollectionTemplate;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
@@ -22,6 +23,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -138,6 +140,8 @@ new #[Layout('layouts.app')] class extends Component
     public $attachmentUpload = null;
 
     public bool $showSettings = false;
+
+    public bool $showImport = false;
 
     public string $newPropertyName = '';
 
@@ -257,6 +261,10 @@ new #[Layout('layouts.app')] class extends Component
             'created_by' => Auth::id(),
             'position' => (int) $this->entries()->max('position') + 1,
         ]);
+
+        foreach ($collection->properties as $property) {
+            $entry->setPropertyValue($property, $property->normalizeValue($property->resolvedDefault(Auth::id()), $this->memberIds()));
+        }
 
         $groupProperty = $this->groupProperty($collection);
 
@@ -484,7 +492,9 @@ new #[Layout('layouts.app')] class extends Component
     public function newEntry(?string $optionId = null, ?string $date = null): void
     {
         $collection = $this->findCollection();
-        $values = [];
+        $values = $collection->properties
+            ->mapWithKeys(fn (CollectionProperty $property) => [$property->id => $property->normalizeValue($property->resolvedDefault(Auth::id()), $this->memberIds())])
+            ->filter(fn ($value) => $value !== null)->all();
 
         if ($optionId !== null && $optionId !== '' && ($groupProperty = $this->groupProperty($collection))) {
             $values[$groupProperty->id] = $groupProperty->normalizeValue($optionId);
@@ -617,6 +627,17 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['form.title' => __('Title')]);
 
         $collection = $this->findCollection();
+        $missing = $collection->properties->filter(fn (CollectionProperty $property) => $property->required
+            && $property->normalizeValue($this->form['values'][$property->id] ?? null, $this->memberIds()) === null);
+
+        if ($missing->isNotEmpty()) {
+            foreach ($missing as $property) {
+                $this->addError('form.values.'.$property->id, __('Please fill in “:field”.', ['field' => $property->name]));
+            }
+
+            return;
+        }
+
         $entry = $this->formEntryId ? $this->findEntry($this->formEntryId) : new Item([
             'household_id' => $this->householdId,
             'collection_id' => $collection->id,
@@ -896,6 +917,62 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Moves a property one place up (-1) or down (1) in forms and views.
+     */
+    public function moveProperty(int $propertyId, int $direction): void
+    {
+        $properties = $this->findCollection()->properties->values();
+        $index = $properties->search(fn (CollectionProperty $property) => $property->id === $propertyId);
+        $target = $index === false ? null : $index + ($direction < 0 ? -1 : 1);
+
+        if ($target === null || ! isset($properties[$target])) {
+            return;
+        }
+
+        $ordered = $properties->all();
+        [$ordered[$index], $ordered[$target]] = [$ordered[$target], $ordered[$index]];
+
+        foreach ($ordered as $position => $property) {
+            if ($property->position !== $position + 1) {
+                $property->update(['position' => $position + 1]);
+            }
+        }
+
+        $this->schemaChanged();
+    }
+
+    public function setPropertyRequired(int $propertyId, bool $required): void
+    {
+        $this->findProperty($propertyId)->update(['required' => $required]);
+        $this->schemaChanged();
+    }
+
+    public function setPropertyHelp(int $propertyId, string $help): void
+    {
+        $this->findProperty($propertyId)->update(['help' => mb_substr(trim($help), 0, 255) ?: null]);
+        $this->schemaChanged();
+    }
+
+    /**
+     * Prefilled value for new entries. Dates accept "today" / "today+N", persons "me".
+     */
+    public function setPropertyDefault(int $propertyId, mixed $value): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_if($property->type === CollectionProperty::TYPE_RELATION, 422);
+
+        $default = match (true) {
+            $value === null || $value === '' || $value === [] => null,
+            $property->type === CollectionProperty::TYPE_DATE && is_string($value) && preg_match('/^today(\+\d{1,3})?$/', $value) === 1 => $value,
+            $property->type === CollectionProperty::TYPE_PERSON && $value === 'me' => 'me',
+            default => $property->normalizeValue($value, $this->memberIds()),
+        };
+
+        $property->update(['default_value' => $default]);
+        $this->schemaChanged();
+    }
+
+    /**
      * Removes a property and its values. Built-in task properties stay.
      */
     public function deleteProperty(int $propertyId): void
@@ -987,6 +1064,32 @@ new #[Layout('layouts.app')] class extends Component
 
         // Full navigation so the sidebar shows the new name.
         $this->redirectRoute('collections.show', ['collection' => $this->collectionId], navigate: true);
+    }
+
+    /**
+     * Saves the fields and form settings (not the entries) as a template for new collections.
+     */
+    #[On('collection-imported')]
+    public function closeImport(): void
+    {
+        $this->showImport = false;
+    }
+
+    public function saveAsTemplate(string $name): void
+    {
+        $collection = $this->findCollection();
+        $name = mb_substr(trim($name), 0, 100);
+
+        if ($name === '') {
+            return;
+        }
+
+        CollectionTemplate::updateOrCreate(
+            ['household_id' => $this->householdId, 'name' => $name],
+            ['created_by' => Auth::id(), 'icon' => $collection->icon, 'definition' => CollectionTemplate::definitionOf($collection)],
+        );
+
+        $this->dispatch('toast', message: __('Saved as template “:name” – choose it under “New collection”.', ['name' => $name]));
     }
 
     public function deleteCollection(): void
@@ -1256,110 +1359,12 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </div>
                     @endif
+                    <x-secondary-button type="button" wire:click="$set('showImport', true)" title="{{ __('Import CSV or Excel') }}">⬆ <span class="ms-1 hidden sm:inline">{{ __('Import') }}</span></x-secondary-button>
                     <x-secondary-button type="button" wire:click="$toggle('showSettings')">⚙ {{ __('Properties') }}</x-secondary-button>
                 </div>
             </div>
 
-            {{-- Settings: collection details + properties --}}
-            @if ($showSettings)
-                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-5 space-y-5">
-                    <form wire:submit="saveCollectionDetails" class="flex flex-wrap items-end gap-3">
-                        <div class="w-20">
-                            <x-input-label for="collectionIcon" :value="__('Icon')" />
-                            <x-text-input wire:model="collectionIcon" id="collectionIcon" class="mt-1 block w-full text-center" maxlength="16" placeholder="{{ \App\Models\Collection::DEFAULT_ICON }}" />
-                        </div>
-                        <div class="flex-1 min-w-[12rem]">
-                            <x-input-label for="collectionName" :value="__('Name')" />
-                            <x-text-input wire:model="collectionName" id="collectionName" class="mt-1 block w-full" required />
-                        </div>
-                        <div class="w-44">
-                            <x-input-label for="collectionDefaultView" :value="__('Default view')" />
-                            <select wire:model="collectionDefaultView" id="collectionDefaultView" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
-                                <option value="">{{ __('Automatic') }}</option>
-                                @foreach (['cards' => __('Cards'), 'list' => __('List'), 'table' => __('Table'), 'board' => __('Board'), 'calendar' => __('Calendar')] as $viewKey => $viewLabel)
-                                    <option value="{{ $viewKey }}">{{ $viewLabel }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <x-primary-button>{{ __('Save') }}</x-primary-button>
-                        @if ($collection->system_key === null)
-                            <x-danger-button type="button" wire:click="deleteCollection" wire:confirm="{{ __('Delete this collection and all its entries?') }}">{{ __('Delete collection') }}</x-danger-button>
-                        @endif
-                    </form>
-                    <x-input-error :messages="$errors->get('collectionName')" />
-
-                    <div>
-                        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Properties') }}</h3>
-                        <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach ($properties as $property)
-                                <li wire:key="property-{{ $property->id }}" class="py-2 space-y-2">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <input
-                                            type="text"
-                                            value="{{ $property->name }}"
-                                            aria-label="{{ __('Property name') }}"
-                                            wire:change="renameProperty({{ $property->id }}, $event.target.value)"
-                                            class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 text-sm"
-                                        />
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $propertyTypes[$property->type] ?? $property->type }}</span>
-                                        @if ($property->isSystem())
-                                            <span class="text-xs text-gray-400">({{ __('built-in') }})</span>
-                                        @else
-                                            <button type="button" wire:click="deleteProperty({{ $property->id }})" wire:confirm="{{ __('Delete this property and its values?') }}" class="text-xs text-red-600 dark:text-red-400 underline">{{ __('Delete') }}</button>
-                                        @endif
-                                    </div>
-                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_DATE && $property->system_key === null)
-                                        <label class="flex flex-wrap items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
-                                            🔔 {{ __('E-mail reminder') }}
-                                            <select wire:change="setPropertyReminder({{ $property->id }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-0.5 text-xs">
-                                                <option value="" @selected($property->remindDays() === null)>{{ __('none') }}</option>
-                                                @foreach ([0, 1, 3, 7, 14, 30, 60, 90] as $days)
-                                                    <option value="{{ $days }}" @selected($property->remindDays() === $days)>{{ $days === 0 ? __('on the day') : trans_choice(':count day before|:count days before', $days) }}</option>
-                                                @endforeach
-                                            </select>
-                                        </label>
-                                    @endif
-                                    @if ($property->hasOptions())
-                                        <div class="flex flex-wrap items-center gap-2 ps-2">
-                                            @foreach ($property->selectOptions() as $option)
-                                                <span wire:key="option-{{ $property->id }}-{{ $option['id'] }}" class="inline-flex items-center gap-1">
-                                                    <x-option-badge :option="$option" />
-                                                    <button type="button" x-data x-on:click="const name = window.prompt(@js(__('Rename option:')), @js($option['name'])); if (name) { $wire.renameOption({{ $property->id }}, @js($option['id']), name) }" class="text-xs text-gray-400 hover:text-gray-700" title="{{ __('Rename') }}">✎</button>
-                                                    @unless ($property->isSystem())
-                                                        <button type="button" wire:click="deleteOption({{ $property->id }}, @js($option['id']))" wire:confirm="{{ __('Delete this option?') }}" class="text-xs text-gray-400 hover:text-red-600" title="{{ __('Delete') }}">✕</button>
-                                                    @endunless
-                                                </span>
-                                            @endforeach
-                                            @unless ($property->isSystem())
-                                                <form x-data="{ name: '' }" x-on:submit.prevent="if (name.trim()) { $wire.addOption({{ $property->id }}, name); name = '' }" class="inline-flex">
-                                                    <input x-model="name" type="text" placeholder="+ {{ __('Option') }}" aria-label="{{ __('New option') }}" class="w-28 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 py-0.5 text-xs" />
-                                                </form>
-                                            @endunless
-                                        </div>
-                                    @endif
-                                </li>
-                            @endforeach
-                        </ul>
-
-                        <form wire:submit="addProperty" class="mt-3 flex flex-wrap items-end gap-2">
-                            <div>
-                                <x-input-label for="newPropertyName" :value="__('New property')" />
-                                <x-text-input wire:model="newPropertyName" id="newPropertyName" class="mt-1 block" placeholder="{{ __('e.g. Priority') }}" />
-                            </div>
-                            <div>
-                                <x-input-label for="newPropertyType" :value="__('Type')" />
-                                <select wire:model="newPropertyType" id="newPropertyType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-sm text-sm">
-                                    @foreach ($propertyTypes as $type => $typeLabel)
-                                        <option value="{{ $type }}">{{ $typeLabel }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <x-primary-button>{{ __('Add') }}</x-primary-button>
-                        </form>
-                        <x-input-error :messages="$errors->get('newPropertyName')" class="mt-1" />
-                    </div>
-                </section>
-            @endif
+            @include('collections.partials.settings')
 
             {{-- Saved views and filters --}}
             <div class="flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-2" role="tablist" aria-label="{{ __('Views') }}">
@@ -2063,6 +2068,10 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
+                <div class="border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <livewire:entries.activity :item-id="$openEntry->id" :wire:key="'activity-entry-'.$openEntry->id" />
+                </div>
+
                 <p class="text-xs text-gray-400">
                     {{ __('Created') }} {{ $openEntry->created_at->translatedFormat('j. F Y') }}@if ($openEntry->creator) · {{ $openEntry->creator->name }}@endif
                     @if (! $collection->isPrivate() && $openEntry->visibilityCanBeChangedBy(auth()->user()))
@@ -2158,6 +2167,15 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
                 <button type="button" wire:click="closeEntryForm" class="ms-auto rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ __('Cancel') }}</button>
             </x-slot:footer>
+        </x-sheet>
+    @endif
+    @if ($showImport)
+        <x-sheet close="closeImport" :label="__('Import entries')" wire:key="import-sheet">
+            <x-slot:header>
+                <span aria-hidden="true">{{ $collection->displayIcon() }}</span>
+                <span class="truncate">{{ $collection->name }} · <strong class="text-gray-800 dark:text-gray-100">{{ __('Import entries') }}</strong></span>
+            </x-slot:header>
+            <livewire:collections.import :collection-id="$collection->id" :wire:key="'import-'.$collection->id" />
         </x-sheet>
     @endif
 </div>

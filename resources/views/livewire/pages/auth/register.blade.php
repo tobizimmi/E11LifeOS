@@ -22,6 +22,18 @@ new #[Layout('layouts.guest')] class extends Component
     public string $household_name = '';
 
     /**
+     * Invite links (/register?code=ABC123) fill in the code.
+     */
+    public function mount(): void
+    {
+        $code = request()->query('code');
+
+        if (is_string($code) && preg_match('/^[A-Za-z0-9]{4,32}$/', $code)) {
+            $this->invite_code = strtoupper($code);
+        }
+    }
+
+    /**
      * Handle an incoming registration request.
      */
     public function register(): void

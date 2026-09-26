@@ -14,10 +14,10 @@
     @if ($property->type === CollectionProperty::TYPE_CHECKBOX)
         <label for="{{ $id }}" class="flex h-full items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200">
             <input id="{{ $id }}" type="checkbox" wire:model="{{ $model }}" class="h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
-            {{ $property->name }}
+            {{ $property->name }}@if ($property->required)<span class="text-red-600" aria-hidden="true"> *</span>@endif
         </label>
     @else
-        <label for="{{ $id }}" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $property->name }}</label>
+        <label for="{{ $id }}" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $property->name }}@if ($property->required)<span class="text-red-600" aria-hidden="true"> *</span><span class="sr-only"> ({{ __('required') }})</span>@endif</label>
 
         @switch($property->type)
             @case(CollectionProperty::TYPE_NUMBER)
@@ -110,4 +110,8 @@
                 <input id="{{ $id }}" type="text" wire:model="{{ $model }}" class="{{ $input }}" />
         @endswitch
     @endif
+    @if ($property->help)
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $property->help }}</p>
+    @endif
+    <x-input-error :messages="$errors->get($model)" class="mt-1" />
 </div>

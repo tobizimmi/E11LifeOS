@@ -8,7 +8,11 @@ on:
   workflow_dispatch:
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   deploy:
+    needs: tests
     runs-on: ubuntu-latest
 
     env:
@@ -50,7 +54,30 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ env.SSH_HOST_DEPLOY }}" >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config << 'SSHCONFIG'
+          Host *
+            ConnectTimeout 20
+            ServerAliveInterval 15
+          SSHCONFIG
+          chmod 600 ~/.ssh/config
+
+      - name: Connect to server (with retries)
+        run: |
+          # The server occasionally resets fresh SSH connections ("kex_exchange_identification:
+          # Connection reset by peer"), e.g. after several deploys in a row. Retry with backoff.
+          for delay in 10 20 40 60 0; do
+            if ssh-keyscan -H "${{ env.SSH_HOST_DEPLOY }}" > /tmp/known_host 2>/dev/null && [ -s /tmp/known_host ] \
+              && cat /tmp/known_host >> ~/.ssh/known_hosts \
+              && ssh -i ~/.ssh/id_rsa -o BatchMode=yes ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} true; then
+              echo "SSH connection established"
+              exit 0
+            fi
+            [ "$delay" = 0 ] && break
+            echo "SSH not reachable yet, retrying in ${delay}s ..."
+            sleep "$delay"
+          done
+          echo "Could not connect to the server via SSH." >&2
+          exit 1
 
       - name: Create deployment directories
         run: |

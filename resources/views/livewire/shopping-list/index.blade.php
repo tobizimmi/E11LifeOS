@@ -1,32 +1,19 @@
 <?php
 
+use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ShoppingListEntry;
+use App\Support\ProductLookup;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] class extends Component
 {
-    public int $householdId;
+    use InteractsWithHousehold;
 
     public string $label = '';
 
     public string $quantity = '';
-
-    public function mount(): void
-    {
-        $household = Auth::user()->currentHousehold();
-        abort_if(! $household, 403);
-
-        $this->householdId = $household->id;
-    }
-
-    #[On('echo-private:household.{householdId},.items.updated')]
-    public function refreshFromBroadcast(): void
-    {
-        //
-    }
 
     public function add(): void
     {
@@ -43,6 +30,27 @@ new #[Layout('layouts.app')] class extends Component
         ]);
 
         $this->reset('label', 'quantity');
+    }
+
+    /**
+     * Fills the add form with the scanned product (the user still confirms with "Add").
+     */
+    public function lookupBarcode(string $code, ProductLookup $lookup): void
+    {
+        $code = preg_replace('/\D/', '', $code);
+        $product = $lookup->byBarcode($code);
+
+        if (! $product) {
+            $this->dispatch('toast', message: ProductLookup::isValidBarcode($code)
+                ? __('Product :code not found – please enter it yourself.', ['code' => $code])
+                : __('That is not a valid barcode.'));
+
+            return;
+        }
+
+        $this->label = $product['name'];
+        $this->quantity = $product['quantity'];
+        $this->dispatch('toast', message: __(':name found.', ['name' => $product['name']]));
     }
 
     public function toggle(int $id): void
@@ -80,11 +88,42 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <form wire:submit="add" class="flex gap-3">
-                    <x-text-input wire:model="label" class="block w-full" type="text" placeholder="{{ __('Item...') }}" />
+                    <x-text-input id="shopping-label" wire:model="label" class="block w-full" type="text" placeholder="{{ __('Item...') }}" />
                     <x-text-input wire:model="quantity" class="block w-32" type="text" placeholder="{{ __('Qty') }}" />
+                    <x-voice-button for="shopping-label" />
+                    <button type="button" x-data x-on:click="$dispatch('open-barcode-scanner')" class="shrink-0 rounded-md border border-gray-300 dark:border-gray-600 px-3 text-lg" aria-label="{{ __('Scan barcode') }}" title="{{ __('Scan barcode') }}">📷</button>
                     <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>
                 </form>
                 <x-input-error :messages="$errors->get('label')" class="mt-2" />
+
+                {{-- Barcode scanner: camera via the browser's BarcodeDetector, typing the number as fallback --}}
+                <div
+                    x-data="barcodeScanner"
+                    x-on:open-barcode-scanner.window="open()"
+                    x-on:keydown.escape.window="close()"
+                    x-show="visible"
+                    x-cloak
+                    class="fixed inset-0 z-[60] flex flex-col bg-black text-white"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="{{ __('Scan barcode') }}"
+                >
+                    <div class="flex items-center justify-between px-4 py-3">
+                        <p class="font-medium">{{ __('Scan barcode') }}</p>
+                        <button type="button" x-on:click="close()" class="text-2xl" aria-label="{{ __('Close') }}">✕</button>
+                    </div>
+                    <div class="relative flex-1 overflow-hidden">
+                        <video x-ref="video" x-show="supported && ! failed" playsinline muted class="h-full w-full object-cover"></video>
+                        <div x-show="supported && ! failed" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <div class="h-28 w-64 rounded-lg border-4 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+                        </div>
+                        <p x-show="! supported || failed" class="p-6 text-center text-gray-300" x-text="failed ? @js(__('The camera could not be started. Please allow camera access or type the number.')) : @js(__('This browser cannot open the camera here. Type the number below the barcode instead.'))"></p>
+                    </div>
+                    <form x-on:submit.prevent="submitManual()" class="flex gap-2 bg-gray-900 p-4">
+                        <input x-model="manualCode" inputmode="numeric" pattern="[0-9]*" class="block flex-1 rounded-md border-gray-700 bg-gray-800 text-white" placeholder="{{ __('Barcode number, e.g. 4000417025005') }}" aria-label="{{ __('Barcode number') }}" />
+                        <button type="submit" class="rounded-md bg-indigo-600 px-4 font-medium">{{ __('Find product') }}</button>
+                    </form>
+                </div>
             </div>
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">

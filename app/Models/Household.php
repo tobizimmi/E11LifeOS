@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Addons;
 use Database\Factories\HouseholdFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,11 +10,33 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name'])]
+#[Fillable(['name', 'addons'])]
 class Household extends Model
 {
     /** @use HasFactory<HouseholdFactory> */
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'addons' => 'array',
+        ];
+    }
+
+    public function hasAddon(string $addon): bool
+    {
+        return Addons::enabled($this, $addon);
+    }
+
+    public function setAddon(string $addon, bool $enabled): void
+    {
+        $this->update(['addons' => array_merge($this->addons ?? [], [$addon => $enabled])]);
+    }
+
+    public function recipes(): HasMany
+    {
+        return $this->hasMany(Recipe::class);
+    }
 
     public function members(): HasMany
     {

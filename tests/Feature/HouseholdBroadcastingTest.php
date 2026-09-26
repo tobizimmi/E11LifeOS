@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Events\HouseholdItemsChanged;
+use App\Models\Collection;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
+
+use function Livewire\invade;
 
 class HouseholdBroadcastingTest extends TestCase
 {
@@ -54,5 +58,19 @@ class HouseholdBroadcastingTest extends TestCase
         Event::assertDispatched(HouseholdItemsChanged::class, function (HouseholdItemsChanged $event) use ($household) {
             return $event->householdId === $household->id && $event->kind === 'shopping';
         });
+    }
+
+    public function test_module_pages_rerender_on_household_broadcasts(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $tasks = Collection::tasksFor($household->id);
+
+        foreach (['pages.index' => [], 'collections.show' => ['collection' => $tasks->id], 'shopping-list.index' => [], 'inbox.index' => [], 'dashboard' => [], 'layout.navigation' => []] as $component => $parameters) {
+            $listeners = invade(Volt::test($component, $parameters)->instance())->getListeners();
+
+            $this->assertSame('$refresh', $listeners["echo-private:household.{$household->id},.items.updated"] ?? null, $component);
+        }
     }
 }

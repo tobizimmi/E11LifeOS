@@ -22,4 +22,18 @@ trait CreatesHouseholdMembers
 
         return [$user, $household];
     }
+
+    private function addMemberTo(Household $household, string $role = 'member'): User
+    {
+        $user = User::factory()->create();
+
+        HouseholdMember::create([
+            'household_id' => $household->id,
+            'user_id' => $user->id,
+            'role' => $role,
+            'joined_at' => now(),
+        ]);
+
+        return $user;
+    }
 }

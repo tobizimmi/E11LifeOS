@@ -747,5 +747,16 @@
     "Yes": "Ja",
     "in :count day|in :count days": "in :count Tag|in :count Tagen",
     "tomorrow": "morgen",
-    "yesterday": "gestern"
+    "yesterday": "gestern",
+    "Documents": "Dokumente",
+    "Add files": "Dateien hinzufügen",
+    "Fill in from document": "Aus Dokument ausfüllen",
+    "Reading the document …": "Dokument wird gelesen …",
+    "Contract, policy, invoice or photo – the AI can fill in the fields from it.": "Vertrag, Police, Rechnung oder Foto – die KI kann daraus die Felder ausfüllen.",
+    "Contract, policy, invoice or photo.": "Vertrag, Police, Rechnung oder Foto.",
+    "Add a PDF or a photo of the document first.": "Füge zuerst ein PDF oder ein Foto des Dokuments hinzu.",
+    "Filled in :count field from the document – please check.|Filled in :count fields from the document – please check.": ":count Feld aus dem Dokument ausgefüllt – bitte prüfen.|:count Felder aus dem Dokument ausgefüllt – bitte prüfen.",
+    ":count document added|:count documents added": ":count Dokument hinzugefügt|:count Dokumente hinzugefügt",
+    "Delete this document?": "Dieses Dokument löschen?",
+    "No documents yet.": "Noch keine Dokumente."
 }

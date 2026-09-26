@@ -64,6 +64,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'reminder_emails' => 'boolean',
+            'dashboard_widgets' => 'array',
         ];
     }
 

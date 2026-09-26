@@ -152,7 +152,7 @@ class OrganisationFeaturesTest extends TestCase
     {
         $worker = file_get_contents(public_path('service-worker.js'));
 
-        $this->assertStringContainsString("OFFLINE_PAGES = ['shopping-list']", $worker);
+        $this->assertStringContainsString("OFFLINE_PAGES = ['shopping-list', 'dashboard', 'tasks', 'inbox']", $worker);
         [$user] = $this->memberWithHousehold();
         $this->actingAs($user)->get(route('shopping-list.index'))->assertSee('name="e11-authenticated"', false)->assertSee('Du bist offline');
     }

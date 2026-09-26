@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\Tag;
 use App\Models\User;
 use App\Support\BrainAi;
+use App\Support\QuickCapture;
 use App\Support\Recurrence;
 use App\Support\TaskInput;
 use App\Support\TaskLists;
@@ -97,8 +98,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function members(): array
     {
-        return User::whereIn('id', HouseholdMember::where('household_id', $this->householdId)->pluck('user_id'))
-            ->orderBy('name')->pluck('name', 'id')->all();
+        return QuickCapture::members((int) $this->householdId);
     }
 
     private function systemProperty(string $key): CollectionProperty
@@ -161,41 +161,20 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function addTask(string $text): bool
     {
-        $parsed = TaskInput::parse(mb_substr($text, 0, 500), $this->members(), Auth::id(), $this->ignoredPhrases);
-
-        if ($parsed['title'] === '') {
-            $this->addError('newTask', __('Please enter a title.'));
-
-            return false;
-        }
-
-        $collection = $this->collection();
-        $task = new Item([
-            'household_id' => $this->householdId,
-            'collection_id' => $collection->id,
-            'type' => Item::TYPE_TODO,
-            'visibility' => $collection->entryVisibility(),
-            'title' => mb_substr($parsed['title'], 0, 255),
-            'created_by' => Auth::id(),
-            'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
-        ]);
-
         // Added in "Today"/"Upcoming" without a date: it should show up where it was added.
-        $due = $parsed['due'] ?? match ($this->list) {
+        $defaultDue = match ($this->list) {
             TaskLists::TODAY => $this->resolveDate('today'),
             TaskLists::UPCOMING => $this->resolveDate('tomorrow'),
             default => null,
         };
 
-        foreach (['due' => $due, 'repeat' => $parsed['repeat'], 'priority' => $parsed['priority'], 'assignee' => $parsed['assignee']] as $key => $value) {
-            if ($value !== null && $collection->systemProperty($key)) {
-                $this->setValue($task, $key, $value);
-            }
-        }
+        $task = QuickCapture::task($this->currentUser(), (int) $this->householdId, $text, $defaultDue, $this->ignoredPhrases, $this->tag !== '' ? [$this->tag] : []);
 
-        $task->due_time = $parsed['time'];
-        $task->save();
-        $task->syncTagNames($this->tag !== '' ? [...$parsed['tags'], $this->tag] : $parsed['tags']);
+        if (! $task) {
+            $this->addError('newTask', __('Please enter a title.'));
+
+            return false;
+        }
 
         $this->reset('draft', 'ignoredPhrases');
         $this->resetErrorBag('newTask');
@@ -527,7 +506,18 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($list !== \App\Support\TaskLists::DONE)
                     <form
                         x-data
-                        x-on:submit.prevent="const input = $refs.input; $wire.addTask(input.value).then((added) => { if (added) { input.value = ''; input.focus() } })"
+                        x-on:submit.prevent="
+                            const input = $refs.input;
+                            if (! navigator.onLine) {
+                                if (input.value.trim()) {
+                                    window.E11Offline.add('task', input.value.trim());
+                                    input.value = '';
+                                    $dispatch('toast', { message: @js(__('Saved offline – it will be sent once you are online.')) });
+                                }
+                                return;
+                            }
+                            $wire.addTask(input.value).then((added) => { if (added) { input.value = ''; input.focus() } })
+                        "
                         class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm"
                     >
                         <div class="flex gap-2">

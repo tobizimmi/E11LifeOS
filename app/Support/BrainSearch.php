@@ -29,7 +29,7 @@ class BrainSearch
         'habe', 'haben', 'hat', 'hatte', 'hier', 'ich', 'ihr', 'ist', 'jetzt', 'kann', 'kannst', 'kein', 'keine', 'mal', 'man', 'mein', 'meine', 'meinem', 'meinen',
         'meiner', 'mich', 'mir', 'mit', 'muss', 'müssen', 'nach', 'nicht', 'noch', 'nur', 'oder', 'ohne', 'sind', 'soll', 'sollte', 'steht', 'über', 'und', 'uns',
         'unser', 'unsere', 'unter', 'viel', 'vom', 'von', 'vor', 'war', 'waren', 'was', 'welche', 'welcher', 'welches', 'wenn', 'wer', 'wie', 'wieder', 'wir',
-        'wird', 'wo', 'woher', 'wohin', 'zum', 'zur', 'zwischen', 'the', 'and', 'what', 'which', 'where', 'when', 'who', 'how', 'have', 'has', 'for', 'with', 'about',
+        'wird', 'wo', 'woher', 'wohin', 'wann', 'warum', 'weshalb', 'wieso', 'zum', 'zur', 'zwischen', 'the', 'and', 'what', 'which', 'where', 'when', 'who', 'how', 'have', 'has', 'for', 'with', 'about',
     ];
 
     /**
@@ -97,10 +97,26 @@ class BrainSearch
     {
         return collect(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($question), -1, PREG_SPLIT_NO_EMPTY))
             ->filter(fn (string $word) => mb_strlen($word) >= 3 && ! in_array($word, self::STOP_WORDS, true))
+            ->map(fn (string $word) => self::stem($word))
             ->unique()
             ->take(8)
             ->values()
             ->all();
+    }
+
+    /**
+     * Rough German stem so that "Versicherungen" also finds "Versicherung" and "Autos" "Auto"
+     * (the stem is used as a substring, so it must not get too short).
+     */
+    private static function stem(string $word): string
+    {
+        foreach (['ungen', 'innen', 'en', 'er', 'es', 'e', 'n', 's'] as $ending) {
+            if (str_ends_with($word, $ending) && mb_strlen($word) - mb_strlen($ending) >= 4) {
+                return mb_substr($word, 0, mb_strlen($word) - mb_strlen($ending)).($ending === 'ungen' ? 'ung' : '');
+            }
+        }
+
+        return $word;
     }
 
     /**

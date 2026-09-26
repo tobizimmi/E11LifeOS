@@ -42,7 +42,7 @@ class QuickCapture
      * @param  array<int, string>  $ignored  Recognised phrases to keep in the title.
      * @param  array<int, string>  $extraTags
      */
-    public static function task(User $user, int $householdId, string $text, ?string $defaultDue = null, array $ignored = [], array $extraTags = []): ?Item
+    public static function task(User $user, int $householdId, string $text, ?string $defaultDue = null, array $ignored = [], array $extraTags = [], bool $private = false): ?Item
     {
         $parsed = TaskInput::parse(mb_substr($text, 0, 500), self::members($householdId), $user->id, $ignored);
 
@@ -55,7 +55,7 @@ class QuickCapture
             'household_id' => $householdId,
             'collection_id' => $collection->id,
             'type' => Item::TYPE_TODO,
-            'visibility' => $collection->entryVisibility(),
+            'visibility' => $private ? Item::VISIBILITY_PRIVATE : $collection->entryVisibility(),
             'title' => mb_substr($parsed['title'], 0, 255),
             'created_by' => $user->id,
             'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,

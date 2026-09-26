@@ -113,6 +113,12 @@ php artisan webpush:vapid
 
 Die Schlüssel später nicht mehr ändern, sonst muss jedes Gerät die Benachrichtigungen neu einschalten. Pushes enthalten selbst keinen Text; der Service Worker holt die Nachricht nach dem Wecken aus der App. Es ist also kein zusätzliches Paket nötig, und über die Push-Dienste von Google, Apple oder Mozilla laufen keine Inhalte.
 
+## Backups
+
+Jede Nacht um 3:15 legt `php artisan backup:run` (über den Scheduler, siehe oben) eine ZIP-Datei an: `database.sql` (vollständiger SQL-Dump, ohne `mysqldump`) und `files/` (alle hochgeladenen Bilder und Dateien aus `storage/app`). Standardmäßig landen sie in `storage/backups`, die letzten 14 werden behalten. Über `BACKUP_PATH` und `BACKUP_KEEP` in der `.env` lässt sich das ändern. Am besten einen Ordner wählen, der zusätzlich vom Server weg kopiert wird.
+
+Wiederherstellen: ZIP entpacken, `database.sql` in eine leere Datenbank einspielen (z. B. `mysql -u … -p datenbank < database.sql`) und den Inhalt von `files/` nach `storage/app/` kopieren. Die `.env` ist bewusst nicht enthalten (Passwörter); sie sollte separat gesichert werden.
+
 ## Tests & Code-Stil
 
 ```bash

@@ -28,6 +28,18 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Kalender-Abo** – offene Aufgaben (mit Uhrzeit und Wiederholung) und Termine mit Erinnerung, z. B. Kündigungsfristen, als abonnierbarer Kalender für iPhone, Google oder Outlook (persönlicher Link im Profil, jederzeit erneuer- oder abschaltbar).
 - **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
 - **Sammlungen** – eigene Datenbanken wie in Notion, in fünf Ansichten (Karten, Liste, Tabelle, Board, Kalender; sichtbare Felder und Standardansicht wählbar). Neue Einträge und Änderungen über ein übersichtliches Formular-Popup, Details in einem Popup mit formatierten Werten (Beträge in €, Fristen mit Countdown und farbiger Warnung). Außerdem: Eigenschaften (Text, Zahl, Datum, Auswahl, Mehrfachauswahl, Checkbox, Person, Link, Verknüpfung), jeder Eintrag mit eigenen Notizen und Dateien; Filter pro Eigenschaft (z. B. „Fällig: überfällig“, „Zuständig: ich“) und gespeicherte Ansichten als Reiter, Summen für Zahlen und Checkboxen, E-Mail-Erinnerung für Datumsfelder, Einträge per Klick auf die Einkaufsliste.
+- **Formularaufbau & eigene Vorlagen**:
+  - Felder sortieren (↑/↓) und als Pflichtfeld markieren.
+  - Standardwerte vorgeben, z. B. Datum „in 1 Woche“, Person „wer den Eintrag anlegt“.
+  - Hinweistexte unter dem Feld.
+  - Jede Sammlung lässt sich „⧉ Als Vorlage speichern“ und unter „Neue Sammlung“ wiederverwenden (nur Aufbau, keine Einträge).
+- **Import aus CSV/Excel** – Tabellen (.csv, .xlsx) als Einträge übernehmen:
+  - Spalten Titel, vorhandenen Feldern oder neuen Feldern zuordnen; der passende Typ (Datum, Zahl, Auswahl, Checkbox, Link) wird erkannt.
+  - Deutsche Datums- und Zahlenformate werden verstanden.
+- **Kommentare & Verlauf** – an jedem Eintrag und jeder Aufgabe:
+  - Die Person, die den Eintrag angelegt hat, und die zuständige Person bekommen einen Push.
+  - Auf Wunsch zeigt der Verlauf, wer was geändert hat.
+- **Einladungslinks** – statt nur Code: Link kopieren oder teilen, der Code wird bei der Registrierung automatisch eingetragen.
 - **Dokumente an Einträgen** – PDFs, Fotos und Dateien direkt im Formular oder in der Detailansicht anhängen (mit Vorschau); „✨ Aus Dokument ausfüllen“ lässt die KI Anbieter, Kosten, Fristen usw. aus einem Vertrag oder Foto in die Felder übernehmen.
 - **Module als Vorlagen** – Verträge & Dokumente (Kündigungsfrist mit Erinnerung), Haushaltsbuch, Vorräte (Haltbarkeit mit Erinnerung), Lesezeichen / Später lesen, Tagebuch (privat), Gewohnheiten, Projekte, Leseliste.
 - **Offline** – Übersicht, Aufgaben, Inbox und Einkaufsliste öffnen auch ohne Netz (zuletzt geladener Stand); neue Inbox-Einträge und Aufgaben werden offline gespeichert und automatisch gesendet, sobald das Gerät wieder online ist.

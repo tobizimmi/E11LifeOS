@@ -91,6 +91,17 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-md">
                         <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Share this code with the person you want to invite:') }}</p>
                         <p class="mt-1 text-xl font-mono tracking-widest text-gray-900 dark:text-gray-100">{{ $newInviteCode }}</p>
+                        @php
+                            $inviteLink = route('register', ['code' => $newInviteCode]);
+                        @endphp
+                        <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">{{ __('Or send the invite link – the code is filled in automatically:') }}</p>
+                        <div class="mt-1 flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                            <input type="text" readonly value="{{ $inviteLink }}" aria-label="{{ __('Invite link') }}" class="min-w-0 flex-1 rounded-md border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" x-on:focus="$event.target.select()">
+                            <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($inviteLink) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })">
+                                <span x-show="! copied">📋 {{ __('Copy') }}</span><span x-show="copied" x-cloak>✓ {{ __('Copied') }}</span>
+                            </x-secondary-button>
+                            <x-secondary-button type="button" x-show="navigator.share" x-cloak x-on:click="navigator.share({ title: {{ \Illuminate\Support\Js::from(config('app.name')) }}, text: {{ \Illuminate\Support\Js::from(__('Join our household in :app:', ['app' => config('app.name')])) }}, url: {{ \Illuminate\Support\Js::from($inviteLink) }} })">↗ {{ __('Share') }}</x-secondary-button>
+                        </div>
                     </div>
                 @endif
 

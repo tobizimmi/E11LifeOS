@@ -908,6 +908,8 @@ new #[Layout('layouts.app')] class extends Component
 
                     <livewire:links-panel type="item" :id="$openTask->id" :key="'task-links-'.$openTask->id" />
 
+                    <livewire:entries.activity :item-id="$openTask->id" :key="'task-activity-'.$openTask->id" />
+
                     <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
                 </div>
 

@@ -133,6 +133,7 @@ class SendTaskReminders extends Command
             ->ofType(Item::TYPE_TODO)
             ->visibleTo($user)
             ->where('done', false)
+            ->orderBy('id')
             ->get()
             ->map(fn (Item $task) => ['task' => $task, 'due' => (string) $task->propertyValue($dueProperty), 'assignee' => $assigneeProperty ? $task->propertyValue($assigneeProperty) : null])
             ->filter(fn (array $row) => $row['due'] !== '' && $row['due'] <= $today)

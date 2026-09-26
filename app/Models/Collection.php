@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A Notion-style database: entries (items) with typed properties, shown as
  * table or board. Tasks are the built-in collection with system_key "tasks".
  */
-#[Fillable(['household_id', 'name', 'icon', 'visibility', 'created_by', 'system_key'])]
+#[Fillable(['household_id', 'name', 'icon', 'default_view', 'visibility', 'created_by', 'system_key'])]
 class Collection extends Model
 {
     /** @use HasFactory<CollectionFactory> */
@@ -24,6 +24,8 @@ class Collection extends Model
     public const SYSTEM_TASKS = 'tasks';
 
     public const DEFAULT_ICON = '🗂️';
+
+    public const VIEWS = ['table', 'board', 'calendar', 'cards', 'list'];
 
     /**
      * Status option ids of the tasks collection; "done" mirrors items.done.

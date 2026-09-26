@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
-#[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'position'])]
+#[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'completed_at', 'due_time', 'reminded_at', 'position'])]
 #[ObservedBy(ItemObserver::class)]
 class Item extends Model
 {
@@ -59,6 +60,8 @@ class Item extends Model
             'content' => 'array',
             'properties' => 'array',
             'done' => 'boolean',
+            'reminded_at' => 'datetime',
+            'completed_at' => 'datetime',
         ];
     }
 
@@ -79,6 +82,15 @@ class Item extends Model
             }
 
             $item->syncTaskStatusWithDone();
+
+            if ($item->isDirty('done')) {
+                $item->completed_at = $item->done ? now() : null;
+            }
+
+            // A new date or time means the reminder is due again.
+            if ($item->isDirty('due_time') || $item->dueDate() !== $item->originalDueDate()) {
+                $item->reminded_at = null;
+            }
         });
 
         // Embedded files go with the page (one by one, so the stored files are removed too).
@@ -156,6 +168,33 @@ class Item extends Model
         $this->rescheduledTo = $next;
     }
 
+    /**
+     * Due date of a task (Y-m-d) from the tasks collection's "due" property.
+     */
+    public function dueDate(): ?string
+    {
+        $property = $this->collection?->systemProperty('due');
+
+        return $property ? ($this->propertyValue($property) ?: null) : null;
+    }
+
+    private function originalDueDate(): ?string
+    {
+        $property = $this->collection?->systemProperty('due');
+
+        return $property && $this->exists ? ((($this->getOriginal('properties') ?? [])[$property->id] ?? null) ?: null) : null;
+    }
+
+    /**
+     * Due date and time together, null without a date or without a time.
+     */
+    public function dueAt(): ?Carbon
+    {
+        $date = $this->dueDate();
+
+        return $date && $this->due_time ? Carbon::parse($date.' '.$this->due_time) : null;
+    }
+
     public function household(): BelongsTo
     {
         return $this->belongsTo(Household::class);
@@ -216,19 +255,24 @@ class Item extends Model
     }
 
     /**
-     * Case-insensitive match on title, note body or tag name.
+     * Case-insensitive match on title, note body or tag name; with several words
+     * every word has to occur somewhere (in any order).
      *
      * @param  Builder<Item>  $query
      */
     public function scopeMatching(Builder $query, string $term): void
     {
-        $like = '%'.mb_strtolower($term).'%';
+        $words = array_slice(preg_split('/\s+/u', mb_strtolower(trim($term)), -1, PREG_SPLIT_NO_EMPTY), 0, 6) ?: [''];
 
-        $query->where(function (Builder $query) use ($like) {
-            $query->whereRaw('LOWER(items.title) LIKE ?', [$like])
-                ->orWhereRaw("LOWER(JSON_EXTRACT(items.content, '$.body')) LIKE ?", [$like])
-                ->orWhereHas('tags', fn (Builder $tags) => $tags->where('name', 'like', $like));
-        });
+        foreach ($words as $word) {
+            $like = '%'.$word.'%';
+
+            $query->where(function (Builder $query) use ($like) {
+                $query->whereRaw('LOWER(items.title) LIKE ?', [$like])
+                    ->orWhereRaw("LOWER(JSON_EXTRACT(items.content, '$.body')) LIKE ?", [$like])
+                    ->orWhereHas('tags', fn (Builder $tags) => $tags->where('name', 'like', $like));
+            });
+        }
     }
 
     public function propertyValue(CollectionProperty|int $property): mixed

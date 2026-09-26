@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\Tag;
 use App\Models\User;
 use App\Support\BrainAi;
+use App\Support\QuickCapture;
 use App\Support\Recurrence;
 use App\Support\TaskInput;
 use App\Support\TaskLists;
@@ -97,8 +98,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function members(): array
     {
-        return User::whereIn('id', HouseholdMember::where('household_id', $this->householdId)->pluck('user_id'))
-            ->orderBy('name')->pluck('name', 'id')->all();
+        return QuickCapture::members((int) $this->householdId);
     }
 
     private function systemProperty(string $key): CollectionProperty
@@ -157,44 +157,44 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * "⤢": creates the task and opens it right away to fill in the details.
+     */
+    public function addTaskWithDetails(string $text): bool
+    {
+        $before = (int) Item::where('household_id', $this->householdId)->max('id');
+
+        if (! $this->addTask($text)) {
+            return false;
+        }
+
+        $task = Item::where('household_id', $this->householdId)->where('id', '>', $before)->where('created_by', Auth::id())->latest('id')->first();
+
+        if ($task) {
+            $this->openTask($task->id);
+        }
+
+        return true;
+    }
+
+    /**
      * Returns whether a task was created (the input is cleared then).
      */
     public function addTask(string $text): bool
     {
-        $parsed = TaskInput::parse(mb_substr($text, 0, 500), $this->members(), Auth::id(), $this->ignoredPhrases);
-
-        if ($parsed['title'] === '') {
-            $this->addError('newTask', __('Please enter a title.'));
-
-            return false;
-        }
-
-        $collection = $this->collection();
-        $task = new Item([
-            'household_id' => $this->householdId,
-            'collection_id' => $collection->id,
-            'type' => Item::TYPE_TODO,
-            'visibility' => $collection->entryVisibility(),
-            'title' => mb_substr($parsed['title'], 0, 255),
-            'created_by' => Auth::id(),
-            'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
-        ]);
-
         // Added in "Today"/"Upcoming" without a date: it should show up where it was added.
-        $due = $parsed['due'] ?? match ($this->list) {
+        $defaultDue = match ($this->list) {
             TaskLists::TODAY => $this->resolveDate('today'),
             TaskLists::UPCOMING => $this->resolveDate('tomorrow'),
             default => null,
         };
 
-        foreach (['due' => $due, 'repeat' => $parsed['repeat'], 'priority' => $parsed['priority'], 'assignee' => $parsed['assignee']] as $key => $value) {
-            if ($value !== null && $collection->systemProperty($key)) {
-                $this->setValue($task, $key, $value);
-            }
-        }
+        $task = QuickCapture::task($this->currentUser(), (int) $this->householdId, $text, $defaultDue, $this->ignoredPhrases, $this->tag !== '' ? [$this->tag] : []);
 
-        $task->save();
-        $task->syncTagNames($this->tag !== '' ? [...$parsed['tags'], $this->tag] : $parsed['tags']);
+        if (! $task) {
+            $this->addError('newTask', __('Please enter a title.'));
+
+            return false;
+        }
 
         $this->reset('draft', 'ignoredPhrases');
         $this->resetErrorBag('newTask');
@@ -246,7 +246,31 @@ new #[Layout('layouts.app')] class extends Component
     public function setDue(int $taskId, string $preset): void
     {
         $task = $this->findTask($taskId);
-        $this->setValue($task, 'due', $this->resolveDate($preset));
+        $date = $this->resolveDate($preset);
+        $this->setValue($task, 'due', $date);
+
+        if ($date === null) {
+            $task->due_time = null;
+        }
+
+        $task->save();
+    }
+
+    /**
+     * Time of day ("HH:MM", "" removes it); a reminder goes out then. Without a date the
+     * task becomes due today, or tomorrow if that time has passed.
+     */
+    public function setTime(int $taskId, string $time): void
+    {
+        abort_unless($time === '' || preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time), 422);
+
+        $task = $this->findTask($taskId);
+        $task->due_time = $time !== '' ? $time : null;
+
+        if ($time !== '' && ! $task->dueDate()) {
+            $this->setValue($task, 'due', $this->resolveDate(now()->format('H:i') < $time ? 'today' : 'tomorrow'));
+        }
+
         $task->save();
     }
 
@@ -417,6 +441,7 @@ new #[Layout('layouts.app')] class extends Component
             'lists' => $lists,
             'counts' => $lists->counts(),
             'groups' => $lists->groups($this->list, $this->tag, $this->search),
+            'review' => $this->list === TaskLists::DONE ? $lists->review() : null,
             'members' => $members,
             'preview' => trim($this->draft) !== '' ? TaskInput::parse($this->draft, $members, Auth::id(), $this->ignoredPhrases) : null,
             'openTask' => $openTask,
@@ -502,7 +527,18 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($list !== \App\Support\TaskLists::DONE)
                     <form
                         x-data
-                        x-on:submit.prevent="const input = $refs.input; $wire.addTask(input.value).then((added) => { if (added) { input.value = ''; input.focus() } })"
+                        x-on:submit.prevent="
+                            const input = $refs.input;
+                            if (! navigator.onLine) {
+                                if (input.value.trim()) {
+                                    window.E11Offline.add('task', input.value.trim());
+                                    input.value = '';
+                                    $dispatch('toast', { message: @js(__('Saved offline – it will be sent once you are online.')) });
+                                }
+                                return;
+                            }
+                            $wire.addTask(input.value).then((added) => { if (added) { input.value = ''; input.focus() } })
+                        "
                         class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm"
                     >
                         <div class="flex gap-2">
@@ -518,6 +554,7 @@ new #[Layout('layouts.app')] class extends Component
                                 class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500"
                             />
                             <x-voice-button for="new-task" submit />
+                            <button type="button" x-on:click="const input = $refs.input; if (! input.value.trim()) { input.focus(); return } $wire.addTaskWithDetails(input.value).then((added) => { if (added) { input.value = '' } })" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Add and fill in details') }}" aria-label="{{ __('Add and fill in details') }}">⤢</button>
                             <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700" aria-label="{{ __('Add task') }}">＋</button>
                         </div>
                         <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
@@ -526,7 +563,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="text-gray-500 dark:text-gray-400">„{{ $preview['title'] }}“</span>
                                 @foreach ($preview['tokens'] as $token)
                                     <span wire:key="token-{{ $loop->index }}-{{ $token['text'] }}" class="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 pl-2 pr-1 py-0.5 text-indigo-700 dark:text-indigo-300">
-                                        {{ ['due' => '📅', 'repeat' => '🔁', 'priority' => '⚑', 'assignee' => '', 'tag' => ''][$token['kind']] ?? '' }} {{ $token['label'] }}
+                                        {{ ['due' => '📅', 'time' => '⏰', 'repeat' => '🔁', 'priority' => '⚑', 'assignee' => '', 'tag' => ''][$token['kind']] ?? '' }} {{ $token['label'] }}
                                         @if ($token['kind'] !== 'tag')
                                             <button type="button" wire:click="ignorePhrase(@js($token['text']))" class="rounded-full px-1 hover:bg-indigo-100 dark:hover:bg-indigo-800" title="{{ __('Keep “:text” in the title', ['text' => $token['text']]) }}" aria-label="{{ __('Keep “:text” in the title', ['text' => $token['text']]) }}">×</button>
                                         @endif
@@ -534,9 +571,27 @@ new #[Layout('layouts.app')] class extends Component
                                 @endforeach
                             </div>
                         @else
-                            <p class="mt-1.5 text-xs text-gray-400">{{ __('Understands dates (today, tomorrow, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.') }}</p>
+                            <p class="mt-1.5 text-xs text-gray-400">{{ __('Understands dates and times (tomorrow 6 pm, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.') }}</p>
                         @endif
                     </form>
+                @endif
+
+                {{-- Weekly review --}}
+                @if ($review)
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+                            <p class="text-2xl font-semibold text-green-600 dark:text-green-400">{{ $review['thisWeek'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Done this week') }}</p>
+                        </div>
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+                            <p class="text-2xl font-semibold text-gray-700 dark:text-gray-200">{{ $review['lastWeek'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Last week') }}</p>
+                        </div>
+                        <button type="button" wire:click="showList('{{ \App\Support\TaskLists::TODAY }}')" class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm hover:ring-1 hover:ring-red-300">
+                            <p @class(['text-2xl font-semibold', 'text-red-600 dark:text-red-400' => $review['overdue'] > 0, 'text-gray-700 dark:text-gray-200' => $review['overdue'] === 0])>{{ $review['overdue'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Still overdue') }}</p>
+                        </button>
+                    </div>
                 @endif
 
                 {{-- Toolbar --}}
@@ -633,7 +688,7 @@ new #[Layout('layouts.app')] class extends Component
                                             <span @class(['block break-words', 'line-through text-gray-400' => $task->done, 'text-gray-900 dark:text-gray-100' => ! $task->done])>{{ $task->title }}</span>
                                             <span class="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
                                                 @if ($due !== '')
-                                                    <span @class(['font-medium text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-indigo-600 dark:text-indigo-400' => ! $lists->isOverdue($task) && $due === now()->toDateString()])>📅 {{ \App\Support\TaskInput::dueLabel($due) }}</span>
+                                                    <span @class(['font-medium text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-indigo-600 dark:text-indigo-400' => ! $lists->isOverdue($task) && $due === now()->toDateString()])>📅 {{ \App\Support\TaskInput::dueLabel($due) }}@if ($task->due_time) · {{ $task->due_time }}@endif</span>
                                                 @endif
                                                 @if ($lists->repeat($task))
                                                     <span title="{{ \App\Support\TaskInput::repeatLabel($lists->repeat($task)) }}">🔁 {{ \App\Support\TaskInput::repeatLabel($lists->repeat($task)) }}</span>
@@ -733,17 +788,16 @@ new #[Layout('layouts.app')] class extends Component
             $assigneeId = $lists->assigneeId($openTask);
             $subtasks = $openTask->subtasks();
         @endphp
-        <div class="fixed inset-0 z-40 flex justify-end" wire:key="task-panel-{{ $openTask->id }}" x-data x-on:keydown.escape.window="if (! ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) { $wire.closeTask() }">
-            <div class="absolute inset-0 bg-gray-900/30" wire:click="closeTask" aria-hidden="true"></div>
-            <aside class="relative h-full w-full sm:max-w-md overflow-y-auto bg-white dark:bg-gray-800 shadow-xl" role="dialog" aria-modal="true" aria-label="{{ $openTask->title }}">
-                <div class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 px-4 py-3 backdrop-blur">
-                    <button type="button" wire:click="toggleDone({{ $openTask->id }})" @class(['rounded-lg px-3 py-1.5 text-sm', 'bg-green-600 text-white' => $openTask->done, 'ring-1 ring-gray-300 dark:ring-gray-600 text-gray-700 dark:text-gray-200 hover:bg-green-50' => ! $openTask->done])>
-                        {{ $openTask->done ? '✓ '.__('Done') : '○ '.__('Mark as done') }}
-                    </button>
-                    <button type="button" wire:click="closeTask" class="rounded-lg px-2 py-1 text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Close') }}">×</button>
-                </div>
+        <x-sheet close="closeTask" :label="$openTask->title" wire:key="task-panel-{{ $openTask->id }}">
+            <x-slot:header>
+                <span aria-hidden="true">✅</span>
+                <span class="truncate">{{ __('Tasks') }}</span>
+                @if ($openTask->isPrivate())
+                    <x-private-badge />
+                @endif
+            </x-slot:header>
 
-                <div class="space-y-5 p-4">
+                <div class="space-y-5">
                     <textarea
                         rows="2"
                         wire:key="task-title-{{ $openTask->id }}-{{ md5($openTask->title) }}"
@@ -755,12 +809,16 @@ new #[Layout('layouts.app')] class extends Component
 
                     {{-- Date --}}
                     <div>
-                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📅 {{ __('Due') }} @if ($due !== '') · <span class="normal-case {{ $lists->isOverdue($openTask) ? 'text-red-600' : 'text-gray-600 dark:text-gray-300' }}">{{ \Illuminate\Support\Carbon::parse($due)->translatedFormat('l, j. F Y') }}</span>@endif</h4>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📅 {{ __('Due') }} @if ($due !== '') · <span class="normal-case {{ $lists->isOverdue($openTask) ? 'text-red-600' : 'text-gray-600 dark:text-gray-300' }}">{{ \Illuminate\Support\Carbon::parse($due)->translatedFormat('l, j. F Y') }}@if ($openTask->due_time), {{ $openTask->due_time }}@endif</span>@endif</h4>
+                        @if ($openTask->due_time)
+                            <p class="-mt-0.5 mb-1.5 text-xs text-gray-500 dark:text-gray-400">⏰ {{ __('Reminder at :time (push or e-mail)', ['time' => $openTask->due_time]) }}</p>
+                        @endif
                         <div class="flex flex-wrap gap-1.5">
                             @foreach (['today' => __('Today'), 'tomorrow' => __('Tomorrow'), 'weekend' => __('This weekend'), 'next_week' => __('Next week'), 'none' => __('No date')] as $preset => $label)
                                 <button type="button" wire:click="setDue({{ $openTask->id }}, '{{ $preset }}')" class="rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-gray-600">{{ $label }}</button>
                             @endforeach
                             <input type="date" value="{{ $due }}" wire:change="setDue({{ $openTask->id }}, $event.target.value || 'none')" class="rounded-full border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-0.5 text-sm" aria-label="{{ __('Pick a date') }}" />
+                            <input type="time" value="{{ $openTask->due_time }}" wire:change="setTime({{ $openTask->id }}, $event.target.value)" class="rounded-full border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-0.5 text-sm" aria-label="{{ __('Time') }}" />
                         </div>
                     </div>
 
@@ -850,12 +908,16 @@ new #[Layout('layouts.app')] class extends Component
 
                     <livewire:links-panel type="item" :id="$openTask->id" :key="'task-links-'.$openTask->id" />
 
-                    <div class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4 text-sm">
-                        <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
-                        <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="text-red-600 dark:text-red-400 hover:underline">🗑 {{ __('Delete') }}</button>
-                    </div>
+                    <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
                 </div>
-            </aside>
-        </div>
+
+            <x-slot:footer>
+                <button type="button" wire:click="toggleDone({{ $openTask->id }})" @class(['rounded-lg px-4 py-2 text-sm font-medium', 'bg-green-600 text-white' => $openTask->done, 'bg-indigo-600 text-white hover:bg-indigo-700' => ! $openTask->done])>
+                    {{ $openTask->done ? '✓ '.__('Done') : '✓ '.__('Mark as done') }}
+                </button>
+                <x-secondary-button type="button" wire:click="closeTask">{{ __('Close') }}</x-secondary-button>
+                <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">🗑 {{ __('Delete') }}</button>
+            </x-slot:footer>
+        </x-sheet>
     @endif
 </div>

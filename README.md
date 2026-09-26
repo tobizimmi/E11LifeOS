@@ -12,8 +12,9 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Seitenleiste** – Navigation wie in Notion: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Spracheingabe** – 🎤 in Schnellerfassung, bei neuen Aufgaben/Einträgen und in der Einkaufsliste (Spracherkennung des Browsers).
+- **Schnell erfassen** (Übersicht) – wahlweise in die Inbox oder direkt als Aufgabe (mit Datum, Uhrzeit, !Priorität, @Name).
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
-- **Erinnerungen** – täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
+- **Erinnerungen** – Aufgaben mit Uhrzeit („morgen 18 Uhr“) erinnern genau dann per Push (ohne Push-Gerät per E-Mail); wer eine Aufgabe zugewiesen bekommt, erhält sofort einen Push. Dazu täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.
 - **Aufgaben** – eigene Aufgabenseite, einfach und schnell:
   - Smart-Listen „Heute“ (inkl. Überfälligem), „Geplant“, „Alle“, „Meine“ und „Erledigt“, gruppiert nach Datum.
@@ -21,10 +22,13 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
   - Priorität, Unteraufgaben, Notizen, Wiederholung (abgehakt springt die Aufgabe zum nächsten Termin), Zuständigkeit, Tags und Verknüpfungen im Detail-Panel.
   - Abhaken mit „Rückgängig“; auf dem Handy nach rechts wischen = erledigt, nach links = auf morgen.
   - Mehrfachauswahl: mehrere Aufgaben auf einmal erledigen, verschieben, priorisieren, zuweisen oder löschen.
+  - Wochenrückblick in „Erledigt“: diese und letzte Woche erledigt, noch überfällig; erledigte Aufgaben nach Tag gruppiert.
   - Dieselben Aufgaben bleiben als Board, Tabelle oder Kalender verfügbar.
+- **Kalender-Abo** – offene Aufgaben (mit Uhrzeit und Wiederholung) und Termine mit Erinnerung, z. B. Kündigungsfristen, als abonnierbarer Kalender für iPhone, Google oder Outlook (persönlicher Link im Profil, jederzeit erneuer- oder abschaltbar).
 - **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
-- **Sammlungen** – eigene Tabellen/Boards wie Notion-Datenbanken: Eigenschaften (Text, Zahl, Datum, Auswahl, Mehrfachauswahl, Checkbox, Person, Link, Verknüpfung), jeder Eintrag mit eigenen Notizen und Dateien; Filter pro Eigenschaft (z. B. „Fällig: überfällig“, „Zuständig: ich“) und gespeicherte Ansichten als Reiter, Summen für Zahlen und Checkboxen, E-Mail-Erinnerung für Datumsfelder, Einträge per Klick auf die Einkaufsliste.
+- **Sammlungen** – eigene Datenbanken wie in Notion, in fünf Ansichten (Karten, Liste, Tabelle, Board, Kalender; sichtbare Felder und Standardansicht wählbar). Neue Einträge und Änderungen über ein übersichtliches Formular-Popup, Details in einem Popup mit formatierten Werten (Beträge in €, Fristen mit Countdown und farbiger Warnung). Außerdem: Eigenschaften (Text, Zahl, Datum, Auswahl, Mehrfachauswahl, Checkbox, Person, Link, Verknüpfung), jeder Eintrag mit eigenen Notizen und Dateien; Filter pro Eigenschaft (z. B. „Fällig: überfällig“, „Zuständig: ich“) und gespeicherte Ansichten als Reiter, Summen für Zahlen und Checkboxen, E-Mail-Erinnerung für Datumsfelder, Einträge per Klick auf die Einkaufsliste.
 - **Module als Vorlagen** – Verträge & Dokumente (Kündigungsfrist mit Erinnerung), Haushaltsbuch, Vorräte (Haltbarkeit mit Erinnerung), Lesezeichen / Später lesen, Tagebuch (privat), Gewohnheiten, Projekte, Leseliste.
+- **Offline** – Übersicht, Aufgaben, Inbox und Einkaufsliste öffnen auch ohne Netz (zuletzt geladener Stand); neue Inbox-Einträge und Aufgaben werden offline gespeichert und automatisch gesendet, sobald das Gerät wieder online ist.
 - **Einkaufsliste** – abhaken, per Wischen löschen, auch offline lesbar (zuletzt geladener Stand), Produkte per Barcode-Scanner eintragen (Kamera auf Android und iPhone, alternativ Nummer eintippen; Daten von Open Food Facts).
 - **Rezepte (Addon)** – Rezeptsammlung mit Foto und weiteren Bildern (Galerie), Zutaten (mit Abschnitten), Zubereitungsschritten, Portionsrechner, Kategorien, Tags, Favoriten, Bewertungen (Sterne + Notiz pro Person), Archiv und Duplizieren; ausgewählte Zutaten landen mit einem Klick (umgerechnet) auf der Einkaufsliste. „Was kann ich kochen?“ sucht nach vorhandenen Zutaten. Pro Haushalt ein-/ausschaltbar (Haushalt → Addons).
 - **Rezepte importieren** – per Link (liest die Rezeptdaten der Seite direkt, sonst die KI), Foto/Screenshot (auch Kochbuchseiten und Handschrift), PDF oder eingefügtem Text; das Formular öffnet vorausgefüllt zum Prüfen. Dazu Nährwerte pro Portion (von Hand oder per KI geschätzt), PDF-Export und öffentliche Links zum Teilen (jederzeit abschaltbar).
@@ -33,7 +37,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
 - **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
-- **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags.
+- **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
 - **Datenschutz** – JSON-Export aller eigenen Daten, Kontolöschung (private Einträge werden gelöscht, geteilte bleiben dem Haushalt erhalten).
 
@@ -95,7 +99,7 @@ php artisan recipes:import-rezepteapp deine@email.de \
 
 ## Geplante Aufgaben (Erinnerungen)
 
-Die täglichen E-Mails verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
+Die täglichen E-Mails und die Erinnerungen zur Uhrzeit (jede Minute geprüft) verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
 
 ```bash
 * * * * * cd /pfad/zur/app && php artisan schedule:run >> /dev/null 2>&1
@@ -110,6 +114,12 @@ php artisan webpush:vapid
 ```
 
 Die Schlüssel später nicht mehr ändern, sonst muss jedes Gerät die Benachrichtigungen neu einschalten. Pushes enthalten selbst keinen Text; der Service Worker holt die Nachricht nach dem Wecken aus der App. Es ist also kein zusätzliches Paket nötig, und über die Push-Dienste von Google, Apple oder Mozilla laufen keine Inhalte.
+
+## Backups
+
+Jede Nacht um 3:15 legt `php artisan backup:run` (über den Scheduler, siehe oben) eine ZIP-Datei an: `database.sql` (vollständiger SQL-Dump, ohne `mysqldump`) und `files/` (alle hochgeladenen Bilder und Dateien aus `storage/app`). Standardmäßig landen sie in `storage/backups`, die letzten 14 werden behalten. Über `BACKUP_PATH` und `BACKUP_KEEP` in der `.env` lässt sich das ändern. Am besten einen Ordner wählen, der zusätzlich vom Server weg kopiert wird.
+
+Wiederherstellen: ZIP entpacken, `database.sql` in eine leere Datenbank einspielen (z. B. `mysql -u … -p datenbank < database.sql`) und den Inhalt von `files/` nach `storage/app/` kopieren. Die `.env` ist bewusst nicht enthalten (Passwörter); sie sollte separat gesichert werden.
 
 ## Tests & Code-Stil
 

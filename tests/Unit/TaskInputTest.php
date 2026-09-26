@@ -76,4 +76,14 @@ class TaskInputTest extends TestCase
         $task = $this->parse('Geschenk für @unbekannt kaufen');
         $this->assertSame(['Geschenk für @unbekannt kaufen', null], [$task['title'], $task['assignee']]);
     }
+
+    public function test_times_are_recognised_and_without_a_date_mean_today_or_tomorrow(): void
+    {
+        $at = fn (string $text) => TaskInput::parse($text, [], null, [], Carbon::parse('2026-09-25 10:00'));
+
+        $this->assertSame(['Zahnarzt', '2026-09-26', '18:00'], array_values(array_intersect_key($at('Zahnarzt morgen um 18 Uhr'), ['title' => 1, 'due' => 1, 'time' => 1])));
+        $this->assertSame(['Pizza', '2026-09-25', '18:30'], array_values(array_intersect_key($at('Pizza 18.30 Uhr'), ['title' => 1, 'due' => 1, 'time' => 1])));
+        $this->assertSame(['Anrufen', '2026-09-26', '09:30'], array_values(array_intersect_key($at('Anrufen 9:30'), ['title' => 1, 'due' => 1, 'time' => 1])));
+        $this->assertSame(['Meeting um 25 Uhr', null, null], array_values(array_intersect_key($at('Meeting um 25 Uhr'), ['title' => 1, 'due' => 1, 'time' => 1])));
+    }
 }

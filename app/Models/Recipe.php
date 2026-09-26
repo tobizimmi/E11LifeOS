@@ -107,18 +107,23 @@ class Recipe extends Model
     }
 
     /**
-     * Title, description or any ingredient name contains the term (case-insensitive).
+     * Title, description or any ingredient name contains the term (case-insensitive);
+     * with several words every word has to occur.
      *
      * @param  Builder<Recipe>  $query
      */
     public function scopeMatching(Builder $query, string $term): void
     {
-        $like = '%'.mb_strtolower(trim($term)).'%';
+        $words = array_slice(preg_split('/\s+/u', mb_strtolower(trim($term)), -1, PREG_SPLIT_NO_EMPTY), 0, 6) ?: [''];
 
-        $query->where(fn (Builder $query) => $query
-            ->whereRaw('LOWER(recipes.title) LIKE ?', [$like])
-            ->orWhereRaw('LOWER(recipes.description) LIKE ?', [$like])
-            ->orWhereRaw('LOWER(recipes.ingredients) LIKE ?', [$like]));
+        foreach ($words as $word) {
+            $like = '%'.$word.'%';
+
+            $query->where(fn (Builder $query) => $query
+                ->whereRaw('LOWER(recipes.title) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(recipes.description) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(recipes.ingredients) LIKE ?', [$like]));
+        }
     }
 
     public function isPrivate(): bool

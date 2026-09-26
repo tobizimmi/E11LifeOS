@@ -4,20 +4,55 @@ namespace App\Observers;
 
 use App\Events\HouseholdItemsChanged;
 use App\Models\Item;
+use App\Models\User;
 use App\Support\Links;
+use App\Support\WebPush;
+use Illuminate\Support\Facades\Auth;
 
 class ItemObserver
 {
     public function created(Item $item): void
     {
         $this->syncLinks($item, true);
+        $this->notifyNewAssignee($item, true);
         $this->broadcast($item);
     }
 
     public function updated(Item $item): void
     {
         $this->syncLinks($item, false);
+        $this->notifyNewAssignee($item, false);
         $this->broadcast($item);
+    }
+
+    /**
+     * Push to the person a task was just assigned to (not when you assign it to yourself).
+     */
+    private function notifyNewAssignee(Item $item, bool $created): void
+    {
+        $property = $item->type === Item::TYPE_TODO ? $item->collection?->systemProperty('assignee') : null;
+
+        if (! $property || $item->done || $item->isPrivate()) {
+            return;
+        }
+
+        $assigneeId = (int) $item->propertyValue($property);
+        $previousId = $created ? 0 : (int) (($item->getOriginal('properties') ?? [])[$property->id] ?? 0);
+
+        if ($assigneeId === 0 || $assigneeId === $previousId || $assigneeId === Auth::id()) {
+            return;
+        }
+
+        $assignee = User::find($assigneeId);
+
+        if ($assignee) {
+            app(WebPush::class)->send(
+                $assignee,
+                '👤 '.__('New task for you'),
+                $item->title.(Auth::user() ? ' · '.__('from :name', ['name' => Auth::user()->name]) : ''),
+                route('tasks.index', ['task' => $item->id]),
+            );
+        }
     }
 
     /**

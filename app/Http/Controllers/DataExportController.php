@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attachment;
+use App\Models\BankAccount;
 use App\Models\Collection;
+use App\Models\FinanceRule;
 use App\Models\Household;
 use App\Models\Item;
 use App\Models\MealPlan;
@@ -66,6 +68,11 @@ class DataExportController extends Controller
                 ? ShoppingListEntry::where('household_id', $household->id)->get()
                     ->map->only(['id', 'label', 'quantity', 'checked', 'created_at', 'updated_at'])
                 : [],
+            'bank_accounts' => BankAccount::where('user_id', $user->id)->with(['transactions' => fn ($query) => $query->orderBy('booked_on')])->orderBy('id')->get()
+                ->map(fn (BankAccount $account) => $account->only(['id', 'name', 'iban', 'created_at']) + [
+                    'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category'])->all(),
+                ]),
+            'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
         ];
 
         return response()->json($data, 200, [

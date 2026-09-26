@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BankAccount;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,12 +43,15 @@ class DataExportTest extends TestCase
         Item::factory()->note()->for($household)->privateTo($user)->create(['title' => 'Mein Tagebuch'])->syncTagNames(['privat']);
         Item::factory()->note()->for($household)->privateTo($partner)->create(['title' => 'Partner Tagebuch']);
         Item::factory()->inbox()->for($household)->create(['title' => 'Gemeinsame Idee']);
+        BankAccount::factory()->for($household)->for($user)->create(['name' => 'Mein Giro']);
+        BankAccount::factory()->for($household)->for($partner)->create(['name' => 'Partner Giro']);
 
         $data = $this->actingAs($user)->get('/profile/export')->assertOk()->json();
 
         $this->assertSame(['Mein Tagebuch'], array_column($data['notes'], 'title'));
         $this->assertSame(['privat'], $data['notes'][0]['tags']);
         $this->assertSame(['Gemeinsame Idee'], array_column($data['inbox'], 'title'));
+        $this->assertSame(['Mein Giro'], array_column($data['bank_accounts'], 'name'));
     }
 
     public function test_guests_cannot_export_data(): void

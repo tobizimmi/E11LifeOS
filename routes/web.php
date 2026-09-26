@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\PublicRecipeController;
@@ -78,6 +79,7 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
+    Route::get('calendar/{token}.ics', CalendarFeedController::class)->where('token', '[A-Za-z0-9]+')->name('calendar.feed');
 });
 
 require __DIR__.'/auth.php';

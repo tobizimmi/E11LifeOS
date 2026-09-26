@@ -39,7 +39,7 @@ class InvoiceFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => Invoice::PAID, 'number' => $number, 'issued_on' => $paidOn, 'due_on' => $paidOn, 'paid_on' => $paidOn,
-            'net_total' => $amount, 'vat_total' => 0, 'gross_total' => $amount,
-        ]);
+            'net_total' => $amount, 'vat_total' => 0, 'gross_total' => $amount, 'paid_total' => $amount,
+        ])->afterCreating(fn (Invoice $invoice) => $invoice->payments()->create(['paid_on' => $invoice->paid_on, 'amount' => $invoice->gross_total]));
     }
 }

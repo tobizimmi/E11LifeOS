@@ -7,6 +7,7 @@ use App\Models\BusinessProfile;
 use App\Models\Customer;
 use App\Models\Household;
 use App\Models\Invoice;
+use App\Models\Product;
 use App\Models\User;
 use App\Support\Business\EuerReport;
 use App\Support\Business\ReceiptAi;
@@ -14,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Livewire\Volt\Volt;
 use Mockery\MockInterface;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -138,22 +140,38 @@ class SmallBusinessTest extends TestCase
         $this->assertSame(0, Invoice::where('user_id', $user->id)->count());
     }
 
-    public function test_open_invoices_are_marked_paid_cancelled_and_duplicated(): void
+    private function issuedInvoice(User $user, Household $household, BusinessProfile $profile, float $unitPrice = 40, float $quantity = 3): Invoice
     {
-        [$user, $household, $profile] = $this->businessOwner();
         $invoice = Invoice::factory()->for($user)->for($household)->create(['recipient' => 'Kunde']);
-        $invoice->items()->create(['position' => 1, 'description' => 'Arbeit', 'quantity' => 3, 'unit_price' => 40, 'vat_rate' => 0]);
+        $invoice->items()->create(['position' => 1, 'description' => 'Arbeit', 'quantity' => $quantity, 'unit_price' => $unitPrice, 'vat_rate' => 0]);
         $invoice->recalculate();
         $invoice->issue($profile);
 
-        Volt::test('business.index')
-            ->assertSee('RE-2026-001')
-            ->call('markPaid', $invoice->id, '2026-09-20');
-        $this->assertSame(['paid', '2026-09-20'], [$invoice->fresh()->status, $invoice->fresh()->paid_on->toDateString()]);
+        return $invoice->fresh();
+    }
 
-        Volt::test('business.index')->call('cancel', $invoice->id)->assertStatus(422);
-        Volt::test('business.index')->call('markUnpaid', $invoice->id)->call('cancel', $invoice->id);
-        $this->assertSame(Invoice::CANCELLED, $invoice->fresh()->status);
+    public function test_invoices_are_paid_in_parts_and_duplicated(): void
+    {
+        [$user, $household, $profile] = $this->businessOwner();
+        $invoice = $this->issuedInvoice($user, $household, $profile);
+
+        $component = Volt::test('business.index')
+            ->assertSee('RE-2026-001')
+            ->call('openDocument', $invoice->id)
+            ->assertSet('payment.amount', '120,00')
+            ->set('payment.amount', '50,00')
+            ->set('payment.paid_on', '2026-09-20')
+            ->call('addPayment')
+            ->assertHasNoErrors();
+
+        $this->assertSame([Invoice::OPEN, 50.0, 'partial'], [$invoice->fresh()->status, $invoice->fresh()->paid_total, $invoice->fresh()->displayStatus()]);
+
+        $component->assertSet('payment.amount', '70,00')->set('payment.paid_on', '2026-09-24')->call('addPayment');
+        $this->assertSame([Invoice::PAID, '2026-09-24'], [$invoice->fresh()->status, $invoice->fresh()->paid_on->toDateString()]);
+
+        // Removing a payment reopens the invoice.
+        $component->call('deletePayment', $invoice->payments()->latest('id')->value('id'));
+        $this->assertSame(Invoice::OPEN, $invoice->fresh()->status);
 
         Volt::test('business.index')->call('duplicate', $invoice->id);
         $copy = Invoice::where('user_id', $user->id)->where('status', Invoice::DRAFT)->sole();
@@ -167,6 +185,111 @@ class SmallBusinessTest extends TestCase
         $this->get(route('business.invoices.pdf', $invoice))->assertOk()->assertHeader('Content-Type', 'application/pdf');
     }
 
+    public function test_unpaid_invoices_are_cancelled_with_a_cancellation_invoice(): void
+    {
+        [$user, $household, $profile] = $this->businessOwner();
+        $invoice = $this->issuedInvoice($user, $household, $profile);
+        $paid = $this->issuedInvoice($user, $household, $profile);
+        $paid->recordPayment(today(), 10);
+
+        Volt::test('business.index')->call('cancel', $paid->id)->assertHasErrors('cancel');
+        Volt::test('business.index')->call('cancel', $invoice->id)->assertHasNoErrors();
+
+        $storno = Invoice::where('type', Invoice::CREDIT_NOTE)->sole();
+        $this->assertSame(['GS-2026-001', -120.0, Invoice::CANCELLED, $invoice->id], [$storno->number, $storno->gross_total, $storno->status, $storno->related_invoice_id]);
+        $this->assertSame(Invoice::CANCELLED, $invoice->fresh()->status);
+        $this->get(route('business.invoices.pdf', $storno))->assertOk();
+    }
+
+    public function test_credit_notes_refund_paid_invoices_and_reduce_revenue(): void
+    {
+        [$user, $household, $profile] = $this->businessOwner();
+        $invoice = $this->issuedInvoice($user, $household, $profile);
+        $invoice->recordPayment(Carbon::parse('2026-09-01'), 120);
+
+        Volt::test('business.index')->call('createCreditNote', $invoice->id);
+        $credit = Invoice::where('type', Invoice::CREDIT_NOTE)->sole();
+        $this->assertSame([Invoice::DRAFT, -120.0], [$credit->status, $credit->gross_total]);
+
+        Volt::test('business.invoice-form', ['invoice' => $credit])
+            ->assertSet('type', Invoice::CREDIT_NOTE)
+            ->set('items.0.quantity', '1')
+            ->call('save', true);
+
+        $credit->refresh();
+        $this->assertSame(['GS-2026-001', -40.0], [$credit->number, $credit->gross_total]);
+
+        Volt::test('business.index')->call('openDocument', $credit->id)->assertSet('payment.amount', '-40,00')->set('payment.paid_on', '2026-09-10')->call('addPayment');
+        $this->assertSame(Invoice::PAID, $credit->fresh()->status);
+
+        $report = EuerReport::build($user, $household->id, 2026, $profile);
+        $this->assertSame(80.0, $report['lines']['small_business_revenue']);
+    }
+
+    public function test_quotes_are_issued_accepted_and_turned_into_invoices(): void
+    {
+        [$user, $household] = $this->businessOwner();
+        $product = Product::factory()->for($user)->for($household)->create(['name' => 'Beratungsstunde', 'unit' => 'Std.', 'unit_price' => 90]);
+
+        $this->get(route('business.invoices.create', ['type' => 'quote']))->assertOk()->assertSee('Neues Angebot');
+
+        Livewire::withQueryParams(['type' => 'quote'])->test('business.invoice-form')
+            ->assertSet('type', Invoice::QUOTE)
+            ->assertSet('validUntil', '2026-10-25')
+            ->set('recipient', 'Café Sonne')
+            ->call('addProduct', $product->id)
+            ->assertSet('items.0.description', 'Beratungsstunde')
+            ->set('items.0.quantity', '10')
+            ->set('items.0.discount', '10')
+            ->call('save', true)
+            ->assertHasNoErrors();
+
+        $quote = Invoice::where('type', Invoice::QUOTE)->sole();
+        $this->assertSame(['AN-2026-001', 810.0, Invoice::OPEN], [$quote->number, $quote->gross_total, $quote->status]);
+        $this->assertNull($quote->due_on);
+        $this->get(route('business.invoices.pdf', $quote))->assertOk();
+
+        Volt::test('business.index')->call('setQuoteStatus', $quote->id, Invoice::ACCEPTED)->call('convertQuote', $quote->id);
+
+        $invoice = Invoice::where('type', Invoice::INVOICE)->sole();
+        $this->assertSame([Invoice::DRAFT, 810.0, $quote->id], [$invoice->status, $invoice->gross_total, $invoice->related_invoice_id]);
+        $this->assertSame(Invoice::INVOICED, $quote->fresh()->status);
+        $this->assertSame(10.0, $invoice->items->first()->discount_percent);
+    }
+
+    public function test_the_catalogue_logo_and_number_ranges_are_managed(): void
+    {
+        [$user, $household, $profile] = $this->businessOwner();
+
+        Volt::test('business.products')
+            ->call('newProduct')
+            ->set('form.name', 'Website-Wartung')
+            ->set('form.unit_price', '1.250,50')
+            ->call('saveProduct')
+            ->assertHasNoErrors()
+            ->assertSee('Website-Wartung');
+        $this->assertSame(1250.5, Product::where('user_id', $user->id)->sole()->unit_price);
+
+        Volt::test('business.settings')
+            ->set('logo', UploadedFile::fake()->image('logo.png', 200, 80))
+            ->assertHasNoErrors()
+            ->set('form.quote_prefix', 'RE-')
+            ->call('save')
+            ->assertHasErrors('form.quote_prefix')
+            ->set('form.quote_prefix', 'ANG-')
+            ->set('form.accent_color', '#0f766e')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $profile->refresh();
+        Storage::disk('local')->assertExists($profile->logo_path);
+        $this->assertStringStartsWith('data:image/png;base64,', $profile->logoDataUri());
+
+        $quote = Invoice::factory()->for($user)->for($household)->create(['type' => Invoice::QUOTE]);
+        $quote->issue($profile);
+        $this->assertSame('ANG-2026-001', $quote->number);
+    }
+
     public function test_business_data_of_other_members_stays_private(): void
     {
         [$user, $household] = $this->businessOwner();
@@ -176,7 +299,7 @@ class SmallBusinessTest extends TestCase
         Storage::disk('local')->put('business-receipts/x.pdf', 'pdf');
 
         Volt::test('business.index')->assertDontSee('Geheimkunde');
-        Volt::test('business.index')->call('markPaid', $foreign->id)->assertNotFound();
+        Volt::test('business.index')->call('openDocument', $foreign->id)->assertNotFound();
         Volt::test('business.bookings')->assertDontSee('Geheime Ausgabe');
         Volt::test('business.bookings')->call('deleteEntry', $foreignEntry->id)->assertNotFound();
         $this->get(route('business.invoices.pdf', $foreign))->assertNotFound();

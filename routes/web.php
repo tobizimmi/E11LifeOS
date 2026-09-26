@@ -73,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('business/receipts', 'business.bookings')->name('business.bookings');
     Route::get('business/receipts/{entry}/file', BookkeepingReceiptController::class)->whereNumber('entry')->name('business.receipts.show');
     Volt::route('business/customers', 'business.customers')->name('business.customers');
+    Volt::route('business/products', 'business.products')->name('business.products');
     Volt::route('business/report', 'business.report')->name('business.report');
     Route::get('business/report/download', BusinessReportController::class)->name('business.report.download');
     Volt::route('business/settings', 'business.settings')->name('business.settings');

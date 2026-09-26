@@ -90,8 +90,8 @@ new #[Layout('layouts.app')] class extends Component
             'profile' => $this->businessProfile(),
             'customerList' => $this->customers()
                 ->when($term !== '', fn ($query) => $query->where(fn ($query) => $query->whereRaw('LOWER(name) LIKE ?', ['%'.$term.'%'])->orWhereRaw('LOWER(contact_person) LIKE ?', ['%'.$term.'%'])->orWhereRaw('LOWER(city) LIKE ?', ['%'.$term.'%'])))
-                ->withCount(['invoices' => fn ($query) => $query->where('status', '!=', Invoice::DRAFT)])
-                ->withSum(['invoices as paid_total' => fn ($query) => $query->where('status', Invoice::PAID)], 'gross_total')
+                ->withCount(['invoices' => fn ($query) => $query->where('type', Invoice::INVOICE)->where('status', '!=', Invoice::DRAFT)])
+                ->withSum(['invoices as paid_total' => fn ($query) => $query->where('type', '!=', Invoice::QUOTE)], 'paid_total')
                 ->orderBy('name')->get(),
         ];
     }
@@ -166,6 +166,7 @@ new #[Layout('layouts.app')] class extends Component
                 <x-primary-button form="customer-form">{{ __('Save') }}</x-primary-button>
                 @if ($editingId)
                     <a href="{{ route('business.invoices.create', ['customer' => $editingId]) }}" wire:navigate class="rounded-lg px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">🧾 {{ __('New invoice') }}</a>
+                    <a href="{{ route('business.invoices.create', ['customer' => $editingId, 'type' => 'quote']) }}" wire:navigate class="rounded-lg px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">📝 {{ __('New quote') }}</a>
                     <button type="button" wire:click="deleteCustomer({{ $editingId }})" wire:confirm="{{ __('Delete this customer? Existing invoices keep the address.') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
                 @endif
             </x-slot:footer>

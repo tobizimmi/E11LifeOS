@@ -44,6 +44,10 @@ new #[Layout('layouts.app')] class extends Component
             if ($symbol !== '') {
                 $this->form['name'] = (string) \App\Models\Security::where('symbol', $symbol)->value('name');
             }
+
+            if (in_array(request()->query('type'), PortfolioTransaction::TYPES, true)) {
+                $this->form['type'] = (string) request()->query('type');
+            }
         }
     }
 
@@ -113,7 +117,7 @@ new #[Layout('layouts.app')] class extends Component
     public function saveTransaction(): void
     {
         foreach (['quantity', 'price', 'fees', 'taxes', 'exchange_rate'] as $field) {
-            $this->form[$field] = str_replace(',', '.', str_replace(' ', '', trim((string) $this->form[$field])));
+            $this->form[$field] = $this->parseNumber($this->form[$field]);
         }
 
         $this->form['symbol'] = strtoupper(trim((string) $this->form['symbol']));

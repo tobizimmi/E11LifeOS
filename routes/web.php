@@ -104,6 +104,12 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
 Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portfolio.')->group(function () {
     Volt::route('/', 'portfolio.index')->name('index');
     Volt::route('transactions', 'portfolio.transactions')->name('transactions');
+    Volt::route('analysis', 'portfolio.analysis')->name('analysis');
+    Volt::route('dividends', 'portfolio.dividends')->name('dividends');
+    Volt::route('taxes', 'portfolio.taxes')->name('taxes');
+    Volt::route('rebalancing', 'portfolio.rebalancing')->name('rebalancing');
+    Volt::route('savings-plans', 'portfolio.savings')->name('savings');
+    Volt::route('alerts', 'portfolio.alerts')->name('alerts');
     Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');
     Volt::route('import', 'portfolio.import')->name('import');
     Volt::route('settings', 'portfolio.settings')->name('settings');

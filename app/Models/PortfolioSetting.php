@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Personal portfolio settings: recommendation strategy, benchmark, tax allowance, Pushover.
  */
-#[Fillable(['user_id', 'default_portfolio_id', 'strategy', 'drop_threshold', 'drop_period_days', 'min_stability_score', 'min_market_cap_bn', 'rsi_threshold', 'max_pe_ratio', 'max_debt_equity', 'check_200ma', 'prefer_dividends', 'benchmark_symbol', 'tax_allowance', 'pushover_user_key', 'pushover_app_token', 'news_push_enabled', 'news_push_portfolio_only'])]
+#[Fillable(['user_id', 'default_portfolio_id', 'strategy', 'drop_threshold', 'drop_period_days', 'min_stability_score', 'min_market_cap_bn', 'rsi_threshold', 'max_pe_ratio', 'max_debt_equity', 'check_200ma', 'prefer_dividends', 'benchmark_symbol', 'tax_allowance', 'church_tax_rate', 'pushover_user_key', 'pushover_app_token', 'news_push_enabled', 'news_push_portfolio_only'])]
 class PortfolioSetting extends Model
 {
     public const STRATEGIES = ['conservative', 'moderate', 'aggressive', 'custom', 'thieme'];
@@ -26,6 +26,7 @@ class PortfolioSetting extends Model
             'check_200ma' => 'boolean',
             'prefer_dividends' => 'boolean',
             'tax_allowance' => 'float',
+            'church_tax_rate' => 'float',
             'pushover_user_key' => 'encrypted',
             'pushover_app_token' => 'encrypted',
             'news_push_enabled' => 'boolean',

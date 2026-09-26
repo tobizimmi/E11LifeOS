@@ -16,3 +16,5 @@ Schedule::command('business:run-recurring')->dailyAt('06:30')->withoutOverlappin
 Schedule::command('business:overdue-notices')->dailyAt('08:05');
 Schedule::command('portfolio:update-prices')->everyFifteenMinutes()->weekdays()->between('07:30', '22:30')->withoutOverlapping();
 Schedule::command('portfolio:update-prices --history')->dailyAt('23:10')->withoutOverlapping();
+Schedule::command('portfolio:check-alerts')->everyFifteenMinutes()->between('07:30', '22:45')->withoutOverlapping();
+Schedule::command('portfolio:execute-savings-plans')->dailyAt('09:15');

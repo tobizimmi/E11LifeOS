@@ -25,6 +25,7 @@ new #[Layout('layouts.app')] class extends Component
             'default_portfolio_id' => (string) $settings->default_portfolio_id,
             'benchmark_symbol' => $settings->benchmark_symbol ?? '^GDAXI',
             'tax_allowance' => (string) ($settings->tax_allowance ?? 1000),
+            'church_tax_rate' => (string) (float) ($settings->church_tax_rate ?? 0),
             'strategy' => $settings->strategy ?? 'moderate',
             'drop_threshold' => (string) ($settings->drop_threshold ?? 10),
             'drop_period_days' => (string) ($settings->drop_period_days ?? 30),
@@ -42,13 +43,14 @@ new #[Layout('layouts.app')] class extends Component
     public function save(): void
     {
         foreach (['tax_allowance', 'drop_threshold', 'rsi_threshold', 'min_market_cap_bn'] as $field) {
-            $this->form[$field] = str_replace(',', '.', trim((string) $this->form[$field]));
+            $this->form[$field] = $this->parseNumber($this->form[$field]);
         }
 
         $data = $this->validate([
             'form.default_portfolio_id' => ['nullable', 'integer'],
             'form.benchmark_symbol' => ['required', 'string', 'max:20'],
             'form.tax_allowance' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'form.church_tax_rate' => ['required', 'in:0,0.08,0.09'],
             'form.strategy' => ['required', 'in:'.implode(',', PortfolioSetting::STRATEGIES)],
             'form.drop_threshold' => ['required', 'numeric', 'min:1', 'max:90'],
             'form.drop_period_days' => ['required', 'integer', 'min:5', 'max:365'],
@@ -130,6 +132,14 @@ new #[Layout('layouts.app')] class extends Component
                             <x-text-input id="settings-allowance" wire:model="form.tax_allowance" inputmode="decimal" class="mt-1 block w-full" />
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Freistellungsauftrag: 1,000 € (2,000 € for couples).') }}</p>
                             <x-input-error :messages="$errors->get('form.tax_allowance')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="settings-church" :value="__('Church tax')" />
+                            <select id="settings-church" wire:model="form.church_tax_rate" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                <option value="0">{{ __('none') }}</option>
+                                <option value="0.08">{{ __('8 % (Bavaria, Baden-Württemberg)') }}</option>
+                                <option value="0.09">{{ __('9 % (other federal states)') }}</option>
+                            </select>
                         </div>
                     </div>
                 </section>

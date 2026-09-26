@@ -4,6 +4,12 @@
         @foreach ([
             'portfolio.index' => '📈 '.__('Overview'),
             'portfolio.transactions' => '🧾 '.__('Transactions'),
+            'portfolio.analysis' => '📊 '.__('Analysis'),
+            'portfolio.dividends' => '💰 '.__('Dividends'),
+            'portfolio.taxes' => '🧮 '.__('Taxes'),
+            'portfolio.rebalancing' => '⚖ '.__('Rebalancing'),
+            'portfolio.savings' => '💶 '.__('Savings plans'),
+            'portfolio.alerts' => '🔔 '.__('Alerts'),
             'portfolio.watchlist' => '👀 '.__('Watchlist'),
             'portfolio.import' => '📥 '.__('Import'),
             'portfolio.settings' => '⚙ '.__('Settings'),

@@ -5,6 +5,7 @@ namespace App\Livewire\Concerns;
 use App\Models\Portfolio;
 use App\Models\PortfolioSetting;
 use App\Models\WatchlistItem;
+use App\Support\Finance\BankCsvImporter;
 use App\Support\Portfolio\MarketData;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -48,5 +49,17 @@ trait InteractsWithPortfolio
     public function searchSecurities(string $query): array
     {
         return app(MarketData::class)->search(mb_substr($query, 0, 64));
+    }
+
+    /**
+     * German or English number input ("1.234,56", "12.5") as numeric string for validation;
+     * unreadable input is returned unchanged so that validation reports it.
+     */
+    protected function parseNumber(mixed $value): string
+    {
+        $value = trim((string) $value);
+        $number = $value === '' ? null : BankCsvImporter::parseAmount($value);
+
+        return $number === null ? $value : (string) $number;
     }
 }

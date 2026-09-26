@@ -71,6 +71,9 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
   - Kurse über Yahoo Finance (ohne Schlüssel), Kurshistorie optional über Twelve Data (`TWELVE_DATA_KEY`), ISIN/WKN-Auflösung über OpenFIGI; Fremdwährungen in Euro umgerechnet.
   - Import der CSV-Exporte von Trade Republic, DKB, ING, Smartbroker+, comdirect, Consorsbank, flatex, OnVista, Outbank und Finanzguru (plus beliebige CSV); PDF-Abrechnungen und Screenshots per KI. Doppelte Buchungen werden übersprungen.
   - Überblick mit Depotwert, Tagesveränderung, Gewinn/Verlust und Wertverlauf, Watchlist mit 52-Wochen-Spanne, Wertpapierseite mit Kursverlauf.
+  - Analyse: Rendite im Vergleich zum Vergleichsindex, Volatilität, maximaler Rückgang, Aufteilung nach Position, Anlageklasse, Branche, Land und Währung, Korrelationsmatrix.
+  - Dividenden pro Monat, Jahr und Wertpapier mit Erwartung für die nächsten 12 Monate; Steuern nach FIFO mit Verlusttöpfen, Sparerpauschbetrag, Soli und Kirchensteuer.
+  - Rebalancing mit Zielgewichten (auch „nur kaufen“), Sparpläne mit automatischer Ausführung (`portfolio:execute-savings-plans`), Kursalarme sowie Stop-Loss/Kursziel-Hinweise per Push und Pushover (`portfolio:check-alerts`).
   - `portfolio:update-prices` aktualisiert Kurse und Depotwerte alle 15 Minuten; `portfolio:import-legacy {email}` übernimmt alle Daten aus dem alten Portfolio-Manager (Verbindung `PORTFOLIO_LEGACY_DB_*`).
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.

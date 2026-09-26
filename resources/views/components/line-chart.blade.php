@@ -5,6 +5,8 @@
     'compareLabel' => null,
     'height' => 220,
     'currency' => true,
+    // Unit when not a currency, e.g. ' %'.
+    'suffix' => '',
 ])
 
 @php
@@ -20,7 +22,7 @@
     $line = fn (string $key) => collect($points)->map(fn ($point, $index) => isset($point[$key]) ? $x($index).','.$y((float) $point[$key]) : null)->filter()->implode(' ');
     $hasCompare = $compareLabel !== null && collect($points)->contains(fn ($point) => isset($point['compare']));
     $rising = $count > 1 && $points[$count - 1]['value'] >= ($hasCompare ? ($points[$count - 1]['compare'] ?? $points[0]['value']) : $points[0]['value']);
-    $format = fn (float $value) => number_format($value, $currency ? 2 : 0, ',', '.').($currency ? ' €' : '');
+    $format = fn (float $value) => number_format($value, $currency || $suffix !== '' ? 2 : (abs($value) < 100 ? 2 : 0), ',', '.').($currency ? ' €' : $suffix);
     $ticks = collect([0, 0.5, 1])->map(fn ($share) => $low + ($high - $low) * $share);
 @endphp
 
@@ -68,7 +70,7 @@
             </div>
             <div class="flex w-16 shrink-0 flex-col justify-between text-end text-[10px] tabular-nums text-gray-500 dark:text-gray-400" style="height: {{ $height }}px" aria-hidden="true">
                 @foreach ($ticks->reverse() as $tick)
-                    <span>{{ number_format($tick, abs($high - $low) < 20 ? 2 : 0, ',', '.') }}</span>
+                    <span>{{ number_format($tick, abs($high - $low) < 20 ? 2 : 0, ',', '.') }}{{ $suffix }}</span>
                 @endforeach
             </div>
         </div>

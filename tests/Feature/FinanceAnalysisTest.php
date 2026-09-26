@@ -54,6 +54,14 @@ class FinanceAnalysisTest extends TestCase
         "2026-09-19","ALDI SUED","","MasterCard Payment","","-23.10","","",""
         CSV;
 
+    private const OUTBANK = <<<'CSV'
+        #;Konto;Datum;Valuta;Betrag;Währung;Name;Nummer;Bank;Verwendungszweck;Kategorie;Unterkategorie;Kategorie-Pfad;Tags;Notiz;Buchungstext
+        1;Girokonto Sparkasse;22.09.2026;22.09.2026;-42,17;EUR;Hofladen Meier;DE00;Sparkasse;Einkauf;Lebensmittel & Haushalt;Lebensmittel;Lebensmittel & Haushalt / Lebensmittel;;;Kartenzahlung
+        2;Girokonto Sparkasse;01.09.2026;01.09.2026;3.100,00;EUR;Firma Beispiel GmbH;DE01;Bank;September;Einkommen;Gehalt;Einkommen / Gehalt;;;Gutschrift
+        3;Kreditkarte;20.09.2026;20.09.2026;-18,50;EUR;Kino am Markt;;;Tickets;Freizeit;Kino;Freizeit / Kino;;;Karte
+        4;Kreditkarte;15.09.2026;15.09.2026;-9,99;EUR;REWE Markt;;;Snacks;Freizeit;Kino;Freizeit / Kino;;;Karte
+        CSV;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -254,5 +262,52 @@ class FinanceAnalysisTest extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/pdf')
             ->assertDownload('finanzbericht-2026-07-2026-09.pdf');
+    }
+
+    public function test_outbank_exports_are_split_into_their_accounts_with_outbank_categories(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        FinanceRule::create(['user_id' => $user->id, 'pattern' => 'rewe', 'category' => 'groceries']);
+        $importer = new BankCsvImporter;
+
+        $this->assertSame(['format' => 'outbank', 'accounts' => ['Girokonto Sparkasse', 'Kreditkarte']], $importer->inspect(self::OUTBANK));
+
+        $result = $importer->importByAccountColumn($user->id, $household->id, self::OUTBANK, new Categorizer($user->id));
+        $again = $importer->importByAccountColumn($user->id, $household->id, self::OUTBANK, new Categorizer($user->id));
+
+        $this->assertSame(['imported' => 4, 'skipped' => 0, 'errors' => 0, 'accounts' => ['Girokonto Sparkasse', 'Kreditkarte']], $result);
+        $this->assertSame(4, $again['skipped']);
+        $this->assertSame(['Girokonto Sparkasse', 'Kreditkarte'], BankAccount::where('user_id', $user->id)->orderBy('name')->pluck('name')->all());
+
+        $categories = Transaction::where('user_id', $user->id)->orderByDesc('booked_on')->pluck('category', 'counterparty')->all();
+        // Outbank categories win over unknown payees; own rules still win over Outbank.
+        $this->assertSame(['Hofladen Meier' => 'groceries', 'Kino am Markt' => 'leisure', 'REWE Markt' => 'groceries', 'Firma Beispiel GmbH' => 'salary'], $categories);
+    }
+
+    public function test_the_page_recognises_outbank_files_and_imports_all_accounts(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('finance.index')
+            ->set('tab', 'import')
+            ->set('statement', UploadedFile::fake()->createWithContent('outbank.csv', self::OUTBANK))
+            ->assertSet('importAccount', 'auto')
+            ->assertSee('Outbank-Export erkannt')
+            ->call('importStatement')
+            ->assertHasNoErrors()
+            ->assertSee('In die Konten: Girokonto Sparkasse, Kreditkarte');
+
+        $this->assertSame(2, BankAccount::where('user_id', $user->id)->count());
+        $this->assertSame(4, Transaction::where('user_id', $user->id)->count());
+    }
+
+    public function test_banking_app_categories_are_mapped_in_english_too(): void
+    {
+        $categorizer = new Categorizer(BankAccount::factory()->create()->user_id);
+
+        $this->assertSame('mobility', $categorizer->categorize('Unknown Ltd', null, -50, 'Transport / Fuel'));
+        $this->assertSame('other_income', $categorizer->categorize('Unknown Ltd', null, 50, 'Transport / Fuel'));
+        $this->assertSame('transfer', $categorizer->categorize('Me', null, -500, 'Umbuchung'));
     }
 }

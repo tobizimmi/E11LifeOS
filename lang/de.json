@@ -835,7 +835,6 @@
     "Account": "Konto",
     "All accounts": "Alle Konten",
     "Import your first bank statement": "Importiere deinen ersten Kontoauszug",
-    "Export the transactions of your account as CSV in online banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) and import the file here. The analysis then shows where your money goes and where you can save.": "Exportiere die Umsätze deines Kontos im Online-Banking als CSV (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) und importiere die Datei hier. Die Auswertung zeigt dann, wohin dein Geld geht und wo du sparen kannst.",
     "Import statement": "Kontoauszug importieren",
     "Finance report": "Finanzbericht",
     ":count booking|:count bookings": ":count Buchung|:count Buchungen",
@@ -1223,5 +1222,14 @@
     "Invite link": "Einladungslink",
     "Copied": "Kopiert",
     "Join our household in :app:": "Komm in unseren Haushalt bei :app:",
-    "Share": "Teilen"
+    "Share": "Teilen",
+    "Export the transactions of your account as CSV in online banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) or in Outbank and import the file here. The analysis then shows where your money goes and where you can save.": "Exportiere die Umsätze deines Kontos im Online-Banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) oder in Outbank als CSV und importiere die Datei hier. Die Auswertung zeigt dann, wohin dein Geld geht und wo du sparen kannst.",
+    "The file has no account column – please choose the account to import into.": "Die Datei hat keine Konto-Spalte – bitte wähle das Konto, in das importiert werden soll.",
+    "Imported account": "Importiertes Konto",
+    "Accounts from the file (:count)": "Konten aus der Datei (:count)",
+    "Outbank export recognised – its categories are used.": "Outbank-Export erkannt – die Kategorien aus Outbank werden übernommen.",
+    "Bank statement recognised.": "Kontoauszug erkannt.",
+    "Accounts in the file: :names": "Konten in der Datei: :names",
+    "Into the accounts: :names": "In die Konten: :names",
+    "Select accounts → Export → CSV. Several accounts in one file are split automatically, Outbank categories are kept.": "Konten auswählen → Exportieren → CSV. Mehrere Konten in einer Datei werden automatisch aufgeteilt, die Outbank-Kategorien bleiben erhalten."
 }

@@ -17,6 +17,9 @@
                 <div>
                     <x-input-label for="finance-account" :value="__('Account')" />
                     <select id="finance-account" wire:model.live="importAccount" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                        @if ($detected && $detected['accounts'] !== [])
+                            <option value="auto">⇄ {{ __('Accounts from the file (:count)', ['count' => count($detected['accounts'])]) }}</option>
+                        @endif
                         @foreach ($accounts as $account)
                             <option value="{{ $account->id }}">{{ $account->name }}</option>
                         @endforeach
@@ -32,6 +35,19 @@
                 @endif
             </div>
 
+            @if ($detected)
+                <p class="rounded-xl bg-indigo-50 px-4 py-2.5 text-sm text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-100" role="status">
+                    @if ($detected['format'] === 'outbank')
+                        ✓ {{ __('Outbank export recognised – its categories are used.') }}
+                    @else
+                        ✓ {{ __('Bank statement recognised.') }}
+                    @endif
+                    @if ($detected['accounts'] !== [])
+                        {{ __('Accounts in the file: :names', ['names' => implode(', ', array_slice($detected['accounts'], 0, 6)).(count($detected['accounts']) > 6 ? ' …' : '')]) }}
+                    @endif
+                </p>
+            @endif
+
             <x-primary-button wire:loading.attr="disabled" wire:target="importStatement,statement">
                 <span wire:loading.remove wire:target="importStatement">{{ __('Import') }}</span>
                 <span wire:loading wire:target="importStatement">{{ __('Importing …') }}</span>
@@ -41,6 +57,9 @@
         @if ($importResult)
             <div class="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100" role="status">
                 <p class="font-medium">✓ {{ trans_choice(':count booking imported|:count bookings imported', $importResult['imported']) }}</p>
+                @if (! empty($importResult['accounts']))
+                    <p>{{ __('Into the accounts: :names', ['names' => implode(', ', $importResult['accounts'])]) }}</p>
+                @endif
                 @if ($importResult['skipped'] > 0)
                     <p>{{ trans_choice(':count booking was already there|:count bookings were already there', $importResult['skipped']) }}</p>
                 @endif
@@ -64,6 +83,7 @@
                 <li><strong class="text-gray-800 dark:text-gray-200">DKB:</strong> {{ __('Transactions → Download icon → CSV') }}</li>
                 <li><strong class="text-gray-800 dark:text-gray-200">comdirect:</strong> {{ __('Transactions → Export as CSV') }}</li>
                 <li><strong class="text-gray-800 dark:text-gray-200">N26:</strong> {{ __('Web app → Downloads → Account statement CSV') }}</li>
+                <li><strong class="text-gray-800 dark:text-gray-200">Outbank:</strong> {{ __('Select accounts → Export → CSV. Several accounts in one file are split automatically, Outbank categories are kept.') }}</li>
             </ul>
             <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Other banks work too as long as the file has columns for date, amount and payee.') }}</p>
         </section>

@@ -211,6 +211,7 @@ class TaskLists
     {
         return $tasks->sortBy(fn (Item $task) => [
             $this->due($task) === '' ? '9999-99-99' : $this->due($task),
+            $task->due_time ?? '99:99',
             self::PRIORITY_ORDER[$this->priority($task)] ?? 3,
             $task->position,
             $task->id,

@@ -19,13 +19,14 @@ class TaskInput
     /**
      * @param  array<int, string>  $members  Member names by user id (for "@name").
      * @param  array<int, string>  $ignored  Recognised phrases the user wants to keep in the title.
-     * @return array{title: string, due: ?string, repeat: ?string, priority: ?string, assignee: ?int, tags: array<int, string>, tokens: array<int, array{kind: string, text: string, label: string}>}
+     * @return array{title: string, due: ?string, time: ?string, repeat: ?string, priority: ?string, assignee: ?int, tags: array<int, string>, tokens: array<int, array{kind: string, text: string, label: string}>}
      */
     public static function parse(string $text, array $members = [], ?int $currentUserId = null, array $ignored = [], ?Carbon $today = null): array
     {
-        $today = ($today ?? now())->copy()->startOfDay();
+        $now = ($today ?? now())->copy();
+        $today = $now->copy()->startOfDay();
         $ignored = array_map(fn (string $phrase) => mb_strtolower(trim($phrase)), $ignored);
-        $result = ['title' => '', 'due' => null, 'repeat' => null, 'priority' => null, 'assignee' => null, 'tags' => [], 'tokens' => []];
+        $result = ['title' => '', 'due' => null, 'time' => null, 'repeat' => null, 'priority' => null, 'assignee' => null, 'tags' => [], 'tokens' => []];
         $rest = ' '.preg_replace('/\s+/u', ' ', trim($text)).' ';
 
         $take = function (string $pattern, callable $handle) use (&$rest, &$result, $ignored): bool {
@@ -102,6 +103,24 @@ class TaskInput
             }
         }
 
+        // Time of day: "18 Uhr", "um 18:30", "18.30 Uhr", "7:05".
+        foreach (['(?:um |ab |gegen )?(\d{1,2})(?:[:.](\d{2}))? ?uhr', '(?:um |ab |gegen )?(\d{1,2}):(\d{2})'] as $pattern) {
+            if ($take($pattern, function (array $match) use (&$result) {
+                $hour = (int) $match[1];
+                $minute = (int) (($match[2] ?? '') !== '' ? $match[2] : 0);
+
+                if ($hour > 23 || $minute > 59) {
+                    return null;
+                }
+
+                $result['time'] = sprintf('%02d:%02d', $hour, $minute);
+
+                return ['kind' => 'time', 'label' => $result['time']];
+            })) {
+                break;
+            }
+        }
+
         // Due date: the first recognised expression wins.
         $dateRules = [
             '(?:am |bis )?(\d{4})-(\d{2})-(\d{2})' => fn (array $m) => self::date((int) $m[1], (int) $m[2], (int) $m[3]),
@@ -131,6 +150,11 @@ class TaskInput
                     break;
                 }
             }
+        }
+
+        // Only a time: today, or tomorrow if that time has already passed.
+        if ($result['time'] !== null && $result['due'] === null) {
+            $result['due'] = ($now->format('H:i') < $result['time'] ? $today : $today->copy()->addDay())->toDateString();
         }
 
         // Assignee: "@Anna" (start of a member's name) or "@ich".

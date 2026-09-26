@@ -193,6 +193,7 @@ new #[Layout('layouts.app')] class extends Component
             }
         }
 
+        $task->due_time = $parsed['time'];
         $task->save();
         $task->syncTagNames($this->tag !== '' ? [...$parsed['tags'], $this->tag] : $parsed['tags']);
 
@@ -246,7 +247,31 @@ new #[Layout('layouts.app')] class extends Component
     public function setDue(int $taskId, string $preset): void
     {
         $task = $this->findTask($taskId);
-        $this->setValue($task, 'due', $this->resolveDate($preset));
+        $date = $this->resolveDate($preset);
+        $this->setValue($task, 'due', $date);
+
+        if ($date === null) {
+            $task->due_time = null;
+        }
+
+        $task->save();
+    }
+
+    /**
+     * Time of day ("HH:MM", "" removes it); a reminder goes out then. Without a date the
+     * task becomes due today, or tomorrow if that time has passed.
+     */
+    public function setTime(int $taskId, string $time): void
+    {
+        abort_unless($time === '' || preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time), 422);
+
+        $task = $this->findTask($taskId);
+        $task->due_time = $time !== '' ? $time : null;
+
+        if ($time !== '' && ! $task->dueDate()) {
+            $this->setValue($task, 'due', $this->resolveDate(now()->format('H:i') < $time ? 'today' : 'tomorrow'));
+        }
+
         $task->save();
     }
 
@@ -526,7 +551,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="text-gray-500 dark:text-gray-400">„{{ $preview['title'] }}“</span>
                                 @foreach ($preview['tokens'] as $token)
                                     <span wire:key="token-{{ $loop->index }}-{{ $token['text'] }}" class="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 pl-2 pr-1 py-0.5 text-indigo-700 dark:text-indigo-300">
-                                        {{ ['due' => '📅', 'repeat' => '🔁', 'priority' => '⚑', 'assignee' => '', 'tag' => ''][$token['kind']] ?? '' }} {{ $token['label'] }}
+                                        {{ ['due' => '📅', 'time' => '⏰', 'repeat' => '🔁', 'priority' => '⚑', 'assignee' => '', 'tag' => ''][$token['kind']] ?? '' }} {{ $token['label'] }}
                                         @if ($token['kind'] !== 'tag')
                                             <button type="button" wire:click="ignorePhrase(@js($token['text']))" class="rounded-full px-1 hover:bg-indigo-100 dark:hover:bg-indigo-800" title="{{ __('Keep “:text” in the title', ['text' => $token['text']]) }}" aria-label="{{ __('Keep “:text” in the title', ['text' => $token['text']]) }}">×</button>
                                         @endif
@@ -534,7 +559,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @endforeach
                             </div>
                         @else
-                            <p class="mt-1.5 text-xs text-gray-400">{{ __('Understands dates (today, tomorrow, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.') }}</p>
+                            <p class="mt-1.5 text-xs text-gray-400">{{ __('Understands dates and times (tomorrow 6 pm, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.') }}</p>
                         @endif
                     </form>
                 @endif
@@ -633,7 +658,7 @@ new #[Layout('layouts.app')] class extends Component
                                             <span @class(['block break-words', 'line-through text-gray-400' => $task->done, 'text-gray-900 dark:text-gray-100' => ! $task->done])>{{ $task->title }}</span>
                                             <span class="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
                                                 @if ($due !== '')
-                                                    <span @class(['font-medium text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-indigo-600 dark:text-indigo-400' => ! $lists->isOverdue($task) && $due === now()->toDateString()])>📅 {{ \App\Support\TaskInput::dueLabel($due) }}</span>
+                                                    <span @class(['font-medium text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-indigo-600 dark:text-indigo-400' => ! $lists->isOverdue($task) && $due === now()->toDateString()])>📅 {{ \App\Support\TaskInput::dueLabel($due) }}@if ($task->due_time) · {{ $task->due_time }}@endif</span>
                                                 @endif
                                                 @if ($lists->repeat($task))
                                                     <span title="{{ \App\Support\TaskInput::repeatLabel($lists->repeat($task)) }}">🔁 {{ \App\Support\TaskInput::repeatLabel($lists->repeat($task)) }}</span>
@@ -755,12 +780,16 @@ new #[Layout('layouts.app')] class extends Component
 
                     {{-- Date --}}
                     <div>
-                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📅 {{ __('Due') }} @if ($due !== '') · <span class="normal-case {{ $lists->isOverdue($openTask) ? 'text-red-600' : 'text-gray-600 dark:text-gray-300' }}">{{ \Illuminate\Support\Carbon::parse($due)->translatedFormat('l, j. F Y') }}</span>@endif</h4>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📅 {{ __('Due') }} @if ($due !== '') · <span class="normal-case {{ $lists->isOverdue($openTask) ? 'text-red-600' : 'text-gray-600 dark:text-gray-300' }}">{{ \Illuminate\Support\Carbon::parse($due)->translatedFormat('l, j. F Y') }}@if ($openTask->due_time), {{ $openTask->due_time }}@endif</span>@endif</h4>
+                        @if ($openTask->due_time)
+                            <p class="-mt-0.5 mb-1.5 text-xs text-gray-500 dark:text-gray-400">⏰ {{ __('Reminder at :time (push or e-mail)', ['time' => $openTask->due_time]) }}</p>
+                        @endif
                         <div class="flex flex-wrap gap-1.5">
                             @foreach (['today' => __('Today'), 'tomorrow' => __('Tomorrow'), 'weekend' => __('This weekend'), 'next_week' => __('Next week'), 'none' => __('No date')] as $preset => $label)
                                 <button type="button" wire:click="setDue({{ $openTask->id }}, '{{ $preset }}')" class="rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-gray-600">{{ $label }}</button>
                             @endforeach
                             <input type="date" value="{{ $due }}" wire:change="setDue({{ $openTask->id }}, $event.target.value || 'none')" class="rounded-full border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-0.5 text-sm" aria-label="{{ __('Pick a date') }}" />
+                            <input type="time" value="{{ $openTask->due_time }}" wire:change="setTime({{ $openTask->id }}, $event.target.value)" class="rounded-full border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-0.5 text-sm" aria-label="{{ __('Time') }}" />
                         </div>
                     </div>
 

@@ -105,6 +105,9 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
     Volt::route('/', 'portfolio.index')->name('index');
     Volt::route('transactions', 'portfolio.transactions')->name('transactions');
     Volt::route('analysis', 'portfolio.analysis')->name('analysis');
+    Volt::route('recommendations', 'portfolio.recommendations')->name('recommendations');
+    Volt::route('discover', 'portfolio.discover')->name('discover');
+    Volt::route('news', 'portfolio.news')->name('news');
     Volt::route('dividends', 'portfolio.dividends')->name('dividends');
     Volt::route('taxes', 'portfolio.taxes')->name('taxes');
     Volt::route('rebalancing', 'portfolio.rebalancing')->name('rebalancing');

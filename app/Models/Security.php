@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A share, ETF, fund, crypto currency … identified by its Yahoo Finance symbol; shared by all users.
  */
-#[Fillable(['symbol', 'name', 'isin', 'wkn', 'exchange', 'asset_type', 'currency', 'sector', 'country', 'market_cap', 'week_52_high', 'week_52_low', 'dividend_yield', 'beta', 'last_price', 'previous_close', 'price_updated_at'])]
+#[Fillable(['symbol', 'name', 'isin', 'wkn', 'exchange', 'asset_type', 'currency', 'sector', 'country', 'market_cap', 'week_52_high', 'week_52_low', 'dividend_yield', 'beta', 'fundamentals', 'fundamentals_updated_at', 'screeners', 'scanned_at', 'last_price', 'previous_close', 'price_updated_at'])]
 class Security extends Model
 {
     /** @use HasFactory<SecurityFactory> */
@@ -30,6 +30,10 @@ class Security extends Model
             'last_price' => 'float',
             'previous_close' => 'float',
             'price_updated_at' => 'datetime',
+            'fundamentals' => 'array',
+            'fundamentals_updated_at' => 'datetime',
+            'screeners' => 'array',
+            'scanned_at' => 'datetime',
         ];
     }
 

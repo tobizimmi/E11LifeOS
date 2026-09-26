@@ -4,6 +4,7 @@ namespace App\Support\Portfolio;
 
 use App\Models\Security;
 use App\Models\SecurityPrice;
+use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
@@ -28,6 +29,16 @@ class MarketData
     private const TWELVE_DATA_URL = 'https://api.twelvedata.com/time_series';
 
     private const OPENFIGI_URL = 'https://api.openfigi.com/v3/mapping';
+
+    private const SUMMARY_URL = 'https://query2.finance.yahoo.com/v10/finance/quoteSummary/';
+
+    private const SCREENER_URL = 'https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved';
+
+    /** Yahoo screeners used by the market scan. */
+    public const SCREENERS = ['day_losers', 'undervalued_large_caps', 'undervalued_growth_stocks', 'growth_technology_stocks', 'most_actives', 'day_gainers'];
+
+    /** Market overview on the discover page. */
+    public const INDICES = ['^GDAXI' => 'DAX', '^MDAXI' => 'MDAX', '^STOXX50E' => 'Euro Stoxx 50', '^GSPC' => 'S&P 500', '^NDX' => 'Nasdaq 100', '^N225' => 'Nikkei 225', 'GC=F' => 'Gold', 'BTC-EUR' => 'Bitcoin', 'EURUSD=X' => 'EUR/USD'];
 
     private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36';
 
@@ -551,5 +562,176 @@ class MarketData
             'name' => (string) ($best['longname'] ?? $best['shortname'] ?? $best['symbol']),
             'exchange' => (string) ($best['exchDisp'] ?? ''),
         ] : null;
+    }
+
+    // ── Fundamentals & market scan ───────────────────────────────────────
+
+    /**
+     * Key figures from Yahoo (P/E, debt/equity, growth, margins, analyst view, profile), cached
+     * on the security for a week. Needs Yahoo's cookie + crumb.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function fundamentals(Security $security, bool $refresh = false): ?array
+    {
+        if (! $refresh && $security->fundamentals_updated_at?->gt(now()->subWeek())) {
+            return $security->fundamentals;
+        }
+
+        if (str_starts_with($security->symbol, '^') || str_contains($security->symbol, '=')) {
+            return null;
+        }
+
+        $data = $this->yahooJson(self::SUMMARY_URL.rawurlencode($security->symbol), ['modules' => 'summaryDetail,financialData,defaultKeyStatistics,assetProfile']);
+        $result = $data['quoteSummary']['result'][0] ?? null;
+
+        if (! $result) {
+            // Remember the attempt so that failing symbols are not asked every run.
+            $security->forceFill(['fundamentals_updated_at' => now()->subDays(5)])->save();
+
+            return $security->fundamentals;
+        }
+
+        $raw = fn ($field) => is_array($field) ? (isset($field['raw']) ? (float) $field['raw'] : null) : (is_numeric($field) ? (float) $field : null);
+        $summary = $result['summaryDetail'] ?? [];
+        $financial = $result['financialData'] ?? [];
+        $statistics = $result['defaultKeyStatistics'] ?? [];
+        $profile = $result['assetProfile'] ?? [];
+
+        $fundamentals = [
+            'pe_ratio' => $raw($summary['trailingPE'] ?? null),
+            'forward_pe' => $raw($summary['forwardPE'] ?? null),
+            'price_to_book' => $raw($statistics['priceToBook'] ?? null),
+            'dividend_yield' => $raw($summary['dividendYield'] ?? null),
+            'debt_to_equity' => ($value = $raw($financial['debtToEquity'] ?? null)) !== null ? $value / 100 : null,
+            'return_on_equity' => $raw($financial['returnOnEquity'] ?? null),
+            'profit_margins' => $raw($financial['profitMargins'] ?? null),
+            'operating_margins' => $raw($financial['operatingMargins'] ?? null),
+            'revenue_growth' => $raw($financial['revenueGrowth'] ?? null),
+            'earnings_growth' => $raw($financial['earningsGrowth'] ?? null),
+            'recommendation' => $financial['recommendationKey'] ?? null,
+            'analyst_target' => $raw($financial['targetMeanPrice'] ?? null),
+            'analyst_count' => $raw($financial['numberOfAnalystOpinions'] ?? null),
+            'industry' => $profile['industry'] ?? null,
+            'employees' => $profile['fullTimeEmployees'] ?? null,
+            'website' => $profile['website'] ?? null,
+            'description' => isset($profile['longBusinessSummary']) ? mb_substr((string) $profile['longBusinessSummary'], 0, 2000) : null,
+        ];
+
+        $security->fill(array_filter([
+            'sector' => $profile['sector'] ?? null,
+            'country' => $profile['country'] ?? null,
+            'market_cap' => ($cap = $raw($summary['marketCap'] ?? null)) ? (int) $cap : null,
+            'dividend_yield' => $fundamentals['dividend_yield'] !== null ? round($fundamentals['dividend_yield'] * 100, 4) : null,
+            'beta' => $raw($summary['beta'] ?? null),
+        ], fn ($value) => $value !== null))->forceFill(['fundamentals' => $fundamentals, 'fundamentals_updated_at' => now()])->save();
+
+        return $fundamentals;
+    }
+
+    /**
+     * Securities from Yahoo's predefined screeners; stored and tagged with the screener names.
+     *
+     * @param  list<string>  $screeners
+     * @return list<string> symbols found
+     */
+    public function scan(array $screeners = self::SCREENERS, int $perScreener = 25): array
+    {
+        $found = [];
+
+        foreach ($screeners as $screener) {
+            $data = $this->yahooJson(self::SCREENER_URL, ['formatted' => 'false', 'lang' => 'en-US', 'region' => 'US', 'scrIds' => $screener, 'start' => 0, 'count' => $perScreener]);
+
+            foreach ($data['finance']['result'][0]['quotes'] ?? [] as $quote) {
+                $symbol = strtoupper((string) ($quote['symbol'] ?? ''));
+
+                if ($symbol === '' || strtolower((string) ($quote['quoteType'] ?? 'equity')) !== 'equity') {
+                    continue;
+                }
+
+                $security = Security::firstOrNew(['symbol' => mb_substr($symbol, 0, 32)]);
+                $security->fill(array_filter([
+                    'name' => $security->name ?: ($quote['longName'] ?? $quote['shortName'] ?? $symbol),
+                    'exchange' => $security->exchange ?: ($quote['fullExchangeName'] ?? null),
+                    'currency' => $quote['currency'] ?? null,
+                    'market_cap' => isset($quote['marketCap']) ? (int) $quote['marketCap'] : null,
+                    'last_price' => isset($quote['regularMarketPrice']) ? (float) $quote['regularMarketPrice'] : null,
+                    'previous_close' => isset($quote['regularMarketPreviousClose']) ? (float) $quote['regularMarketPreviousClose'] : null,
+                ], fn ($value) => $value !== null && $value !== ''));
+                $security->asset_type ??= 'stock';
+                $security->screeners = array_values(array_unique([...($found[$symbol] ?? false ? $security->screeners ?? [] : []), $screener]));
+                $security->scanned_at = now();
+
+                if ($security->isDirty('last_price')) {
+                    $security->price_updated_at = now();
+                }
+
+                $security->save();
+                $found[$symbol] = true;
+            }
+        }
+
+        return array_keys($found);
+    }
+
+    /**
+     * JSON from a Yahoo endpoint that needs the session cookie and crumb.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>|null
+     */
+    private function yahooJson(string $url, array $query): ?array
+    {
+        $session = $this->yahooSession();
+
+        try {
+            $response = Http::withHeaders(['User-Agent' => self::USER_AGENT, 'Accept' => 'application/json'])
+                ->withOptions(['cookies' => $session['jar']])->timeout(10)
+                ->get($url, $query + array_filter(['crumb' => $session['crumb']]));
+
+            if ($response->status() === 401 && $session['crumb']) {
+                Cache::forget('portfolio:yahoo-session');
+            }
+
+            return $response->successful() ? (array) $response->json() : null;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array{jar: CookieJar, crumb: ?string}
+     */
+    private function yahooSession(): array
+    {
+        $cached = Cache::get('portfolio:yahoo-session');
+
+        if (is_array($cached) && isset($cached['cookies'])) {
+            return ['jar' => new CookieJar(false, $cached['cookies']), 'crumb' => $cached['crumb'] ?? null];
+        }
+
+        $jar = new CookieJar;
+        $crumb = null;
+
+        try {
+            Http::withHeaders(['User-Agent' => self::USER_AGENT, 'Accept' => 'text/html'])->withOptions(['cookies' => $jar])->timeout(10)->get('https://fc.yahoo.com');
+        } catch (Throwable) {
+            // fc.yahoo.com answers 404 but sets the cookie.
+        }
+
+        try {
+            $response = Http::withHeaders(['User-Agent' => self::USER_AGENT, 'Referer' => 'https://finance.yahoo.com/'])->withOptions(['cookies' => $jar])->timeout(8)
+                ->get('https://query1.finance.yahoo.com/v1/test/getcrumb');
+            $body = trim($response->body());
+            $crumb = $response->successful() && strlen($body) > 1 && strlen($body) < 100 && ! str_contains($body, '<') ? $body : null;
+        } catch (Throwable) {
+            $crumb = null;
+        }
+
+        Cache::put('portfolio:yahoo-session', ['cookies' => $jar->toArray(), 'crumb' => $crumb], $crumb ? now()->addHours(6) : now()->addMinutes(15));
+
+        return ['jar' => $jar, 'crumb' => $crumb];
     }
 }

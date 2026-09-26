@@ -18,3 +18,5 @@ Schedule::command('portfolio:update-prices')->everyFifteenMinutes()->weekdays()-
 Schedule::command('portfolio:update-prices --history')->dailyAt('23:10')->withoutOverlapping();
 Schedule::command('portfolio:check-alerts')->everyFifteenMinutes()->between('07:30', '22:45')->withoutOverlapping();
 Schedule::command('portfolio:execute-savings-plans')->dailyAt('09:15');
+Schedule::command('portfolio:market-scan')->dailyAt('06:10')->withoutOverlapping();
+Schedule::command('portfolio:fetch-news')->hourly()->between('06:00', '23:00')->withoutOverlapping();

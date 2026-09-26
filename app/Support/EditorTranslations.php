@@ -24,7 +24,7 @@ class EditorTranslations
             'bulletList' => __('Bulleted list'),
             'orderedList' => __('Numbered list'),
             'taskList' => __('Checklist'),
-            'quote' => __('Quote'),
+            'quote' => __('Sales quote'),
             'codeBlock' => __('Code'),
             'divider' => __('Divider'),
             'table' => __('Table'),

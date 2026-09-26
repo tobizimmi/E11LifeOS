@@ -20,7 +20,7 @@ class InvoicePdfController extends Controller
         abort_unless($invoice->user_id === $request->user()->id, 404);
 
         $html = view('business.invoice-pdf', [
-            'invoice' => $invoice->load('items', 'customer'),
+            'invoice' => $invoice->load('items', 'customer', 'related'),
             'profile' => BusinessProfile::where('user_id', $invoice->user_id)->firstOrFail(),
         ])->render();
 
@@ -29,7 +29,12 @@ class InvoicePdfController extends Controller
         $dompdf->setPaper('A4');
         $dompdf->render();
 
-        $name = $invoice->number ? 'rechnung-'.Str::slug($invoice->number) : 'rechnungsentwurf-'.$invoice->id;
+        $kind = match ($invoice->type) {
+            Invoice::QUOTE => 'angebot',
+            Invoice::CREDIT_NOTE => 'gutschrift',
+            default => 'rechnung',
+        };
+        $name = $invoice->number ? $kind.'-'.Str::slug($invoice->number) : $kind.'-entwurf-'.$invoice->id;
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',

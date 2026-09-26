@@ -5,11 +5,16 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\BusinessProfile;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
 
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithBusiness;
     use InteractsWithHousehold;
+    use WithFileUploads;
+
+    public $logo = null;
 
     /**
      * @var array<string, mixed>
@@ -37,6 +42,9 @@ new #[Layout('layouts.app')] class extends Component
             'iban' => $profile->iban ?? '',
             'bic' => $profile->bic ?? '',
             'invoice_prefix' => $profile->invoice_prefix ?? 'RE-',
+            'quote_prefix' => $profile->quote_prefix ?? 'AN-',
+            'credit_note_prefix' => $profile->credit_note_prefix ?? 'GS-',
+            'accent_color' => $profile->accent_color ?? '#4338ca',
             'payment_days' => (string) ($profile->payment_days ?? 14),
             'invoice_footer' => $profile->invoice_footer ?? '',
         ];
@@ -64,6 +72,9 @@ new #[Layout('layouts.app')] class extends Component
             'form.iban' => ['nullable', 'string', 'regex:/^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$/'],
             'form.bic' => ['nullable', 'string', 'regex:/^[A-Z0-9]{8}([A-Z0-9]{3})?$/'],
             'form.invoice_prefix' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z0-9\-_\/]*$/'],
+            'form.quote_prefix' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z0-9\-_\/]*$/', 'different:form.invoice_prefix'],
+            'form.credit_note_prefix' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z0-9\-_\/]*$/', 'different:form.invoice_prefix', 'different:form.quote_prefix'],
+            'form.accent_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'form.payment_days' => ['required', 'integer', 'min:0', 'max:365'],
             'form.invoice_footer' => ['nullable', 'string', 'max:1000'],
         ], attributes: [
@@ -71,9 +82,13 @@ new #[Layout('layouts.app')] class extends Component
             'form.iban' => 'IBAN',
             'form.bic' => 'BIC',
             'form.invoice_prefix' => __('Number prefix'),
+            'form.quote_prefix' => __('Quote prefix'),
+            'form.credit_note_prefix' => __('Credit note prefix'),
         ])['form'];
 
-        $data['invoice_prefix'] = (string) ($data['invoice_prefix'] ?? '');
+        foreach (['invoice_prefix', 'quote_prefix', 'credit_note_prefix'] as $prefix) {
+            $data[$prefix] = (string) ($data[$prefix] ?? '');
+        }
 
         BusinessProfile::updateOrCreate(
             ['user_id' => $this->currentUser()->id],
@@ -81,6 +96,39 @@ new #[Layout('layouts.app')] class extends Component
         );
 
         $this->dispatch('toast', message: __('Saved.'));
+    }
+
+    /**
+     * Logo for invoices and quotes (PNG or JPG, shown top right).
+     */
+    public function updatedLogo(): void
+    {
+        $this->validate(['logo' => ['image', 'mimes:png,jpg,jpeg', 'max:1024']], attributes: ['logo' => __('Logo')]);
+        $profile = $this->businessProfile();
+
+        if (! $profile) {
+            $this->addError('logo', __('Please save your business details first.'));
+
+            return;
+        }
+
+        if ($profile->logo_path) {
+            Storage::disk(BusinessProfile::LOGO_DISK)->delete($profile->logo_path);
+        }
+
+        $extension = $this->logo->guessExtension() === 'png' ? 'png' : 'jpg';
+        $profile->update(['logo_path' => $this->logo->storeAs('business-logos', $this->currentUser()->id.'-'.now()->timestamp.'.'.$extension, BusinessProfile::LOGO_DISK)]);
+        $this->reset('logo');
+    }
+
+    public function removeLogo(): void
+    {
+        $profile = $this->businessProfile() ?? abort(404);
+
+        if ($profile->logo_path) {
+            Storage::disk(BusinessProfile::LOGO_DISK)->delete($profile->logo_path);
+            $profile->update(['logo_path' => null]);
+        }
     }
 
     public function with(): array
@@ -188,9 +236,44 @@ new #[Layout('layouts.app')] class extends Component
                             <x-text-input id="profile-days" type="number" min="0" wire:model="form.payment_days" class="mt-1 block w-full" />
                             <x-input-error :messages="$errors->get('form.payment_days')" class="mt-1" />
                         </div>
+                        <div>
+                            <x-input-label for="profile-quote-prefix" :value="__('Quote prefix')" />
+                            <x-text-input id="profile-quote-prefix" wire:model="form.quote_prefix" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.quote_prefix')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="profile-credit-prefix" :value="__('Credit note prefix')" />
+                            <x-text-input id="profile-credit-prefix" wire:model="form.credit_note_prefix" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.credit_note_prefix')" class="mt-1" />
+                        </div>
                         <div class="sm:col-span-3">
                             <x-input-label for="profile-footer" :value="__('Closing text on invoices (optional)')" />
                             <textarea id="profile-footer" wire:model="form.invoice_footer" rows="2" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('Thank you for your order!') }}"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Look of your documents') }}</h3>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <x-input-label for="profile-logo" :value="__('Logo (PNG or JPG, max. 1 MB)')" />
+                            @if ($profile?->logo_path)
+                                <div class="mt-1 flex items-center gap-3">
+                                    <img src="{{ $profile->logoDataUri() }}" alt="{{ __('Logo') }}" class="h-12 max-w-[10rem] rounded bg-white object-contain p-1 ring-1 ring-gray-200">
+                                    <button type="button" wire:click="removeLogo" class="text-xs text-red-600 hover:underline dark:text-red-400">{{ __('Remove') }}</button>
+                                </div>
+                            @endif
+                            <input id="profile-logo" type="file" wire:model="logo" accept="image/png,image/jpeg" class="mt-1 block w-full text-sm text-gray-700 file:me-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-indigo-700 dark:text-gray-300 dark:file:bg-gray-700 dark:file:text-gray-200">
+                            <x-input-error :messages="$errors->get('logo')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="profile-color" :value="__('Accent colour')" />
+                            <div class="mt-1 flex items-center gap-2">
+                                <input id="profile-color" type="color" wire:model="form.accent_color" class="h-10 w-14 cursor-pointer rounded border-gray-300 dark:border-gray-600">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Used for headings and lines in the PDF.') }}</span>
+                            </div>
+                            <x-input-error :messages="$errors->get('form.accent_color')" class="mt-1" />
                         </div>
                     </div>
                 </section>

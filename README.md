@@ -51,11 +51,14 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
 - **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
 - **Finanzen (privat)** – Kontoauszüge als CSV importieren (Sparkasse, Volksbank, ING, DKB, comdirect, N26 u. a. sowie Outbank mit mehreren Konten und Kategorien; doppelte Buchungen werden übersprungen), automatische Kategorien mit lernenden Regeln („immer“), Bericht mit Einnahmen/Ausgaben pro Monat, Kategorien, 50/30/20-Check, wiederkehrenden Zahlungen inkl. Preiserhöhungen und konkretem Sparpotenzial; optional eine KI-Finanzanalystin und KI-Kategorisierung, Bericht als PDF. Bankdaten sieht nur die Person, die sie importiert hat.
-- **Kleingewerbe (privat)**:
-  - Geschäftsdaten mit Kleinunternehmerregelung (§ 19 UStG) oder Umsatzsteuer.
-  - Kunden und Rechnungen: Positionen, Entwürfe, lückenlose Nummern (`RE-2026-001`), PDF im DIN-5008-Layout mit allen Pflichtangaben, Status offen/überfällig/bezahlt/storniert, Duplizieren.
+- **Business (privat)** – Rechnungen, Angebote und Buchhaltung für Selbstständige und Kleingewerbe:
+  - Geschäftsdaten mit Kleinunternehmerregelung (§ 19 UStG) oder Umsatzsteuer, Logo und Akzentfarbe für die PDFs.
+  - Kunden und ein Katalog mit Leistungen und Produkten (mit einem Klick in Rechnungen und Angeboten).
+  - Angebote mit Gültigkeit, Status angenommen/abgelehnt und Umwandlung in eine Rechnung.
+  - Rechnungen mit Positionen, Rabatten, Entwürfen, lückenlosen Nummernkreisen (Rechnungen, Angebote, Gutschriften), PDF im DIN-5008-Layout mit allen Pflichtangaben, Teilzahlungen, Status offen/teilbezahlt/überfällig/bezahlt.
+  - Storno per Stornorechnung und Gutschriften mit Erstattung.
   - Belege für Ausgaben und Einnahmen ohne Rechnung, mit Foto/PDF und optionalem KI-Auslesen.
-  - Jahresabschluss als Einnahmenüberschussrechnung, gegliedert wie die Anlage EÜR: Zuflussprinzip, Bewirtung 70 %, Vorsteuer, Kleinunternehmer-Grenzen, Checkliste für ELSTER. Export als PDF und CSV.
+  - Jahresabschluss als Einnahmenüberschussrechnung nach tatsächlichen Zahlungseingängen, gegliedert wie die Anlage EÜR (Bewirtung 70 %, Vorsteuer, Kleinunternehmer-Grenzen, Checkliste für ELSTER), als PDF und CSV.
   - Keine Steuerberatung.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.

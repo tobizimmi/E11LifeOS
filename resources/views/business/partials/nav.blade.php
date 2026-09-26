@@ -2,9 +2,10 @@
 <nav class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="{{ __('Small business') }}">
     <div class="inline-flex min-w-max rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
         @foreach ([
-            'business.index' => '🧾 '.__('Invoices'),
+            'business.index' => '🧾 '.__('Documents'),
             'business.bookings' => '📥 '.__('Receipts'),
             'business.customers' => '👥 '.__('Customers'),
+            'business.products' => '📦 '.__('Catalogue'),
             'business.report' => '📊 '.__('Annual statement'),
             'business.settings' => '⚙ '.__('Settings'),
         ] as $routeName => $label)

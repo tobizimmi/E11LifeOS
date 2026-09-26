@@ -5,12 +5,13 @@ namespace App\Support\Business;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
 use App\Models\Invoice;
+use App\Models\InvoicePayment;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
 /**
  * Yearly profit calculation (Einnahmenüberschussrechnung) of a small business, grouped like the
- * Anlage EÜR. Cash basis (Zuflussprinzip): invoices count in the year they were paid.
+ * Anlage EÜR. Cash basis (Zuflussprinzip): payments count in the year they were received.
  */
 class EuerReport
 {
@@ -33,24 +34,32 @@ class EuerReport
         $nonDeductible = 0.0;
         $missingReceipts = 0;
 
-        $invoices = Invoice::where('user_id', $user->id)->where('household_id', $householdId)
-            ->where('status', Invoice::PAID)->whereYear('paid_on', $year)->orderBy('paid_on')->get();
+        // Every payment counts in the year it was received (refunds of credit notes are negative).
+        $payments = InvoicePayment::query()
+            ->whereYear('paid_on', $year)
+            ->whereHas('invoice', fn ($query) => $query->where('user_id', $user->id)->where('household_id', $householdId)->where('type', '!=', Invoice::QUOTE))
+            ->with('invoice')->orderBy('paid_on')->orderBy('id')->get();
 
-        foreach ($invoices as $invoice) {
+        foreach ($payments as $payment) {
+            $invoice = $payment->invoice;
+            $share = abs($invoice->gross_total) > 0 ? $payment->amount / $invoice->gross_total : 0;
+            $net = round($invoice->net_total * $share, 2);
+            $vat = round($payment->amount - $net, 2);
+
             if ($invoice->small_business) {
-                $lines['small_business_revenue'] += $invoice->gross_total;
+                $lines['small_business_revenue'] += $payment->amount;
             } else {
-                $lines['taxable_revenue'] += $invoice->net_total;
-                $lines['vat_received'] += $invoice->vat_total;
+                $lines['taxable_revenue'] += $net;
+                $lines['vat_received'] += $vat;
             }
 
-            $monthly[$invoice->paid_on->month]['income'] += $invoice->gross_total;
+            $monthly[$payment->paid_on->month]['income'] += $payment->amount;
             $rows[] = [
-                'date' => $invoice->paid_on, 'kind' => BookkeepingEntry::INCOME, 'reference' => $invoice->number,
-                'description' => $invoice->subject ?: __('Invoice :number', ['number' => $invoice->number]),
-                'counterparty' => strtok($invoice->recipient, "\n") ?: '', 'category' => __('Invoice'),
+                'date' => $payment->paid_on, 'kind' => BookkeepingEntry::INCOME, 'reference' => (string) $invoice->number,
+                'description' => $invoice->subject ?: ($invoice->isCreditNote() ? __('Credit note :number', ['number' => $invoice->number]) : __('Invoice :number', ['number' => $invoice->number])),
+                'counterparty' => strtok($invoice->recipient, "\n") ?: '', 'category' => $invoice->isCreditNote() ? __('Credit note') : __('Invoice'),
                 'line' => $invoice->small_business ? 'small_business_revenue' : 'taxable_revenue',
-                'net' => $invoice->net_total, 'vat' => $invoice->vat_total, 'gross' => $invoice->gross_total, 'receipt' => true,
+                'net' => $invoice->small_business ? $payment->amount : $net, 'vat' => $invoice->small_business ? 0.0 : $vat, 'gross' => $payment->amount, 'receipt' => true,
             ];
         }
 
@@ -119,7 +128,7 @@ class EuerReport
         usort($rows, fn (array $a, array $b) => $a['date'] <=> $b['date']);
 
         $open = Invoice::where('user_id', $user->id)->where('household_id', $householdId)
-            ->where('status', Invoice::OPEN)->whereYear('issued_on', '<=', $year);
+            ->where('type', Invoice::INVOICE)->where('status', Invoice::OPEN)->whereYear('issued_on', '<=', $year);
 
         return [
             'year' => $year,
@@ -151,7 +160,7 @@ class EuerReport
             'nonDeductible' => round($nonDeductible, 2),
             'missingReceipts' => $missingReceipts,
             'openInvoiceCount' => (clone $open)->count(),
-            'openInvoiceTotal' => round((float) (clone $open)->sum('gross_total'), 2),
+            'openInvoiceTotal' => round((float) (clone $open)->get()->sum(fn (Invoice $invoice) => $invoice->outstanding()), 2),
         ];
     }
 

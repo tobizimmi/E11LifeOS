@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BankAccount;
+use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,6 +46,8 @@ class DataExportTest extends TestCase
         Item::factory()->inbox()->for($household)->create(['title' => 'Gemeinsame Idee']);
         BankAccount::factory()->for($household)->for($user)->create(['name' => 'Mein Giro']);
         BankAccount::factory()->for($household)->for($partner)->create(['name' => 'Partner Giro']);
+        Invoice::factory()->for($household)->for($user)->create(['recipient' => 'Mein Kunde']);
+        Invoice::factory()->for($household)->for($partner)->create(['recipient' => 'Partner Kunde']);
 
         $data = $this->actingAs($user)->get('/profile/export')->assertOk()->json();
 
@@ -52,6 +55,7 @@ class DataExportTest extends TestCase
         $this->assertSame(['privat'], $data['notes'][0]['tags']);
         $this->assertSame(['Gemeinsame Idee'], array_column($data['inbox'], 'title'));
         $this->assertSame(['Mein Giro'], array_column($data['bank_accounts'], 'name'));
+        $this->assertSame(['Mein Kunde'], array_column($data['business']['invoices'], 'recipient'));
     }
 
     public function test_guests_cannot_export_data(): void

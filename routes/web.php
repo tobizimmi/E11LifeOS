@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\BookkeepingReceiptController;
+use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\FinanceReportPdfController;
+use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicRecipeController;
@@ -63,6 +66,16 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('tasks', 'tasks.index')->name('tasks.index');
     Volt::route('finance', 'finance.index')->name('finance.index');
     Route::get('finance/report.pdf', FinanceReportPdfController::class)->name('finance.report');
+    Volt::route('business', 'business.index')->name('business.index');
+    Volt::route('business/invoices/create', 'business.invoice-form')->name('business.invoices.create');
+    Volt::route('business/invoices/{invoice}/edit', 'business.invoice-form')->whereNumber('invoice')->name('business.invoices.edit');
+    Route::get('business/invoices/{invoice}/pdf', InvoicePdfController::class)->whereNumber('invoice')->name('business.invoices.pdf');
+    Volt::route('business/receipts', 'business.bookings')->name('business.bookings');
+    Route::get('business/receipts/{entry}/file', BookkeepingReceiptController::class)->whereNumber('entry')->name('business.receipts.show');
+    Volt::route('business/customers', 'business.customers')->name('business.customers');
+    Volt::route('business/report', 'business.report')->name('business.report');
+    Route::get('business/report/download', BusinessReportController::class)->name('business.report.download');
+    Volt::route('business/settings', 'business.settings')->name('business.settings');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
 });
 

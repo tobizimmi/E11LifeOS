@@ -169,6 +169,7 @@ new class extends Component
                         <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>
                     @endif
                     <x-sidebar-link :href="route('finance.index')" :active="request()->routeIs('finance.*')" wire:navigate>💶 {{ __('Finances') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('business.index')" :active="request()->routeIs('business.*')" wire:navigate>💼 {{ __('Small business') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
                 </div>
 

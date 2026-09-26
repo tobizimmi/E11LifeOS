@@ -39,6 +39,12 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
 - **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
 - **Finanzen (privat)** – Kontoauszüge als CSV importieren (Sparkasse, Volksbank, ING, DKB, comdirect, N26 u. a.; doppelte Buchungen werden übersprungen), automatische Kategorien mit lernenden Regeln („immer“), Bericht mit Einnahmen/Ausgaben pro Monat, Kategorien, 50/30/20-Check, wiederkehrenden Zahlungen inkl. Preiserhöhungen und konkretem Sparpotenzial; optional eine KI-Finanzanalystin und KI-Kategorisierung, Bericht als PDF. Bankdaten sieht nur die Person, die sie importiert hat.
+- **Kleingewerbe (privat)**:
+  - Geschäftsdaten mit Kleinunternehmerregelung (§ 19 UStG) oder Umsatzsteuer.
+  - Kunden und Rechnungen: Positionen, Entwürfe, lückenlose Nummern (`RE-2026-001`), PDF im DIN-5008-Layout mit allen Pflichtangaben, Status offen/überfällig/bezahlt/storniert, Duplizieren.
+  - Belege für Ausgaben und Einnahmen ohne Rechnung, mit Foto/PDF und optionalem KI-Auslesen.
+  - Jahresabschluss als Einnahmenüberschussrechnung, gegliedert wie die Anlage EÜR: Zuflussprinzip, Bewirtung 70 %, Vorsteuer, Kleinunternehmer-Grenzen, Checkliste für ELSTER. Export als PDF und CSV.
+  - Keine Steuerberatung.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
@@ -67,7 +73,7 @@ Registrierung unter `/register` mit dem erzeugten Code.
 
 ## KI-Funktionen (optional)
 
-Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“, Tag-Vorschläge und die Finanzanalystin nutzen die Claude-API. Dafür in der `.env` auf dem Server:
+Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“, Tag-Vorschläge, die Finanzanalystin und das Beleg-Auslesen nutzen die Claude-API. Dafür in der `.env` auf dem Server:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...

@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Attachment;
 use App\Models\BankAccount;
+use App\Models\BookkeepingEntry;
+use App\Models\BusinessProfile;
 use App\Models\Collection;
+use App\Models\Customer;
 use App\Models\FinanceRule;
 use App\Models\Household;
+use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
@@ -73,6 +77,16 @@ class DataExportController extends Controller
                     'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category'])->all(),
                 ]),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
+            'business' => [
+                'profile' => BusinessProfile::where('user_id', $user->id)->first()?->makeHidden(['id', 'user_id', 'household_id']),
+                'customers' => Customer::where('user_id', $user->id)->orderBy('id')->get()->map->only(['id', 'name', 'contact_person', 'street', 'postal_code', 'city', 'country', 'email', 'vat_id', 'notes']),
+                'invoices' => Invoice::where('user_id', $user->id)->with('items')->orderBy('id')->get()
+                    ->map(fn (Invoice $invoice) => $invoice->only(['number', 'status', 'customer_id', 'issued_on', 'service_period', 'due_on', 'paid_on', 'recipient', 'subject', 'small_business', 'net_total', 'vat_total', 'gross_total']) + [
+                        'items' => $invoice->items->map->only(['position', 'description', 'quantity', 'unit', 'unit_price', 'vat_rate'])->all(),
+                    ]),
+                'bookkeeping' => BookkeepingEntry::where('user_id', $user->id)->orderBy('booked_on')->get()
+                    ->map->only(['kind', 'booked_on', 'description', 'counterparty', 'category', 'amount', 'vat_amount', 'receipt_name']),
+            ],
         ];
 
         return response()->json($data, 200, [

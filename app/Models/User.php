@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['name', 'email', 'password', 'reminder_emails'])]
 #[Hidden(['password', 'remember_token', 'calendar_token'])]
@@ -50,6 +51,9 @@ class User extends Authenticatable
             Collection::where('created_by', $user->id)
                 ->where('visibility', Item::VISIBILITY_PRIVATE)
                 ->delete();
+
+            // Business receipts are personal files; their rows go with the foreign key cascade.
+            Storage::disk(BookkeepingEntry::RECEIPT_DISK)->deleteDirectory('business-receipts/'.$user->id);
         });
     }
 

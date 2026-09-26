@@ -157,6 +157,26 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * "⤢": creates the task and opens it right away to fill in the details.
+     */
+    public function addTaskWithDetails(string $text): bool
+    {
+        $before = (int) Item::where('household_id', $this->householdId)->max('id');
+
+        if (! $this->addTask($text)) {
+            return false;
+        }
+
+        $task = Item::where('household_id', $this->householdId)->where('id', '>', $before)->where('created_by', Auth::id())->latest('id')->first();
+
+        if ($task) {
+            $this->openTask($task->id);
+        }
+
+        return true;
+    }
+
+    /**
      * Returns whether a task was created (the input is cleared then).
      */
     public function addTask(string $text): bool
@@ -534,6 +554,7 @@ new #[Layout('layouts.app')] class extends Component
                                 class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500"
                             />
                             <x-voice-button for="new-task" submit />
+                            <button type="button" x-on:click="const input = $refs.input; if (! input.value.trim()) { input.focus(); return } $wire.addTaskWithDetails(input.value).then((added) => { if (added) { input.value = '' } })" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Add and fill in details') }}" aria-label="{{ __('Add and fill in details') }}">⤢</button>
                             <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700" aria-label="{{ __('Add task') }}">＋</button>
                         </div>
                         <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
@@ -767,17 +788,16 @@ new #[Layout('layouts.app')] class extends Component
             $assigneeId = $lists->assigneeId($openTask);
             $subtasks = $openTask->subtasks();
         @endphp
-        <div class="fixed inset-0 z-40 flex justify-end" wire:key="task-panel-{{ $openTask->id }}" x-data x-on:keydown.escape.window="if (! ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) { $wire.closeTask() }">
-            <div class="absolute inset-0 bg-gray-900/30" wire:click="closeTask" aria-hidden="true"></div>
-            <aside class="relative h-full w-full sm:max-w-md overflow-y-auto bg-white dark:bg-gray-800 shadow-xl" role="dialog" aria-modal="true" aria-label="{{ $openTask->title }}">
-                <div class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 px-4 py-3 backdrop-blur">
-                    <button type="button" wire:click="toggleDone({{ $openTask->id }})" @class(['rounded-lg px-3 py-1.5 text-sm', 'bg-green-600 text-white' => $openTask->done, 'ring-1 ring-gray-300 dark:ring-gray-600 text-gray-700 dark:text-gray-200 hover:bg-green-50' => ! $openTask->done])>
-                        {{ $openTask->done ? '✓ '.__('Done') : '○ '.__('Mark as done') }}
-                    </button>
-                    <button type="button" wire:click="closeTask" class="rounded-lg px-2 py-1 text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Close') }}">×</button>
-                </div>
+        <x-sheet close="closeTask" :label="$openTask->title" wire:key="task-panel-{{ $openTask->id }}">
+            <x-slot:header>
+                <span aria-hidden="true">✅</span>
+                <span class="truncate">{{ __('Tasks') }}</span>
+                @if ($openTask->isPrivate())
+                    <x-private-badge />
+                @endif
+            </x-slot:header>
 
-                <div class="space-y-5 p-4">
+                <div class="space-y-5">
                     <textarea
                         rows="2"
                         wire:key="task-title-{{ $openTask->id }}-{{ md5($openTask->title) }}"
@@ -888,12 +908,16 @@ new #[Layout('layouts.app')] class extends Component
 
                     <livewire:links-panel type="item" :id="$openTask->id" :key="'task-links-'.$openTask->id" />
 
-                    <div class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4 text-sm">
-                        <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
-                        <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="text-red-600 dark:text-red-400 hover:underline">🗑 {{ __('Delete') }}</button>
-                    </div>
+                    <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
                 </div>
-            </aside>
-        </div>
+
+            <x-slot:footer>
+                <button type="button" wire:click="toggleDone({{ $openTask->id }})" @class(['rounded-lg px-4 py-2 text-sm font-medium', 'bg-green-600 text-white' => $openTask->done, 'bg-indigo-600 text-white hover:bg-indigo-700' => ! $openTask->done])>
+                    {{ $openTask->done ? '✓ '.__('Done') : '✓ '.__('Mark as done') }}
+                </button>
+                <x-secondary-button type="button" wire:click="closeTask">{{ __('Close') }}</x-secondary-button>
+                <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">🗑 {{ __('Delete') }}</button>
+            </x-slot:footer>
+        </x-sheet>
     @endif
 </div>

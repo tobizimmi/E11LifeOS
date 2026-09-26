@@ -758,5 +758,14 @@
     "Filled in :count field from the document – please check.|Filled in :count fields from the document – please check.": ":count Feld aus dem Dokument ausgefüllt – bitte prüfen.|:count Felder aus dem Dokument ausgefüllt – bitte prüfen.",
     ":count document added|:count documents added": ":count Dokument hinzugefügt|:count Dokumente hinzugefügt",
     "Delete this document?": "Dieses Dokument löschen?",
-    "No documents yet.": "Noch keine Dokumente."
+    "No documents yet.": "Noch keine Dokumente.",
+    "Deadlines (next 30 days)": "Fristen (nächste 30 Tage)",
+    "Fixed costs per month": "Fixkosten pro Monat",
+    "No deadlines in the next 30 days.": "Keine Fristen in den nächsten 30 Tagen.",
+    "Add contracts with a monthly cost to see your fixed costs here.": "Lege Verträge mit monatlichen Kosten an, um hier deine Fixkosten zu sehen.",
+    "≈ :amount per year": "≈ :amount pro Jahr",
+    "Customize dashboard": "Übersicht anpassen",
+    "Choose which cards you see and in which order.": "Wähle, welche Kacheln du siehst und in welcher Reihenfolge.",
+    "Reset to default": "Auf Standard zurücksetzen",
+    "Inbox is empty.": "Die Inbox ist leer."
 }

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A regular investment (Sparplan) into one security.
  */
-#[Fillable(['portfolio_id', 'symbol', 'name', 'amount', 'frequency', 'day_of_month', 'next_date', 'active'])]
+#[Fillable(['portfolio_id', 'symbol', 'name', 'amount', 'frequency', 'day_of_month', 'next_date', 'last_executed_on', 'active'])]
 class SavingsPlan extends Model
 {
     public const FREQUENCIES = ['weekly', 'monthly', 'quarterly'];
@@ -19,6 +19,7 @@ class SavingsPlan extends Model
         return [
             'amount' => 'float',
             'next_date' => 'date',
+            'last_executed_on' => 'date',
             'active' => 'boolean',
         ];
     }

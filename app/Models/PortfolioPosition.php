@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Current holding of a security in a portfolio, calculated from the transactions (average cost
  * method) or entered by hand.
  */
-#[Fillable(['portfolio_id', 'symbol', 'name', 'isin', 'quantity', 'avg_buy_price', 'currency', 'asset_type', 'notes', 'labels', 'stop_loss_price', 'take_profit_price', 'manual'])]
+#[Fillable(['portfolio_id', 'symbol', 'name', 'isin', 'quantity', 'avg_buy_price', 'currency', 'asset_type', 'notes', 'labels', 'stop_loss_price', 'take_profit_price', 'stop_loss_notified_at', 'take_profit_notified_at', 'manual'])]
 class PortfolioPosition extends Model
 {
     protected function casts(): array
@@ -22,6 +22,8 @@ class PortfolioPosition extends Model
             'stop_loss_price' => 'float',
             'take_profit_price' => 'float',
             'manual' => 'boolean',
+            'stop_loss_notified_at' => 'datetime',
+            'take_profit_notified_at' => 'datetime',
         ];
     }
 

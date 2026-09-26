@@ -146,7 +146,7 @@ new #[Layout('layouts.app')] class extends Component
     public function savePosition(): void
     {
         foreach (['quantity', 'avg_buy_price', 'stop_loss_price', 'take_profit_price'] as $field) {
-            $this->positionForm[$field] = str_replace(',', '.', trim((string) $this->positionForm[$field]));
+            $this->positionForm[$field] = $this->parseNumber($this->positionForm[$field]);
         }
 
         $this->positionForm['symbol'] = strtoupper(trim((string) $this->positionForm['symbol']));

@@ -113,7 +113,10 @@ class TaskLists
             });
 
         if ($list === self::DONE) {
-            return $tasks->isEmpty() ? [] : [['key' => 'done', 'label' => __('Completed'), 'tone' => 'muted', 'tasks' => $tasks->values()->all()]];
+            return $tasks->groupBy(fn (Item $task) => $this->completedGroup($task)[0])
+                ->map(fn ($group, string $key) => ['key' => $key, 'label' => $this->completedGroup($group->first())[1], 'tone' => 'muted', 'tasks' => $group->values()->all()])
+                ->values()
+                ->all();
         }
 
         $groups = [];
@@ -125,6 +128,29 @@ class TaskLists
         }
 
         return array_values($groups);
+    }
+
+    /**
+     * Weekly review: tasks completed this week (since Monday) and last week, and what is overdue.
+     *
+     * @return array{thisWeek: int, lastWeek: int, overdue: int}
+     */
+    public function review(): array
+    {
+        $monday = Carbon::parse($this->today)->startOfWeek(Carbon::MONDAY);
+        $completed = fn (Carbon $from, Carbon $until) => Item::query()
+            ->forHousehold($this->collection->household_id)
+            ->visibleTo($this->viewer)
+            ->where('collection_id', $this->collection->id)
+            ->where('done', true)
+            ->whereBetween('completed_at', [$from, $until])
+            ->count();
+
+        return [
+            'thisWeek' => $completed($monday, $monday->copy()->endOfWeek(Carbon::SUNDAY)),
+            'lastWeek' => $completed($monday->copy()->subWeek(), $monday->copy()->subSecond()),
+            'overdue' => $this->openTasks()->filter(fn (Item $task) => $this->isOverdue($task))->count(),
+        ];
     }
 
     public function due(Item $task): string
@@ -181,7 +207,7 @@ class TaskLists
      */
     private function doneTasks(): EloquentCollection
     {
-        return $this->query()->where('done', true)->latest('updated_at')->limit(self::DONE_LIMIT)->get();
+        return $this->query()->where('done', true)->reorder()->orderByRaw('COALESCE(items.completed_at, items.updated_at) DESC')->limit(self::DONE_LIMIT)->get();
     }
 
     private function query()
@@ -233,6 +259,24 @@ class TaskLists
             $due === $today->copy()->addDay()->toDateString() => ['tomorrow', __('Tomorrow'), 'normal'],
             $due <= $today->copy()->addDays(7)->toDateString() => ['week', __('Next 7 days'), 'normal'],
             default => ['later', __('Later'), 'muted'],
+        };
+    }
+
+    /**
+     * Done list: today, yesterday, the last days by weekday, then per month.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function completedGroup(Item $task): array
+    {
+        $at = ($task->completed_at ?? $task->updated_at)->copy()->startOfDay();
+        $days = (int) $at->diffInDays(Carbon::parse($this->today), false);
+
+        return match (true) {
+            $days <= 0 => ['done-today', __('Today')],
+            $days === 1 => ['done-yesterday', __('Yesterday')],
+            $days < 7 => ['done-'.$at->toDateString(), $at->translatedFormat('l, j. F')],
+            default => ['done-'.$at->format('Y-m'), $at->translatedFormat('F Y')],
         };
     }
 

@@ -12,6 +12,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Seitenleiste** – Navigation wie in Notion: Übersicht, Inbox, Haushalt, geteilter und privater Seitenbaum.
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Spracheingabe** – 🎤 in Schnellerfassung, bei neuen Aufgaben/Einträgen und in der Einkaufsliste (Spracherkennung des Browsers).
+- **Schnell erfassen** (Übersicht) – wahlweise in die Inbox oder direkt als Aufgabe (mit Datum, Uhrzeit, !Priorität, @Name).
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
 - **Erinnerungen** – Aufgaben mit Uhrzeit („morgen 18 Uhr“) erinnern genau dann per Push (ohne Push-Gerät per E-Mail); wer eine Aufgabe zugewiesen bekommt, erhält sofort einen Push. Dazu täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.
@@ -21,6 +22,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
   - Priorität, Unteraufgaben, Notizen, Wiederholung (abgehakt springt die Aufgabe zum nächsten Termin), Zuständigkeit, Tags und Verknüpfungen im Detail-Panel.
   - Abhaken mit „Rückgängig“; auf dem Handy nach rechts wischen = erledigt, nach links = auf morgen.
   - Mehrfachauswahl: mehrere Aufgaben auf einmal erledigen, verschieben, priorisieren, zuweisen oder löschen.
+  - Wochenrückblick in „Erledigt“: diese und letzte Woche erledigt, noch überfällig; erledigte Aufgaben nach Tag gruppiert.
   - Dieselben Aufgaben bleiben als Board, Tabelle oder Kalender verfügbar.
 - **Kalender-Abo** – offene Aufgaben (mit Uhrzeit und Wiederholung) und Termine mit Erinnerung, z. B. Kündigungsfristen, als abonnierbarer Kalender für iPhone, Google oder Outlook (persönlicher Link im Profil, jederzeit erneuer- oder abschaltbar).
 - **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
@@ -35,7 +37,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
 - **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
-- **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags.
+- **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
 - **Datenschutz** – JSON-Export aller eigenen Daten, Kontolöschung (private Einträge werden gelöscht, geteilte bleiben dem Haushalt erhalten).
 

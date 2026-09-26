@@ -40,7 +40,7 @@ class OfflineCaptureController extends Controller
         }
 
         $item = $data['kind'] === 'task'
-            ? QuickCapture::task($user, $household->id, $data['text'])
+            ? QuickCapture::task($user, $household->id, $data['text'], private: (bool) ($data['private'] ?? false))
             : QuickCapture::inbox($user, $household->id, $data['text'], (bool) ($data['private'] ?? false));
 
         return response()->json(['created' => (bool) $item], $item ? 201 : 422);

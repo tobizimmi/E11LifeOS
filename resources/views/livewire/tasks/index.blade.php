@@ -421,6 +421,7 @@ new #[Layout('layouts.app')] class extends Component
             'lists' => $lists,
             'counts' => $lists->counts(),
             'groups' => $lists->groups($this->list, $this->tag, $this->search),
+            'review' => $this->list === TaskLists::DONE ? $lists->review() : null,
             'members' => $members,
             'preview' => trim($this->draft) !== '' ? TaskInput::parse($this->draft, $members, Auth::id(), $this->ignoredPhrases) : null,
             'openTask' => $openTask,
@@ -552,6 +553,24 @@ new #[Layout('layouts.app')] class extends Component
                             <p class="mt-1.5 text-xs text-gray-400">{{ __('Understands dates and times (tomorrow 6 pm, Friday, 24.12., in 3 days), “every Monday”, !high, @name and #tags. Press N to start typing.') }}</p>
                         @endif
                     </form>
+                @endif
+
+                {{-- Weekly review --}}
+                @if ($review)
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+                            <p class="text-2xl font-semibold text-green-600 dark:text-green-400">{{ $review['thisWeek'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Done this week') }}</p>
+                        </div>
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+                            <p class="text-2xl font-semibold text-gray-700 dark:text-gray-200">{{ $review['lastWeek'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Last week') }}</p>
+                        </div>
+                        <button type="button" wire:click="showList('{{ \App\Support\TaskLists::TODAY }}')" class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm hover:ring-1 hover:ring-red-300">
+                            <p @class(['text-2xl font-semibold', 'text-red-600 dark:text-red-400' => $review['overdue'] > 0, 'text-gray-700 dark:text-gray-200' => $review['overdue'] === 0])>{{ $review['overdue'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Still overdue') }}</p>
+                        </button>
+                    </div>
                 @endif
 
                 {{-- Toolbar --}}

@@ -713,5 +713,12 @@
     ":count entries captured offline were sent": ":count offline erfasste Einträge gesendet",
     "You are offline – you see the last loaded state. New inbox entries and tasks are kept and sent once you are online.": "Du bist offline – du siehst den zuletzt geladenen Stand. Neue Inbox-Einträge und Aufgaben werden gespeichert und gesendet, sobald du online bist.",
     "Waiting to be sent: :count": "Warten auf Versand: :count",
-    "Saved offline – it will be sent once you are online.": "Offline gespeichert – wird gesendet, sobald du online bist."
+    "Saved offline – it will be sent once you are online.": "Offline gespeichert – wird gesendet, sobald du online bist.",
+    "Done this week": "Diese Woche erledigt",
+    "Last week": "Letzte Woche",
+    "Still overdue": "Noch überfällig",
+    "Save as": "Speichern als",
+    "New task … e.g. “Call dentist tomorrow 6 pm !high”": "Neue Aufgabe … z. B. „Zahnarzt anrufen morgen 18 Uhr !hoch“",
+    "Dates, times, !priority, @name and #tags are recognised.": "Datum, Uhrzeit, !Priorität, @Name und #Tags werden erkannt.",
+    "Sort it into tasks, pages or the shopping list later.": "Später einsortieren: als Aufgabe, Seite oder auf die Einkaufsliste."
 }

@@ -88,6 +88,17 @@ class CollectionTemplates
         foreach ($properties as $position => $property) {
             $collection->properties()->create($property + ['position' => $position]);
         }
+
+        $defaultView = match ($template) {
+            'contracts', 'reading' => 'cards',
+            'pantry', 'journal' => 'list',
+            'projects', 'bookmarks' => 'board',
+            default => null,
+        };
+
+        if ($defaultView) {
+            $collection->update(['default_view' => $defaultView]);
+        }
     }
 
     /**

@@ -709,5 +709,9 @@
     "Create a new link? The old one stops working.": "Neuen Link erstellen? Der alte funktioniert dann nicht mehr.",
     "New link": "Neuer Link",
     "Switch off": "Ausschalten",
-    "Create calendar link": "Kalender-Link erstellen"
+    "Create calendar link": "Kalender-Link erstellen",
+    ":count entries captured offline were sent": ":count offline erfasste Einträge gesendet",
+    "You are offline – you see the last loaded state. New inbox entries and tasks are kept and sent once you are online.": "Du bist offline – du siehst den zuletzt geladenen Stand. Neue Inbox-Einträge und Aufgaben werden gespeichert und gesendet, sobald du online bist.",
+    "Waiting to be sent: :count": "Warten auf Versand: :count",
+    "Saved offline – it will be sent once you are online.": "Offline gespeichert – wird gesendet, sobald du online bist."
 }

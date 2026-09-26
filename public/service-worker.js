@@ -1,11 +1,11 @@
-// Service worker: offline view of the shopping list and push notifications.
+// Service worker: offline view of the shopping list, dashboard, tasks and inbox, and push notifications.
 // - Built assets (/build/…) are cached on first use (their file names change with every build).
-// - The shopping list page is fetched from the network first; without a connection the last
+// - These pages are fetched from the network first; without a connection the last
 //   loaded version is shown. Everything else always goes to the network.
 // The page cache is cleared on the login/welcome pages (see resources/js/app.js).
 const ASSET_CACHE = 'e11lifeos-assets-v1';
 const PAGE_CACHE = 'e11lifeos-pages';
-const OFFLINE_PAGES = ['shopping-list'];
+const OFFLINE_PAGES = ['shopping-list', 'dashboard', 'tasks', 'inbox'];
 
 self.addEventListener('install', () => self.skipWaiting());
 

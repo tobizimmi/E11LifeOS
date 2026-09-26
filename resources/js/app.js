@@ -2,17 +2,98 @@ import sort from '@alpinejs/sort';
 
 import './echo';
 
+const isAuthenticated = !!document.querySelector('meta[name="e11-authenticated"]');
+const baseUrl = () => document.querySelector('meta[name="app-base-url"]')?.content?.replace(/\/$/, '') ?? '';
+
 // Offline copies of pages belong to the signed-in user: drop them on the login/welcome pages.
-if (!document.querySelector('meta[name="e11-authenticated"]') && 'caches' in window) {
+if (!isAuthenticated && 'caches' in window) {
     caches.delete('e11lifeos-pages').catch(() => {});
+}
+
+/**
+ * Inbox entries and tasks captured while offline wait in localStorage and are sent
+ * (with a fresh CSRF token) as soon as the device is online again.
+ */
+const QUEUE_KEY = 'e11-offline-queue';
+
+window.E11Offline = {
+    items() {
+        try {
+            return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+        } catch {
+            return [];
+        }
+    },
+
+    save(items) {
+        localStorage.setItem(QUEUE_KEY, JSON.stringify(items));
+        window.dispatchEvent(new CustomEvent('offline-queue', { detail: { count: items.length } }));
+    },
+
+    add(kind, text, options = {}) {
+        const id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).toString();
+        this.save([...this.items(), { id, kind, text, ...options }]);
+    },
+
+    flushing: false,
+
+    async flush() {
+        if (this.flushing || !navigator.onLine || this.items().length === 0) {
+            return;
+        }
+
+        this.flushing = true;
+        let sent = 0;
+
+        try {
+            const tokenResponse = await fetch(`${baseUrl()}/offline/token`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+
+            if (!tokenResponse.ok) {
+                return;
+            }
+
+            const { token } = await tokenResponse.json();
+
+            for (const item of this.items()) {
+                const response = await fetch(`${baseUrl()}/offline/capture`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(item),
+                });
+
+                // Server errors and rate limits: try again later. Everything else is done with.
+                if (response.status >= 500 || response.status === 429 || response.status === 419) {
+                    break;
+                }
+
+                this.save(this.items().filter((queued) => queued.id !== item.id));
+                sent += response.ok ? 1 : 0;
+            }
+        } catch {
+            // Still no connection: keep everything for the next attempt.
+        } finally {
+            this.flushing = false;
+        }
+
+        if (sent > 0) {
+            const template = document.querySelector('meta[name="e11-offline-sent"]')?.content ?? ':count sent';
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message: template.replace(':count', sent) } }));
+            window.Livewire?.dispatch('offline-queue-flushed');
+        }
+    },
+};
+
+if (isAuthenticated) {
+    window.addEventListener('online', () => window.E11Offline.flush());
+    window.addEventListener('load', () => window.E11Offline.flush());
 }
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         // Base URL is injected server-side (works whether the app is deployed
         // at the domain root or under a path, e.g. https://host/E11LifeOS).
-        const base = document.querySelector('meta[name="app-base-url"]')?.content?.replace(/\/$/, '') ?? '';
-        navigator.serviceWorker.register(`${base}/service-worker.js`, { scope: `${base}/` });
+        navigator.serviceWorker.register(`${baseUrl()}/service-worker.js`, { scope: `${baseUrl()}/` });
     });
 }
 

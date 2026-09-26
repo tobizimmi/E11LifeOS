@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\ItemLinkController;
+use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RecipeImageController;
@@ -44,6 +45,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('push/subscriptions', [PushController::class, 'store'])->name('push.subscribe');
     Route::delete('push/subscriptions', [PushController::class, 'destroy'])->name('push.unsubscribe');
     Route::get('push/pending', [PushController::class, 'pending'])->name('push.pending');
+    Route::get('offline/token', [OfflineCaptureController::class, 'token'])->name('offline.token');
+    Route::post('offline/capture', [OfflineCaptureController::class, 'store'])->middleware('throttle:120,1')->name('offline.capture');
     Route::get('attachments/{attachment}/{name?}', AttachmentController::class)->whereNumber('attachment')->name('attachments.show');
     Volt::route('collections', 'collections.index')->name('collections.index');
     Volt::route('collections/{collection}', 'collections.show')->whereNumber('collection')->name('collections.show');

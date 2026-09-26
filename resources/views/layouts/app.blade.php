@@ -10,6 +10,7 @@
         <!-- PWA (app.url()/asset() so this also works when deployed under a URL path, e.g. /E11LifeOS) -->
         <meta name="app-base-url" content="{{ url('/') }}">
         <meta name="e11-authenticated" content="1">
+        <meta name="e11-offline-sent" content="{{ __(':count entries captured offline were sent') }}">
         <link rel="manifest" href="{{ asset('manifest.json') }}">
         <meta name="theme-color" content="#4f46e5">
         <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
@@ -28,15 +29,17 @@
 
             {{-- Shown while the device is offline (the shopping list stays readable from the cache). --}}
             <div
-                x-data="{ online: navigator.onLine }"
+                x-data="{ online: navigator.onLine, waiting: window.E11Offline?.items().length ?? 0 }"
                 x-on:online.window="online = true"
                 x-on:offline.window="online = false"
-                x-show="! online"
+                x-on:offline-queue.window="waiting = $event.detail.count"
+                x-show="! online || waiting > 0"
                 x-cloak
                 role="status"
                 class="lg:ps-64 sticky top-14 lg:top-0 z-20 bg-amber-100 dark:bg-amber-900/60 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100"
             >
-                {{ __('You are offline – you see the last loaded state. Changes are possible again once you are online.') }}
+                <span x-show="! online">{{ __('You are offline – you see the last loaded state. New inbox entries and tasks are kept and sent once you are online.') }}</span>
+                <span x-show="waiting > 0" x-text="@js(__('Waiting to be sent: :count')).replace(':count', waiting)"></span>
             </div>
 
             <div class="lg:ps-64">

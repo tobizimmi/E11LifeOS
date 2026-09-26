@@ -1,8 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
-use App\Models\Item;
-use Illuminate\Support\Facades\Auth;
+use App\Support\QuickCapture;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -19,24 +18,26 @@ new class extends Component
             'title' => ['required', 'string', 'max:255'],
         ]);
 
-        // "#tags" in the text become tags of the entry.
-        [$title, $tags] = Item::splitHashtags($validated['title']);
-
-        $item = Item::create([
-            'household_id' => $this->householdId,
-            'type' => Item::TYPE_INBOX,
-            'visibility' => $this->isPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
-            'title' => $title,
-            'created_by' => Auth::id(),
-        ]);
-        $item->syncTagNames($tags);
+        QuickCapture::inbox($this->currentUser(), (int) $this->householdId, $validated['title'], $this->isPrivate);
 
         $this->reset('title');
         $this->dispatch('item-captured');
     }
 }; ?>
 
-<form wire:submit="capture" class="space-y-2">
+<form
+    x-data
+    x-on:submit.prevent="
+        const input = document.getElementById('quick-capture-title');
+        if (navigator.onLine) { $wire.capture() }
+        else if (input.value.trim()) {
+            window.E11Offline.add('inbox', input.value.trim(), { private: document.getElementById('quick-capture-private')?.checked ?? false });
+            input.value = ''; $wire.set('title', '', false);
+            $dispatch('toast', { message: @js(__('Saved offline – it will be sent once you are online.')) });
+        }
+    "
+    class="space-y-2"
+>
     <div class="flex gap-3">
         <x-text-input
             id="quick-capture-title"

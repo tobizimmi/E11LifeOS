@@ -7,13 +7,14 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Route middleware "addon:recipes": 404 unless the user's household has the addon switched on.
+ * Route middleware "addon:recipes": 404 unless the addon is on for the user's household and the
+ * owner did not switch it off for this member.
  */
 class EnsureAddonEnabled
 {
     public function handle(Request $request, Closure $next, string $addon): Response
     {
-        abort_unless((bool) $request->user()?->currentHousehold()?->hasAddon($addon), 404);
+        abort_unless((bool) $request->user()?->canUseAddon($addon), 404);
 
         return $next($request);
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Addons;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -13,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'email', 'password', 'reminder_emails'])]
+#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour'])]
 #[Hidden(['password', 'remember_token', 'calendar_token'])]
 class User extends Authenticatable
 {
@@ -70,6 +71,9 @@ class User extends Authenticatable
             'reminder_emails' => 'boolean',
             'dashboard_widgets' => 'array',
             'is_admin' => 'boolean',
+            'weekly_digest_day' => 'integer',
+            'weekly_digest_hour' => 'integer',
+            'weekly_digest_sent_at' => 'datetime',
         ];
     }
 
@@ -93,6 +97,14 @@ class User extends Authenticatable
     public function portfolios(): HasMany
     {
         return $this->hasMany(Portfolio::class)->orderBy('id');
+    }
+
+    /**
+     * The module is on for the household and allowed for this member.
+     */
+    public function canUseAddon(string $addon): bool
+    {
+        return Addons::allowed($this, $addon);
     }
 
     public function isAdmin(): bool

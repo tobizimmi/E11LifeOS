@@ -42,6 +42,29 @@ new #[Layout('layouts.app')] class extends Component
         $this->redirectRoute('household.show', navigate: true);
     }
 
+    /**
+     * The owner switches a module off (or on again) for a single member.
+     */
+    public function toggleMemberAddon(int $memberId, string $addon): void
+    {
+        $household = Auth::user()->currentHousehold();
+        abort_if(! $household || ! array_key_exists($addon, Addons::all()), 404);
+        abort_unless($household->members()->where('user_id', Auth::id())->first()?->isOwner(), 403);
+
+        $member = $household->members()->whereKey($memberId)->firstOrFail();
+        abort_if($member->isOwner(), 422);
+
+        $permissions = $member->permissions ?? [];
+
+        if ($member->mayUse($addon)) {
+            $permissions[$addon] = false;
+        } else {
+            unset($permissions[$addon]);
+        }
+
+        $member->update(['permissions' => $permissions ?: null]);
+    }
+
     public function with(): array
     {
         $household = Auth::user()->currentHousehold();
@@ -50,7 +73,7 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'household' => $household,
-            'members' => $household->users()->orderBy('household_members.role')->get(),
+            'members' => $household->members()->with('user')->orderBy('role')->get(),
             'invites' => $household->invites()->latest()->get(),
             'addons' => Addons::all(),
             'isOwner' => (bool) $household->members()->where('user_id', Auth::id())->first()?->isOwner(),
@@ -72,12 +95,29 @@ new #[Layout('layouts.app')] class extends Component
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Members') }}</h3>
                 <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                     @foreach ($members as $member)
-                        <li class="py-2 flex justify-between items-center">
-                            <span class="text-gray-900 dark:text-gray-100">{{ $member->name }}</span>
-                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ $member->pivot->role }}</span>
+                        <li wire:key="member-{{ $member->id }}" class="py-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-900 dark:text-gray-100">{{ $member->user?->name }}</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">{{ $member->isOwner() ? __('Owner') : __('Member') }}</span>
+                            </div>
+                            @if (! $member->isOwner())
+                                <div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="{{ __('Modules for :name', ['name' => $member->user?->name]) }}">
+                                    @foreach ($addons as $key => $addon)
+                                        @continue(! $household->hasAddon($key))
+                                        @if ($isOwner)
+                                            <button type="button" wire:click="toggleMemberAddon({{ $member->id }}, '{{ $key }}')" aria-pressed="{{ $member->mayUse($key) ? 'true' : 'false' }}" @class(['rounded-full px-2.5 py-1 text-xs ring-1', 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800' => $member->mayUse($key), 'bg-gray-50 text-gray-400 line-through ring-gray-200 dark:bg-gray-900 dark:ring-gray-700' => ! $member->mayUse($key)])>{{ $addon['icon'] }} {{ $addon['label'] }}</button>
+                                        @elseif (! $member->mayUse($key))
+                                            <span class="rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-400 line-through ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-700">{{ $addon['icon'] }} {{ $addon['label'] }}</span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
+                @if ($isOwner && $members->count() > 1)
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Click a module to switch it off or on for this member. Owners always see everything. Tasks, pages, shopping list and collections are always shared.') }}</p>
+                @endif
             </div>
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">

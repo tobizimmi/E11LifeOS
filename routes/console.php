@@ -12,6 +12,7 @@ Artisan::command('inspire', function () {
 // Needs "php artisan schedule:run" every minute on the server (cron) or "php artisan schedule:work".
 Schedule::command('reminders:send')->dailyAt('07:00');
 Schedule::command('reminders:timed')->everyMinute()->withoutOverlapping();
+Schedule::command('digest:weekly')->hourlyAt(2)->withoutOverlapping();
 Schedule::command('backup:run')->dailyAt('03:15')->withoutOverlapping();
 Schedule::command('business:run-recurring')->dailyAt('06:30')->withoutOverlapping();
 Schedule::command('business:overdue-notices')->dailyAt('08:05');

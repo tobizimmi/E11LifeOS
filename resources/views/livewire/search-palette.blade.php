@@ -1,7 +1,6 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
-use App\Models\Household;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
@@ -57,12 +56,12 @@ new class extends Component
             __('To-Do') => $this->itemResults(Item::TYPE_TODO, $term, $entryUrl),
             __('Collections') => $this->itemResults(Item::TYPE_ENTRY, $term, $entryUrl),
             __('Inbox') => $this->itemResults(Item::TYPE_INBOX, $term, fn () => route('inbox.index')),
-            __('Recipes') => Household::find($this->householdId)?->hasAddon(Addons::RECIPES)
+            __('Recipes') => Auth::user()->canUseAddon(Addons::RECIPES)
                 ? Recipe::query()->visibleTo(Auth::user(), $this->householdId)->matching($term)->orderBy('title')->limit(self::RESULTS_PER_GROUP)->get()
                     ->map(fn (Recipe $recipe) => ['label' => '🍳 '.$recipe->title, 'url' => route('recipes.show', $recipe), 'private' => $recipe->isPrivate()])
                     ->all()
                 : [],
-            __('Portfolio') => Household::find($this->householdId)?->hasAddon(Addons::PORTFOLIO)
+            __('Portfolio') => Auth::user()->canUseAddon(Addons::PORTFOLIO)
                 ? PortfolioLink::search(Auth::user(), $term, self::RESULTS_PER_GROUP)
                 : [],
             __('Shopping List') => ShoppingListEntry::where('household_id', $this->householdId)

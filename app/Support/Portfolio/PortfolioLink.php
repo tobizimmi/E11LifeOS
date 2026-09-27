@@ -31,7 +31,7 @@ class PortfolioLink
 
     public static function enabledFor(User $user): bool
     {
-        return (bool) $user->currentHousehold()?->hasAddon(Addons::PORTFOLIO);
+        return $user->canUseAddon(Addons::PORTFOLIO);
     }
 
     /**

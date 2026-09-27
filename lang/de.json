@@ -2116,5 +2116,13 @@
     "Another recipe": "Anderes Rezept",
     "No suggestion for this day": "Kein Vorschlag für diesen Tag",
     "Plan these and pick ingredients": "Einplanen und Zutaten auswählen",
-    "in stock": "vorrätig"
+    "in stock": "vorrätig",
+    "Shopping list of :household": "Einkaufsliste von :household",
+    "Item": "Artikel",
+    "Nothing to buy right now.": "Gerade gibt es nichts zu kaufen.",
+    "Anyone with this link can see the list, tick items off and add new ones – no login needed.": "Jede Person mit diesem Link kann die Liste sehen, abhaken und ergänzen – ohne Anmeldung.",
+    "Share the list via link (e.g. with whoever goes shopping)": "Liste per Link teilen (z. B. mit wem, der einkaufen geht)",
+    "Anyone with this link can view the entries (read-only, without private entries, comments and files).": "Jede Person mit diesem Link kann die Einträge ansehen (nur lesen, ohne private Einträge, Kommentare und Dateien).",
+    "Share read-only via link": "Per Nur-Lesen-Link teilen",
+    "Shared from :app": "Geteilt aus :app"
 }

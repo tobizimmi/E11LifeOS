@@ -10,6 +10,7 @@ use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\OfflineCaptureController;
+use App\Http\Controllers\PublicCollectionController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PushController;
@@ -126,6 +127,8 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
 // Public recipe links (no login; only recipes someone shared, see PublicRecipeController).
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');
+    Volt::route('s/{token}', 'shopping-list.shared')->where('token', '[A-Za-z0-9]+')->name('shopping-list.shared');
+    Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
     Route::get('calendar/{token}.ics', CalendarFeedController::class)->where('token', '[A-Za-z0-9]+')->name('calendar.feed');
     Route::get('d/{token}', [PublicDocumentController::class, 'show'])->where('token', '[A-Za-z0-9]+')->name('documents.public');

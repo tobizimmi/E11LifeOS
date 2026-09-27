@@ -491,6 +491,25 @@ new #[Layout('layouts.app')] class extends Component
         $this->reset('openEntryId', 'editingBody', 'body', 'entryTagSuggestions', 'letterText');
     }
 
+    /**
+     * Read-only link for people outside the household.
+     */
+    public function createCollectionLink(): void
+    {
+        $collection = $this->findCollection();
+        abort_if($collection->isTasks(), 404);
+
+        if (! $collection->public_token) {
+            $collection->forceFill(['public_token' => \Illuminate\Support\Str::random(40)])->save();
+        }
+    }
+
+    public function revokeCollectionLink(): void
+    {
+        $this->findCollection()->forceFill(['public_token' => null])->save();
+        $this->dispatch('toast', message: __('The public link no longer works.'));
+    }
+
     public function openCancellationLetter(): void
     {
         $collection = $this->findCollection();

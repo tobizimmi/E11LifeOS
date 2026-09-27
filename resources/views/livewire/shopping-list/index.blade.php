@@ -23,6 +23,28 @@ new #[Layout('layouts.app')] class extends Component
     #[Session]
     public bool $byAisle = true;
 
+    public bool $sharing = false;
+
+    /**
+     * Link for people outside the household (e.g. whoever goes shopping); any member can create or turn it off.
+     */
+    public function createShareLink(): void
+    {
+        $household = \App\Models\Household::findOrFail($this->householdId);
+
+        if (! $household->shopping_share_token) {
+            $household->forceFill(['shopping_share_token' => \Illuminate\Support\Str::random(40)])->save();
+        }
+
+        $this->sharing = true;
+    }
+
+    public function revokeShareLink(): void
+    {
+        \App\Models\Household::whereKey($this->householdId)->update(['shopping_share_token' => null]);
+        $this->dispatch('toast', message: __('The public link no longer works.'));
+    }
+
     public function add(): void
     {
         $validated = $this->validate([
@@ -104,6 +126,7 @@ new #[Layout('layouts.app')] class extends Component
             'entries' => $entries,
             'groups' => $groups->filter(fn (array $group) => $group['entries']->isNotEmpty()),
             'aisles' => $aisles,
+            'shareUrl' => ($token = \App\Models\Household::whereKey($this->householdId)->value('shopping_share_token')) ? route('shopping-list.shared', $token) : null,
         ];
     }
 }; ?>
@@ -156,6 +179,22 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="submit" class="rounded-md bg-indigo-600 px-4 font-medium">{{ __('Find product') }}</button>
                     </form>
                 </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-4 text-sm">
+                @if ($sharing || $shareUrl)
+                    @if ($shareUrl)
+                        <p class="text-gray-700 dark:text-gray-300">🔗 {{ __('Anyone with this link can see the list, tick items off and add new ones – no login needed.') }}</p>
+                        <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                            <x-text-input readonly value="{{ $shareUrl }}" class="block min-w-0 flex-1 text-sm" aria-label="{{ __('Public link') }}" x-on:focus="$el.select()" />
+                            <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($shareUrl) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></x-secondary-button>
+                            <x-secondary-button type="button" x-show="navigator.share" x-cloak x-on:click="navigator.share({ title: {{ \Illuminate\Support\Js::from(__('Shopping List')) }}, url: {{ \Illuminate\Support\Js::from($shareUrl) }} })">↗ {{ __('Share') }}</x-secondary-button>
+                            <button type="button" wire:click="revokeShareLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Turn off link') }}</button>
+                        </div>
+                    @endif
+                @else
+                    <button type="button" wire:click="createShareLink" class="text-indigo-600 underline dark:text-indigo-400">🔗 {{ __('Share the list via link (e.g. with whoever goes shopping)') }}</button>
+                @endif
             </div>
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">

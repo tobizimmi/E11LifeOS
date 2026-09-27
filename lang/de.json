@@ -2038,5 +2038,17 @@
     ":amount over budget": ":amount über dem Budget",
     "Budgets": "Budgets",
     "Budget :category: :percent %": "Budget :category: :percent %",
-    ":spent of :limit spent this month.": ":spent von :limit in diesem Monat ausgegeben."
+    ":spent of :limit spent this month.": ":spent von :limit in diesem Monat ausgegeben.",
+    "Sorting": "Sortierung",
+    "By section": "Nach Gängen",
+    "Section for :item": "Gang für :item",
+    "Fruit & vegetables": "Obst & Gemüse",
+    "Bakery": "Backwaren",
+    "Dairy & eggs": "Milchprodukte & Eier",
+    "Meat & fish": "Fleisch & Fisch",
+    "Frozen": "Tiefkühl",
+    "Spices & baking": "Gewürze & Backen",
+    "Sweets & snacks": "Süßes & Snacks",
+    "Drinks": "Getränke",
+    "Household & drugstore": "Haushalt & Drogerie"
 }

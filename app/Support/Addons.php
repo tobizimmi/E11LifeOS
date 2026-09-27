@@ -35,7 +35,7 @@ class Addons
             self::FINANCE => [
                 'label' => __('Finances'),
                 'icon' => '💶',
-                'description' => __('Bank accounts, statement import, categories, budgets and savings analysis for the household.'),
+                'description' => __('Bank accounts, statement import, categories, reports and savings analysis for the household.'),
                 'default' => true,
             ],
             self::BUSINESS => [

@@ -2003,7 +2003,6 @@
     "Member": "Mitglied",
     "Modules for :name": "Module für :name",
     "Click a module to switch it off or on for this member. Owners always see everything. Tasks, pages, shopping list and collections are always shared.": "Klicke auf ein Modul, um es für dieses Mitglied aus- oder wieder einzuschalten. Inhaber sehen immer alles. Aufgaben, Seiten, Einkaufsliste und Sammlungen sind immer gemeinsam.",
-    "Bank accounts, statement import, categories, budgets and savings analysis for the household.": "Bankkonten, Kontoauszug-Import, Kategorien, Budgets und Sparanalyse für den Haushalt.",
     "Business": "Business",
     "Quotes, invoices, customers, receipts, time tracking and tax reports for a small business.": "Angebote, Rechnungen, Kunden, Belege, Zeiterfassung und Steuerberichte für ein kleines Unternehmen.",
     "Weekly summary sent.": "Wochenübersicht gesendet.",
@@ -2029,5 +2028,6 @@
     "Hello :name!": "Hallo :name!",
     "Here is your overview for the coming week.": "Hier ist dein Überblick für die kommende Woche.",
     "Open :app": ":app öffnen",
-    "You can change or switch off the weekly summary in your profile.": "Die Wochenübersicht kannst du im Profil ändern oder ausschalten."
+    "You can change or switch off the weekly summary in your profile.": "Die Wochenübersicht kannst du im Profil ändern oder ausschalten.",
+    "Bank accounts, statement import, categories, reports and savings analysis for the household.": "Bankkonten, Kontoauszug-Import, Kategorien, Berichte und Sparanalyse für den Haushalt."
 }

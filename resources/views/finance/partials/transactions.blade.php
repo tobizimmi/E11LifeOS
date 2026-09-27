@@ -18,6 +18,9 @@
                 </optgroup>
             @endforeach
         </select>
+        @unless ($manualOpen)
+            <button type="button" wire:click="openManual" class="rounded-lg px-3 py-2 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700">🧾 {{ __('Add receipt') }}</button>
+        @endunless
         @if ($aiAvailable)
             <button type="button" wire:click="categorizeWithAi" wire:loading.attr="disabled" wire:target="categorizeWithAi"
                     class="rounded-lg px-3 py-2 text-sm text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">
@@ -26,6 +29,90 @@
             </button>
         @endif
     </div>
+
+    @if ($manualSaved && ! $manualOpen)
+        <p class="rounded-xl bg-green-50 px-4 py-2.5 text-sm text-green-800 dark:bg-green-900/30 dark:text-green-200" role="status">✓ {{ __('Expense saved.') }}</p>
+    @endif
+
+    @if ($manualOpen)
+        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="manual-heading">
+            <div class="flex items-center justify-between gap-2">
+                <h3 id="manual-heading" class="font-semibold text-gray-900 dark:text-gray-100">🧾 {{ __('Add receipt or cash expense') }}</h3>
+                <button type="button" wire:click="closeManual" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="{{ __('Close') }}">✕</button>
+            </div>
+
+            @if ($aiAvailable)
+                <div class="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-indigo-50/60 p-3 dark:bg-indigo-900/20">
+                    <label class="cursor-pointer rounded-lg bg-white px-3 py-1.5 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-900 dark:ring-gray-600">
+                        📷 {{ $receiptPhoto ? __('Other photo') : __('Photo of the receipt') }}
+                        <input type="file" wire:model="receiptPhoto" accept="image/*,application/pdf" capture="environment" class="sr-only">
+                    </label>
+                    <button type="button" wire:click="readReceiptPhoto" wire:loading.attr="disabled" wire:target="readReceiptPhoto,receiptPhoto" @disabled(! $receiptPhoto) class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="readReceiptPhoto">✨ {{ __('Read with AI') }}</span>
+                        <span wire:loading wire:target="readReceiptPhoto">{{ __('Reading …') }}</span>
+                    </button>
+                    <span wire:loading wire:target="receiptPhoto" class="text-xs text-gray-500">{{ __('Uploading …') }}</span>
+                    @if ($receiptMessage)
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ $receiptMessage }}</span>
+                    @endif
+                </div>
+            @endif
+
+            <form wire:submit="saveManual" class="mt-4 grid gap-3 sm:grid-cols-2">
+                <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Date') }}
+                    <input type="date" wire:model="manual.booked_on" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                    <x-input-error :messages="$errors->get('manual.booked_on')" />
+                </label>
+                <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Amount') }} (€)
+                    <input type="text" inputmode="decimal" wire:model="manual.amount" placeholder="12,34" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                    <x-input-error :messages="$errors->get('manual.amount')" />
+                </label>
+                <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Shop / payee') }}
+                    <input type="text" wire:model="manual.counterparty" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                    <x-input-error :messages="$errors->get('manual.counterparty')" />
+                </label>
+                <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('What for?') }}
+                    <input type="text" wire:model="manual.purpose" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                </label>
+                <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Category') }}
+                    <select wire:model="manual.category" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                        @foreach ($groupedCategories as $group => $items)
+                            @continue(in_array($group, ['income', 'transfer'], true))
+                            <optgroup label="{{ $groupLabels[$group] ?? $group }}">
+                                @foreach ($items as $key => $category)
+                                    <option value="{{ $key }}">{{ $category['icon'] }} {{ $category['label'] }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Paid from') }}
+                    <select wire:model="manual.account" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                        <option value="cash">💵 {{ __('Cash wallet') }}</option>
+                        @foreach ($accounts as $account)
+                            @continue($account->name === __('Cash wallet'))
+                            <option value="{{ $account->id }}">🏦 {{ $account->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                @if ($matchingTransaction)
+                    <div class="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-900/30 dark:text-amber-100" role="alert">
+                        <p>{{ __('This purchase is probably already booked:') }} <strong>{{ $matchingTransaction->booked_on->format('d.m.Y') }} · {{ $matchingTransaction->counterparty }} · {{ $euro($matchingTransaction->amount) }}</strong></p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <x-primary-button type="button" wire:click="saveManual('assign')">{{ __('Only set the category there') }}</x-primary-button>
+                            <x-secondary-button type="button" wire:click="saveManual('new')">{{ __('Book separately anyway') }}</x-secondary-button>
+                        </div>
+                    </div>
+                @else
+                    <div class="flex gap-2 sm:col-span-2">
+                        <x-primary-button>{{ __('Save expense') }}</x-primary-button>
+                        <x-secondary-button type="button" wire:click="closeManual">{{ __('Cancel') }}</x-secondary-button>
+                    </div>
+                @endif
+            </form>
+        </section>
+    @endif
 
     @if ($aiError)
         <p class="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $aiError }}</p>

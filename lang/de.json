@@ -2068,5 +2068,19 @@
     "Cancellation": "Kündigung",
     "Write cancellation letter": "Kündigungsschreiben verfassen",
     "Cancellation letter": "Kündigungsschreiben",
-    "Fill in the parts in [brackets], then download it as a PDF or copy the text.": "Ergänze die Stellen in [Klammern] und lade das Schreiben dann als PDF herunter oder kopiere den Text."
+    "Fill in the parts in [brackets], then download it as a PDF or copy the text.": "Ergänze die Stellen in [Klammern] und lade das Schreiben dann als PDF herunter oder kopiere den Text.",
+    "Add receipt or cash expense": "Beleg oder Barausgabe erfassen",
+    "Add receipt": "Beleg erfassen",
+    "Other photo": "Anderes Foto",
+    "Photo of the receipt": "Foto vom Kassenzettel",
+    "Read with AI": "Mit KI auslesen",
+    "Shop / payee": "Geschäft / Empfänger",
+    "What for?": "Wofür?",
+    "Paid from": "Bezahlt von",
+    "This purchase is probably already booked:": "Diese Ausgabe ist wahrscheinlich schon gebucht:",
+    "Only set the category there": "Nur dort die Kategorie setzen",
+    "Book separately anyway": "Trotzdem extra buchen",
+    "Save expense": "Ausgabe speichern",
+    "Expense saved.": "Ausgabe gespeichert.",
+    "Cash wallet": "Bargeld"
 }

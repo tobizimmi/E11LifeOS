@@ -1875,5 +1875,15 @@
     "last used :time": "zuletzt genutzt :time",
     "not used yet": "noch nicht genutzt",
     "Sign this device out?": "Dieses Gerät abmelden?",
-    "Sign out": "Abmelden"
+    "Sign out": "Abmelden",
+    "Savings plan: :name": "Sparplan: :name",
+    "Expected dividend: :name": "Erwartete Dividende: :name",
+    "Check :name": ":name prüfen",
+    "Task created: :title": "Aufgabe erstellt: :title",
+    "The task could not be created.": "Die Aufgabe konnte nicht erstellt werden.",
+    "Create a portfolio to see its value here.": "Lege ein Depot an, um hier seinen Wert zu sehen.",
+    "Create task": "Aufgabe erstellen",
+    "Mentioned in": "Erwähnt in",
+    "Buy :name?": ":name kaufen?",
+    "Check idea: :name": "Idee prüfen: :name"
 }

@@ -8,6 +8,7 @@ use App\Models\MealPlan;
 use App\Models\ShoppingListEntry;
 use App\Support\Addons;
 use App\Support\DashboardWidgets;
+use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -97,7 +98,11 @@ new #[Layout('layouts.app')] class extends Component
             ->sortBy(fn (Item $todo) => [$dueProperty && $todo->propertyValue($dueProperty) ? 0 : 1, $dueProperty ? (string) $todo->propertyValue($dueProperty) : '', $todo->position])
             ->values();
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
-        $hasRecipes = (bool) Household::find($this->householdId)?->hasAddon(Addons::RECIPES);
+        $household = Household::find($this->householdId);
+        $hasRecipes = (bool) $household?->hasAddon(Addons::RECIPES);
+        $hasPortfolio = (bool) $household?->hasAddon(Addons::PORTFOLIO);
+        $available = fn (string $key) => ($key !== 'meals' || $hasRecipes) && ($key !== 'portfolio' || $hasPortfolio);
+        $widgets = array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), $available));
 
         return $data + [
             'tasksCollection' => $tasks,
@@ -113,8 +118,10 @@ new #[Layout('layouts.app')] class extends Component
             'inboxEntries' => $this->visibleItems(Item::TYPE_INBOX)->latest()->limit(3)->get(),
             'hasRecipes' => $hasRecipes,
             'todaysMeals' => $hasRecipes ? $this->todaysMeals() : collect(),
-            'widgets' => array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), fn (string $key) => $key !== 'meals' || $hasRecipes)),
-            'allWidgets' => DashboardWidgets::all(),
+            'widgets' => $widgets,
+            'allWidgets' => array_filter(DashboardWidgets::all(), $available, ARRAY_FILTER_USE_KEY),
+            'portfolio' => in_array('portfolio', $widgets, true) ? PortfolioLink::summary($this->currentUser()) : null,
+            'portfolioEvents' => in_array('portfolio', $widgets, true) ? array_slice(PortfolioLink::events($this->currentUser(), today(), today()->addDays(30)), 0, 3) : [],
             'deadlines' => DashboardWidgets::deadlines($this->currentUser(), $this->householdId),
             'monthlyCosts' => DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId),
         ];
@@ -182,7 +189,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </li>
                             @endforeach
                             @foreach ($allWidgets as $key => $widget)
-                                @if (! in_array($key, $widgets, true) && ($key !== 'meals' || $hasRecipes))
+                                @if (! in_array($key, $widgets, true))
                                     <li wire:key="widget-setting-{{ $key }}" class="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 text-sm text-gray-500 dark:bg-gray-800/60">
                                         <input type="checkbox" wire:click="toggleWidget('{{ $key }}')" class="rounded border-gray-300 text-indigo-600" aria-label="{{ $widget['label'] }}" />
                                         <span class="flex-1">{{ $widget['icon'] }} {{ $widget['label'] }}</span>
@@ -325,6 +332,43 @@ new #[Layout('layouts.app')] class extends Component
                                 <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('No deadlines in the next 30 days.') }}</li>
                             @endforelse
                         </ul>
+                    </section>
+                                @break
+                            @case('portfolio')
+                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <x-dashboard-card-header :title="__('Portfolio')" :href="route('portfolio.index')" />
+                        @php($tone = fn (?float $value) => $value > 0 ? 'text-emerald-700 dark:text-emerald-400' : ($value < 0 ? 'text-orange-700 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'))
+                        @if ($portfolio === null)
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Create a portfolio to see its value here.') }}</p>
+                        @else
+                            <p class="mt-2 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($portfolio['value'], 2, ',', '.') }} €</p>
+                            <p class="text-xs tabular-nums">
+                                @if ($portfolio['day_change'] !== null)
+                                    <span class="{{ $tone($portfolio['day_change']) }}">{{ __('Today') }} {{ $portfolio['day_change'] >= 0 ? '+' : '' }}{{ number_format($portfolio['day_change'], 2, ',', '.') }} €@if ($portfolio['day_change_percent'] !== null) ({{ number_format($portfolio['day_change_percent'], 2, ',', '.') }} %)@endif</span> ·
+                                @endif
+                                <span class="{{ $tone($portfolio['gain']) }}">{{ __('Total') }} {{ $portfolio['gain'] >= 0 ? '+' : '' }}{{ number_format($portfolio['gain'], 2, ',', '.') }} €</span>
+                            </p>
+                            @if ($portfolio['movers'] !== [])
+                                <ul class="mt-3 space-y-1 text-sm">
+                                    @foreach ($portfolio['movers'] as $mover)
+                                        <li wire:key="dashboard-mover-{{ $mover['symbol'] }}" class="flex items-center justify-between gap-2">
+                                            <a href="{{ route('portfolio.security', ['symbol' => $mover['symbol']]) }}" wire:navigate class="truncate text-gray-700 hover:underline dark:text-gray-300">{{ $mover['name'] }}</a>
+                                            <span class="shrink-0 tabular-nums {{ $tone($mover['change']) }}">{{ $mover['change'] >= 0 ? '+' : '' }}{{ number_format($mover['change'], 2, ',', '.') }} %</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @endif
+                        @if ($portfolioEvents !== [])
+                            <ul class="mt-3 space-y-1 border-t border-gray-100 pt-3 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-400">
+                                @foreach ($portfolioEvents as $event)
+                                    <li wire:key="dashboard-portfolio-event-{{ $event['uid'] }}" class="flex justify-between gap-2">
+                                        <span class="truncate">{{ $event['kind'] === 'dividend' ? '💰' : '📈' }} {{ $event['title'] }}</span>
+                                        <span class="shrink-0">{{ \Illuminate\Support\Carbon::parse($event['date'])->translatedFormat('j. M') }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </section>
                                 @break
                             @case('costs')

@@ -8,6 +8,7 @@ use App\Models\ShoppingListEntry;
 use App\Models\Tag;
 use App\Support\Addons;
 use App\Support\BrainAi;
+use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -60,6 +61,9 @@ new class extends Component
                 ? Recipe::query()->visibleTo(Auth::user(), $this->householdId)->matching($term)->orderBy('title')->limit(self::RESULTS_PER_GROUP)->get()
                     ->map(fn (Recipe $recipe) => ['label' => '🍳 '.$recipe->title, 'url' => route('recipes.show', $recipe), 'private' => $recipe->isPrivate()])
                     ->all()
+                : [],
+            __('Portfolio') => Household::find($this->householdId)?->hasAddon(Addons::PORTFOLIO)
+                ? PortfolioLink::search(Auth::user(), $term, self::RESULTS_PER_GROUP)
                 : [],
             __('Shopping List') => ShoppingListEntry::where('household_id', $this->householdId)
                 ->whereRaw('LOWER(label) LIKE ?', ['%'.mb_strtolower($term).'%'])

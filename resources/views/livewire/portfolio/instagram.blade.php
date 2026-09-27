@@ -208,6 +208,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @if ($post->entry_price || $post->tranches)
                                         <button type="button" wire:click="alerts({{ $post->id }})" class="rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">🔔 {{ __('Alert at entry') }}</button>
                                     @endif
+                                    <button type="button" wire:click="createTask(@js($ticker), @js(__('Check idea: :name', ['name' => $post->stock_name ?: $ticker])))" class="rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">✅ {{ __('Task') }}</button>
                                 @endif
                             </div>
                         </article>

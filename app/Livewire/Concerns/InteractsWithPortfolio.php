@@ -7,6 +7,7 @@ use App\Models\PortfolioSetting;
 use App\Models\WatchlistItem;
 use App\Support\Finance\BankCsvImporter;
 use App\Support\Portfolio\MarketData;
+use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -39,6 +40,16 @@ trait InteractsWithPortfolio
     protected function portfolioSettings(): PortfolioSetting
     {
         return PortfolioSetting::for($this->currentUser());
+    }
+
+    /**
+     * Private task about a security (#portfolio, links back to the security page).
+     */
+    public function createTask(string $symbol, string $title = ''): void
+    {
+        $task = PortfolioLink::createTask($this->currentUser(), (int) $this->householdId, mb_substr($symbol, 0, 32), mb_substr(trim($title), 0, 200));
+
+        $this->dispatch('toast', message: $task ? __('Task created: :title', ['title' => $task->title]) : __('The task could not be created.'));
     }
 
     /**

@@ -3,14 +3,17 @@
 namespace App\Support;
 
 use App\Models\CollectionProperty;
+use App\Models\Household;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\User;
+use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Str;
 
 /**
  * Finds the pages, tasks, entries and recipes a question is most likely about, restricted
- * to what the asking member may see, and turns them into short text documents for the AI.
+ * to what the asking member may see (plus their portfolio when asked about it), and turns them
+ * into short text documents for the AI.
  */
 class BrainSearch
 {
@@ -82,10 +85,15 @@ class BrainSearch
         $loaded = collect($items)->filter(fn (Item $item, string $key) => in_array($key, $keys, true));
         $loaded->each->loadMissing(['tags', 'collection.properties']);
 
-        return collect($keys)
+        $documents = collect($keys)
             ->map(fn (string $key) => isset($items[$key]) ? self::itemDocument($items[$key]) : self::recipeDocument($recipes[$key]))
             ->values()
             ->all();
+
+        // Portfolios are personal: only the asking member's own depot is added.
+        $portfolio = Household::find($householdId)?->hasAddon(Addons::PORTFOLIO) ? PortfolioLink::brainDocument($viewer, $question) : null;
+
+        return $portfolio ? array_slice([$portfolio, ...$documents], 0, self::MAX_DOCUMENTS) : $documents;
     }
 
     /**

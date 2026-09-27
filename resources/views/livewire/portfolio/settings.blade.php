@@ -3,6 +3,10 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
 use App\Models\PortfolioSetting;
+use App\Models\Security;
+use App\Support\Portfolio\MarketData;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -15,6 +19,22 @@ new #[Layout('layouts.app')] class extends Component
      * @var array<string, mixed>
      */
     public array $form = [];
+
+    /** Security picker: new tracked security. */
+    public string $trackedSymbol = '';
+
+    public string $trackedName = '';
+
+    public string $trackedFilter = '';
+
+    /** New symbol mapping: ISIN or WKN → symbol. */
+    public string $mappingKey = '';
+
+    public string $mappingSymbol = '';
+
+    public string $mappingName = '';
+
+    public string $mappingFilter = '';
 
     public function mount(): void
     {
@@ -31,18 +51,23 @@ new #[Layout('layouts.app')] class extends Component
             'drop_period_days' => (string) ($settings->drop_period_days ?? 30),
             'rsi_threshold' => (string) ($settings->rsi_threshold ?? 45),
             'min_market_cap_bn' => (string) ($settings->min_market_cap_bn ?? 0),
+            'min_stability_score' => (string) ($settings->min_stability_score ?? 40),
+            'max_pe_ratio' => (string) ($settings->max_pe_ratio ?? 999),
+            'max_debt_equity' => (string) ($settings->max_debt_equity ?? 999),
             'check_200ma' => (bool) $settings->check_200ma,
             'prefer_dividends' => (bool) $settings->prefer_dividends,
             'pushover_user_key' => (string) $settings->pushover_user_key,
             'pushover_app_token' => '',
             'news_push_enabled' => (bool) $settings->news_push_enabled,
             'news_push_portfolio_only' => (bool) ($settings->news_push_portfolio_only ?? true),
+            'news_push_max_age_hours' => (string) ($settings->news_push_max_age_hours ?? 24),
+            'notifications_enabled' => (bool) ($settings->notifications_enabled ?? true),
         ];
     }
 
     public function save(): void
     {
-        foreach (['tax_allowance', 'drop_threshold', 'rsi_threshold', 'min_market_cap_bn'] as $field) {
+        foreach (['tax_allowance', 'drop_threshold', 'rsi_threshold', 'min_market_cap_bn', 'min_stability_score', 'max_pe_ratio', 'max_debt_equity'] as $field) {
             $this->form[$field] = $this->parseNumber($this->form[$field]);
         }
 
@@ -56,12 +81,17 @@ new #[Layout('layouts.app')] class extends Component
             'form.drop_period_days' => ['required', 'integer', 'min:5', 'max:365'],
             'form.rsi_threshold' => ['required', 'numeric', 'min:5', 'max:95'],
             'form.min_market_cap_bn' => ['required', 'numeric', 'min:0', 'max:10000'],
+            'form.min_stability_score' => ['required', 'numeric', 'min:0', 'max:100'],
+            'form.max_pe_ratio' => ['required', 'numeric', 'min:1', 'max:999'],
+            'form.max_debt_equity' => ['required', 'numeric', 'min:0', 'max:999'],
             'form.check_200ma' => ['boolean'],
             'form.prefer_dividends' => ['boolean'],
             'form.pushover_user_key' => ['nullable', 'string', 'max:50'],
             'form.pushover_app_token' => ['nullable', 'string', 'max:50'],
             'form.news_push_enabled' => ['boolean'],
             'form.news_push_portfolio_only' => ['boolean'],
+            'form.news_push_max_age_hours' => ['required', 'integer', 'in:1,3,6,12,24,48,72,168'],
+            'form.notifications_enabled' => ['boolean'],
         ], attributes: ['form.benchmark_symbol' => __('Benchmark'), 'form.tax_allowance' => __('Tax-free allowance')])['form'];
 
         $settings = $this->portfolioSettings();
@@ -84,11 +114,110 @@ new #[Layout('layouts.app')] class extends Component
         $this->portfolioSettings()->fill(['pushover_app_token' => null])->save();
     }
 
+    /**
+     * Sends a test message to Pushover with the saved key and token.
+     */
+    public function testPushover(): void
+    {
+        $settings = $this->portfolioSettings();
+        $token = $settings->pushover_app_token ?: config('services.pushover.token');
+
+        if (! $settings->pushover_user_key || ! $token) {
+            $this->addError('pushover', __('Save a Pushover user key (and an app token, unless the server has one) first.'));
+
+            return;
+        }
+
+        try {
+            $response = Http::asForm()->timeout(10)->post('https://api.pushover.net/1/messages.json', [
+                'token' => $token,
+                'user' => $settings->pushover_user_key,
+                'title' => config('app.name'),
+                'message' => __('Test message: Pushover works.'),
+            ]);
+            $response->successful()
+                ? $this->dispatch('toast', message: __('Test message sent.'))
+                : $this->addError('pushover', __('Pushover rejected the message: :message', ['message' => implode(' ', (array) $response->json('errors', [$response->status()]))]));
+        } catch (\Throwable $exception) {
+            $this->addError('pushover', __('Pushover is not reachable: :message', ['message' => $exception->getMessage()]));
+        }
+    }
+
+    /**
+     * Keeps fetching prices and news of a security nobody holds or watches.
+     */
+    public function addTracked(): void
+    {
+        $symbol = strtoupper(trim($this->trackedSymbol));
+        $this->validate(['trackedSymbol' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9.\-^=]+$/']], attributes: ['trackedSymbol' => __('Symbol')]);
+
+        $security = Security::firstOrNew(['symbol' => $symbol]);
+        $security->name = $security->name ?: ($this->trackedName ?: $symbol);
+        $security->tracked = true;
+        $security->save();
+
+        $this->reset('trackedSymbol', 'trackedName');
+    }
+
+    public function removeTracked(string $symbol): void
+    {
+        Security::where('symbol', $symbol)->update(['tracked' => false]);
+    }
+
+    /**
+     * Fixed assignment of an ISIN or WKN to a symbol, used by the broker import.
+     */
+    public function addMapping(): void
+    {
+        $this->mappingKey = strtoupper(trim($this->mappingKey));
+        $this->mappingSymbol = strtoupper(trim($this->mappingSymbol));
+        $this->validate([
+            'mappingKey' => ['required', function (string $attribute, string $value, \Closure $fail) {
+                if (! MarketData::isIsin($value) && ! MarketData::isWkn($value)) {
+                    $fail(__('Enter a valid ISIN (12 characters) or WKN (6 characters).'));
+                }
+            }],
+            'mappingSymbol' => ['required', 'string', 'max:32', 'regex:/^[A-Z0-9.\-^=]+$/'],
+        ], attributes: ['mappingKey' => __('ISIN / WKN'), 'mappingSymbol' => __('Symbol')]);
+
+        DB::table('security_mappings')->upsert([[
+            'input_key' => $this->mappingKey,
+            'symbol' => $this->mappingSymbol,
+            'data' => json_encode(['symbol' => $this->mappingSymbol, 'name' => $this->mappingName ?: null, 'manual' => true]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]], ['input_key'], ['symbol', 'data', 'updated_at']);
+
+        $security = Security::firstOrNew(['symbol' => $this->mappingSymbol]);
+        $security->name = $security->name ?: ($this->mappingName ?: $this->mappingSymbol);
+        $security->isin ??= MarketData::isIsin($this->mappingKey) ? $this->mappingKey : null;
+        $security->wkn ??= MarketData::isWkn($this->mappingKey) ? $this->mappingKey : null;
+        $security->save();
+
+        $this->reset('mappingKey', 'mappingSymbol', 'mappingName');
+    }
+
+    public function removeMapping(string $key): void
+    {
+        DB::table('security_mappings')->where('input_key', $key)->delete();
+    }
+
     public function with(): array
     {
         $settings = $this->portfolioSettings();
 
+        $trackedFilter = '%'.mb_strtolower(trim($this->trackedFilter)).'%';
+        $mappingFilter = '%'.mb_strtolower(trim($this->mappingFilter)).'%';
+
         return [
+            'tracked' => Security::where('tracked', true)
+                ->where(fn ($query) => $query->whereRaw('LOWER(symbol) LIKE ?', [$trackedFilter])->orWhereRaw('LOWER(name) LIKE ?', [$trackedFilter]))
+                ->orderBy('symbol')->limit(50)->get(['symbol', 'name', 'last_price', 'currency']),
+            'trackedCount' => Security::where('tracked', true)->count(),
+            'mappings' => DB::table('security_mappings')->whereNotNull('symbol')
+                ->where(fn ($query) => $query->whereRaw('LOWER(input_key) LIKE ?', [$mappingFilter])->orWhereRaw('LOWER(symbol) LIKE ?', [$mappingFilter]))
+                ->orderBy('input_key')->limit(50)->get(),
+            'mappingCount' => DB::table('security_mappings')->whereNotNull('symbol')->count(),
             'portfolioList' => $this->portfolios()->orderBy('id')->get(),
             'hasPushoverToken' => filled($settings->pushover_app_token) || filled(config('services.pushover.token')),
             'hasOwnPushoverToken' => filled($settings->pushover_app_token),
@@ -180,7 +309,31 @@ new #[Layout('layouts.app')] class extends Component
                             <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.check_200ma" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only above the 200-day line') }}</label>
                             <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.prefer_dividends" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Prefer dividend stocks') }}</label>
                         </div>
+                        <div>
+                            <x-input-label for="settings-stability" :value="__('Minimum stability score (0–100)')" />
+                            <x-text-input id="settings-stability" wire:model="form.min_stability_score" inputmode="decimal" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.min_stability_score')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="settings-pe" :value="__('Maximum P/E ratio')" />
+                            <x-text-input id="settings-pe" wire:model="form.max_pe_ratio" inputmode="decimal" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.max_pe_ratio')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="settings-de" :value="__('Maximum debt/equity')" />
+                            <x-text-input id="settings-de" wire:model="form.max_debt_equity" inputmode="decimal" class="mt-1 block w-full" />
+                            <x-input-error :messages="$errors->get('form.max_debt_equity')" class="mt-1" />
+                        </div>
                     </div>
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('The fixed strategies bring their own limits; the values here apply to the strategy “Custom”. 999 means no limit.') }}</p>
+                    <details class="mt-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-900/50 dark:text-gray-300">
+                        <summary class="cursor-pointer font-medium">{{ __('How is the stability score calculated?') }}</summary>
+                        <ul class="mt-2 list-disc space-y-1 ps-5 text-xs">
+                            <li>{{ __('Up to 20 points each for: market capitalisation, low P/E ratio, low debt compared to equity, revenue growth and operating margin (maximum 100).') }}</li>
+                            <li>{{ __('If some key figures are missing, the score is scaled to the available ones.') }}</li>
+                            <li>{{ __('Without any key figures a security gets 55 points and must only reach half the minimum.') }}</li>
+                        </ul>
+                    </details>
                 </section>
 
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
@@ -203,11 +356,83 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                         <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.news_push_enabled" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Push news about my securities') }}</label>
                         <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.news_push_portfolio_only" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only securities in my portfolios (not the watchlist)') }}</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.notifications_enabled" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Send notifications via Pushover') }}</label>
+                        <div>
+                            <x-input-label for="settings-news-age" :value="__('Push only headlines not older than')" />
+                            <select id="settings-news-age" wire:model="form.news_push_max_age_hours" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                @foreach ([1, 3, 6, 12, 24, 48, 72, 168] as $hours)
+                                    <option value="{{ $hours }}">{{ $hours < 48 ? trans_choice(':count hour|:count hours', $hours) : trans_choice(':count day|:count days', intdiv($hours, 24)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <x-secondary-button type="button" wire:click="testPushover">🔔 {{ __('Send Pushover test') }}</x-secondary-button>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }}</span>
+                    </div>
+                    <x-input-error :messages="$errors->get('pushover')" class="mt-1" />
                 </section>
 
                 <x-primary-button>{{ __('Save') }}</x-primary-button>
             </form>
+
+            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Tracked securities') }} <span class="text-sm font-normal text-gray-500">({{ $trackedCount }})</span></h3>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Prices and news of these securities are fetched regularly, even if they are in no portfolio and on no watchlist (e.g. for analyses and recommendations). Applies to all users.') }}</p>
+                <div class="mt-4 flex flex-wrap items-start gap-2">
+                    <div class="min-w-0 flex-1">@include('portfolio.partials.security-picker', ['id' => 'tracked-search', 'model' => 'trackedSymbol', 'nameModel' => 'trackedName', 'placeholder' => __('Add security: name, symbol, ISIN or WKN')])</div>
+                    <x-secondary-button type="button" wire:click="addTracked" :disabled="$trackedSymbol === ''">＋ {{ $trackedSymbol !== '' ? $trackedSymbol : __('Add') }}</x-secondary-button>
+                </div>
+                <x-input-error :messages="$errors->get('trackedSymbol')" class="mt-1" />
+                @if ($trackedCount > 0)
+                    <x-text-input type="search" wire:model.live.debounce.300ms="trackedFilter" class="mt-3 block w-full sm:w-64" :placeholder="__('Filter …')" />
+                    <ul class="mt-2 divide-y divide-gray-100 text-sm dark:divide-gray-700">
+                        @foreach ($tracked as $security)
+                            <li wire:key="tracked-{{ $security->symbol }}" class="flex items-center gap-3 py-1.5">
+                                <a href="{{ route('portfolio.security', ['symbol' => $security->symbol]) }}" wire:navigate class="w-28 shrink-0 font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $security->symbol }}</a>
+                                <span class="min-w-0 flex-1 truncate text-gray-600 dark:text-gray-400">{{ $security->name }}</span>
+                                <span class="shrink-0 tabular-nums text-xs text-gray-500">{{ $security->last_price ? number_format($security->last_price, 2, ',', '.').' '.$security->currency : '' }}</span>
+                                <button type="button" wire:click="removeTracked(@js($security->symbol))" class="shrink-0 text-xs text-red-600 hover:underline dark:text-red-400">{{ __('remove') }}</button>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($trackedCount > $tracked->count())
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Showing :shown of :total – use the filter.', ['shown' => $tracked->count(), 'total' => $trackedCount]) }}</p>
+                    @endif
+                @endif
+            </section>
+
+            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Symbol mapping (ISIN / WKN → symbol)') }} <span class="text-sm font-normal text-gray-500">({{ $mappingCount }})</span></h3>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('The broker import finds the trading symbol for ISIN and WKN automatically. If it picks the wrong exchange or finds nothing, assign it here.') }}</p>
+                <div class="mt-4 grid gap-3 sm:grid-cols-[10rem_1fr_auto] sm:items-start">
+                    <div>
+                        <x-text-input wire:model="mappingKey" class="block w-full" :placeholder="__('ISIN or WKN')" aria-label="{{ __('ISIN / WKN') }}" />
+                        <x-input-error :messages="$errors->get('mappingKey')" class="mt-1" />
+                    </div>
+                    <div>
+                        @include('portfolio.partials.security-picker', ['id' => 'mapping-search', 'model' => 'mappingSymbol', 'nameModel' => 'mappingName', 'placeholder' => $mappingSymbol !== '' ? $mappingSymbol.($mappingName !== '' ? ' – '.$mappingName : '') : __('Symbol, e.g. SAP.DE')])
+                        <x-input-error :messages="$errors->get('mappingSymbol')" class="mt-1" />
+                    </div>
+                    <x-secondary-button type="button" wire:click="addMapping">＋ {{ __('Assign') }}</x-secondary-button>
+                </div>
+                @if ($mappingCount > 0)
+                    <x-text-input type="search" wire:model.live.debounce.300ms="mappingFilter" class="mt-3 block w-full sm:w-64" :placeholder="__('Filter …')" />
+                    <ul class="mt-2 divide-y divide-gray-100 text-sm dark:divide-gray-700">
+                        @foreach ($mappings as $mapping)
+                            <li wire:key="mapping-{{ $mapping->input_key }}" class="flex items-center gap-3 py-1.5">
+                                <span class="w-32 shrink-0 font-mono text-xs text-gray-700 dark:text-gray-300">{{ $mapping->input_key }}</span>
+                                <span class="text-gray-400">→</span>
+                                <span class="min-w-0 flex-1 truncate font-medium text-gray-900 dark:text-gray-100">{{ $mapping->symbol }} <span class="font-normal text-gray-500">{{ json_decode((string) $mapping->data, true)['name'] ?? '' }}</span></span>
+                                <button type="button" wire:click="removeMapping(@js($mapping->input_key))" class="shrink-0 text-xs text-red-600 hover:underline dark:text-red-400">{{ __('remove') }}</button>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($mappingCount > $mappings->count())
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Showing :shown of :total – use the filter.', ['shown' => $mappings->count(), 'total' => $mappingCount]) }}</p>
+                    @endif
+                @endif
+            </section>
         </div>
     </div>
 </div>

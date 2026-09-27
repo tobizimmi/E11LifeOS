@@ -19,7 +19,7 @@ class FetchPortfolioNews extends Command
     public function handle(NewsFeed $feed, Notifier $notifier): int
     {
         $stored = $feed->fetchMarket();
-        $symbols = PortfolioPosition::distinct()->pluck('symbol')->merge(WatchlistItem::distinct()->pluck('symbol'))->unique();
+        $symbols = PortfolioPosition::distinct()->pluck('symbol')->merge(WatchlistItem::distinct()->pluck('symbol'))->merge(Security::where('tracked', true)->pluck('symbol'))->unique();
 
         // Securities searched longest ago first, so that all get their turn.
         $lastFetched = NewsArticle::whereIn('symbol', $symbols)->groupBy('symbol')->selectRaw('symbol, MAX(created_at) as fetched')->pluck('fetched', 'symbol');

@@ -67,7 +67,7 @@ class NewsFeed
             }
 
             $articles = NewsArticle::whereIn('symbol', $symbols->unique())->whereNull('notified_at')
-                ->where('published_at', '>=', now()->subDay())->orderByDesc('published_at')->get();
+                ->where('published_at', '>=', now()->subHours(max(1, $settings->news_push_max_age_hours ?? 24)))->orderByDesc('published_at')->get();
 
             if ($articles->isEmpty() || ! $settings->user) {
                 continue;

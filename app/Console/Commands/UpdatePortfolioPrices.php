@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
 use App\Models\PortfolioSetting;
+use App\Models\Security;
 use App\Models\WatchlistItem;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\Valuation;
@@ -20,6 +21,7 @@ class UpdatePortfolioPrices extends Command
     {
         $symbols = PortfolioPosition::distinct()->pluck('symbol')
             ->merge(WatchlistItem::distinct()->pluck('symbol'))
+            ->merge(Security::where('tracked', true)->pluck('symbol'))
             ->merge(PortfolioSetting::whereNotNull('benchmark_symbol')->distinct()->pluck('benchmark_symbol'))
             ->merge(array_keys(MarketData::INDICES))
             ->unique()->values()->all();

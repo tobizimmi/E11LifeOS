@@ -38,6 +38,8 @@ FLUSH PRIVILEGES;
 ## 3. `.env` je Umgebung
 
 Der Deploy-Workflow fasst `.env` nie an — einmalig von Hand anlegen.
+Vollständige Vorlage mit allen Werten: [`env.production.example`](env.production.example),
+Erklärung jedes Werts: [`env-anleitung.md`](env-anleitung.md).
 **Wichtig für den Pfad-Betrieb:** `APP_URL` UND `ASSET_URL` müssen beide den
 vollen Pfad inkl. `/E11LifeOS`(`-staging`) enthalten, und `VITE_REVERB_PATH`
 muss auf denselben Pfad gesetzt sein (das ist der Präfix, den Apache vor dem

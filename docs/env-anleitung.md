@@ -1,0 +1,185 @@
+# `.env` einrichten – Anleitung
+
+Die `.env` enthält alle Zugangsdaten und Schlüssel der App. Sie liegt **nur auf dem
+Server** und nie in GitHub. Der Deploy-Workflow fasst sie nicht an: Er bricht ab,
+wenn sie fehlt, und überschreibt sie nie.
+
+Vorlage zum Ausfüllen: [`docs/env.production.example`](env.production.example)
+
+## 1. Wohin mit der Datei?
+
+Pro Umgebung eine eigene `.env` direkt im App-Verzeichnis (dort, wo `artisan` liegt):
+
+| Umgebung | Datei auf dem Server | URL |
+|---|---|---|
+| Live | `/var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live/.env` | https://zimmimail.de/E11LifeOS |
+| Staging | `/var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging/.env` | https://zimmimail.de/E11LifeOS-staging |
+
+(Die Pfade entsprechen den GitHub-Secrets `APP_PATH_LIVE` / `APP_PATH_STAGING`.)
+
+**Achtung:** Da Staging schon deployt wird, gibt es dort bereits eine `.env`, sonst
+würde der Deploy abbrechen. Vorher sichern und nur die fehlenden Zeilen ergänzen:
+
+```bash
+cd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging
+cp .env .env.backup-$(date +%F)
+nano .env
+```
+
+Neu anlegen (z. B. Live): Vorlage per Plesk-Dateimanager oder `scp` hochladen und in
+`.env` umbenennen, dann ausfüllen und die Rechte einschränken:
+
+```bash
+chmod 600 .env
+```
+
+## 2. Nach jeder Änderung
+
+Die App liest die `.env` beim Start. Deshalb danach neu starten (kein `config:cache`,
+der Deploy verzichtet bewusst darauf):
+
+```bash
+cd <App-Verzeichnis>
+/opt/plesk/php/8.4/bin/php artisan config:clear
+pm2 restart e11lifeos-app-staging --update-env      # Live: e11lifeos-app
+pm2 restart e11lifeos-reverb-staging --update-env   # Live: e11lifeos-reverb
+```
+
+Alternativ einfach neu deployen (GitHub → Actions → „Run workflow“).
+
+## 3. Einmalig: Scheduler (Cron)
+
+Erinnerungen, Kurs-Updates, News, Banksync, Instagram-Abruf, wiederkehrende Rechnungen,
+Mahnungen und Backups laufen über den Laravel-Scheduler. In Plesk unter
+**Tools & Einstellungen → Geplante Aufgaben** (oder per `crontab -e`) je Umgebung:
+
+```
+* * * * * cd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live && /opt/plesk/php/8.4/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging && /opt/plesk/php/8.4/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+## 4. Die Werte im Einzelnen
+
+Legende: **Pflicht** = ohne läuft die App nicht · **Funktion** = nötig für die
+genannte Funktion · **Optional** = Verbesserung/Ersatz.
+
+### App
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `APP_ENV` | Pflicht | `production` (Live) bzw. `staging` |
+| `APP_KEY` | Pflicht | Verschlüsselungsschlüssel (Sitzungen, gespeicherte Bank-PINs, Pushover-Token). Erzeugen mit `php artisan key:generate --show`. **Nie ändern**, sonst sind verschlüsselte Daten verloren. Live und Staging bekommen je einen eigenen. |
+| `APP_DEBUG` | Pflicht | Auf dem Server immer `false` (sonst sieht jeder Fehlermeldungen mit Interna). |
+| `APP_URL`, `ASSET_URL` | Pflicht | Volle Adresse **inkl. Pfad**, z. B. `https://zimmimail.de/E11LifeOS`. Wird für Links, Uploads, Kalender-Abo, Mobile-App und PWA gebraucht. |
+| `APP_LOCALE`, `APP_TIMEZONE` | Pflicht | `de` und `Europe/Berlin` stehen lassen. |
+| `LOG_LEVEL` | Optional | `warning` schreibt nur Probleme in `storage/logs/laravel.log`, `debug` alles. |
+
+### Datenbank
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `DB_CONNECTION` | Pflicht | `mysql` |
+| `DB_HOST`, `DB_PORT` | Pflicht | `127.0.0.1` und `3306` (MySQL auf demselben Server) |
+| `DB_DATABASE` | Pflicht | `e11lifeos_live` bzw. `e11lifeos_staging` (siehe `docs/deployment.md`, Schritt 2) |
+| `DB_USERNAME`, `DB_PASSWORD` | Pflicht | Der dort angelegte MySQL-Benutzer und sein Passwort |
+| `SESSION_DRIVER`, `QUEUE_CONNECTION`, `CACHE_STORE` | Pflicht | Alle `database` lassen. |
+
+### Echtzeit-Updates (Reverb)
+
+Damit Änderungen anderer Haushaltsmitglieder sofort erscheinen.
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `BROADCAST_CONNECTION` | Pflicht | `reverb` |
+| `REVERB_APP_ID` | Pflicht | Beliebige Zahl, z. B. `481516` |
+| `REVERB_APP_KEY` | Pflicht | Zufallswert, z. B. `openssl rand -hex 16`. **Muss** mit der GitHub-Variable `REVERB_APP_KEY_LIVE` bzw. `REVERB_APP_KEY_STAGING` übereinstimmen (sie wird beim Build ins JavaScript eingebaut). |
+| `REVERB_APP_SECRET` | Pflicht | Zufallswert, z. B. `openssl rand -hex 32`. Geheim. |
+| `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Pflicht | `zimmimail.de`, `443`, `https` |
+| `VITE_REVERB_PATH` | Pflicht | `/E11LifeOS` bzw. `/E11LifeOS-staging` |
+
+### E-Mail
+
+Für tägliche Erinnerungen, „Passwort vergessen“ und im Business-Bereich
+den Versand von Rechnungen, Angeboten und Mahnungen.
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `MAIL_MAILER` | Funktion | `smtp`. Mit `log` wird nichts verschickt (Mails landen nur im Log). |
+| `MAIL_HOST`, `MAIL_PORT` | Funktion | SMTP-Server des Postfachs. Bei einem Plesk-Postfach meist `zimmimail.de` und `587`. |
+| `MAIL_SCHEME` | Funktion | `null` für Port 587 (STARTTLS), `smtps` für Port 465 |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Funktion | Zugangsdaten des Postfachs (in Plesk unter „E-Mail“ anlegen, z. B. `lifeos@zimmimail.de`) |
+| `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` | Funktion | Absender, den Empfänger sehen. Die Adresse sollte zum Postfach passen, sonst landen Mails im Spam. |
+
+### KI (Claude)
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Funktion | API-Schlüssel von https://console.anthropic.com → „API Keys“. Nötig für Rezept-Import aus URL/Foto/PDF, Verträge und Kontoauszüge auslesen, Tag-Vorschläge, „Frag dein Second Brain“ und die Instagram-Analyse. Kostet pro Nutzung, in der Console lässt sich ein Monatslimit setzen. |
+| `ANTHROPIC_MODEL` | Optional | Standard `claude-opus-5` stehen lassen |
+
+### Web-Push
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Funktion | Einmalig mit `php artisan webpush:vapid` erzeugen und die zwei ausgegebenen Zeilen übernehmen. **Nie ändern**, sonst muss jedes Gerät Benachrichtigungen neu einschalten. Pro Umgebung ein eigenes Paar. |
+| `VAPID_SUBJECT` | Funktion | Kontakt für die Push-Dienste, z. B. `mailto:deine@email.de` |
+
+### Backups
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `BACKUP_PATH` | Optional | Ordner für die nächtlichen ZIP-Backups (Datenbank + Dateien). Leer = `storage/backups` in der App. Besser außerhalb, z. B. `/var/www/vhosts/zimmimail.de/backups/e11lifeos-live`. |
+| `BACKUP_KEEP` | Optional | Wie viele Backups behalten werden (Standard 14) |
+
+### Portfolio: Banksync (FinTS)
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `FINTS_PRODUCT_ID` | Funktion | Jede Software, die per FinTS mit Banken spricht, braucht eine registrierte Produkt-ID. Kostenlos beantragen bei der Deutschen Kreditwirtschaft: https://www.hbci-zka.de/register/prod_register.htm (Formular ausfüllen, die ID kommt nach einigen Tagen per Mail). Ohne sie lehnen die Banken den Abruf ab (Meldung 9078). Bank-Zugangsdaten gibt jeder selbst unter Portfolio → Banksync ein, sie gehören nicht in die `.env`. |
+
+### Portfolio: Instagram-Analyse
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `APIFY_API_KEY` | Funktion | Instagram hat keine offene Schnittstelle, der Abruf läuft über Apify. Konto auf https://apify.com (das Gratis-Kontingent sollte für 20 Beiträge alle 6 Stunden reichen), dann **Settings → API & Integrations → Personal API token**. Zusätzlich braucht es `ANTHROPIC_API_KEY` für die Auswertung. |
+| `INSTAGRAM_PROFILE` | Optional | Account ohne `@`, Standard `heikothieme.club` |
+| `INSTAGRAM_LIMIT` | Optional | Beiträge pro Abruf, Standard 20 |
+| `INSTAGRAM_PUSH_KEY` | Optional | Nur wenn Videos von einem anderen Gerät (z. B. dem Raspberry Pi des alten Portfolio-Managers) an `POST /api/instagram/push` geschickt werden. Selbst erzeugen: `openssl rand -hex 32`. Dasselbe Passwort im sendenden Gerät als Header `X-Push-Key` eintragen. |
+
+### Portfolio: optionale Dienste
+
+| Variable | | Bedeutung / Wert |
+|---|---|---|
+| `TWELVE_DATA_KEY` | Optional | Ersatz-Kursquelle, falls Yahoo Finance keine Daten liefert. Gratis-Schlüssel auf https://twelvedata.com |
+| `OPENFIGI_KEY` | Optional | Beim Broker-Import werden ISIN/WKN über OpenFIGI in Börsenkürzel übersetzt. Ohne Schlüssel geht es auch, nur langsamer bei vielen Wertpapieren. Gratis auf https://www.openfigi.com/api |
+| `PUSHOVER_APP_TOKEN` | Optional | Standard-App-Token für Pushover-Benachrichtigungen (https://pushover.net → „Create an Application“). Den persönlichen User-Key trägt jeder unter Portfolio → Einstellungen ein. Dort kann auch ein eigener App-Token stehen, dann wird dieser Wert nicht gebraucht. |
+
+Keine neue Variable nötig für die **Mobile-API** (Expo-App): Die App meldet sich mit
+E-Mail und Passwort an und nutzt `APP_URL` + `/api/v1`.
+
+### Einmalige Datenübernahmen
+
+In der Vorlage auskommentiert (`#`). Nur für den Import das `#` entfernen, ausfüllen,
+App neu starten (Abschnitt 2), Import ausführen, danach wieder auskommentieren.
+
+| Variablen | Import-Befehl |
+|---|---|
+| `PORTFOLIO_LEGACY_DB_HOST`, `_PORT`, `_DATABASE`, `_USERNAME`, `_PASSWORD` – MySQL-Zugang des alten Portfolio-Managers | `php artisan portfolio:import-legacy deine@email.de` |
+| `REZEPTEAPP_DB_HOST`, `_PORT`, `_DATABASE`, `_USERNAME`, `_PASSWORD` – MySQL-Zugang der RezepteApp2 | `php artisan recipes:import-rezepteapp deine@email.de` (Optionen siehe README) |
+
+Liegt die alte Datenbank auf demselben Server, ist der Host `127.0.0.1`. Die
+Zugangsdaten stehen in der Konfiguration der alten App (beim Portfolio-Manager in
+`config/database.php` auf dem Server).
+
+## 5. Reihenfolge für den Start
+
+1. Pflichtwerte (App, Datenbank, Reverb) ausfüllen, `APP_KEY` und VAPID erzeugen.
+2. App neu starten (Abschnitt 2) und prüfen, ob die Seite lädt.
+3. Cron einrichten (Abschnitt 3).
+4. E-Mail und `ANTHROPIC_API_KEY` ergänzen.
+5. Portfolio-Werte ergänzen, sobald vorhanden (FinTS-ID dauert ein paar Tage).
+6. Altdaten importieren, dann die Import-Zugänge wieder auskommentieren.
+
+Tipp: Erst auf Staging testen, dann dieselben Dienst-Schlüssel (Anthropic, Apify,
+FinTS …) in die Live-`.env` übernehmen. `APP_KEY`, Reverb- und VAPID-Werte bekommt
+jede Umgebung dagegen einzeln.

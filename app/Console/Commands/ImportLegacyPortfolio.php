@@ -23,6 +23,7 @@ use Throwable;
 #[Signature('portfolio:import-legacy
     {email : E-mail address of the LifeOS account that receives the data}
     {--legacy-email= : E-mail of the account in the old portfolio manager (default: the same)}
+    {--all : Import the data of all accounts of the old portfolio manager into this account}
     {--connection=portfolio_legacy : Database connection of the old portfolio manager}
     {--without-prices : Skip the price history (can be large)}')]
 #[Description('Import portfolios, transactions, watchlist, settings, savings plans, alerts and price history from the old portfolio manager database (safe to run again)')]
@@ -30,8 +31,11 @@ class ImportLegacyPortfolio extends Command
 {
     private ConnectionInterface $legacy;
 
+    private bool $alertsCleared = false;
+
     public function handle(): int
     {
+        $this->alertsCleared = false;
         $user = User::where('email', $this->argument('email'))->first();
 
         if (! $user) {
@@ -42,22 +46,28 @@ class ImportLegacyPortfolio extends Command
 
         try {
             $this->legacy = DB::connection((string) $this->option('connection'));
-            $legacyUser = $this->legacy->table('users')->where('email', $this->option('legacy-email') ?: $user->email)->first();
+            $legacyUsers = $this->option('all')
+                ? $this->legacy->table('users')->orderBy('id')->get()
+                : $this->legacy->table('users')->where('email', $this->option('legacy-email') ?: $user->email)->limit(1)->get();
         } catch (Throwable $exception) {
             $this->error('The old database is not reachable: '.$exception->getMessage());
 
             return self::FAILURE;
         }
 
-        if (! $legacyUser) {
+        if ($legacyUsers->isEmpty()) {
             $this->error('No account with this e-mail address in the old portfolio manager.');
 
             return self::FAILURE;
         }
 
         $this->importSecurities();
-        $portfolioMap = $this->importPortfolios($user, (int) $legacyUser->id);
-        $this->importUserData($user, (int) $legacyUser->id, $portfolioMap);
+
+        foreach ($legacyUsers as $legacyUser) {
+            $this->info("Account {$legacyUser->email}:");
+            $portfolioMap = $this->importPortfolios($user, (int) $legacyUser->id);
+            $this->importUserData($user, (int) $legacyUser->id, $portfolioMap);
+        }
 
         if (! $this->option('without-prices')) {
             $this->importPriceHistory();
@@ -312,7 +322,11 @@ class ImportLegacyPortfolio extends Command
         }
 
         if ($this->hasTable('price_alerts')) {
-            PriceAlert::where('user_id', $user->id)->delete();
+            // Replaced once per run, so that importing several old accounts keeps all their alerts.
+            if (! $this->alertsCleared) {
+                PriceAlert::where('user_id', $user->id)->delete();
+                $this->alertsCleared = true;
+            }
 
             foreach ($this->legacy->table('price_alerts')->where('user_id', $legacyUserId)->get() as $alert) {
                 PriceAlert::create([

@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\RunAdminCommand;
+use App\Models\User;
 use App\Support\AppSettings;
 use App\Support\BrainAi;
 use App\Support\WebPush;
@@ -30,11 +31,38 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $testRecipient = '';
 
+    /**
+     * Per import: "*" = all old accounts, "" = the account with the target's e-mail, else an e-mail.
+     *
+     * @var array<string, string>
+     */
+    public array $importSource = ['portfolio' => '*', 'recipes' => '*'];
+
+    /**
+     * Per import: LifeOS user id that receives the data.
+     *
+     * @var array<string, string>
+     */
+    public array $importTarget = ['portfolio' => '', 'recipes' => ''];
+
+    /**
+     * Accounts found in the old databases (loaded on demand).
+     *
+     * @var array<string, list<array{email: string, name: string}>>
+     */
+    public array $sourceAccounts = ['portfolio' => [], 'recipes' => []];
+
+    private const IMPORTS = [
+        'portfolio' => ['command' => 'portfolio:import-legacy', 'connection' => 'portfolio_legacy', 'source_option' => '--legacy-email', 'name_column' => 'username'],
+        'recipes' => ['command' => 'recipes:import-rezepteapp', 'connection' => 'rezepteapp', 'source_option' => '--source-email', 'name_column' => 'name'],
+    ];
+
     public function mount(): void
     {
         $this->authorize('admin');
         $this->fillForm();
         $this->testRecipient = Auth::user()->email;
+        $this->importTarget = ['portfolio' => (string) Auth::id(), 'recipes' => (string) Auth::id()];
     }
 
     private function fillForm(): void
@@ -119,20 +147,63 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Reads the accounts of the old database, so that one can be chosen as source.
+     */
+    public function loadAccounts(string $name): void
+    {
+        $this->authorize('admin');
+        $import = self::IMPORTS[$name] ?? abort(404);
+        $this->resetErrorBag('importSource.'.$name);
+
+        try {
+            // Fail fast instead of hanging when the old database is not reachable.
+            if (in_array(config("database.connections.{$import['connection']}.driver"), ['mysql', 'mariadb'], true)) {
+                config(["database.connections.{$import['connection']}.options" => [\PDO::ATTR_TIMEOUT => 5]]);
+                DB::purge($import['connection']);
+            }
+
+            $table = DB::connection($import['connection'])->table('users');
+            $hasName = DB::connection($import['connection'])->getSchemaBuilder()->hasColumn('users', $import['name_column']);
+
+            $this->sourceAccounts[$name] = $table->orderBy('email')->limit(500)->get()
+                ->map(fn (object $row) => ['email' => (string) $row->email, 'name' => $hasName ? (string) ($row->{$import['name_column']} ?? '') : ''])
+                ->all();
+
+            if ($this->sourceAccounts[$name] === []) {
+                $this->addError('importSource.'.$name, __('The old database contains no accounts.'));
+            }
+        } catch (\Throwable $exception) {
+            $this->sourceAccounts[$name] = [];
+            $this->addError('importSource.'.$name, __('The old database is not reachable: :message', ['message' => mb_substr(\Illuminate\Support\Str::before($exception->getMessage(), ' (Connection:'), 0, 300)]));
+        }
+    }
+
+    /**
      * Starts an import in the background (queue worker started by the scheduler every minute).
      */
     public function startImport(string $name): void
     {
         $this->authorize('admin');
+        $import = self::IMPORTS[$name] ?? abort(404);
+        $target = User::find((int) ($this->importTarget[$name] ?? 0));
 
-        $command = match ($name) {
-            'portfolio' => 'portfolio:import-legacy',
-            'recipes' => 'recipes:import-rezepteapp',
-            default => abort(404),
-        };
+        if (! $target) {
+            $this->addError('importTarget.'.$name, __('Choose the account that receives the data.'));
+
+            return;
+        }
+
+        $source = (string) ($this->importSource[$name] ?? '*');
+        $arguments = ['email' => $target->email];
+
+        if ($source === '*') {
+            $arguments['--all'] = true;
+        } elseif ($source !== '') {
+            $arguments[$import['source_option']] = $source;
+        }
 
         Cache::forever(RunAdminCommand::cacheKey($name), ['status' => 'queued', 'at' => now()->toIso8601String(), 'output' => '']);
-        RunAdminCommand::dispatch($name, $command, ['email' => Auth::user()->email]);
+        RunAdminCommand::dispatch($name, $import['command'], $arguments);
         $this->dispatch('toast', message: __('Import started. It runs in the background within the next minute.'));
     }
 
@@ -148,6 +219,7 @@ new #[Layout('layouts.app')] class extends Component
             'heartbeat' => $heartbeat ? Carbon::parse($heartbeat) : null,
             'mailer' => config('mail.default'),
             'imports' => ['portfolio' => Cache::get(RunAdminCommand::cacheKey('portfolio')), 'recipes' => Cache::get(RunAdminCommand::cacheKey('recipes'))],
+            'users' => User::orderBy('name')->get(['id', 'name', 'email']),
             'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
             'status' => [
                 __('AI (Claude)') => BrainAi::isConfigured(),
@@ -278,9 +350,32 @@ new #[Layout('layouts.app')] class extends Component
                                 <x-secondary-button type="button" wire:click="generateVapidKeys">🔑 {{ __('Create push keys') }}</x-secondary-button>
                             </div>
                         @elseif (in_array($group, ['import_portfolio', 'import_recipes'], true))
-                            <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
-                                <x-secondary-button type="button" wire:click="startImport('{{ $importNames[$group] }}')" wire:confirm="{{ __('Start the import into your account (:email)? It can safely run again.', ['email' => auth()->user()->email]) }}">⤵ {{ __('Start import') }}</x-secondary-button>
-                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save the access data first. The import runs in the background.') }}</span>
+                            <div class="mt-4 grid gap-4 border-t border-gray-100 pt-4 text-sm sm:grid-cols-2 dark:border-gray-700">
+                                <div>
+                                    <x-input-label :for="'import-source-'.$group" :value="__('Import from')" />
+                                    <select id="import-source-{{ $group }}" wire:model="importSource.{{ $importNames[$group] }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                        <option value="*">{{ __('All accounts') }}</option>
+                                        <option value="">{{ __('Account with the same e-mail as the target') }}</option>
+                                        @foreach ($sourceAccounts[$importNames[$group]] as $account)
+                                            <option value="{{ $account['email'] }}">{{ $account['email'] }}{{ $account['name'] !== '' ? ' ('.$account['name'].')' : '' }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" wire:click="loadAccounts('{{ $importNames[$group] }}')" class="mt-1 text-xs text-indigo-600 underline dark:text-indigo-400">↻ {{ __('Load accounts from the old database') }}</button>
+                                    <x-input-error :messages="$errors->get('importSource.'.$importNames[$group])" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label :for="'import-target-'.$group" :value="__('Into LifeOS account')" />
+                                    <select id="import-target-{{ $group }}" wire:model="importTarget.{{ $importNames[$group] }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                        @foreach ($users as $user)
+                                            <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                                        @endforeach
+                                    </select>
+                                    <x-input-error :messages="$errors->get('importTarget.'.$importNames[$group])" class="mt-1" />
+                                </div>
+                                <div class="flex flex-wrap items-center gap-3 sm:col-span-2">
+                                    <x-secondary-button type="button" wire:click="startImport('{{ $importNames[$group] }}')" wire:confirm="{{ __('Start the import? It can safely run again; already imported data is not duplicated.') }}">⤵ {{ __('Start import') }}</x-secondary-button>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $group === 'import_recipes' ? __('Recipes land shared in the household of the chosen account.') : __('Portfolios of all chosen old accounts land in the chosen account.') }} {{ __('Save the access data first. The import runs in the background.') }}</span>
+                                </div>
                             </div>
                             @if ($imports[$importNames[$group]])
                                 <div class="mt-3 rounded-lg bg-gray-50 p-3 text-xs dark:bg-gray-900/50">

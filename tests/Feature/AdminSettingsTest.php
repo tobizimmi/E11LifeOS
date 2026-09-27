@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -98,7 +99,26 @@ class AdminSettingsTest extends TestCase
         Queue::fake();
 
         Volt::test('admin.settings')->call('startImport', 'portfolio')->assertSee('wartet auf den Scheduler');
-        Queue::assertPushed(RunAdminCommand::class, fn (RunAdminCommand $job) => $job->command === 'portfolio:import-legacy' && $job->arguments === ['email' => $user->email] && $job->queue === 'admin');
+        Queue::assertPushed(RunAdminCommand::class, fn (RunAdminCommand $job) => $job->command === 'portfolio:import-legacy' && $job->arguments === ['email' => $user->email, '--all' => true] && $job->queue === 'admin');
+
+        // The accounts of the old database can be listed and one of them chosen, into another LifeOS account.
+        config(['database.connections.rezepteapp' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
+        DB::purge('rezepteapp');
+        Schema::connection('rezepteapp')->create('users', fn ($table) => [$table->string('id'), $table->string('email'), $table->string('name')]);
+        DB::connection('rezepteapp')->table('users')->insert(['id' => 'u1', 'email' => 'anna@example.com', 'name' => 'Anna']);
+        $partner = User::factory()->create(['email' => 'partner@example.com']);
+
+        Volt::test('admin.settings')
+            ->call('loadAccounts', 'recipes')
+            ->assertHasNoErrors()
+            ->assertSee('anna@example.com (Anna)')
+            ->set('importSource.recipes', 'anna@example.com')
+            ->set('importTarget.recipes', (string) $partner->id)
+            ->call('startImport', 'recipes');
+        Queue::assertPushed(RunAdminCommand::class, fn (RunAdminCommand $job) => $job->command === 'recipes:import-rezepteapp' && $job->arguments === ['email' => 'partner@example.com', '--source-email' => 'anna@example.com']);
+
+        config(['database.connections.portfolio_legacy' => ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 1, 'database' => 'x', 'username' => 'x', 'password' => '']]);
+        Volt::test('admin.settings')->call('loadAccounts', 'portfolio')->assertHasErrors('importSource.portfolio');
 
         (new RunAdminCommand('portfolio', 'user:admin', ['email' => 'unknown@example.com']))->handle();
         $this->assertSame('failed', Cache::get(RunAdminCommand::cacheKey('portfolio'))['status']);

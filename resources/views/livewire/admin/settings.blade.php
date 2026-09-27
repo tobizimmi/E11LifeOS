@@ -297,7 +297,7 @@ new #[Layout('layouts.app')] class extends Component
                         @if ($heartbeat && $heartbeat->gt(now()->subMinutes(5)))
                             <span class="text-emerald-600">✓</span> {{ __('Scheduler (cron) runs') }} <span class="text-xs text-gray-500">({{ $heartbeat->diffForHumans() }})</span>
                         @else
-                            <span class="text-orange-600">✗</span> <span>{{ __('Scheduler (cron) does not run') }} <span class="block text-xs text-gray-500">{{ __('Reminders, prices, news, backups and imports need the cron job “php artisan schedule:run” every minute.') }}</span></span>
+                            <span class="text-orange-600">✗</span> <span>{{ __('Scheduler (cron) does not run') }} <span class="block text-xs text-gray-500">{{ __('Reminders, prices, news, backups and imports need the scheduler. It is set up automatically as PM2 process on the next deploy (no cron job in Plesk needed).') }}</span></span>
                         @endif
                     </li>
                     @foreach ($status as $label => $ready)

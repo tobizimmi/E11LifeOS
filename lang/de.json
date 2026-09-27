@@ -1952,9 +1952,17 @@
     "Save first, then test.": "Erst speichern, dann testen.",
     "Current mailer: :mailer": "Aktueller Versand: :mailer",
     "Create push keys": "Push-Schlüssel erzeugen",
-    "Start the import into your account (:email)? It can safely run again.": "Import in dein Konto (:email) starten? Er kann gefahrlos mehrfach laufen.",
     "Start import": "Import starten",
     "Save the access data first. The import runs in the background.": "Zuerst die Zugangsdaten speichern. Der Import läuft im Hintergrund.",
     "(from .env)": "(aus .env)",
-    "currently: :value": "aktuell: :value"
+    "currently: :value": "aktuell: :value",
+    "The old database contains no accounts.": "Die alte Datenbank enthält keine Konten.",
+    "The old database is not reachable: :message": "Die alte Datenbank ist nicht erreichbar: :message",
+    "Choose the account that receives the data.": "Wähle das Konto, das die Daten bekommt.",
+    "Account with the same e-mail as the target": "Konto mit derselben E-Mail wie das Ziel",
+    "Load accounts from the old database": "Konten aus der alten Datenbank laden",
+    "Into LifeOS account": "In LifeOS-Konto",
+    "Start the import? It can safely run again; already imported data is not duplicated.": "Import starten? Er kann gefahrlos mehrfach laufen, bereits übernommene Daten werden nicht doppelt angelegt.",
+    "Recipes land shared in the household of the chosen account.": "Die Rezepte landen geteilt im Haushalt des gewählten Kontos.",
+    "Portfolios of all chosen old accounts land in the chosen account.": "Die Depots aller gewählten alten Konten landen im gewählten Konto."
 }

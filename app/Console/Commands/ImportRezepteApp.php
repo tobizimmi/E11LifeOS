@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Household;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
@@ -21,6 +22,7 @@ use Throwable;
 #[Signature('recipes:import-rezepteapp
     {email : LifeOS user whose household receives the recipes}
     {--source-email= : RezepteApp2 account to import from (default: the same e-mail)}
+    {--all : Import the recipes of all RezepteApp2 accounts into this household}
     {--uploads-path= : RezepteApp2 upload directory on this server, to copy the photos from}
     {--uploads-url= : Base URL of the RezepteApp2 uploads, to download photos from (fallback)}
     {--private : Import the recipes as private to the user instead of shared with the household}
@@ -48,19 +50,33 @@ class ImportRezepteApp extends Command
 
         try {
             $this->source = DB::connection('rezepteapp');
-            $sourceUser = $this->source->table('users')->where('email', $this->option('source-email') ?: $user->email)->first();
+            $sourceUsers = $this->option('all')
+                ? $this->source->table('users')->orderBy('email')->get()
+                : $this->source->table('users')->where('email', $this->option('source-email') ?: $user->email)->limit(1)->get();
         } catch (Throwable $exception) {
             $this->error('Cannot read the RezepteApp2 database (REZEPTEAPP_DB_* in .env): '.$exception->getMessage());
 
             return self::FAILURE;
         }
 
-        if (! $sourceUser) {
+        if ($sourceUsers->isEmpty()) {
             $this->error('No RezepteApp2 account with e-mail '.($this->option('source-email') ?: $user->email).'.');
 
             return self::FAILURE;
         }
 
+        foreach ($sourceUsers as $sourceUser) {
+            $this->importAccount($user, $household, $sourceUser);
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Recipes, categories, favorites, ratings and meal plan of one RezepteApp2 account.
+     */
+    private function importAccount(User $user, Household $household, object $sourceUser): void
+    {
         $recipes = $this->source->table('recipes')->where('userId', $sourceUser->id)->orderBy('createdAt')->get();
         $recipeIds = $recipes->pluck('id')->all();
         $alreadyImported = Recipe::where('household_id', $household->id)->whereIn('legacy_id', $recipeIds)->pluck('legacy_id')->all();
@@ -74,7 +90,7 @@ class ImportRezepteApp extends Command
         if ($this->option('dry-run')) {
             $new->each(fn (object $recipe) => $this->line(' - '.$recipe->title));
 
-            return self::SUCCESS;
+            return;
         }
 
         $this->importCategories($household->id, $sourceUser->id, $recipeIds);
@@ -154,8 +170,6 @@ class ImportRezepteApp extends Command
         if ($missingPhotos !== []) {
             $this->warn('Photos not found for: '.implode(', ', $missingPhotos).' – pass --uploads-path or --uploads-url.');
         }
-
-        return self::SUCCESS;
     }
 
     /**

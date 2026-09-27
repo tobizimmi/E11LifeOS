@@ -326,5 +326,11 @@ class PortfolioTest extends TestCase
         $this->assertSame(0, PortfolioPosition::where('symbol', 'AAPL')->count());
 
         $this->artisan('portfolio:import-legacy', ['email' => 'nobody@example.com'])->assertFailed();
+
+        // --all takes the data of every old account.
+        $this->artisan('portfolio:import-legacy', ['email' => $user->email, '--all' => true])->assertSuccessful();
+        $this->assertSame(['Comdirect', 'Fremd'], Portfolio::where('user_id', $user->id)->orderBy('legacy_id')->pluck('name')->all());
+        $this->assertSame(1, PortfolioPosition::where('symbol', 'AAPL')->count());
+        $this->assertSame(1, PriceAlert::where('user_id', $user->id)->count());
     }
 }

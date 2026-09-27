@@ -230,6 +230,15 @@ class RecipeImportTest extends TestCase
         $this->assertTrue(Recipe::where('household_id', $household->id)->get()->every->isPrivate());
     }
 
+    public function test_all_accounts_can_be_imported_into_one_household(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $this->artisan('recipes:import-rezepteapp', ['email' => $user->email, '--all' => true])->assertSuccessful();
+
+        $this->assertSame(['Altes Rezept', 'Fremdes Rezept', 'Lasagne'], Recipe::where('household_id', $household->id)->orderBy('title')->pluck('title')->all());
+    }
+
     public function test_unknown_accounts_fail_cleanly(): void
     {
         [$user] = $this->memberWithHousehold();

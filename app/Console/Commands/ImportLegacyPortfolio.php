@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Models\BankConnection;
 use App\Models\Portfolio;
 use App\Models\PortfolioSetting;
 use App\Models\PriceAlert;
 use App\Models\TargetAllocation;
 use App\Models\User;
 use App\Models\WatchlistItem;
+use App\Support\Banking\BankSync;
 use App\Support\Portfolio\Positions;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -60,7 +62,7 @@ class ImportLegacyPortfolio extends Command
             $this->importPriceHistory();
         }
 
-        $this->info('Done. Instagram analyses and bank connections follow with their modules.');
+        $this->info('Done. Instagram analyses follow with their module.');
 
         return self::SUCCESS;
     }
@@ -324,6 +326,30 @@ class ImportLegacyPortfolio extends Command
         }
 
         $this->line('Savings plans, target allocations and price alerts imported.');
+
+        // Bank connections without the PIN (it was encrypted with the old app's key).
+        if ($this->hasTable('bank_connections') && ($household = $user->currentHousehold())) {
+            $connections = $this->legacy->table('bank_connections')->where('user_id', $legacyUserId)->get();
+
+            foreach ($connections as $legacyConnection) {
+                if (($legacyConnection->fints_url ?? '') === '' || ($legacyConnection->blz ?? '') === '') {
+                    continue;
+                }
+
+                BankConnection::updateOrCreate(
+                    ['user_id' => $user->id, 'blz' => $legacyConnection->blz, 'login_name' => $legacyConnection->login_name],
+                    [
+                        'household_id' => $household->id,
+                        'bank' => array_key_exists($legacyConnection->bank_id, BankSync::BANKS) ? $legacyConnection->bank_id : 'custom',
+                        'bank_name' => $legacyConnection->bank_name,
+                        'fints_url' => $legacyConnection->fints_url,
+                        'tan_mode' => BankSync::BANKS[$legacyConnection->bank_id]['tan_mode'] ?? null,
+                    ],
+                );
+            }
+
+            $this->line("Bank connections: {$connections->count()} (please enter the PIN again)");
+        }
     }
 
     private function importPriceHistory(): void

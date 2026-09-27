@@ -34,6 +34,11 @@ return [
         'key' => env('OPENFIGI_KEY'),
     ],
 
+    // FinTS/HBCI online banking: product ID registered at https://www.hbci-zka.de (Registrierung).
+    'fints' => [
+        'product_id' => env('FINTS_PRODUCT_ID', ''),
+    ],
+
     'pushover' => [
         'token' => env('PUSHOVER_APP_TOKEN'),
     ],

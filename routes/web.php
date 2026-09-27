@@ -114,6 +114,7 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
     Volt::route('savings-plans', 'portfolio.savings')->name('savings');
     Volt::route('alerts', 'portfolio.alerts')->name('alerts');
     Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');
+    Volt::route('banking', 'portfolio.banking')->name('banking');
     Volt::route('import', 'portfolio.import')->name('import');
     Volt::route('settings', 'portfolio.settings')->name('settings');
     Volt::route('securities/{symbol}', 'portfolio.security')->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('security');

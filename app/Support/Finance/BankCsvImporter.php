@@ -148,6 +148,42 @@ class BankCsvImporter
     }
 
     /**
+     * Bookings from another source (e.g. FinTS) with the same duplicate check as the CSV import.
+     *
+     * @param  list<array{date: string, amount: float, counterparty: ?string, purpose: ?string}>  $bookings
+     * @return array{imported: int, skipped: int, errors: int}
+     */
+    public function importBookings(BankAccount $account, array $bookings, Categorizer $categorizer): array
+    {
+        $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0];
+
+        foreach ($bookings as $booking) {
+            $hash = sha1(implode('|', [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')]));
+            $transaction = Transaction::firstOrNew(['bank_account_id' => $account->id, 'import_hash' => $hash]);
+
+            if ($transaction->exists) {
+                $result['skipped']++;
+
+                continue;
+            }
+
+            $transaction->fill([
+                'household_id' => $account->household_id,
+                'user_id' => $account->user_id,
+                'booked_on' => $booking['date'],
+                'amount' => $booking['amount'],
+                'counterparty' => $booking['counterparty'] !== null ? mb_substr($booking['counterparty'], 0, 255) : null,
+                'purpose' => $booking['purpose'] !== null ? mb_substr($booking['purpose'], 0, 2000) : null,
+                'category' => $categorizer->categorize($booking['counterparty'], $booking['purpose'], $booking['amount'], null),
+            ])->save();
+
+            $result['imported']++;
+        }
+
+        return $result;
+    }
+
+    /**
      * @return array<int, array<int, string>>
      */
     private function rows(string $contents): array

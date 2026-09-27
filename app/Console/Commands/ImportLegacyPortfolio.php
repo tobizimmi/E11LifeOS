@@ -115,11 +115,13 @@ class ImportLegacyPortfolio extends Command
                     'dividend_yield' => $stock->dividend_yield ?? null,
                     'beta' => $stock->beta ?? null,
                     'last_price' => $stock->last_price ?? null,
+                    // The old "tracked symbols" list is this table: keep fetching their prices and news.
+                    'tracked' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ])->filter(fn (array $row) => $row['symbol'] !== '')->unique('symbol')->values()->all();
 
-                DB::table('securities')->upsert($rows, ['symbol'], ['name', 'isin', 'wkn', 'exchange', 'asset_type', 'sector', 'country', 'market_cap', 'week_52_high', 'week_52_low', 'dividend_yield', 'beta', 'updated_at']);
+                DB::table('securities')->upsert($rows, ['symbol'], ['name', 'isin', 'wkn', 'exchange', 'asset_type', 'sector', 'country', 'market_cap', 'week_52_high', 'week_52_low', 'dividend_yield', 'beta', 'tracked', 'updated_at']);
                 $count += count($rows);
             });
 
@@ -289,6 +291,8 @@ class ImportLegacyPortfolio extends Command
                 'pushover_app_token' => $legacy->pushover_app_token ?? null,
                 'news_push_enabled' => isset($legacy->news_push_enabled) ? (bool) $legacy->news_push_enabled : null,
                 'news_push_portfolio_only' => isset($legacy->news_push_portfolio_only) ? (bool) $legacy->news_push_portfolio_only : null,
+                'news_push_max_age_hours' => isset($legacy->news_push_min_age_hours) ? max(1, (int) $legacy->news_push_min_age_hours) : null,
+                'notifications_enabled' => isset($legacy->notifications_enabled) ? (bool) $legacy->notifications_enabled : null,
             ], fn ($value) => $value !== null && $value !== ''))->save();
 
             $this->line('Settings imported.');

@@ -25,7 +25,7 @@ class Notifier
         $settings = PortfolioSetting::where('user_id', $user->id)->first();
         $token = $settings?->pushover_app_token ?: config('services.pushover.token');
 
-        if (! $settings?->pushover_user_key || ! $token) {
+        if (! $settings?->pushover_user_key || ! $token || $settings->notifications_enabled === false) {
             return;
         }
 

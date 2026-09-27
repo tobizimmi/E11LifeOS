@@ -275,6 +275,8 @@ new #[Layout('layouts.app')] class extends Component
         'rezepteapp_db_database' => [__('Database'), 'rezepteapp2'],
         'rezepteapp_db_username' => [__('User name'), ''],
         'rezepteapp_db_password' => [__('Password'), ''],
+        'rezepteapp_uploads_path' => [__('Photo folder on this server'), '/var/www/vhosts/zimmimail.de/httpdocs/RezepteApp2/uploads'],
+        'rezepteapp_uploads_url' => [__('Photo address (if the folder is not readable)'), 'https://zimmimail.de/RezepteApp2/uploads'],
     ];
     $importNames = ['import_portfolio' => 'portfolio', 'import_recipes' => 'recipes'];
     $importStatus = ['queued' => __('waiting for the scheduler'), 'running' => __('running'), 'done' => __('finished'), 'failed' => __('failed')];
@@ -374,7 +376,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </div>
                                 <div class="flex flex-wrap items-center gap-3 sm:col-span-2">
                                     <x-secondary-button type="button" wire:click="startImport('{{ $importNames[$group] }}')" wire:confirm="{{ __('Start the import? It can safely run again; already imported data is not duplicated.') }}">⤵ {{ __('Start import') }}</x-secondary-button>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $group === 'import_recipes' ? __('Recipes land shared in the household of the chosen account.') : __('Portfolios of all chosen old accounts land in the chosen account.') }} {{ __('Save the access data first. The import runs in the background.') }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $group === 'import_recipes' ? __('Recipes land shared in the household of the chosen account. Recipes imported earlier without photo get their photos when you run the import again. RezepteApp2 is only read, never changed.') : __('Portfolios of all chosen old accounts land in the chosen account.') }} {{ __('Save the access data first. The import runs in the background.') }}</span>
                                 </div>
                             </div>
                             @if ($imports[$importNames[$group]])

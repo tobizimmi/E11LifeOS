@@ -40,6 +40,15 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    public function loadFundamentals(MarketData $market): void
+    {
+        $security = \App\Models\Security::where('symbol', $this->symbol)->first() ?? abort(404);
+
+        if (! $market->fundamentals($security, refresh: true)) {
+            $this->dispatch('toast', message: __('No key figures available for this security.'));
+        }
+    }
+
     public function with(MarketData $market, Valuation $valuation): array
     {
         $security = $market->quote($this->symbol);
@@ -61,6 +70,8 @@ new #[Layout('layouts.app')] class extends Component
             'rows' => $valuation->rows($positions),
             'transactions' => PortfolioTransaction::whereIn('portfolio_id', $portfolioIds)->where('symbol', $this->symbol)->with('portfolio')->orderByDesc('executed_on')->limit(50)->get(),
             'watched' => $this->watchlist()->where('symbol', $this->symbol)->exists(),
+            'news' => \App\Models\NewsArticle::where('symbol', $this->symbol)->orderByDesc('published_at')->limit(8)->get(),
+            'recommendation' => \App\Models\PortfolioRecommendation::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->first(),
         ];
     }
 }; ?>
@@ -137,6 +148,49 @@ new #[Layout('layouts.app')] class extends Component
                 </dl>
             </section>
 
+            @if ($recommendation)
+                <p class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100">🔎 {{ __('Buy candidate of your strategy (score :score): :reasons', ['score' => number_format($recommendation->score, 0), 'reasons' => implode(', ', array_slice($recommendation->reasons ?? [], 0, 3))]) }}</p>
+            @endif
+
+            @php
+                $figures = $security->fundamentals ?? [];
+                $percent = fn ($value) => $value !== null ? number_format($value * 100, 1, ',', '.').' %' : '—';
+                $number = fn ($value, $decimals = 1) => $value !== null ? number_format($value, $decimals, ',', '.') : '—';
+                $analyst = ['strong_buy' => __('Strong buy'), 'buy' => __('Buy'), 'hold' => __('Hold'), 'underperform' => __('Underperform'), 'sell' => __('Sell')];
+            @endphp
+            @unless (str_starts_with($security->symbol, '^') || str_contains($security->symbol, '='))
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Key figures') }}</h3>
+                        <button type="button" wire:click="loadFundamentals" wire:loading.attr="disabled" class="text-xs text-indigo-600 hover:underline dark:text-indigo-300">↻ {{ $figures ? __('Update') : __('Load key figures') }}</button>
+                    </div>
+                    @if ($figures)
+                        <dl class="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                            @foreach ([
+                                [__('Market cap'), $security->market_cap ? number_format($security->market_cap / 1e9, 1, ',', '.').' '.__('bn') : '—'],
+                                [__('P/E ratio'), $number($figures['pe_ratio'] ?? null)],
+                                [__('Forward P/E'), $number($figures['forward_pe'] ?? null)],
+                                [__('Dividend yield'), $percent($figures['dividend_yield'] ?? null)],
+                                [__('Debt/equity'), $number($figures['debt_to_equity'] ?? null, 2)],
+                                [__('Revenue growth'), $percent($figures['revenue_growth'] ?? null)],
+                                [__('Operating margin'), $percent($figures['operating_margins'] ?? null)],
+                                [__('Analysts'), ($analyst[$figures['recommendation'] ?? ''] ?? '—').(isset($figures['analyst_target']) ? ' · '.__('target :price', ['price' => $number($figures['analyst_target'], 2)]) : '')],
+                            ] as [$label, $value])
+                                <div class="rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-900/40"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ $label }}</dt><dd class="tabular-nums text-gray-900 dark:text-gray-100">{{ $value }}</dd></div>
+                            @endforeach
+                        </dl>
+                        @if ($figures['description'] ?? null)
+                            <details class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                                <summary class="cursor-pointer text-gray-900 dark:text-gray-100">{{ $security->sector }}{{ ($figures['industry'] ?? null) ? ' · '.$figures['industry'] : '' }}{{ $security->country ? ' · '.$security->country : '' }}</summary>
+                                <p class="mt-2">{{ $figures['description'] }}</p>
+                            </details>
+                        @endif
+                    @else
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Key figures are loaded with the daily market scan.') }}</p>
+                    @endif
+                </section>
+            @endunless
+
             @if ($rows !== [])
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Your position') }}</h3>
@@ -164,6 +218,17 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="flex-1 text-gray-600 dark:text-gray-300">{{ $transaction->portfolio->name }}</span>
                                 <span class="tabular-nums">{{ $transaction->quantity > 0 ? $quantity($transaction->quantity).' × ' : '' }}{{ number_format($transaction->price, 2, ',', '.') }} {{ $transaction->currency }}</span>
                             </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
+            @if ($news->isNotEmpty())
+                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('News') }}</h3>
+                    <ul class="divide-y divide-gray-100 border-t border-gray-100 text-sm dark:divide-gray-700 dark:border-gray-700">
+                        @foreach ($news as $article)
+                            <li wire:key="security-news-{{ $article->id }}"><a href="{{ $article->url }}" target="_blank" rel="noopener noreferrer" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40"><span class="text-gray-900 dark:text-gray-100">{{ $article->title }}</span> <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $article->source }} · {{ $article->published_at?->diffForHumans() }}</span></a></li>
                         @endforeach
                     </ul>
                 </section>

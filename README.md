@@ -74,6 +74,8 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
   - Analyse: Rendite im Vergleich zum Vergleichsindex, Volatilität, maximaler Rückgang, Aufteilung nach Position, Anlageklasse, Branche, Land und Währung, Korrelationsmatrix.
   - Dividenden pro Monat, Jahr und Wertpapier mit Erwartung für die nächsten 12 Monate; Steuern nach FIFO mit Verlusttöpfen, Sparerpauschbetrag, Soli und Kirchensteuer.
   - Rebalancing mit Zielgewichten (auch „nur kaufen“), Sparpläne mit automatischer Ausführung (`portfolio:execute-savings-plans`), Kursalarme sowie Stop-Loss/Kursziel-Hinweise per Push und Pushover (`portfolio:check-alerts`).
+  - Kaufempfehlungen nach Strategie (konservativ, ausgewogen, offensiv, Thieme oder eigene Kriterien: Rücksetzer vom Hoch, RSI, 200-Tage-Linie, Qualität aus KGV, Verschuldung, Wachstum, Marge) mit Backtest; täglicher Marktscan über Yahoo-Screener mit Kennzahlen (`portfolio:market-scan`).
+  - Entdecken mit Marktübersicht (DAX, S&P 500, Gold, Bitcoin …) und Screener-Listen; News aus Finanz-Feeds und Google News je Wertpapier mit Push für neue Schlagzeilen (`portfolio:fetch-news`).
   - `portfolio:update-prices` aktualisiert Kurse und Depotwerte alle 15 Minuten; `portfolio:import-legacy {email}` übernimmt alle Daten aus dem alten Portfolio-Manager (Verbindung `PORTFOLIO_LEGACY_DB_*`).
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.

@@ -21,6 +21,7 @@ class UpdatePortfolioPrices extends Command
         $symbols = PortfolioPosition::distinct()->pluck('symbol')
             ->merge(WatchlistItem::distinct()->pluck('symbol'))
             ->merge(PortfolioSetting::whereNotNull('benchmark_symbol')->distinct()->pluck('benchmark_symbol'))
+            ->merge(array_keys(MarketData::INDICES))
             ->unique()->values()->all();
 
         $quotes = $market->quotes($symbols, refresh: true);

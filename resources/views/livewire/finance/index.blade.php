@@ -2,10 +2,12 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\BankAccount;
+use App\Models\FinanceBudget;
 use App\Models\FinanceRule;
 use App\Models\Transaction;
 use App\Support\AiException;
 use App\Support\Finance\BankCsvImporter;
+use App\Support\Finance\Budgets;
 use App\Support\Finance\Categorizer;
 use App\Support\Finance\FinanceAi;
 use App\Support\Finance\FinanceCategories;
@@ -273,6 +275,26 @@ new #[Layout('layouts.app')] class extends Component
 
     // ── Report ───────────────────────────────────────────────────────────
 
+    /**
+     * Sets (or with an empty value removes) the monthly budget of a spending category.
+     */
+    public function saveBudget(string $category, string $limit): void
+    {
+        abort_unless(array_key_exists($category, FinanceCategories::all()) && ! in_array(FinanceCategories::group($category), ['income', 'transfer'], true), 404);
+        $value = trim($limit) === '' ? null : BankCsvImporter::parseAmount($limit);
+
+        if ($value === null || $value <= 0) {
+            FinanceBudget::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->where('category', $category)->delete();
+
+            return;
+        }
+
+        FinanceBudget::updateOrCreate(
+            ['user_id' => $this->currentUser()->id, 'household_id' => $this->householdId, 'category' => $category],
+            ['monthly_limit' => min(round(abs($value), 2), 9999999)],
+        );
+    }
+
     public function askAnalyst(FinanceAi $ai): void
     {
         $this->aiError = null;
@@ -312,6 +334,16 @@ new #[Layout('layouts.app')] class extends Component
             $data['rules'] = FinanceRule::where('user_id', $this->currentUser()->id)->orderBy('pattern')->get();
         }
 
+        if ($this->tab === 'budgets') {
+            $status = collect(Budgets::status($this->currentUser(), (int) $this->householdId))->keyBy(fn (array $row) => $row['budget']->category);
+            $spentThisMonth = Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)
+                ->whereBetween('booked_on', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
+                ->where('amount', '<', 0)->selectRaw('category, SUM(amount) as total')->groupBy('category')->pluck('total', 'category');
+            $data['budgetStatus'] = $status;
+            $data['spentThisMonth'] = $spentThisMonth;
+            $data['budgetCategories'] = collect(FinanceCategories::all())->reject(fn (array $category) => in_array($category['group'], ['income', 'transfer'], true));
+        }
+
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period);
             $data['report'] = FinanceReport::build(FinancePeriod::query($this->currentUser(), (int) $this->householdId, $this->period, $this->accountId())->get(), $from, $to);
@@ -340,11 +372,11 @@ new #[Layout('layouts.app')] class extends Component
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
                 <div class="inline-flex rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                    @foreach (['report' => '📊 '.__('Report'), 'transactions' => '📄 '.__('Bookings'), 'import' => '⬆ '.__('Import')] as $key => $label)
+                    @foreach (['report' => '📊 '.__('Report'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'import' => '⬆ '.__('Import')] as $key => $label)
                         <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                     @endforeach
                 </div>
-                @if ($tab !== 'import')
+                @if (! in_array($tab, ['import', 'budgets'], true))
                     <select wire:model.live="period" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Period') }}">
                         @foreach ($periods as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -372,6 +404,8 @@ new #[Layout('layouts.app')] class extends Component
                 @include('finance.partials.report')
             @elseif ($tab === 'transactions')
                 @include('finance.partials.transactions')
+            @elseif ($tab === 'budgets')
+                @include('finance.partials.budgets')
             @else
                 @include('finance.partials.import')
             @endif

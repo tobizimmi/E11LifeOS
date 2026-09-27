@@ -3,8 +3,10 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ShoppingListEntry;
 use App\Support\ProductLookup;
+use App\Support\ShoppingAisles;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Session;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] class extends Component
@@ -14,6 +16,12 @@ new #[Layout('layouts.app')] class extends Component
     public string $label = '';
 
     public string $quantity = '';
+
+    /**
+     * Group by supermarket section (true) or show the newest first (false); kept for the session.
+     */
+    #[Session]
+    public bool $byAisle = true;
 
     public function add(): void
     {
@@ -60,6 +68,15 @@ new #[Layout('layouts.app')] class extends Component
         $entry->update(['checked' => ! $entry->checked]);
     }
 
+    /**
+     * Moves an entry to another section; the household's choice is reused for the same item.
+     */
+    public function setAisle(int $id, string $aisle): void
+    {
+        abort_unless(array_key_exists($aisle, ShoppingAisles::all()), 404);
+        ShoppingListEntry::where('household_id', $this->householdId)->findOrFail($id)->update(['aisle' => $aisle]);
+    }
+
     public function delete(int $id): void
     {
         ShoppingListEntry::where('household_id', $this->householdId)->findOrFail($id)->delete();
@@ -67,11 +84,26 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
+        $entries = ShoppingListEntry::where('household_id', $this->householdId)->orderBy('checked')->latest()->get();
+        $aisles = ShoppingAisles::all();
+        $order = array_flip(array_keys($aisles));
+
+        // Open items by section in walking order, checked ones at the end.
+        $groups = $this->byAisle
+            ? $entries->where('checked', false)
+                ->groupBy(fn (ShoppingListEntry $entry) => array_key_exists((string) ($entry->aisle ??= ShoppingAisles::guess($entry->label)), $aisles) ? $entry->aisle : ShoppingAisles::OTHER)
+                ->sortBy(fn ($group, string $aisle) => $order[$aisle])
+                ->map(fn ($group, string $aisle) => ['label' => $aisles[$aisle]['icon'].' '.$aisles[$aisle]['label'], 'entries' => $group->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)])
+            : collect(['all' => ['label' => null, 'entries' => $entries->where('checked', false)]]);
+
+        if ($entries->where('checked', true)->isNotEmpty()) {
+            $groups['done'] = ['label' => '✓ '.__('Done'), 'entries' => $entries->where('checked', true)];
+        }
+
         return [
-            'entries' => ShoppingListEntry::where('household_id', $this->householdId)
-                ->orderBy('checked')
-                ->latest()
-                ->get(),
+            'entries' => $entries,
+            'groups' => $groups->filter(fn (array $group) => $group['entries']->isNotEmpty()),
+            'aisles' => $aisles,
         ];
     }
 }; ?>
@@ -129,61 +161,84 @@ new #[Layout('layouts.app')] class extends Component
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <p class="text-xs text-gray-400 dark:text-gray-500 mb-3 sm:hidden">{{ __('Swipe an item left to delete it.') }}</p>
 
-                <ul class="space-y-2">
-                    @forelse ($entries as $entry)
-                        <li
-                            wire:key="entry-{{ $entry->id }}"
-                            x-data="{
-                                dragX: 0,
-                                startX: 0,
-                                dragging: false,
-                                start(e) { this.startX = e.touches[0].clientX; this.dragging = true },
-                                move(e) {
-                                    if (! this.dragging) return;
-                                    this.dragX = Math.min(0, Math.max(-96, e.touches[0].clientX - this.startX));
-                                },
-                                end() {
-                                    this.dragging = false;
-                                    if (this.dragX < -64) { $wire.delete({{ $entry->id }}) }
-                                    this.dragX = 0;
-                                },
-                            }"
-                            class="relative overflow-hidden rounded-md"
-                        >
-                            <div class="absolute inset-y-0 right-0 w-24 bg-red-600 flex items-center justify-center text-white text-sm">
-                                {{ __('Delete') }}
-                            </div>
+                <div class="mb-3 flex items-center justify-between gap-2">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">{{ trans_choice(':count item still open|:count items still open', $entries->where('checked', false)->count()) }}</p>
+                    <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="group" aria-label="{{ __('Sorting') }}">
+                        <button type="button" wire:click="$set('byAisle', true)" aria-pressed="{{ $byAisle ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => $byAisle, 'text-gray-600 dark:text-gray-400' => ! $byAisle])>🏪 {{ __('By section') }}</button>
+                        <button type="button" wire:click="$set('byAisle', false)" aria-pressed="{{ ! $byAisle ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => ! $byAisle, 'text-gray-600 dark:text-gray-400' => $byAisle])>🕒 {{ __('Newest first') }}</button>
+                    </div>
+                </div>
 
-                            <div
-                                @touchstart="start($event)"
-                                @touchmove="move($event)"
-                                @touchend="end()"
-                                :style="`transform: translateX(${dragX}px)`"
-                                class="relative bg-white dark:bg-gray-800 flex items-center gap-3 border border-gray-200 dark:border-gray-700 rounded-md p-3 transition-transform"
+                @forelse ($groups as $groupKey => $group)
+                    <div wire:key="group-{{ $groupKey }}" class="mb-4 last:mb-0">
+                        @if ($group['label'])
+                            <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $group['label'] }}</h3>
+                        @endif
+                        <ul class="space-y-2">
+                            @foreach ($group['entries'] as $entry)
+                            <li
+                                wire:key="entry-{{ $entry->id }}"
+                                x-data="{
+                                    dragX: 0,
+                                    startX: 0,
+                                    dragging: false,
+                                    start(e) { this.startX = e.touches[0].clientX; this.dragging = true },
+                                    move(e) {
+                                        if (! this.dragging) return;
+                                        this.dragX = Math.min(0, Math.max(-96, e.touches[0].clientX - this.startX));
+                                    },
+                                    end() {
+                                        this.dragging = false;
+                                        if (this.dragX < -64) { $wire.delete({{ $entry->id }}) }
+                                        this.dragX = 0;
+                                    },
+                                }"
+                                class="relative overflow-hidden rounded-md"
                             >
-                                <input
-                                    type="checkbox"
-                                    wire:click="toggle({{ $entry->id }})"
-                                    @checked($entry->checked)
-                                    class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500"
-                                />
-
-                                <span class="flex-1 {{ $entry->checked ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100' }}">
-                                    {{ $entry->label }}
-                                    @if ($entry->quantity)
-                                        <span class="text-sm text-gray-500 dark:text-gray-400">({{ $entry->quantity }})</span>
-                                    @endif
-                                </span>
-
-                                <button wire:click="delete({{ $entry->id }})" class="hidden sm:inline text-sm text-red-600 dark:text-red-400 underline">
+                                <div class="absolute inset-y-0 right-0 w-24 bg-red-600 flex items-center justify-center text-white text-sm">
                                     {{ __('Delete') }}
-                                </button>
-                            </div>
-                        </li>
-                    @empty
-                        <li class="text-gray-500 dark:text-gray-400 text-sm">{{ __('Shopping list is empty.') }}</li>
-                    @endforelse
-                </ul>
+                                </div>
+
+                                <div
+                                    @touchstart="start($event)"
+                                    @touchmove="move($event)"
+                                    @touchend="end()"
+                                    :style="`transform: translateX(${dragX}px)`"
+                                    class="relative bg-white dark:bg-gray-800 flex items-center gap-3 border border-gray-200 dark:border-gray-700 rounded-md p-3 transition-transform"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        wire:click="toggle({{ $entry->id }})"
+                                        @checked($entry->checked)
+                                        class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                                    />
+
+                                    <span class="flex-1 {{ $entry->checked ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100' }}">
+                                        {{ $entry->label }}
+                                        @if ($entry->quantity)
+                                            <span class="text-sm text-gray-500 dark:text-gray-400">({{ $entry->quantity }})</span>
+                                        @endif
+                                    </span>
+
+                                    @if ($byAisle && ! $entry->checked)
+                                        <select wire:change="setAisle({{ $entry->id }}, $event.target.value)" class="hidden rounded border-gray-200 py-0.5 text-xs text-gray-500 sm:block dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400" aria-label="{{ __('Section for :item', ['item' => $entry->label]) }}">
+                                            @foreach ($aisles as $aisleKey => $aisle)
+                                                <option value="{{ $aisleKey }}" @selected(($entry->aisle ?: 'other') === $aisleKey)>{{ $aisle['icon'] }} {{ $aisle['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+
+                                    <button wire:click="delete({{ $entry->id }})" class="hidden sm:inline text-sm text-red-600 dark:text-red-400 underline">
+                                        {{ __('Delete') }}
+                                    </button>
+                                </div>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @empty
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">{{ __('Shopping list is empty.') }}</p>
+                @endforelse
             </div>
 
         </div>

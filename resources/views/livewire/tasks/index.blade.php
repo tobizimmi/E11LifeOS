@@ -304,6 +304,27 @@ new #[Layout('layouts.app')] class extends Component
         $task->save();
     }
 
+    /**
+     * Adds or removes a member from the task's rotation (cleaning plan). The first member in the
+     * rotation gets the task assigned right away if nobody has it yet.
+     */
+    public function toggleRotation(int $taskId, int $userId): void
+    {
+        $task = $this->findTask($taskId);
+        abort_unless(array_key_exists($userId, QuickCapture::members((int) $this->householdId)), 404);
+
+        $rotation = $task->rotation();
+        $rotation = in_array($userId, $rotation, true) ? array_values(array_diff($rotation, [$userId])) : [...$rotation, $userId];
+        $task->setRotation($rotation);
+        $assignee = $this->collection()->systemProperty('assignee');
+
+        if ($assignee && count($task->rotation()) > 1 && ! in_array((int) $task->propertyValue($assignee), $task->rotation(), true)) {
+            $task->setPropertyValue($assignee, $task->rotation()[0]);
+        }
+
+        $task->save();
+    }
+
     public function updateTags(int $taskId, string $tags): void
     {
         $this->findTask($taskId)->syncTagNames(explode(',', $tags));
@@ -861,6 +882,23 @@ new #[Layout('layouts.app')] class extends Component
                             </select>
                         </label>
                     </div>
+
+                    @if ($repeat && count($members) > 1)
+                        @php
+                            $rotation = $openTask->rotation();
+                        @endphp
+                        <div>
+                            <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">🔄 {{ __('Take turns') }}</h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach ($members as $memberId => $memberName)
+                                    <button type="button" wire:click="toggleRotation({{ $openTask->id }}, {{ $memberId }})" aria-pressed="{{ in_array($memberId, $rotation, true) ? 'true' : 'false' }}" @class(['rounded-full px-2.5 py-1 text-xs ring-1', 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800' => in_array($memberId, $rotation, true), 'text-gray-500 ring-gray-200 dark:text-gray-400 dark:ring-gray-700' => ! in_array($memberId, $rotation, true)])>
+                                        @if (in_array($memberId, $rotation, true))<span class="font-semibold">{{ array_search($memberId, $rotation, true) + 1 }}.</span>@endif {{ $memberName }}
+                                    </button>
+                                @endforeach
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ count($rotation) > 1 ? __('After each completion the next person in this order gets the task.') : __('Choose at least two people who do the task in turns (e.g. cleaning plan).') }}</p>
+                        </div>
+                    @endif
 
                     {{-- Subtasks --}}
                     <div>

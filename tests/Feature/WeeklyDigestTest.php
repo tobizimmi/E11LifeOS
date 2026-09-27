@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BankAccount;
 use App\Models\Collection;
 use App\Models\HouseholdMember;
 use App\Models\Invoice;
@@ -51,7 +52,8 @@ class WeeklyDigestTest extends TestCase
         $this->task($tasks, 'Müll rausbringen', '2026-09-29', ['created_by' => $user->id]);
         $this->task($tasks, 'Später', '2026-10-20', ['created_by' => $user->id]);
         $this->task($tasks, 'Erledigt', null, ['created_by' => $user->id, 'done' => true, 'completed_at' => now()->subDays(2)]);
-        Transaction::factory()->create(['household_id' => $household->id, 'booked_on' => now()->subDays(2), 'amount' => -45.5]);
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => now()->subDays(2), 'amount' => -45.5]);
         Invoice::factory()->create(['household_id' => $household->id, 'user_id' => $user->id, 'type' => Invoice::INVOICE, 'status' => Invoice::OPEN, 'gross_total' => 200, 'paid_total' => 0, 'due_on' => now()->subDay()]);
 
         $digest = WeeklyDigest::for($user);

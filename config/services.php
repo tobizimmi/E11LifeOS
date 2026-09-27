@@ -39,6 +39,15 @@ return [
         'product_id' => env('FINTS_PRODUCT_ID', ''),
     ],
 
+    // Instagram analysis: posts are fetched with Apify's Instagram scraper and read by the AI.
+    'instagram' => [
+        'apify_key' => env('APIFY_API_KEY'),
+        'profile' => env('INSTAGRAM_PROFILE', 'heikothieme.club'),
+        'limit' => (int) env('INSTAGRAM_LIMIT', 20),
+        // Shared secret for pushing analysed videos from another machine (e.g. a Raspberry Pi).
+        'push_key' => env('INSTAGRAM_PUSH_KEY'),
+    ],
+
     'pushover' => [
         'token' => env('PUSHOVER_APP_TOKEN'),
     ],

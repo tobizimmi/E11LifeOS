@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\BankConnection;
+use App\Models\InstagramPost;
 use App\Models\Portfolio;
 use App\Models\PortfolioSetting;
 use App\Models\PriceAlert;
@@ -62,7 +63,9 @@ class ImportLegacyPortfolio extends Command
             $this->importPriceHistory();
         }
 
-        $this->info('Done. Instagram analyses follow with their module.');
+        $this->importInstagram();
+
+        $this->info('Done.');
 
         return self::SUCCESS;
     }
@@ -374,5 +377,48 @@ class ImportLegacyPortfolio extends Command
         });
 
         $this->line("Price history: {$count} daily prices");
+    }
+
+    private function importInstagram(): void
+    {
+        if (! $this->hasTable('instagram_videos')) {
+            return;
+        }
+
+        $json = fn ($value) => is_string($value) && $value !== '' ? (json_decode($value, true) ?: null) : null;
+        $count = 0;
+
+        $this->legacy->table('instagram_videos')->orderBy('id')->chunk(200, function ($videos) use ($json, &$count) {
+            foreach ($videos as $video) {
+                InstagramPost::updateOrCreate(['instagram_id' => (string) $video->instagram_id], [
+                    'profile' => (string) config('services.instagram.profile'),
+                    'shortcode' => (string) $video->shortcode,
+                    'caption' => $video->caption,
+                    'thumbnail_url' => $video->thumbnail_url,
+                    'video_url' => $video->video_url,
+                    'post_url' => $video->post_url,
+                    'published_at' => $video->published_at,
+                    'duration_sec' => $video->duration_sec,
+                    'view_count' => $video->view_count,
+                    'transcript' => $video->transcript ?: null,
+                    'summary' => $video->ai_summary ?: null,
+                    'tickers' => $json($video->ai_tickers),
+                    'stock_name' => ($video->ai_stock_name ?? null) ?: null,
+                    'sentiment' => in_array($video->ai_sentiment, InstagramPost::SENTIMENTS, true) ? $video->ai_sentiment : null,
+                    'key_points' => $json($video->ai_key_points ?? null),
+                    'entry_price' => $video->ai_entry_price ?? null,
+                    'entry_type' => $video->ai_entry_type ?? null,
+                    'stop_loss' => $video->ai_stop_loss ?? null,
+                    'currency' => ($video->ai_currency ?? null) ?: 'EUR',
+                    'tranches' => $json($video->ai_tranches ?? null),
+                    'analyzed_at' => $video->analyzed_at,
+                    // Old posts are not announced again.
+                    'notified_at' => now(),
+                ]);
+                $count++;
+            }
+        });
+
+        $this->line("Instagram posts: {$count}");
     }
 }

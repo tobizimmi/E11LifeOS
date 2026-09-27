@@ -8,6 +8,7 @@
             'portfolio.recommendations' => '🔎 '.__('Recommendations'),
             'portfolio.discover' => '🌍 '.__('Discover'),
             'portfolio.news' => '📰 '.__('News'),
+            'portfolio.instagram' => '📸 '.__('Instagram'),
             'portfolio.dividends' => '💰 '.__('Dividends'),
             'portfolio.taxes' => '🧮 '.__('Taxes'),
             'portfolio.rebalancing' => '⚖ '.__('Rebalancing'),

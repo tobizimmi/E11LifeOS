@@ -6,6 +6,7 @@ use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\FinanceReportPdfController;
+use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\OfflineCaptureController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\XRechnungController;
 use App\Models\Collection;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -115,6 +117,7 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
     Volt::route('alerts', 'portfolio.alerts')->name('alerts');
     Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');
     Volt::route('banking', 'portfolio.banking')->name('banking');
+    Volt::route('instagram', 'portfolio.instagram')->name('instagram');
     Volt::route('import', 'portfolio.import')->name('import');
     Volt::route('settings', 'portfolio.settings')->name('settings');
     Volt::route('securities/{symbol}', 'portfolio.security')->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('security');
@@ -129,5 +132,9 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->where('token', '[A-Za-z0-9]+')->name('documents.public.pdf');
     Route::post('d/{token}/accept', [PublicDocumentController::class, 'accept'])->where('token', '[A-Za-z0-9]+')->name('documents.public.accept');
 });
+
+// Instagram videos analysed on another machine (header X-Push-Key, no session).
+Route::post('api/instagram/push', InstagramPushController::class)
+    ->withoutMiddleware([ValidateCsrfToken::class])->middleware('throttle:30,1')->name('instagram.push');
 
 require __DIR__.'/auth.php';

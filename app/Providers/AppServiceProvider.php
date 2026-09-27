@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\PrefixAwareSignedUploadUrl;
+use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -36,6 +38,9 @@ class AppServiceProvider extends ServiceProvider
             // just a base to prefix), see FrontendAssets::js().
             $filename = config('app.debug') ? '/livewire/livewire.js' : '/livewire/livewire.min.js';
             config(['livewire.asset_url' => rtrim(config('app.url'), '/').$filename]);
+
+            // File uploads: sign the upload URL without the path prefix (see the class).
+            GenerateSignedUploadUrl::swap(new PrefixAwareSignedUploadUrl);
         }
     }
 }

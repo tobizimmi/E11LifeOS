@@ -1340,6 +1340,9 @@ new #[Layout('layouts.app')] class extends Component
                     @endphp
                     @if (count($views) > 1)
                         <div class="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden text-sm" role="group" aria-label="{{ __('View') }}">
+                            @if ($collection->isTasks())
+                                <a href="{{ route('tasks.index') }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 dark:bg-gray-800 dark:text-gray-300">✅ {{ __('Task list') }}</a>
+                            @endif
                             @foreach ($views as $viewKey => $viewLabel)
                                 <button type="button" wire:click="$set('viewMode', '{{ $viewKey }}')" @class(['px-3 py-1.5', 'bg-indigo-600 text-white' => $currentView === $viewKey, 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300' => $currentView !== $viewKey]) aria-pressed="{{ $currentView === $viewKey ? 'true' : 'false' }}">{{ $viewLabel }}</button>
                             @endforeach

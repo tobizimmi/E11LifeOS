@@ -214,6 +214,23 @@ class RecipesTest extends TestCase
             ->assertViewHas('recipes', fn ($recipes) => $titles($recipes) === ['Alter Auflauf']);
     }
 
+    public function test_recipes_can_be_shown_as_cards_list_or_table(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        Recipe::factory()->for($household)->create(['title' => 'Lasagne', 'prep_time' => 20, 'cook_time' => 40, 'cooked_count' => 3]);
+
+        Volt::test('recipes.index')->assertSet('view', 'cards')->assertSee('Lasagne')
+            ->set('view', 'list')->assertSee('Lasagne')->assertSee('60 Min')
+            ->set('view', 'table')->assertSee('Gesamtzeit')->assertSee('Lasagne')
+            ->set('view', 'unknown');
+
+        // The choice is kept for the session; unknown values fall back to cards.
+        Volt::test('recipes.index')->assertSet('view', 'cards');
+        Volt::test('recipes.index')->set('view', 'table');
+        Volt::test('recipes.index')->assertSet('view', 'table');
+    }
+
     public function test_private_recipes_and_other_households_stay_hidden(): void
     {
         [$owner, $household] = $this->memberWithHousehold();

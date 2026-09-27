@@ -120,6 +120,12 @@
                                                 @endforeach
                                             </select>
                                         </label>
+                                        @if ($property->remindDays() !== null)
+                                            <label class="flex items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
+                                                <input type="checkbox" wire:click="togglePropertyTask({{ $property->id }})" @checked($property->createsTask()) class="rounded border-gray-300 text-indigo-600 dark:border-gray-700 dark:bg-gray-900">
+                                                ✅ {{ __('Also create a task') }}
+                                            </label>
+                                        @endif
                                     @endif
                                     @if ($property->hasOptions())
                                         <div class="flex flex-wrap items-center gap-2 ps-2">

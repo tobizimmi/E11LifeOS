@@ -45,7 +45,7 @@ class CollectionTemplates
                 ['name' => __('Customer number'), 'type' => CollectionProperty::TYPE_TEXT],
                 ['name' => __('Notice period'), 'type' => CollectionProperty::TYPE_TEXT],
                 ['name' => __('Ends on'), 'type' => CollectionProperty::TYPE_DATE],
-                ['name' => __('Cancel by'), 'type' => CollectionProperty::TYPE_DATE, 'options' => ['remind_days' => 30]],
+                ['name' => __('Cancel by'), 'type' => CollectionProperty::TYPE_DATE, 'options' => ['remind_days' => 30, 'create_task' => true]],
                 ['name' => __('Website'), 'type' => CollectionProperty::TYPE_URL],
             ],
             'budget' => [

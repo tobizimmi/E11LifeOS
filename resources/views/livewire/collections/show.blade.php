@@ -14,6 +14,7 @@ use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
 use App\Models\CollectionView;
 use App\Support\BrainAi;
+use App\Support\ContractAssistant;
 use App\Support\AiException;
 use App\Support\EntryAi;
 use App\Support\EntryFilters;
@@ -69,6 +70,11 @@ new #[Layout('layouts.app')] class extends Component
      */
     #[Url(as: 'entry', except: '')]
     public string $openEntryId = '';
+
+    /**
+     * Cancellation letter being edited in the detail popup of a contract.
+     */
+    public ?string $letterText = null;
 
     /**
      * AI tag suggestions for the open entry.
@@ -477,11 +483,31 @@ new #[Layout('layouts.app')] class extends Component
         $this->openEntryId = (string) $this->findEntry($entryId)->id;
         $this->editingBody = false;
         $this->entryTagSuggestions = [];
+        $this->letterText = null;
     }
 
     public function closeEntry(): void
     {
-        $this->reset('openEntryId', 'editingBody', 'body', 'entryTagSuggestions');
+        $this->reset('openEntryId', 'editingBody', 'body', 'entryTagSuggestions', 'letterText');
+    }
+
+    public function openCancellationLetter(): void
+    {
+        $collection = $this->findCollection();
+        abort_unless(ContractAssistant::isContractCollection($collection), 404);
+
+        $this->letterText = ContractAssistant::letter($collection, $this->findEntry((int) $this->openEntryId), Auth::user());
+    }
+
+    public function downloadCancellationLetter(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless(ContractAssistant::isContractCollection($this->findCollection()), 404);
+        $this->validate(['letterText' => ['required', 'string', 'max:20000']]);
+
+        $entry = $this->findEntry((int) $this->openEntryId);
+        $pdf = ContractAssistant::pdf((string) $this->letterText);
+
+        return response()->streamDownload(fn () => print ($pdf), \Illuminate\Support\Str::slug(__('Cancellation').' '.$entry->title).'.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     // ── Entry form (popup) ───────────────────────────────────────────────
@@ -902,7 +928,29 @@ new #[Layout('layouts.app')] class extends Component
         $property = $this->findProperty($propertyId);
         abort_unless($property->type === CollectionProperty::TYPE_DATE, 422);
 
-        $property->update(['options' => $days === '' ? null : ['remind_days' => max(0, min(365, (int) $days))]]);
+        $options = $property->options ?? [];
+
+        if ($days === '') {
+            unset($options['remind_days'], $options['create_task']);
+        } else {
+            $options['remind_days'] = max(0, min(365, (int) $days));
+        }
+
+        $property->update(['options' => $options ?: null]);
+        $this->schemaChanged();
+    }
+
+    /**
+     * A date property with a reminder can also create a task before the date.
+     */
+    public function togglePropertyTask(int $propertyId): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->remindDays() !== null, 422);
+
+        $options = $property->options;
+        $options['create_task'] = ! $property->createsTask();
+        $property->update(['options' => $options]);
         $this->schemaChanged();
     }
 
@@ -1263,6 +1311,7 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'collection' => $collection,
+            'isContracts' => ContractAssistant::isContractCollection($collection),
             'properties' => $properties,
             'visibleProperties' => $visibleProperties,
             'memberNames' => \App\Models\User::whereIn('id', $this->memberIds())->pluck('name', 'id')->all(),
@@ -1956,6 +2005,26 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
                 @if ($emptyCount > 0)
                     <button type="button" wire:click="editEntry({{ $openEntry->id }})" class="-mt-3 text-sm text-gray-400 hover:text-indigo-600">{{ trans_choice(':count empty field – fill in|:count empty fields – fill in', $emptyCount) }} →</button>
+                @endif
+
+                @if ($isContracts)
+                    <div>
+                        @if ($letterText === null)
+                            <button type="button" wire:click="openCancellationLetter" class="rounded-md px-3 py-1.5 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-600 dark:hover:bg-gray-700">✉️ {{ __('Write cancellation letter') }}</button>
+                        @else
+                            <h3 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">✉️ {{ __('Cancellation letter') }}</h3>
+                            <p class="mb-1.5 text-xs text-gray-500 dark:text-gray-400">{{ __('Fill in the parts in [brackets], then download it as a PDF or copy the text.') }}</p>
+                            <textarea wire:model="letterText" rows="16" aria-label="{{ __('Cancellation letter') }}" class="w-full rounded-md border-gray-300 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></textarea>
+                            <x-input-error :messages="$errors->get('letterText')" />
+                            <div class="mt-2 flex flex-wrap gap-2" x-data="{ copied: false }">
+                                <x-primary-button type="button" wire:click="downloadCancellationLetter">⬇ {{ __('Download PDF') }}</x-primary-button>
+                                <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText($wire.letterText).then(() => { copied = true; setTimeout(() => copied = false, 2000) })">
+                                    <span x-show="! copied">📋 {{ __('Copy') }}</span><span x-show="copied" x-cloak>✓ {{ __('Copied') }}</span>
+                                </x-secondary-button>
+                                <x-secondary-button type="button" wire:click="$set('letterText', null)">{{ __('Close') }}</x-secondary-button>
+                            </div>
+                        @endif
+                    </div>
                 @endif
 
                 <div>

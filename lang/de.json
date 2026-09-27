@@ -2053,5 +2053,20 @@
     "Household & drugstore": "Haushalt & Drogerie",
     "Take turns": "Abwechselnd",
     "After each completion the next person in this order gets the task.": "Nach jedem Erledigen bekommt die nächste Person in dieser Reihenfolge die Aufgabe.",
-    "Choose at least two people who do the task in turns (e.g. cleaning plan).": "Wähle mindestens zwei Personen, die die Aufgabe abwechselnd erledigen (z. B. Putzplan)."
+    "Choose at least two people who do the task in turns (e.g. cleaning plan).": "Wähle mindestens zwei Personen, die die Aufgabe abwechselnd erledigen (z. B. Putzplan).",
+    "Also create a task": "Auch eine Aufgabe anlegen",
+    "Deadline from \":collection\".": "Frist aus „:collection“.",
+    "[Street and number]": "[Straße und Hausnummer]",
+    "[Postcode and city]": "[PLZ und Ort]",
+    "[Provider]": "[Anbieter]",
+    "[Provider address]": "[Anschrift des Anbieters]",
+    "Cancellation of my contract \":contract\"": "Kündigung meines Vertrags „:contract“",
+    "I hereby cancel the above contract with effect from :date, or the next possible date.": "hiermit kündige ich den oben genannten Vertrag fristgerecht zum :date, hilfsweise zum nächstmöglichen Zeitpunkt.",
+    "I hereby cancel the above contract with effect from the next possible date.": "hiermit kündige ich den oben genannten Vertrag fristgerecht zum nächstmöglichen Zeitpunkt.",
+    "Please confirm the cancellation and the end date in writing.": "Bitte bestätigen Sie mir die Kündigung und das Vertragsende schriftlich.",
+    "I also object to the use of my data for advertising purposes and withdraw any consent to contact me by phone or e-mail.": "Zudem widerspreche ich der Nutzung meiner Daten zu Werbezwecken und widerrufe eine etwaige Einwilligung zur Kontaktaufnahme per Telefon oder E-Mail.",
+    "Cancellation": "Kündigung",
+    "Write cancellation letter": "Kündigungsschreiben verfassen",
+    "Cancellation letter": "Kündigungsschreiben",
+    "Fill in the parts in [brackets], then download it as a PDF or copy the text.": "Ergänze die Stellen in [Klammern] und lade das Schreiben dann als PDF herunter oder kopiere den Text."
 }

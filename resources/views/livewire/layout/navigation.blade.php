@@ -217,6 +217,9 @@ new class extends Component
             </button>
             <div x-show="menuOpen" x-cloak class="mt-1 space-y-0.5">
                 <x-sidebar-link :href="route('profile')" :active="request()->routeIs('profile')" wire:navigate>{{ __('Profile') }}</x-sidebar-link>
+                @can('admin')
+                    <x-sidebar-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings')" wire:navigate>{{ __('Server settings') }}</x-sidebar-link>
+                @endcan
                 <button type="button" wire:click="logout" class="w-full rounded-md px-2 py-1.5 text-start text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60">
                     {{ __('Log Out') }}
                 </button>

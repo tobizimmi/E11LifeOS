@@ -6,6 +6,13 @@ wenn sie fehlt, und überschreibt sie nie.
 
 Vorlage zum Ausfüllen: [`docs/env.production.example`](env.production.example)
 
+> **Ohne Server-Zugriff:** KI, E-Mail, Web-Push, Portfolio-Schlüssel, Backups und die
+> Import-Zugänge lassen sich auch in der App eintragen: Profil-Menü → **Servereinstellungen**
+> (`/admin/settings`, nur für Administratoren; das erste Konto ist automatisch Admin,
+> weitere mit `php artisan user:admin <email>`). Dort gespeicherte Werte sind verschlüsselt
+> und haben Vorrang vor der `.env`. Die Seite zeigt auch, ob der Cronjob läuft, und startet
+> die Altdaten-Importe. In der `.env` müssen dann nur App, Datenbank und Reverb stehen.
+
 ## 1. Wohin mit der Datei?
 
 Pro Umgebung eine eigene `.env` direkt im App-Verzeichnis (dort, wo `artisan` liegt):

@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Support\AppSettings;
 use App\Support\PrefixAwareSignedUploadUrl;
 use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Keys and mail settings entered on the admin page override .env.
+        AppSettings::apply();
+
+        Gate::define('admin', fn (User $user) => $user->isAdmin());
+
         // In production this app is reached through a reverse proxy that maps a
         // URL path (e.g. https://zimmimail.de/E11LifeOS) onto an unprefixed
         // internal PHP process. Laravel otherwise builds route()/url()/asset()

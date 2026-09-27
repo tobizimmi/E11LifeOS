@@ -69,6 +69,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'reminder_emails' => 'boolean',
             'dashboard_widgets' => 'array',
+            'is_admin' => 'boolean',
         ];
     }
 
@@ -92,6 +93,11 @@ class User extends Authenticatable
     public function portfolios(): HasMany
     {
         return $this->hasMany(Portfolio::class)->orderBy('id');
+    }
+
+    public function isAdmin(): bool
+    {
+        return (bool) $this->is_admin;
     }
 
     public function currentHousehold(): ?Household

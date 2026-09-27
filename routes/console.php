@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -22,3 +23,7 @@ Schedule::command('portfolio:market-scan')->dailyAt('06:10')->withoutOverlapping
 Schedule::command('portfolio:fetch-news')->hourly()->between('06:00', '23:00')->withoutOverlapping();
 Schedule::command('banking:sync')->dailyAt('05:40')->withoutOverlapping();
 Schedule::command('portfolio:instagram')->everySixHours()->withoutOverlapping();
+
+// Heartbeat for the admin page (shows whether the cron job runs) and the queue for imports started there.
+Schedule::call(fn () => Cache::forever('scheduler:heartbeat', now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');
+Schedule::command('queue:work --queue=admin --stop-when-empty --max-time=3000 --tries=1')->everyMinute()->withoutOverlapping(60)->runInBackground();

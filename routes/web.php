@@ -133,6 +133,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('d/{token}/accept', [PublicDocumentController::class, 'accept'])->where('token', '[A-Za-z0-9]+')->name('documents.public.accept');
 });
 
+Volt::route('admin/settings', 'admin.settings')->middleware(['auth', 'can:admin'])->name('admin.settings');
+
 // Instagram videos analysed on another machine (header X-Push-Key, no session).
 Route::post('api/instagram/push', InstagramPushController::class)
     ->withoutMiddleware([ValidateCsrfToken::class])->middleware('throttle:30,1')->name('instagram.push');

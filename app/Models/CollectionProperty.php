@@ -105,6 +105,15 @@ class CollectionProperty extends Model
     }
 
     /**
+     * Date properties with a reminder can also create a task when the date comes close
+     * (e.g. the cancellation deadline of a contract), see App\Support\ContractAssistant.
+     */
+    public function createsTask(): bool
+    {
+        return $this->remindDays() !== null && ($this->options['create_task'] ?? false) === true;
+    }
+
+    /**
      * Summary shown under a table column / on a board column: sum of numbers,
      * "ticked / total" for checkboxes; null for other types.
      *

@@ -120,6 +120,9 @@ new #[Layout('layouts.app')] class extends Component
             'allWidgets' => array_filter(DashboardWidgets::all(), $available, ARRAY_FILTER_USE_KEY),
             'portfolio' => in_array('portfolio', $widgets, true) ? PortfolioLink::summary($this->currentUser()) : null,
             'portfolioEvents' => in_array('portfolio', $widgets, true) ? array_slice(PortfolioLink::events($this->currentUser(), today(), today()->addDays(30)), 0, 3) : [],
+            'weather' => in_array('weather', $widgets, true) && $this->currentUser()->weather_latitude !== null
+                ? \App\Support\Weather::today($this->currentUser()->weather_latitude, $this->currentUser()->weather_longitude)
+                : null,
             'deadlines' => DashboardWidgets::deadlines($this->currentUser(), $this->householdId),
             'monthlyCosts' => DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId),
         ];
@@ -306,6 +309,28 @@ new #[Layout('layouts.app')] class extends Component
                                     <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('Inbox is empty.') }}</li>
                                 @endforelse
                             </ul>
+                        </section>
+                                @break
+                            @case('weather')
+                        <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                            <x-dashboard-card-header :title="__('Weather today')" />
+                            @if ($weather)
+                                <div class="mt-3 flex items-center gap-4">
+                                    <span class="text-5xl" aria-hidden="true">{{ $weather['icon'] }}</span>
+                                    <div>
+                                        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $weather['min'] }}–{{ $weather['max'] }} °C</p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ $weather['label'] }} · {{ __('rain :percent %', ['percent' => $weather['rain']]) }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ auth()->user()->weather_place }}</p>
+                                    </div>
+                                </div>
+                            @elseif (auth()->user()->weather_place)
+                                <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('The weather service is not reachable right now.') }}</p>
+                            @else
+                                <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ __('Set your place in the profile to see the weather here.') }}
+                                    <a href="{{ route('profile') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('Set place') }}</a>
+                                </p>
+                            @endif
                         </section>
                                 @break
                             @case('deadlines')

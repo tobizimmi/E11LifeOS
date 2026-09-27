@@ -10,9 +10,11 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Needs "php artisan schedule:run" every minute on the server (cron) or "php artisan schedule:work".
+Schedule::command('collections:deadline-tasks')->dailyAt('06:45');
 Schedule::command('reminders:send')->dailyAt('07:00');
 Schedule::command('reminders:timed')->everyMinute()->withoutOverlapping();
 Schedule::command('digest:weekly')->hourlyAt(2)->withoutOverlapping();
+Schedule::command('briefing:morning')->hourlyAt(0)->withoutOverlapping();
 Schedule::command('finance:check-budgets')->dailyAt('19:05');
 Schedule::command('backup:run')->dailyAt('03:15')->withoutOverlapping();
 Schedule::command('business:run-recurring')->dailyAt('06:30')->withoutOverlapping();

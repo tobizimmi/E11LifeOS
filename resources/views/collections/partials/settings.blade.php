@@ -28,6 +28,21 @@
                     </form>
                     <x-input-error :messages="$errors->get('collectionName')" />
 
+                    @unless ($collection->isTasks())
+                        <div class="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-900/30">
+                            @if ($collection->public_token)
+                                <p class="text-gray-700 dark:text-gray-300">🔗 {{ __('Anyone with this link can view the entries (read-only, without private entries, comments and files).') }}</p>
+                                <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                                    <x-text-input readonly value="{{ route('collections.public', $collection->public_token) }}" class="block min-w-0 flex-1 text-sm" aria-label="{{ __('Public link') }}" x-on:focus="$el.select()" />
+                                    <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from(route('collections.public', $collection->public_token)) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></x-secondary-button>
+                                    <button type="button" wire:click="revokeCollectionLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Turn off link') }}</button>
+                                </div>
+                            @else
+                                <button type="button" wire:click="createCollectionLink" class="text-emerald-700 underline dark:text-emerald-300">🔗 {{ __('Share read-only via link') }}</button>
+                            @endif
+                        </div>
+                    @endunless
+
                     <div>
                         <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Properties') }}</h3>
                         <ul class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -120,6 +135,12 @@
                                                 @endforeach
                                             </select>
                                         </label>
+                                        @if ($property->remindDays() !== null)
+                                            <label class="flex items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
+                                                <input type="checkbox" wire:click="togglePropertyTask({{ $property->id }})" @checked($property->createsTask()) class="rounded border-gray-300 text-indigo-600 dark:border-gray-700 dark:bg-gray-900">
+                                                ✅ {{ __('Also create a task') }}
+                                            </label>
+                                        @endif
                                     @endif
                                     @if ($property->hasOptions())
                                         <div class="flex flex-wrap items-center gap-2 ps-2">

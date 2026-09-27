@@ -12,6 +12,7 @@ use App\Support\Finance\Categorizer;
 use App\Support\Finance\FinanceAi;
 use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\FinancePeriod;
+use App\Support\Finance\FinanceReceiptAi;
 use App\Support\Finance\FinanceReport;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -71,6 +72,27 @@ new #[Layout('layouts.app')] class extends Component
     public ?array $advice = null;
 
     public ?string $aiError = null;
+
+    /**
+     * Manual booking (cash purchase or receipt photo read by the AI).
+     */
+    public bool $manualOpen = false;
+
+    /**
+     * @var array{booked_on: string, counterparty: string, purpose: string, amount: string, category: string, account: string}
+     */
+    public array $manual = [];
+
+    public $receiptPhoto = null;
+
+    public ?string $receiptMessage = null;
+
+    /**
+     * An existing bank booking that is probably the same purchase (asked before saving a duplicate).
+     */
+    public ?int $matchingTransactionId = null;
+
+    public bool $manualSaved = false;
 
     public function mount(): void
     {
@@ -275,6 +297,120 @@ new #[Layout('layouts.app')] class extends Component
 
     // ── Report ───────────────────────────────────────────────────────────
 
+    // ── Manual bookings / receipts ───────────────────────────────────────
+
+    public function openManual(): void
+    {
+        $this->resetValidation();
+        $this->reset('receiptPhoto', 'receiptMessage', 'matchingTransactionId', 'manualSaved');
+        $this->manual = ['booked_on' => today()->toDateString(), 'counterparty' => '', 'purpose' => '', 'amount' => '', 'category' => 'groceries', 'account' => 'cash'];
+        $this->manualOpen = true;
+        $this->tab = 'transactions';
+    }
+
+    public function closeManual(): void
+    {
+        $this->reset('manualOpen', 'manual', 'receiptPhoto', 'receiptMessage', 'matchingTransactionId');
+    }
+
+    public function updatedManual(): void
+    {
+        $this->matchingTransactionId = null;
+    }
+
+    public function readReceiptPhoto(FinanceReceiptAi $ai): void
+    {
+        $this->receiptMessage = null;
+        $this->validate(['receiptPhoto' => ['nullable', 'file', 'max:10240']]);
+
+        if (! $this->receiptPhoto || ! in_array($this->receiptPhoto->getMimeType(), FinanceReceiptAi::MEDIA_TYPES, true)) {
+            $this->receiptMessage = __('Add a photo or PDF of the receipt first.');
+
+            return;
+        }
+
+        try {
+            $result = $ai->read((string) file_get_contents($this->receiptPhoto->getRealPath()), $this->receiptPhoto->getMimeType());
+        } catch (AiException $exception) {
+            $this->receiptMessage = $exception->getMessage();
+
+            return;
+        }
+
+        foreach (['booked_on', 'counterparty', 'purpose', 'category'] as $field) {
+            if (filled($result[$field])) {
+                $this->manual[$field] = $result[$field];
+            }
+        }
+
+        if ($result['amount'] !== null) {
+            $this->manual['amount'] = number_format($result['amount'], 2, ',', '');
+        }
+
+        $this->receiptMessage = $result['amount'] !== null ? __('Filled in from the receipt – please check.') : __('Nothing could be read from the receipt.');
+    }
+
+    /**
+     * Saves the expense. If a bank booking with the same amount a few days around the date
+     * exists, it asks first: $mode "assign" only sets the category of that booking, "new"
+     * books it anyway.
+     */
+    public function saveManual(string $mode = ''): void
+    {
+        $this->manual['amount'] = str_replace(['€', ' '], '', (string) ($this->manual['amount'] ?? ''));
+        $validated = $this->validate([
+            'manual.booked_on' => ['required', 'date'],
+            'manual.counterparty' => ['required', 'string', 'max:255'],
+            'manual.purpose' => ['nullable', 'string', 'max:255'],
+            'manual.amount' => ['required', 'regex:/^\d{1,7}([.,]\d{1,2})?$/'],
+            'manual.category' => ['required', Rule::in(array_keys(FinanceCategories::all()))],
+            'manual.account' => ['required', 'string'],
+        ], attributes: ['manual.counterparty' => __('Shop / payee'), 'manual.amount' => __('Amount'), 'manual.booked_on' => __('Date')])['manual'];
+
+        $amount = round((float) str_replace(',', '.', $validated['amount']), 2);
+        $date = \Illuminate\Support\Carbon::parse($validated['booked_on']);
+        $user = $this->currentUser();
+
+        $match = Transaction::where('user_id', $user->id)->where('household_id', $this->householdId)
+            ->where('amount', -$amount)
+            ->whereBetween('booked_on', [$date->copy()->subDays(4)->toDateString(), $date->copy()->addDays(4)->toDateString()])
+            ->orderBy('booked_on')->first();
+
+        if ($match && $mode === '') {
+            $this->matchingTransactionId = $match->id;
+
+            return;
+        }
+
+        if ($match && $mode === 'assign') {
+            $match->update([
+                'category' => $validated['category'],
+                'category_locked' => true,
+                'purpose' => trim($match->purpose.' · '.($validated['purpose'] ?: $validated['counterparty']), ' ·'),
+            ]);
+        } else {
+            $account = ctype_digit($validated['account'])
+                ? ($this->accounts()->find((int) $validated['account']) ?? abort(404))
+                : BankAccount::firstOrCreate(['user_id' => $user->id, 'household_id' => $this->householdId, 'name' => __('Cash wallet')]);
+
+            Transaction::create([
+                'household_id' => $this->householdId,
+                'user_id' => $user->id,
+                'bank_account_id' => $account->id,
+                'booked_on' => $date->toDateString(),
+                'amount' => -$amount,
+                'counterparty' => trim($validated['counterparty']),
+                'purpose' => trim((string) $validated['purpose']),
+                'category' => $validated['category'],
+                'category_locked' => true,
+                'import_hash' => sha1('manual|'.\Illuminate\Support\Str::uuid()),
+            ]);
+        }
+
+        $this->closeManual();
+        $this->manualSaved = true;
+    }
+
     /**
      * Sets (or with an empty value removes) the monthly budget of a spending category.
      */
@@ -330,6 +466,7 @@ new #[Layout('layouts.app')] class extends Component
                     ->orWhereRaw('LOWER(purpose) LIKE ?', ['%'.mb_strtolower(trim($this->search)).'%'])));
 
             $data['transactionCount'] = (clone $query)->count();
+            $data['matchingTransaction'] = $this->matchingTransactionId ? $this->findTransaction($this->matchingTransactionId) : null;
             $data['transactions'] = $query->with('account')->orderByDesc('booked_on')->orderByDesc('id')->limit($this->limit)->get();
             $data['rules'] = FinanceRule::where('user_id', $this->currentUser()->id)->orderBy('pattern')->get();
         }
@@ -393,12 +530,15 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
-            @if ($accounts->isEmpty() && $tab !== 'import')
+            @if ($accounts->isEmpty() && $tab !== 'import' && ! $manualOpen)
                 <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🏦</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Import your first bank statement') }}</h3>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Export the transactions of your account as CSV in online banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) or in Outbank and import the file here. The analysis then shows where your money goes and where you can save.') }}</p>
-                    <x-primary-button type="button" wire:click="$set('tab', 'import')" class="mt-4">⬆ {{ __('Import statement') }}</x-primary-button>
+                    <div class="mt-4 flex flex-wrap justify-center gap-2">
+                        <x-primary-button type="button" wire:click="$set('tab', 'import')">⬆ {{ __('Import statement') }}</x-primary-button>
+                        <x-secondary-button type="button" wire:click="openManual">🧾 {{ __('Add receipt or cash expense') }}</x-secondary-button>
+                    </div>
                 </div>
             @elseif ($tab === 'report')
                 @include('finance.partials.report')

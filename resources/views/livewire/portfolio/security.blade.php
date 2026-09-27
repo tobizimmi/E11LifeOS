@@ -6,6 +6,7 @@ use App\Models\PortfolioPosition;
 use App\Models\PortfolioTransaction;
 use App\Models\WatchlistItem;
 use App\Support\Portfolio\MarketData;
+use App\Support\Portfolio\PortfolioLink;
 use App\Support\Portfolio\Valuation;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -72,6 +73,7 @@ new #[Layout('layouts.app')] class extends Component
             'watched' => $this->watchlist()->where('symbol', $this->symbol)->exists(),
             'news' => \App\Models\NewsArticle::where('symbol', $this->symbol)->orderByDesc('published_at')->limit(8)->get(),
             'recommendation' => \App\Models\PortfolioRecommendation::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->first(),
+            'mentions' => PortfolioLink::mentions($this->currentUser(), (int) $this->householdId, $this->symbol, $security?->name),
         ];
     }
 }; ?>
@@ -120,6 +122,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="mt-4 flex flex-wrap gap-2">
                     <a href="{{ route('portfolio.transactions', ['new' => 1, 'symbol' => $security->symbol]) }}" wire:navigate class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">＋ {{ __('Transaction') }}</a>
                     <button type="button" wire:click="toggleWatchlist" class="rounded-lg px-3 py-1.5 text-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:ring-gray-700 dark:hover:bg-gray-700">{{ $watched ? '★ '.__('On the watchlist') : '☆ '.__('Add to watchlist') }}</button>
+                    <button type="button" wire:click="createTask(@js($security->symbol))" class="rounded-lg px-3 py-1.5 text-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:ring-gray-700 dark:hover:bg-gray-700">✅ {{ __('Create task') }}</button>
                 </div>
             </section>
 
@@ -218,6 +221,17 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="flex-1 text-gray-600 dark:text-gray-300">{{ $transaction->portfolio->name }}</span>
                                 <span class="tabular-nums">{{ $transaction->quantity > 0 ? $quantity($transaction->quantity).' × ' : '' }}{{ number_format($transaction->price, 2, ',', '.') }} {{ $transaction->currency }}</span>
                             </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
+            @if ($mentions !== [])
+                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Mentioned in') }}</h3>
+                    <ul class="divide-y divide-gray-100 border-t border-gray-100 text-sm dark:divide-gray-700 dark:border-gray-700">
+                        @foreach ($mentions as $node)
+                            <li wire:key="security-mention-{{ $node['id'] }}"><a href="{{ $node['url'] }}" wire:navigate class="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40"><span aria-hidden="true">{{ $node['icon'] }}</span><span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $node['title'] }}</span><span class="text-xs text-gray-500 dark:text-gray-400">{{ $node['kind'] }}@if ($node['private']) · 🔒@endif</span></a></li>
                         @endforeach
                     </ul>
                 </section>

@@ -5,11 +5,13 @@ namespace App\Support;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Models\User;
+use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Carbon;
 
 /**
  * iCalendar (ICS) feed of a member's open tasks with a due date and of collection dates
- * that have a reminder (e.g. cancellation deadlines), for subscribing in any calendar app.
+ * that have a reminder (e.g. cancellation deadlines), plus savings plans and expected dividends
+ * of the member's portfolio, for subscribing in any calendar app.
  */
 class CalendarFeed
 {
@@ -58,6 +60,12 @@ class CalendarFeed
                             }
                         });
                 });
+
+            if ($household->hasAddon(Addons::PORTFOLIO)) {
+                foreach (PortfolioLink::events($user, Carbon::parse($from), Carbon::parse($until)) as $event) {
+                    array_push($lines, ...self::portfolioEvent($event));
+                }
+            }
         }
 
         $lines[] = 'END:VCALENDAR';
@@ -103,6 +111,27 @@ class CalendarFeed
         $lines[] = 'END:VEVENT';
 
         return $lines;
+    }
+
+    /**
+     * @param  array{date: string, kind: string, title: string, amount: ?float, symbol: string, uid: string}  $event
+     * @return array<int, string>
+     */
+    private static function portfolioEvent(array $event): array
+    {
+        $day = Carbon::createFromFormat('!Y-m-d', $event['date']);
+        $amount = $event['amount'] !== null ? ' ('.number_format($event['amount'], 2, ',', '.').' €)' : '';
+
+        return [
+            'BEGIN:VEVENT',
+            'UID:e11-'.$event['uid'].'@'.parse_url((string) config('app.url'), PHP_URL_HOST),
+            'DTSTAMP:'.now()->utc()->format('Ymd\THis\Z'),
+            'SUMMARY:'.self::text(($event['kind'] === 'dividend' ? '💰 ' : '📈 ').$event['title'].$amount),
+            'URL:'.route('portfolio.security', ['symbol' => $event['symbol']]),
+            'DTSTART;VALUE=DATE:'.$day->format('Ymd'),
+            'DTEND;VALUE=DATE:'.$day->copy()->addDay()->format('Ymd'),
+            'END:VEVENT',
+        ];
     }
 
     /**

@@ -1864,5 +1864,16 @@
     "Tranches": "Tranchen",
     "Open on Instagram": "Auf Instagram öffnen",
     "Alert at entry": "Alarm beim Einstieg",
-    "Instagram": "Instagram"
+    "Instagram": "Instagram",
+    "Please sign in again.": "Bitte melde dich erneut an.",
+    "Not found.": "Nicht gefunden.",
+    "Error": "Fehler",
+    "Mobile app": "Mobile App",
+    "Sign in to the portfolio app on your phone with your e-mail address and password. Server address for the app:": "Melde dich in der Portfolio-App auf deinem Handy mit deiner E-Mail-Adresse und deinem Passwort an. Serveradresse für die App:",
+    "No device signed in yet.": "Noch kein Gerät angemeldet.",
+    "Signed in :date": "Angemeldet am :date",
+    "last used :time": "zuletzt genutzt :time",
+    "not used yet": "noch nicht genutzt",
+    "Sign this device out?": "Dieses Gerät abmelden?",
+    "Sign out": "Abmelden"
 }

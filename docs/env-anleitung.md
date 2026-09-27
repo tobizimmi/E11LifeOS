@@ -10,7 +10,7 @@ Vorlage zum Ausfüllen: [`docs/env.production.example`](env.production.example)
 > Import-Zugänge lassen sich auch in der App eintragen: Profil-Menü → **Servereinstellungen**
 > (`/admin/settings`, nur für Administratoren; das erste Konto ist automatisch Admin,
 > weitere mit `php artisan user:admin <email>`). Dort gespeicherte Werte sind verschlüsselt
-> und haben Vorrang vor der `.env`. Die Seite zeigt auch, ob der Cronjob läuft, und startet
+> und haben Vorrang vor der `.env`. Die Seite zeigt auch, ob der Scheduler läuft, und startet
 > die Altdaten-Importe. In der `.env` müssen dann nur App, Datenbank und Reverb stehen.
 
 ## 1. Wohin mit der Datei?
@@ -54,16 +54,17 @@ pm2 restart e11lifeos-reverb-staging --update-env   # Live: e11lifeos-reverb
 
 Alternativ einfach neu deployen (GitHub → Actions → „Run workflow“).
 
-## 3. Einmalig: Scheduler (Cron)
+## 3. Scheduler und Hintergrund-Worker
 
 Erinnerungen, Kurs-Updates, News, Banksync, Instagram-Abruf, wiederkehrende Rechnungen,
-Mahnungen und Backups laufen über den Laravel-Scheduler. In Plesk unter
-**Tools & Einstellungen → Geplante Aufgaben** (oder per `crontab -e`) je Umgebung:
+Mahnungen, Backups und die Importe der Admin-Seite laufen über den Laravel-Scheduler und
+einen Queue-Worker. Beide richtet der Deploy automatisch als PM2-Prozesse ein
+(`e11lifeos-scheduler(-staging)` und `e11lifeos-queue(-staging)`), unter demselben Benutzer
+wie die App. **Ein Cronjob in Plesk ist nicht nötig** – und sollte entfernt werden, falls
+vorhanden: Er läuft unter einem anderen Benutzer, der nicht in `storage/` schreiben darf
+(Fehler „Unable to create a directory …/storage/app/private“).
 
-```
-* * * * * cd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live && /opt/plesk/php/8.4/bin/php artisan schedule:run >> /dev/null 2>&1
-* * * * * cd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging && /opt/plesk/php/8.4/bin/php artisan schedule:run >> /dev/null 2>&1
-```
+Ob der Scheduler läuft, zeigt die Status-Box unter **Servereinstellungen**.
 
 ## 4. Die Werte im Einzelnen
 

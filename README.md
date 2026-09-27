@@ -145,7 +145,7 @@ php artisan recipes:import-rezepteapp deine@email.de \
 
 ## Geplante Aufgaben (Erinnerungen)
 
-Die täglichen E-Mails und die Erinnerungen zur Uhrzeit (jede Minute geprüft) verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
+Die täglichen E-Mails und die Erinnerungen zur Uhrzeit (jede Minute geprüft) verschickt der Laravel-Scheduler. Auf Staging/Live startet der Deploy ihn und den Queue-Worker automatisch als PM2-Prozesse (siehe `docs/deployment.md`). Anderswo einmalig einrichten, z. B. per Cron:
 
 ```bash
 * * * * * cd /pfad/zur/app && php artisan schedule:run >> /dev/null 2>&1

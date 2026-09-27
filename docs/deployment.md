@@ -104,6 +104,9 @@ pm2 start "/opt/plesk/php/8.4/bin/php artisan reverb:start --port=3021" --name e
 pm2 save
 ```
 
+Scheduler (`artisan schedule:work`) und Queue-Worker (`artisan queue:work`) legt der Deploy
+selbst als `e11lifeos-scheduler(-staging)` / `e11lifeos-queue(-staging)` an – kein Cronjob nötig.
+
 ## 5. Apache Reverse Proxy (Pfad statt Subdomain)
 
 In der bestehenden `zimmimail.de`-vhost-Konfiguration (Plesk → "Apache & nginx-Einstellungen" → "Zusätzliche Apache-Direktiven" für die Domain,

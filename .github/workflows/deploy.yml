@@ -22,6 +22,10 @@ jobs:
       # PM2 process names per environment (app = php built-in server, reverb = websocket server)
       PM2_APP_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-app' || 'e11lifeos-app-staging' }}
       PM2_REVERB_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-reverb' || 'e11lifeos-reverb-staging' }}
+      # Scheduler (schedule:work) and queue worker run as PM2 processes of the same user as the
+      # app, so they can write to storage/ (a Plesk cron job runs as another user). Created on demand.
+      PM2_SCHEDULER_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-scheduler' || 'e11lifeos-scheduler-staging' }}
+      PM2_QUEUE_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-queue' || 'e11lifeos-queue-staging' }}
       # Baked into the built JS by Vite — these are the PUBLIC Reverb app key/host/etc.
       # (never the secret), so plain repo Variables are fine, no need for Secrets.
       VITE_REVERB_APP_KEY: ${{ github.ref == 'refs/heads/main' && vars.REVERB_APP_KEY_LIVE || vars.REVERB_APP_KEY_STAGING }}
@@ -90,6 +94,8 @@ jobs:
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/cache/data
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/sessions
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/logs
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/app/private
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/app/public
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/bootstrap/cache
           echo "Directories created"
           DIRSEOF
@@ -111,13 +117,13 @@ jobs:
       - name: Run server-side deployment tasks
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- \
-            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" << 'EOF'
+            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" "${{ env.PM2_SCHEDULER_NAME }}" "${{ env.PM2_QUEUE_NAME }}" << 'EOF'
             set -e
             # Server default `php`/composer resolve to the OS-packaged PHP 8.2 (via
             # /usr/bin/php), but this app needs PHP >=8.3 (Laravel 13) — Plesk also has
             # PHP 8.4 installed under /opt/plesk/php/8.4, just not on the default PATH.
             export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"
+            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"; PM2_SCHEDULER_NAME="$4"; PM2_QUEUE_NAME="$5"
 
             cd "$APP_PATH"
 
@@ -149,6 +155,20 @@ jobs:
             else
               echo "PM2 process $PM2_REVERB_NAME not found — start it once manually (see docs/deployment.md), then re-deploy." >&2
               exit 1
+            fi
+
+            # Scheduler and queue worker: restart (new code) or start once.
+            PHP_BIN=/opt/plesk/php/8.4/bin/php
+            if pm2 describe "$PM2_SCHEDULER_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_SCHEDULER_NAME" --update-env
+            else
+              pm2 start "$PHP_BIN" --name "$PM2_SCHEDULER_NAME" --cwd "$APP_PATH" -- artisan schedule:work
+            fi
+
+            if pm2 describe "$PM2_QUEUE_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_QUEUE_NAME" --update-env
+            else
+              pm2 start "$PHP_BIN" --name "$PM2_QUEUE_NAME" --cwd "$APP_PATH" -- artisan queue:work --queue=admin,default --tries=1 --sleep=3
             fi
 
             pm2 save

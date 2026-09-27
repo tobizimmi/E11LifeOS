@@ -480,7 +480,12 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✅ {{ __('Tasks') }}</h2>
-            <a href="{{ route('collections.show', $collection) }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">{{ __('Board · Table · Calendar') }} →</a>
+            <div class="inline-flex overflow-hidden rounded-md border border-gray-300 text-sm dark:border-gray-600" role="group" aria-label="{{ __('View') }}">
+                <span class="bg-indigo-600 px-3 py-1.5 text-white" aria-current="page">✅ {{ __('Task list') }}</span>
+                <a href="{{ route('collections.show', ['collection' => $collection, 'view' => 'board']) }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">▥ {{ __('Board') }}</a>
+                <a href="{{ route('collections.show', ['collection' => $collection, 'view' => 'table']) }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">▤ {{ __('Table') }}</a>
+                <a href="{{ route('collections.show', ['collection' => $collection, 'view' => 'calendar']) }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">📅 {{ __('Calendar') }}</a>
+            </div>
         </div>
     </x-slot>
 

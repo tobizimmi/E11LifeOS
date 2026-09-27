@@ -647,7 +647,6 @@
     "Add notes …": "Notizen hinzufügen …",
     "Add task": "Aufgabe hinzufügen",
     "Assign …": "Zuweisen …",
-    "Board · Table · Calendar": "Board · Tabelle · Kalender",
     "Completed": "Erledigt",
     "Date …": "Datum …",
     "Delete the selected tasks?": "Die ausgewählten Aufgaben löschen?",
@@ -1996,5 +1995,9 @@
     "Photo folder on this server": "Foto-Ordner auf diesem Server",
     "Photo address (if the folder is not readable)": "Foto-Adresse (falls der Ordner nicht lesbar ist)",
     "Recipes land shared in the household of the chosen account. Recipes imported earlier without photo get their photos when you run the import again. RezepteApp2 is only read, never changed.": "Die Rezepte landen geteilt im Haushalt des gewählten Kontos. Bereits importierte Rezepte ohne Foto bekommen ihre Fotos, wenn du den Import erneut startest. Die RezepteApp2 wird nur gelesen, nie verändert.",
-    "Reminders, prices, news, backups and imports need the scheduler. It is set up automatically as PM2 process on the next deploy (no cron job in Plesk needed).": "Erinnerungen, Kurse, News, Backups und Importe brauchen den Scheduler. Er wird beim nächsten Deploy automatisch als PM2-Prozess eingerichtet (kein Cronjob in Plesk nötig)."
+    "Reminders, prices, news, backups and imports need the scheduler. It is set up automatically as PM2 process on the next deploy (no cron job in Plesk needed).": "Erinnerungen, Kurse, News, Backups und Importe brauchen den Scheduler. Er wird beim nächsten Deploy automatisch als PM2-Prozess eingerichtet (kein Cronjob in Plesk nötig).",
+    "at home": "vorrätig",
+    "Added": "Hinzugefügt",
+    "Task list": "Aufgabenliste",
+    "Total time": "Gesamtzeit"
 }

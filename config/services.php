@@ -48,6 +48,12 @@ return [
         'push_key' => env('INSTAGRAM_PUSH_KEY'),
     ],
 
+    // RezepteApp2 photos for the recipe import (read only, nothing is changed there).
+    'rezepteapp' => [
+        'uploads_path' => env('REZEPTEAPP_UPLOADS_PATH', '/var/www/vhosts/zimmimail.de/httpdocs/RezepteApp2/uploads'),
+        'uploads_url' => env('REZEPTEAPP_UPLOADS_URL', 'https://zimmimail.de/RezepteApp2/uploads'),
+    ],
+
     'pushover' => [
         'token' => env('PUSHOVER_APP_TOKEN'),
     ],

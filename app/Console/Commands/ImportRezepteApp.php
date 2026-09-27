@@ -15,16 +15,18 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 #[Signature('recipes:import-rezepteapp
     {email : LifeOS user whose household receives the recipes}
     {--source-email= : RezepteApp2 account to import from (default: the same e-mail)}
     {--all : Import the recipes of all RezepteApp2 accounts into this household}
-    {--uploads-path= : RezepteApp2 upload directory on this server, to copy the photos from}
-    {--uploads-url= : Base URL of the RezepteApp2 uploads, to download photos from (fallback)}
+    {--uploads-path= : RezepteApp2 upload directory on this server, to copy the photos from (default: services.rezepteapp.uploads_path)}
+    {--uploads-url= : Base URL of the RezepteApp2 uploads, to download photos from (fallback, default: services.rezepteapp.uploads_url)}
     {--private : Import the recipes as private to the user instead of shared with the household}
     {--dry-run : Only show what would be imported}')]
 #[Description('Import recipes, categories, tags, favorites, ratings and the meal plan from the old RezepteApp2 database (safe to run again)')]
@@ -81,6 +83,7 @@ class ImportRezepteApp extends Command
         $recipeIds = $recipes->pluck('id')->all();
         $alreadyImported = Recipe::where('household_id', $household->id)->whereIn('legacy_id', $recipeIds)->pluck('legacy_id')->all();
         $new = $recipes->reject(fn (object $recipe) => in_array($recipe->id, $alreadyImported, true));
+        $repaired = $this->option('dry-run') ? 0 : $this->repairPhotos($household, $recipes);
 
         $this->info(sprintf(
             '%d recipes found for %s, %d already imported, %d to import into household "%s".',
@@ -165,6 +168,10 @@ class ImportRezepteApp extends Command
 
         $this->newLine(2);
         $this->info(sprintf('Imported %d recipes (%d with photo) and %d categories.', $new->count(), $photos, count($this->categoryMap)));
+
+        if ($repaired > 0) {
+            $this->info(sprintf('Added missing photos to %d recipes imported earlier.', $repaired));
+        }
         $this->info(sprintf('Imported %d ratings and %d meal plan entries.', $ratings, $mealPlans));
 
         if ($missingPhotos !== []) {
@@ -335,20 +342,73 @@ class ImportRezepteApp extends Command
     /**
      * Copies the photo from the upload directory, or downloads it; returns the new path or null.
      */
+    /**
+     * Recipes imported earlier without photo (or whose file is gone) get it now. Photos changed
+     * in LifeOS are kept; the RezepteApp2 files are only read.
+     *
+     * @param  Collection<int, object>  $rows
+     */
+    private function repairPhotos(Household $household, Collection $rows): int
+    {
+        $repaired = 0;
+        $disk = Storage::disk(Recipe::IMAGE_DISK);
+        $imported = Recipe::where('household_id', $household->id)->whereIn('legacy_id', $rows->pluck('id'))->get()->keyBy('legacy_id');
+
+        foreach ($rows as $row) {
+            $recipe = $imported[$row->id] ?? null;
+
+            if (! $recipe) {
+                continue;
+            }
+
+            $changed = false;
+
+            if ($row->imageUrl && (! $recipe->image_path || ! $disk->exists($recipe->image_path))) {
+                if ($path = $this->importPhoto($row->imageUrl, $household->id)) {
+                    $recipe->image_path = $path;
+                    $changed = true;
+                }
+            }
+
+            $sourceImages = collect($this->json($row->additionalImages ?? null) ?? [])->filter(fn ($url) => is_string($url) && trim($url) !== '');
+            $existing = collect($recipe->additional_images ?? [])->filter(fn ($path) => is_string($path) && $disk->exists($path));
+
+            if ($sourceImages->isNotEmpty() && $existing->isEmpty()) {
+                $paths = $sourceImages->take(Recipe::MAX_ADDITIONAL_IMAGES)->map(fn (string $url) => $this->importPhoto($url, $household->id))->filter()->values()->all();
+
+                if ($paths !== []) {
+                    $recipe->additional_images = $paths;
+                    $changed = true;
+                }
+            }
+
+            if ($changed) {
+                // Keep the recipe's "last changed" date: only the photo was added.
+                $recipe->timestamps = false;
+                $recipe->save();
+                $repaired++;
+            }
+        }
+
+        return $repaired;
+    }
+
     private function importPhoto(string $imageUrl, int $householdId): ?string
     {
+        $uploadsPath = $this->option('uploads-path') ?: config('services.rezepteapp.uploads_path');
+        $uploadsUrl = $this->option('uploads-url') ?: config('services.rezepteapp.uploads_url');
         $relative = str_contains($imageUrl, '/uploads/') ? substr($imageUrl, strpos($imageUrl, '/uploads/') + strlen('/uploads/')) : null;
         $bytes = null;
 
-        if ($relative !== null && $this->option('uploads-path') && ! str_contains($relative, '..')) {
-            $file = rtrim((string) $this->option('uploads-path'), '/').'/'.$relative;
+        if ($relative !== null && $uploadsPath && ! str_contains($relative, '..')) {
+            $file = rtrim((string) $uploadsPath, '/').'/'.$relative;
             $bytes = is_file($file) ? file_get_contents($file) : null;
         }
 
         if ($bytes === null) {
             $url = match (true) {
                 (bool) preg_match('#^https?://#i', $imageUrl) => $imageUrl,
-                $relative !== null && (bool) $this->option('uploads-url') => rtrim((string) $this->option('uploads-url'), '/').'/'.$relative,
+                $relative !== null && (bool) $uploadsUrl => rtrim((string) $uploadsUrl, '/').'/'.$relative,
                 default => null,
             };
 

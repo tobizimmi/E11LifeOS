@@ -55,6 +55,8 @@ class AppSettings
         'rezepteapp_db_database' => ['group' => 'import_recipes', 'config' => ['database.connections.rezepteapp.database'], 'secret' => false, 'type' => 'text'],
         'rezepteapp_db_username' => ['group' => 'import_recipes', 'config' => ['database.connections.rezepteapp.username'], 'secret' => false, 'type' => 'text'],
         'rezepteapp_db_password' => ['group' => 'import_recipes', 'config' => ['database.connections.rezepteapp.password'], 'secret' => true, 'type' => 'text'],
+        'rezepteapp_uploads_path' => ['group' => 'import_recipes', 'config' => ['services.rezepteapp.uploads_path'], 'secret' => false, 'type' => 'text'],
+        'rezepteapp_uploads_url' => ['group' => 'import_recipes', 'config' => ['services.rezepteapp.uploads_url'], 'secret' => false, 'type' => 'text'],
     ];
 
     /**

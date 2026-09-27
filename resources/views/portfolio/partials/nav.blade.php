@@ -15,6 +15,7 @@
             'portfolio.alerts' => '🔔 '.__('Alerts'),
             'portfolio.watchlist' => '👀 '.__('Watchlist'),
             'portfolio.import' => '📥 '.__('Import'),
+            'portfolio.banking' => '🏦 '.__('Bank sync'),
             'portfolio.settings' => '⚙ '.__('Settings'),
         ] as $routeName => $label)
             <a href="{{ route($routeName) }}" wire:navigate @class(['rounded-md px-3 py-1.5 text-sm whitespace-nowrap', 'bg-indigo-600 text-white' => $active === $routeName, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $active !== $routeName]) aria-current="{{ $active === $routeName ? 'page' : 'false' }}">{{ $label }}</a>

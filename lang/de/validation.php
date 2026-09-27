@@ -183,6 +183,8 @@ return [
     */
 
     'attributes' => [
+        'logo' => 'Logo',
+        'statement' => 'Kontoauszug',
         'addingServings' => 'Portionen',
         'attachmentUpload' => 'Datei',
         'body' => 'Inhalt',

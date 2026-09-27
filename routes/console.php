@@ -20,3 +20,4 @@ Schedule::command('portfolio:check-alerts')->everyFifteenMinutes()->between('07:
 Schedule::command('portfolio:execute-savings-plans')->dailyAt('09:15');
 Schedule::command('portfolio:market-scan')->dailyAt('06:10')->withoutOverlapping();
 Schedule::command('portfolio:fetch-news')->hourly()->between('06:00', '23:00')->withoutOverlapping();
+Schedule::command('banking:sync')->dailyAt('05:40')->withoutOverlapping();

@@ -1999,5 +1999,11 @@
     "at home": "vorrätig",
     "Added": "Hinzugefügt",
     "Task list": "Aufgabenliste",
-    "Total time": "Gesamtzeit"
+    "Total time": "Gesamtzeit",
+    "Member": "Mitglied",
+    "Modules for :name": "Module für :name",
+    "Click a module to switch it off or on for this member. Owners always see everything. Tasks, pages, shopping list and collections are always shared.": "Klicke auf ein Modul, um es für dieses Mitglied aus- oder wieder einzuschalten. Inhaber sehen immer alles. Aufgaben, Seiten, Einkaufsliste und Sammlungen sind immer gemeinsam.",
+    "Bank accounts, statement import, categories, budgets and savings analysis for the household.": "Bankkonten, Kontoauszug-Import, Kategorien, Budgets und Sparanalyse für den Haushalt.",
+    "Business": "Business",
+    "Quotes, invoices, customers, receipts, time tracking and tax reports for a small business.": "Angebote, Rechnungen, Kunden, Belege, Zeiterfassung und Steuerberichte für ein kleines Unternehmen."
 }

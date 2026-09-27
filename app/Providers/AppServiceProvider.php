@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsureAddonEnabled;
 use App\Models\User;
 use App\Support\AppSettings;
 use App\Support\PrefixAwareSignedUploadUrl;
@@ -9,6 +10,7 @@ use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,6 +31,9 @@ class AppServiceProvider extends ServiceProvider
         AppSettings::apply();
 
         Gate::define('admin', fn (User $user) => $user->isAdmin());
+
+        // Addon checks also apply to the Livewire requests of pages behind "addon:…".
+        Livewire::addPersistentMiddleware([EnsureAddonEnabled::class]);
 
         // In production this app is reached through a reverse proxy that maps a
         // URL path (e.g. https://zimmimail.de/E11LifeOS) onto an unprefixed

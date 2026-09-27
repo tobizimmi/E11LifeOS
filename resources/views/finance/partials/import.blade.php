@@ -3,7 +3,7 @@
     <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800 lg:col-span-3">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100">⬆ {{ __('Import bank statement (CSV)') }}</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Bookings that were already imported are skipped automatically – you can import overlapping periods without duplicates.') }}</p>
-        @if (\Illuminate\Support\Facades\Route::has('portfolio.banking') && auth()->user()->currentHousehold()?->hasAddon('portfolio'))
+        @if (\Illuminate\Support\Facades\Route::has('portfolio.banking') && auth()->user()->canUseAddon('portfolio'))
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">🏦 {{ __('Or fetch bookings directly from your bank:') }} <a href="{{ route('portfolio.banking') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-300">{{ __('Bank sync (FinTS)') }}</a></p>
         @endif
 

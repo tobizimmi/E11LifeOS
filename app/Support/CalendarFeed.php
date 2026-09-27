@@ -61,7 +61,7 @@ class CalendarFeed
                         });
                 });
 
-            if ($household->hasAddon(Addons::PORTFOLIO)) {
+            if ($user->canUseAddon(Addons::PORTFOLIO)) {
                 foreach (PortfolioLink::events($user, Carbon::parse($from), Carbon::parse($until)) as $event) {
                     array_push($lines, ...self::portfolioEvent($event));
                 }

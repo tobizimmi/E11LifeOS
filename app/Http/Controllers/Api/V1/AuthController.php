@@ -56,7 +56,7 @@ class AuthController extends ApiController
             'name' => $user->name,
             'email' => $user->email,
             'role' => 'user',
-            'portfolio_enabled' => (bool) $user->currentHousehold()?->hasAddon('portfolio'),
+            'portfolio_enabled' => $user->canUseAddon('portfolio'),
         ];
     }
 }

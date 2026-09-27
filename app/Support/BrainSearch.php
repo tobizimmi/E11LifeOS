@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\CollectionProperty;
-use App\Models\Household;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\User;
@@ -91,7 +90,7 @@ class BrainSearch
             ->all();
 
         // Portfolios are personal: only the asking member's own depot is added.
-        $portfolio = Household::find($householdId)?->hasAddon(Addons::PORTFOLIO) ? PortfolioLink::brainDocument($viewer, $question) : null;
+        $portfolio = $viewer->canUseAddon(Addons::PORTFOLIO) ? PortfolioLink::brainDocument($viewer, $question) : null;
 
         return $portfolio ? array_slice([$portfolio, ...$documents], 0, self::MAX_DOCUMENTS) : $documents;
     }

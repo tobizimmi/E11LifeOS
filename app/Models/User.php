@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Addons;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -93,6 +94,14 @@ class User extends Authenticatable
     public function portfolios(): HasMany
     {
         return $this->hasMany(Portfolio::class)->orderBy('id');
+    }
+
+    /**
+     * The module is on for the household and allowed for this member.
+     */
+    public function canUseAddon(string $addon): bool
+    {
+        return Addons::allowed($this, $addon);
     }
 
     public function isAdmin(): bool

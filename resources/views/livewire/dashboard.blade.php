@@ -2,7 +2,6 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Collection;
-use App\Models\Household;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\ShoppingListEntry;
@@ -98,9 +97,8 @@ new #[Layout('layouts.app')] class extends Component
             ->sortBy(fn (Item $todo) => [$dueProperty && $todo->propertyValue($dueProperty) ? 0 : 1, $dueProperty ? (string) $todo->propertyValue($dueProperty) : '', $todo->position])
             ->values();
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
-        $household = Household::find($this->householdId);
-        $hasRecipes = (bool) $household?->hasAddon(Addons::RECIPES);
-        $hasPortfolio = (bool) $household?->hasAddon(Addons::PORTFOLIO);
+        $hasRecipes = $this->currentUser()->canUseAddon(Addons::RECIPES);
+        $hasPortfolio = $this->currentUser()->canUseAddon(Addons::PORTFOLIO);
         $available = fn (string $key) => ($key !== 'meals' || $hasRecipes) && ($key !== 'portfolio' || $hasPortfolio);
         $widgets = array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), $available));
 

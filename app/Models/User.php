@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'email', 'password', 'reminder_emails'])]
+#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour'])]
 #[Hidden(['password', 'remember_token', 'calendar_token'])]
 class User extends Authenticatable
 {
@@ -71,6 +71,9 @@ class User extends Authenticatable
             'reminder_emails' => 'boolean',
             'dashboard_widgets' => 'array',
             'is_admin' => 'boolean',
+            'weekly_digest_day' => 'integer',
+            'weekly_digest_hour' => 'integer',
+            'weekly_digest_sent_at' => 'datetime',
         ];
     }
 

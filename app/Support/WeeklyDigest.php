@@ -10,6 +10,7 @@ use App\Models\PortfolioSnapshot;
 use App\Models\ShoppingListEntry;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Finance\Budgets;
 use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Carbon;
 
@@ -51,7 +52,7 @@ class WeeklyDigest
         }
 
         if ($user->canUseAddon(Addons::FINANCE)) {
-            $sections[] = self::finance($household->id);
+            $sections[] = self::finance($user, $household->id);
         }
 
         if ($user->canUseAddon(Addons::BUSINESS)) {
@@ -170,15 +171,22 @@ class WeeklyDigest
     /**
      * @return array{icon: string, title: string, lines: list<string>, url: string}
      */
-    private static function finance(int $householdId): array
+    private static function finance(User $user, int $householdId): array
     {
-        $week = Transaction::where('household_id', $householdId)->where('booked_on', '>=', today()->subDays(7));
+        // Bank data is personal: only the member's own bookings.
+        $week = Transaction::where('user_id', $user->id)->where('household_id', $householdId)->where('booked_on', '>=', today()->subDays(7));
         $spent = (float) (clone $week)->where('amount', '<', 0)->sum('amount');
         $income = (float) (clone $week)->where('amount', '>', 0)->sum('amount');
         $lines = [];
 
         if ($spent !== 0.0 || $income !== 0.0) {
             $lines[] = __('Last 7 days: :spent spent, :income received', ['spent' => self::euro(-$spent), 'income' => self::euro($income)]);
+        }
+
+        foreach (Budgets::status($user, $householdId) as $row) {
+            if ($row['percent'] >= 80) {
+                $lines[] = ($row['percent'] >= 100 ? '🚨 ' : '⚠ ').__('Budget :category: :percent %', ['category' => $row['label'], 'percent' => number_format($row['percent'], 0, ',', '.')]);
+            }
         }
 
         return ['icon' => '💶', 'title' => __('Finances'), 'lines' => $lines, 'url' => route('finance.index')];

@@ -2029,5 +2029,14 @@
     "Here is your overview for the coming week.": "Hier ist dein Überblick für die kommende Woche.",
     "Open :app": ":app öffnen",
     "You can change or switch off the weekly summary in your profile.": "Die Wochenübersicht kannst du im Profil ändern oder ausschalten.",
-    "Bank accounts, statement import, categories, reports and savings analysis for the household.": "Bankkonten, Kontoauszug-Import, Kategorien, Berichte und Sparanalyse für den Haushalt."
+    "Bank accounts, statement import, categories, reports and savings analysis for the household.": "Bankkonten, Kontoauszug-Import, Kategorien, Berichte und Sparanalyse für den Haushalt.",
+    "Budgets for :month": "Budgets für :month",
+    "Set a monthly limit for the categories you want to keep an eye on. At 80 % and at 100 % you get a push notification (once per month).": "Lege ein Monatslimit für die Kategorien fest, die du im Blick behalten willst. Bei 80 % und bei 100 % bekommst du eine Push-Benachrichtigung (einmal pro Monat).",
+    "Limit": "Limit",
+    "Monthly budget for :category": "Monatsbudget für :category",
+    ":amount left (:percent %)": ":amount übrig (:percent %)",
+    ":amount over budget": ":amount über dem Budget",
+    "Budgets": "Budgets",
+    "Budget :category: :percent %": "Budget :category: :percent %",
+    ":spent of :limit spent this month.": ":spent von :limit in diesem Monat ausgegeben."
 }

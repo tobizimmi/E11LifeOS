@@ -2050,5 +2050,8 @@
     "Spices & baking": "Gewürze & Backen",
     "Sweets & snacks": "Süßes & Snacks",
     "Drinks": "Getränke",
-    "Household & drugstore": "Haushalt & Drogerie"
+    "Household & drugstore": "Haushalt & Drogerie",
+    "Take turns": "Abwechselnd",
+    "After each completion the next person in this order gets the task.": "Nach jedem Erledigen bekommt die nächste Person in dieser Reihenfolge die Aufgabe.",
+    "Choose at least two people who do the task in turns (e.g. cleaning plan).": "Wähle mindestens zwei Personen, die die Aufgabe abwechselnd erledigen (z. B. Putzplan)."
 }

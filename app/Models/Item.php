@@ -173,9 +173,46 @@ class Item extends Model
         $values[$dueProperty->id] = $next;
         $values[$statusProperty->id] = Collection::TASK_STATUS_TODO;
 
+        // Rotation (e.g. cleaning plan): the next member of the list takes over.
+        $assigneeProperty = $this->collection->systemProperty('assignee');
+        $rotation = $this->rotation();
+
+        if ($assigneeProperty && count($rotation) > 1) {
+            $current = array_search((int) ($values[$assigneeProperty->id] ?? 0), $rotation, true);
+            $values[$assigneeProperty->id] = $rotation[$current === false ? 0 : ($current + 1) % count($rotation)];
+        }
+
         $this->properties = $values;
         $this->done = false;
         $this->rescheduledTo = $next;
+    }
+
+    /**
+     * Members (user ids) a repeating task rotates between, in order (content.rotation).
+     *
+     * @return list<int>
+     */
+    public function rotation(): array
+    {
+        return array_values(array_map('intval', array_filter((array) ($this->content['rotation'] ?? []), 'is_numeric')));
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     */
+    public function setRotation(array $userIds): void
+    {
+        $content = $this->content ?? [];
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+
+        // Stored from the first person on; it only takes effect with two or more.
+        if ($userIds !== []) {
+            $content['rotation'] = $userIds;
+        } else {
+            unset($content['rotation']);
+        }
+
+        $this->content = $content;
     }
 
     /**

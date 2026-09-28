@@ -23,8 +23,8 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <body class="font-sans antialiased bg-slate-50 dark:bg-gray-950">
+        <div class="min-h-screen bg-gradient-to-b from-indigo-50/60 via-slate-50 to-slate-50 dark:from-gray-950 dark:via-gray-950 dark:to-gray-950">
             <livewire:layout.navigation />
 
             {{-- Shown while the device is offline (the shopping list stays readable from the cache). --}}
@@ -45,7 +45,7 @@
             <div class="lg:ps-64">
                 <!-- Page Heading -->
                 @if (isset($header))
-                    <header class="bg-white dark:bg-gray-800 shadow">
+                    <header class="border-b border-gray-200/70 bg-white/60 backdrop-blur dark:border-gray-800 dark:bg-gray-900/60">
                         <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
                             {{ $header }}
                         </div>

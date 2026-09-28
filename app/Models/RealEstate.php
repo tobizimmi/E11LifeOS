@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'household_id', 'created_by', 'visibility', 'name', 'street', 'postal_code', 'city', 'state', 'usage', 'rental_share', 'status',
     'purchase_price', 'purchase_date', 'land_share', 'transfer_tax_rate', 'notary_rate', 'land_registry_rate', 'broker_rate',
     'living_area', 'plot_area', 'construction_year', 'equity', 'monthly_rent', 'monthly_costs', 'tax_rate', 'notes',
+    'applicant_token', 'applicant_intro', 'applicant_rent', 'landlord_name', 'landlord_address', 'landlord_iban',
 ])]
 class RealEstate extends Model
 {
@@ -73,6 +74,7 @@ class RealEstate extends Model
             'monthly_rent' => 'float',
             'monthly_costs' => 'float',
             'tax_rate' => 'float',
+            'applicant_rent' => 'float',
         ];
     }
 
@@ -124,6 +126,31 @@ class RealEstate extends Model
     public function household(): BelongsTo
     {
         return $this->belongsTo(Household::class);
+    }
+
+    public function isLet(): bool
+    {
+        return $this->usage !== self::OWNER;
+    }
+
+    public function tenants(): HasMany
+    {
+        return $this->hasMany(RealEstateTenant::class)->orderByDesc('move_in_on');
+    }
+
+    public function utilityStatements(): HasMany
+    {
+        return $this->hasMany(RealEstateUtilityStatement::class)->orderByDesc('year');
+    }
+
+    public function valuations(): HasMany
+    {
+        return $this->hasMany(RealEstateValuation::class)->orderBy('valued_on');
+    }
+
+    public function applicants(): HasMany
+    {
+        return $this->hasMany(RealEstateApplicant::class)->latest();
     }
 
     public function budgetItems(): HasMany

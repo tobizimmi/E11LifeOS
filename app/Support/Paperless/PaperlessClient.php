@@ -4,6 +4,7 @@ namespace App\Support\Paperless;
 
 use App\Models\PaperlessInstance;
 use App\Models\User;
+use App\Support\Vpn;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
@@ -215,7 +216,8 @@ class PaperlessClient
 
     private function request(): PendingRequest
     {
-        return Http::withHeaders(['Authorization' => 'Token '.$this->token, 'Accept' => 'application/json; version=5'])->timeout(10)->withoutRedirecting();
+        return Http::withHeaders(['Authorization' => 'Token '.$this->token, 'Accept' => 'application/json; version=5'])->timeout(10)->withoutRedirecting()
+            ->withOptions(Vpn::httpOptions($this->baseUrl));
     }
 
     /**

@@ -86,7 +86,7 @@ class ModuleIntegrationTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         [$other] = $this->memberWithHousehold();
         $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
-        $booking = Transaction::factory()->create(['bank_account_id' => $account->id]);
+        $booking = Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => '2026-09-25']);
         $receipt = BookkeepingEntry::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
         $this->actingAs($user);
 

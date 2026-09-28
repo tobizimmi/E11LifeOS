@@ -59,7 +59,9 @@ class RealEstateTax
             $depreciation = $depreciationBase * self::depreciationRate($realEstate->construction_year) / 100 * $months / 12;
             $interest = (float) $realEstate->loans->sum(fn (RealEstateLoan $loan) => $loan->interestIn($year));
             $maintenance = (float) $classified['maintenance']->filter(fn (RealEstateInvoice $invoice) => $invoice->paid_on?->year === $year)->sum('amount');
-            $rent = (float) $realEstate->monthly_rent * $months;
+            // Rent actually received from tenants, otherwise the planned monthly rent.
+            $received = $realEstate->exists ? RentalAccounting::receivedIn($realEstate, $year) : 0.0;
+            $rent = $received > 0 ? $received : (float) $realEstate->monthly_rent * $months;
             $costs = (float) $realEstate->monthly_costs * $months;
             $expenses = ($depreciation + $interest + $maintenance + $costs) * $share;
             $result = $rent - $expenses;

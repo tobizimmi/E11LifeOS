@@ -51,6 +51,11 @@ class AppSettings
         'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],
         'error_report_email' => ['group' => 'security', 'config' => ['security.error_report_email'], 'secret' => false, 'type' => 'email'],
 
+        'vpn_enabled' => ['group' => 'vpn', 'config' => ['vpn.enabled'], 'secret' => false, 'type' => 'yesno'],
+        'vpn_socks_port' => ['group' => 'vpn', 'config' => ['vpn.socks_port'], 'secret' => false, 'type' => 'number'],
+        'vpn_networks' => ['group' => 'vpn', 'config' => ['vpn.networks'], 'secret' => false, 'type' => 'text'],
+        'vpn_wireguard_config' => ['group' => 'vpn', 'config' => ['vpn.wireguard_config'], 'secret' => true, 'type' => 'textarea'],
+
         'legacy_db_host' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.host'], 'secret' => false, 'type' => 'text'],
         'legacy_db_port' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.port'], 'secret' => false, 'type' => 'number'],
         'legacy_db_database' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.database'], 'secret' => false, 'type' => 'text'],

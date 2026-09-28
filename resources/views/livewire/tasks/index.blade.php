@@ -949,6 +949,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </div>
 
+                    <livewire:documents-panel type="item" :id="$openTask->id" :key="'task-documents-'.$openTask->id" />
                     <livewire:links-panel type="item" :id="$openTask->id" :key="'task-links-'.$openTask->id" />
 
                     <livewire:entries.activity :item-id="$openTask->id" :key="'task-activity-'.$openTask->id" />

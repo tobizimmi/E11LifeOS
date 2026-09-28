@@ -70,7 +70,7 @@
         @endif
     </section>
 
-    <div class="grid gap-5 lg:grid-cols-3">
+    <div class="grid items-start gap-5 lg:grid-cols-3">
         <section class="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2 dark:bg-gray-800" aria-labelledby="trades-heading">
             <div class="flex items-center justify-between gap-2">
                 <h3 id="trades-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Budget by trade') }}</h3>
@@ -110,6 +110,11 @@
         </section>
 
         <div class="space-y-5">
+            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <livewire:documents-panel type="real_estate" :id="$model->id" :wire:key="'documents-real-estate-'.$model->id" />
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Purchase contract, land register extract, energy certificate, plans, correspondence …') }}</p>
+            </section>
+
             <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="deadlines-heading">
                 <h3 id="deadlines-heading" class="font-semibold text-gray-900 dark:text-gray-100">📅 {{ __('Next dates') }}</h3>
                 <ul class="mt-2 space-y-1.5 text-sm">

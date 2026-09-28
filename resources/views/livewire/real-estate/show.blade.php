@@ -70,6 +70,11 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?string $receiptMessage = null;
 
+    /**
+     * With paperless connected, receipts go there instead of into the app.
+     */
+    public bool $receiptToPaperless = true;
+
     public ?int $editingSubsidyId = null;
 
     /**
@@ -409,6 +414,22 @@ new #[Layout('layouts.app')] class extends Component
             ? tap($model->invoices()->findOrFail($this->editingInvoiceId))->update($attributes)
             : $model->invoices()->create($attributes + ['created_by' => Auth::id()]);
 
+        $paperless = $this->receipt && $this->receiptToPaperless ? \App\Models\PaperlessInstance::defaultFor(Auth::user()) : null;
+
+        if ($paperless) {
+            try {
+                $taskId = \App\Support\Paperless\PaperlessClient::for($paperless, Auth::user())->upload($this->receipt, trim($invoice->vendor.' '.$invoice->number));
+                \App\Models\ExternalLink::create([
+                    'household_id' => $this->householdId, 'created_by' => Auth::id(), 'linkable_type' => 'real_estate_invoice', 'linkable_id' => $invoice->id,
+                    'kind' => \App\Models\ExternalLink::PAPERLESS, 'paperless_instance_id' => $paperless->id, 'paperless_task_id' => mb_substr($taskId, 0, 64), 'title' => mb_substr(trim($invoice->vendor.' '.$invoice->number), 0, 255),
+                ]);
+                $this->receipt = null;
+            } catch (Throwable $exception) {
+                report($exception);
+                $this->dispatch('toast', message: __('paperless is not reachable – the receipt was saved in the app.'));
+            }
+        }
+
         if ($this->receipt) {
             if ($invoice->receipt_path) {
                 \Illuminate\Support\Facades\Storage::disk(RealEstateInvoice::RECEIPT_DISK)->delete($invoice->receipt_path);
@@ -555,7 +576,6 @@ new #[Layout('layouts.app')] class extends Component
         $model = $this->findRealEstate();
         abort_unless($model->created_by === null || $model->created_by === Auth::id() || $model->household->members()->where('user_id', Auth::id())->first()?->isOwner(), 403);
 
-        $model->invoices()->get()->each->delete();
         $model->delete();
         $this->redirectRoute('real-estate.index', navigate: true);
     }

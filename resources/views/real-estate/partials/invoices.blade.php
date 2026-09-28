@@ -14,6 +14,9 @@
                     <span wire:loading wire:target="readInvoiceReceipt">{{ __('Reading …') }}</span>
                 </button>
             @endif
+            @if (auth()->user()->hasPaperless())
+                <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="receiptToPaperless" class="rounded border-gray-300 text-indigo-600"> {{ __('Store in paperless') }}</label>
+            @endif
             <span wire:loading wire:target="receipt" class="text-xs text-gray-500">{{ __('Uploading …') }}</span>
             @if ($receiptMessage)
                 <span class="text-sm text-gray-700 dark:text-gray-300">{{ $receiptMessage }}</span>
@@ -53,6 +56,12 @@
             @endif
         </div>
     </form>
+
+    @if ($editingInvoiceId)
+        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <livewire:documents-panel type="real_estate_invoice" :id="$editingInvoiceId" :wire:key="'documents-invoice-'.$editingInvoiceId" />
+        </section>
+    @endif
 
     <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-label="{{ __('Invoices') }}">
         <p class="border-b border-gray-100 px-5 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">

@@ -1,0 +1,192 @@
+<?php
+
+namespace App\Support\Paperless;
+
+use App\Models\PaperlessInstance;
+use App\Models\User;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Throwable;
+
+/**
+ * REST client for a user's paperless-ngx instance (token authentication). The documents stay
+ * in paperless; the app only searches, links, previews, uploads and edits their metadata.
+ */
+class PaperlessClient
+{
+    public function __construct(private string $baseUrl, private string $token) {}
+
+    /**
+     * Client for an instance the user may use (own or shared with the household).
+     */
+    public static function for(PaperlessInstance $instance, User $user): self
+    {
+        abort_unless($instance->isAvailableTo($user), 404);
+
+        return new self($instance->baseUrl(), (string) $instance->token);
+    }
+
+    /**
+     * Normalises and checks a paperless address: http(s) only, no credentials, and never the
+     * server itself (loopback, link-local and metadata addresses).
+     */
+    public static function normaliseUrl(string $url): ?string
+    {
+        $url = rtrim(trim($url), '/');
+        $parts = parse_url($url);
+
+        if (! $parts || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || empty($parts['host']) || isset($parts['user']) || isset($parts['pass'])) {
+            return null;
+        }
+
+        $host = strtolower(trim($parts['host'], '[]'));
+        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
+
+        foreach ($ips as $ip) {
+            if (str_starts_with($ip, '127.') || str_starts_with($ip, '169.254.') || $ip === '::1' || $ip === '0.0.0.0') {
+                return null;
+            }
+        }
+
+        return in_array($host, ['localhost', 'metadata.google.internal'], true) ? null : preg_replace('#/api$#', '', $url);
+    }
+
+    public function documentUrl(int $id): string
+    {
+        return $this->baseUrl.'/documents/'.$id.'/details';
+    }
+
+    /**
+     * Total number of documents – used to test the connection.
+     */
+    public function count(): int
+    {
+        return (int) $this->get('/api/documents/', ['page_size' => 1])->json('count');
+    }
+
+    /**
+     * Full-text search, newest first.
+     *
+     * @return list<array{id: int, title: string, created: ?string, correspondent: ?int}>
+     */
+    public function search(string $query, int $limit = 12): array
+    {
+        $parameters = ['page_size' => $limit, 'ordering' => '-created', 'truncate_content' => 'true'];
+
+        if (trim($query) !== '') {
+            $parameters['query'] = trim($query);
+        }
+
+        return collect($this->get('/api/documents/', $parameters)->json('results') ?? [])
+            ->map(fn (array $document) => [
+                'id' => (int) $document['id'],
+                'title' => (string) ($document['title'] ?? ''),
+                'created' => isset($document['created']) ? substr((string) $document['created'], 0, 10) : null,
+                'correspondent' => $document['correspondent'] ?? null,
+            ])->values()->all();
+    }
+
+    /**
+     * @return array{id: int, title: string, created: ?string, tags: list<int>, notes: list<array{note: string, created: ?string}>}
+     */
+    public function document(int $id): array
+    {
+        $document = $this->get('/api/documents/'.$id.'/')->json();
+
+        return [
+            'id' => (int) $document['id'],
+            'title' => (string) ($document['title'] ?? ''),
+            'created' => isset($document['created']) ? substr((string) $document['created'], 0, 10) : null,
+            'tags' => array_map('intval', (array) ($document['tags'] ?? [])),
+            'notes' => collect($document['notes'] ?? [])->map(fn ($note) => ['note' => (string) ($note['note'] ?? ''), 'created' => isset($note['created']) ? substr((string) $note['created'], 0, 10) : null])->all(),
+        ];
+    }
+
+    /**
+     * All tags (id => name), cached for ten minutes.
+     *
+     * @return array<int, string>
+     */
+    public function tags(): array
+    {
+        return Cache::remember('paperless-tags:'.md5($this->baseUrl.$this->token), 600, fn () => collect($this->get('/api/tags/', ['page_size' => 1000])->json('results') ?? [])
+            ->mapWithKeys(fn (array $tag) => [(int) $tag['id'] => (string) $tag['name']])->sort()->all());
+    }
+
+    /**
+     * Thumbnail, preview (PDF/image) or original file.
+     */
+    public function file(int $id, string $variant): Response
+    {
+        abort_unless(in_array($variant, ['thumb', 'preview', 'download'], true), 404);
+
+        return $this->request()->timeout(30)->get($this->baseUrl.'/api/documents/'.$id.'/'.$variant.'/')->throw();
+    }
+
+    /**
+     * Uploads a file for consumption; returns the task id.
+     *
+     * @param  list<int>  $tagIds
+     */
+    public function upload(UploadedFile $file, ?string $title = null, array $tagIds = []): string
+    {
+        $request = $this->request()->timeout(60)->attach('document', (string) file_get_contents($file->getRealPath()), $file->getClientOriginalName());
+        $data = array_filter(['title' => $title]);
+
+        foreach ($tagIds as $index => $tagId) {
+            $data['tags['.$index.']'] = $tagId;
+        }
+
+        $response = $request->post($this->baseUrl.'/api/documents/post_document/', $data)->throw();
+
+        return trim((string) $response->body(), "\" \n");
+    }
+
+    /**
+     * The document id once paperless has consumed an upload, null while it is still running,
+     * false if it failed.
+     */
+    public function taskResult(string $taskId): int|false|null
+    {
+        $task = $this->get('/api/tasks/', ['task_id' => $taskId])->json('0');
+
+        return match ($task['status'] ?? null) {
+            'SUCCESS' => isset($task['related_document']) ? (int) $task['related_document'] : false,
+            'FAILURE' => false,
+            default => null,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $data  e.g. ['title' => …, 'tags' => [1, 2]]
+     */
+    public function update(int $id, array $data): void
+    {
+        $this->request()->patch($this->baseUrl.'/api/documents/'.$id.'/', $data)->throw();
+    }
+
+    public function addNote(int $id, string $note): void
+    {
+        $this->request()->post($this->baseUrl.'/api/documents/'.$id.'/notes/', ['note' => $note])->throw();
+    }
+
+    private function request(): PendingRequest
+    {
+        return Http::withHeaders(['Authorization' => 'Token '.$this->token, 'Accept' => 'application/json; version=5'])->timeout(10)->withoutRedirecting();
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function get(string $path, array $query = []): Response
+    {
+        try {
+            return $this->request()->get($this->baseUrl.$path, $query)->throw();
+        } catch (Throwable $exception) {
+            throw new PaperlessException(__('paperless is not reachable: :message', ['message' => class_basename($exception).' '.str($exception->getMessage())->limit(120)]), 0, $exception);
+        }
+    }
+}

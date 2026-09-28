@@ -145,6 +145,15 @@
                                     </optgroup>
                                 @endforeach
                             </select>
+                            @if ($transaction->amount < 0)
+                                <select aria-label="{{ __('Tax category') }}" wire:change="setTaxCategory({{ $transaction->id }}, $event.target.value)"
+                                        @class(['w-32 rounded-lg py-1 text-xs dark:bg-gray-900 dark:text-gray-200', 'border-amber-300 bg-amber-50 dark:border-amber-700' => $transaction->tax_category, 'border-gray-200 text-gray-500 dark:border-gray-600' => ! $transaction->tax_category])>
+                                    <option value="">🏛 {{ __('Tax …') }}</option>
+                                    @foreach (\App\Support\Finance\TaxCategories::all() as $taxKey => $taxCategory)
+                                        <option value="{{ $taxKey }}" @selected($transaction->tax_category === $taxKey)>{{ $taxCategory['icon'] }} {{ $taxCategory['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                             <label class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400" title="{{ __('Remember for this payee') }}">
                                 <input type="checkbox" x-model="remember" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                                 {{ __('always') }}

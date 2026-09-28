@@ -97,6 +97,7 @@ class Item extends Model
         // (No return value: a non-null result would stop the other "deleting" listeners.)
         static::deleting(function (Item $item): void {
             $item->attachments()->get()->each->delete();
+            ExternalLink::where('linkable_type', 'item')->where('linkable_id', $item->id)->get()->each->delete();
         });
     }
 

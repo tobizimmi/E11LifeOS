@@ -66,7 +66,9 @@ new class extends Component
             return;
         }
 
-        $token = trim($this->token) !== '' ? trim($this->token) : (string) $instance?->token;
+        // Tokens never contain spaces; a copied "Token abc…" header or stray line breaks are cleaned up.
+        $entered = preg_replace('/\s+/', '', preg_replace('/^\s*(token|bearer)\s+/i', '', $this->token));
+        $token = $entered !== '' ? $entered : (string) $instance?->token;
 
         if ($token === '') {
             $this->addError('token', __('Create a token in paperless under your profile ("API Auth Token").'));
@@ -78,10 +80,13 @@ new class extends Component
             $count = (new PaperlessClient($url, $token))->count();
         } catch (Throwable $exception) {
             $this->ok = false;
-            $hint = $exception->getPrevious() instanceof \Illuminate\Http\Client\ConnectionException ? Vpn::reachabilityHint($url) : null;
-            $this->status = $hint
-                ? __('paperless did not answer. :hint', ['hint' => $hint])
-                : __('Connection failed – check address and token. (:message)', ['message' => str($exception->getMessage())->limit(120)]);
+            $previous = $exception->getPrevious();
+            $hint = $previous instanceof \Illuminate\Http\Client\ConnectionException ? Vpn::reachabilityHint($url) : null;
+            $this->status = match (true) {
+                $hint !== null => __('paperless did not answer. :hint', ['hint' => $hint]),
+                $previous instanceof \Illuminate\Http\Client\RequestException && in_array($previous->response->status(), [401, 403], true) => __('paperless rejected the token (:detail). Copy it again in paperless under your profile → “API Auth Token” (only the long code, without “Token” in front) and paste it here.', ['detail' => str((string) $previous->response->json('detail'))->limit(120)]),
+                default => __('Connection failed – check address and token. (:message)', ['message' => str($exception->getMessage())->limit(120)]),
+            };
 
             return;
         }

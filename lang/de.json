@@ -2914,5 +2914,6 @@
     ":host lies in a private network but does not go through the VPN. Switch the VPN on in the server settings, or add the network under “Networks through the VPN”.": ":host liegt in einem privaten Netz, geht aber nicht durchs VPN. Schalte das VPN in den Server-Einstellungen ein oder trage das Netz unter „Netze durch das VPN“ ein.",
     "The address goes through the VPN, but the VPN is not running – see server settings → VPN.": "Die Adresse geht durchs VPN, aber das VPN läuft nicht – siehe Server-Einstellungen → VPN.",
     "The address goes through the VPN, but the VPN has no connection to your router yet (no handshake) – see server settings → VPN.": "Die Adresse geht durchs VPN, aber das VPN hat noch keine Verbindung zu deinem Router (kein Handshake) – siehe Server-Einstellungen → VPN.",
-    "paperless did not answer. :hint": "paperless hat nicht geantwortet. :hint"
+    "paperless did not answer. :hint": "paperless hat nicht geantwortet. :hint",
+    "paperless rejected the token (:detail). Copy it again in paperless under your profile → “API Auth Token” (only the long code, without “Token” in front) and paste it here.": "paperless lehnt das Token ab (:detail). Kopiere es in paperless erneut unter deinem Profil → „API Auth Token“ (nur den langen Code, ohne „Token“ davor) und füge es hier ein."
 }

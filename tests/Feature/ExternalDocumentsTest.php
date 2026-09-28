@@ -226,4 +226,24 @@ class ExternalDocumentsTest extends TestCase
         (new PaperlessClient('https://paperless.test', 'secret-token'))->count();
         Http::assertSent(fn ($request) => ($request->header('Accept')[0] ?? '') === 'application/json');
     }
+
+    public function test_a_pasted_token_header_is_cleaned_and_a_rejected_token_is_explained(): void
+    {
+        Http::fake(fn (Request $request) => $request->hasHeader('Authorization', 'Token abc123')
+            ? Http::response(['count' => 3, 'results' => []])
+            : Http::response(['detail' => 'Invalid token.'], 401));
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('profile.paperless-form')
+            ->call('add')
+            ->set('url', 'https://paperless.test')->set('token', 'wrong')
+            ->call('save')
+            ->assertSee('paperless lehnt das Token ab (Invalid token.)')
+            ->set('token', " Token abc123\n")
+            ->call('save')
+            ->assertSee('Verbunden – 3 Dokumente in paperless.');
+
+        $this->assertSame('abc123', PaperlessInstance::sole()->token);
+    }
 }

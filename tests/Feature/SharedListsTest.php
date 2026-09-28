@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Collection;
 use App\Models\Item;
+use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -23,7 +24,7 @@ class SharedListsTest extends TestCase
         $this->actingAs($user);
 
         Volt::test('shopping-list.index')->call('createShareLink')->assertSee('ohne Anmeldung');
-        $token = $household->fresh()->shopping_share_token;
+        $token = ShoppingList::where('household_id', $household->id)->sole()->share_token;
         $this->assertSame(40, strlen($token));
 
         auth()->logout();

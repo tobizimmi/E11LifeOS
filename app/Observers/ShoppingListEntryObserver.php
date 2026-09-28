@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Events\HouseholdItemsChanged;
 use App\Models\ShoppingListEntry;
+use App\Support\ShoppingLists;
 
 class ShoppingListEntryObserver
 {
@@ -14,6 +15,11 @@ class ShoppingListEntryObserver
 
     public function updated(ShoppingListEntry $entry): void
     {
+        // Ticking an item off counts as buying it (for "bought often").
+        if ($entry->wasChanged('checked') && $entry->checked) {
+            ShoppingLists::recordPurchase($entry);
+        }
+
         $this->broadcast($entry);
     }
 

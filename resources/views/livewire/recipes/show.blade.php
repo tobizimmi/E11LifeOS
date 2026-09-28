@@ -4,7 +4,9 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
+use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
+use App\Support\ShoppingLists;
 use App\Support\RecipeAi;
 use App\Support\RecipeAiException;
 use Illuminate\Support\Carbon;
@@ -35,6 +37,8 @@ new #[Layout('layouts.app')] class extends Component
     public array $selectedIngredients = [];
 
     public bool $choosingIngredients = false;
+
+    public ?int $shoppingListId = null;
 
     public bool $planning = false;
 
@@ -79,18 +83,34 @@ new #[Layout('layouts.app')] class extends Component
 
     public function chooseIngredients(): void
     {
+        $this->shoppingListId ??= ShoppingList::defaultFor((int) $this->householdId)->id;
+        $onList = $this->openOnList();
+        // Items already open on the list start unticked.
         $this->selectedIngredients = collect($this->findRecipe()->scaledIngredients($this->servings))
-            ->reject(fn (array $ingredient) => $ingredient['isSection'])
+            ->reject(fn (array $ingredient) => $ingredient['isSection'] || in_array(mb_strtolower(trim($ingredient['name'])), $onList, true))
             ->keys()
             ->all();
         $this->choosingIngredients = true;
     }
 
     /**
-     * Adds the selected ingredients (scaled to the chosen servings) to the household shopping list.
+     * Lower-case names of the open items on the chosen shopping list.
+     *
+     * @return list<string>
+     */
+    private function openOnList(): array
+    {
+        return ShoppingListEntry::where('household_id', $this->householdId)->where('shopping_list_id', $this->shoppingListId)->where('checked', false)
+            ->pluck('label')->map(fn (string $label) => mb_strtolower(trim($label)))->all();
+    }
+
+    /**
+     * Adds the selected ingredients (scaled to the chosen servings) to the chosen shopping list;
+     * items already on it get the amount added.
      */
     public function addToShoppingList(): void
     {
+        $list = ShoppingList::where('household_id', $this->householdId)->find($this->shoppingListId) ?? ShoppingList::defaultFor((int) $this->householdId);
         $recipe = $this->findRecipe();
         $ingredients = $recipe->scaledIngredients($this->servings);
         $added = 0;
@@ -102,17 +122,12 @@ new #[Layout('layouts.app')] class extends Component
                 continue;
             }
 
-            ShoppingListEntry::create([
-                'household_id' => $this->householdId,
-                'label' => mb_substr($ingredient['name'], 0, 255),
-                'quantity' => trim($ingredient['amount'].' '.$ingredient['unit']) ?: null,
-                'created_by' => Auth::id(),
-            ]);
+            ShoppingLists::add($list, $ingredient['name'], trim($ingredient['amount'].' '.$ingredient['unit']) ?: null, Auth::id(), ['note' => mb_substr($recipe->title, 0, 200)]);
             $added++;
         }
 
         $this->choosingIngredients = false;
-        $this->dispatch('toast', message: trans_choice(':count item added to the shopping list.|:count items added to the shopping list.', $added));
+        $this->dispatch('toast', message: trans_choice(':count item added to the shopping list.|:count items added to the shopping list.', $added).' ('.$list->name.')');
     }
 
     /**
@@ -389,13 +404,31 @@ new #[Layout('layouts.app')] class extends Component
                     @if ($choosingIngredients)
                         <form wire:submit="addToShoppingList" class="mt-3 space-y-2">
                             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Which ingredients do you need?') }}</p>
+                            @php
+                                $shoppingLists = \App\Models\ShoppingList::where('household_id', $this->householdId)->orderBy('position')->orderBy('id')->get();
+                                $alreadyOnList = \App\Models\ShoppingListEntry::where('shopping_list_id', $shoppingListId)->where('checked', false)->pluck('label')->map(fn ($label) => mb_strtolower(trim($label)))->all();
+                            @endphp
+                            @if ($shoppingLists->count() > 1)
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    {{ __('List') }}
+                                    <select wire:model.live="shoppingListId" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                        @foreach ($shoppingLists as $shoppingList)
+                                            <option value="{{ $shoppingList->id }}">{{ $shoppingList->icon }} {{ $shoppingList->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            @endif
                             @foreach ($ingredients as $index => $ingredient)
                                 @if ($ingredient['isSection'])
                                     <p class="pt-2 text-xs font-semibold uppercase text-gray-500">{{ $ingredient['name'] }}</p>
                                 @else
                                     <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="choose-{{ $index }}">
                                         <input type="checkbox" wire:model="selectedIngredients" value="{{ $index }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
-                                        <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}</span>
+                                        <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}
+                                            @if (in_array(mb_strtolower(trim($ingredient['name'])), $alreadyOnList, true))
+                                                <span class="ms-1 rounded bg-indigo-50 px-1 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">🛒 {{ __('already on the list') }}</span>
+                                            @endif
+                                        </span>
                                     </label>
                                 @endif
                             @endforeach

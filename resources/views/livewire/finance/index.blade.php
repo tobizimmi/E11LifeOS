@@ -101,6 +101,11 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $manualSaved = false;
 
+    /**
+     * Booking whose documents & mail links are shown.
+     */
+    public ?int $documentsFor = null;
+
     public function mount(): void
     {
         if (! array_key_exists($this->period, FinancePeriod::options())) {
@@ -289,7 +294,9 @@ new #[Layout('layouts.app')] class extends Component
 
     public function deleteAccount(int $accountId): void
     {
-        ($this->accounts()->find($accountId) ?? abort(404))->delete();
+        $account = $this->accounts()->find($accountId) ?? abort(404);
+        \App\Models\ExternalLink::where('linkable_type', 'transaction')->whereIn('linkable_id', $account->transactions()->select('id'))->get()->each->delete();
+        $account->delete();
         $this->accountFilter = '';
         $this->advice = null;
     }

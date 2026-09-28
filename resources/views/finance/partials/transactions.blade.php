@@ -127,7 +127,7 @@
         @else
             <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                 @foreach ($transactions as $transaction)
-                    <li wire:key="tx-{{ $transaction->id }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:flex-nowrap" x-data="{ remember: false }">
+                    <li wire:key="tx-{{ $transaction->id }}" @class(["flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3", "sm:flex-nowrap" => $documentsFor !== $transaction->id]) x-data="{ remember: false }">
                         <div class="w-16 shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ $transaction->booked_on->format('d.m.y') }}</div>
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ $transaction->counterparty ?: '—' }}</p>
@@ -162,6 +162,12 @@
                         <div @class(['w-24 shrink-0 text-end text-sm font-semibold tabular-nums', 'text-gray-900 dark:text-gray-100' => $transaction->amount < 0, 'text-emerald-700 dark:text-emerald-400' => $transaction->amount >= 0])>
                             {{ $transaction->amount >= 0 ? '+' : '' }}{{ $euro($transaction->amount) }}
                         </div>
+                        <button type="button" wire:click="$set('documentsFor', {{ $documentsFor === $transaction->id ? 'null' : $transaction->id }})" @class(['shrink-0 text-sm', 'text-indigo-600' => $documentsFor === $transaction->id, 'text-gray-400 hover:text-indigo-600' => $documentsFor !== $transaction->id]) title="{{ __('Documents & e-mails') }}" aria-label="{{ __('Documents & e-mails') }}" aria-expanded="{{ $documentsFor === $transaction->id ? 'true' : 'false' }}">🗂</button>
+                        @if ($documentsFor === $transaction->id)
+                            <div class="w-full rounded-lg bg-gray-50 p-3 dark:bg-gray-900/40">
+                                <livewire:documents-panel type="transaction" :id="$transaction->id" :wire:key="'documents-transaction-'.$transaction->id" />
+                            </div>
+                        @endif
                     </li>
                 @endforeach
             </ul>

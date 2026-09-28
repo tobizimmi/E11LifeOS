@@ -6,12 +6,14 @@ use App\Models\Collection;
 use App\Models\Item;
 use App\Models\User;
 use App\Support\Portfolio\PortfolioLink;
+use App\Support\RealEstate\RealEstateLink;
 use Illuminate\Support\Carbon;
 
 /**
  * iCalendar (ICS) feed of a member's open tasks with a due date and of collection dates
  * that have a reminder (e.g. cancellation deadlines), plus savings plans and expected dividends
- * of the member's portfolio, for subscribing in any calendar app.
+ * of the member's portfolio and dates of the properties (invoices, subsidy deadlines, trades), for
+ * subscribing in any calendar app.
  */
 class CalendarFeed
 {
@@ -60,6 +62,10 @@ class CalendarFeed
                             }
                         });
                 });
+
+            foreach (RealEstateLink::events($user, $household->id, Carbon::parse($from), Carbon::parse($until)) as $event) {
+                array_push($lines, ...self::realEstateEvent($event));
+            }
 
             if ($user->canUseAddon(Addons::PORTFOLIO)) {
                 foreach (PortfolioLink::events($user, Carbon::parse($from), Carbon::parse($until)) as $event) {
@@ -130,6 +136,29 @@ class CalendarFeed
             'URL:'.route('portfolio.security', ['symbol' => $event['symbol']]),
             'DTSTART;VALUE=DATE:'.$day->format('Ymd'),
             'DTEND;VALUE=DATE:'.$day->copy()->addDay()->format('Ymd'),
+            'END:VEVENT',
+        ];
+    }
+
+    /**
+     * Invoice due dates, subsidy deadlines and trade periods of the properties.
+     *
+     * @param  array{date: string, kind: string, title: string, url: string, uid: string, end?: ?string}  $event
+     * @return array<int, string>
+     */
+    private static function realEstateEvent(array $event): array
+    {
+        $day = Carbon::createFromFormat('!Y-m-d', $event['date']);
+        $end = ! empty($event['end']) && $event['end'] >= $event['date'] ? Carbon::createFromFormat('!Y-m-d', $event['end']) : $day;
+
+        return [
+            'BEGIN:VEVENT',
+            'UID:e11-'.$event['uid'].'@'.parse_url((string) config('app.url'), PHP_URL_HOST),
+            'DTSTAMP:'.now()->utc()->format('Ymd\THis\Z'),
+            'SUMMARY:'.self::text($event['title']),
+            'URL:'.$event['url'],
+            'DTSTART;VALUE=DATE:'.$day->format('Ymd'),
+            'DTEND;VALUE=DATE:'.$end->copy()->addDay()->format('Ymd'),
             'END:VEVENT',
         ];
     }

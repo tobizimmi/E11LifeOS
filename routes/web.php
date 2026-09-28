@@ -14,6 +14,7 @@ use App\Http\Controllers\PublicCollectionController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PushController;
+use App\Http\Controllers\RealEstateReceiptController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\XRechnungController;
@@ -71,6 +72,9 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('tasks', 'tasks.index')->name('tasks.index');
     Volt::route('finance', 'finance.index')->name('finance.index')->middleware('addon:finance');
     Route::get('finance/report.pdf', FinanceReportPdfController::class)->name('finance.report')->middleware('addon:finance');
+    Volt::route('real-estate', 'real-estate.index')->name('real-estate.index')->middleware('addon:real_estate');
+    Volt::route('real-estate/{realEstate}', 'real-estate.show')->whereNumber('realEstate')->name('real-estate.show')->middleware('addon:real_estate');
+    Route::get('real-estate/invoices/{invoice}/receipt', RealEstateReceiptController::class)->whereNumber('invoice')->name('real-estate.receipt')->middleware('addon:real_estate');
     Volt::route('business', 'business.index')->name('business.index')->middleware('addon:business');
     Volt::route('business/invoices/create', 'business.invoice-form')->name('business.invoices.create')->middleware('addon:business');
     Volt::route('business/invoices/{invoice}/edit', 'business.invoice-form')->whereNumber('invoice')->name('business.invoices.edit')->middleware('addon:business');

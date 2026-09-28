@@ -171,19 +171,23 @@ new #[Layout('layouts.app')] class extends Component
                 <a href="{{ route('shopping-list.index', ['list' => $listId]) }}" wire:navigate class="text-sm text-gray-500 hover:underline dark:text-gray-400">← {{ __('Shopping List') }}</a>
                 <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🏷️ {{ __('Offers') }}</h2>
             </div>
-            <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                {{ __('Add to') }}
-                <select wire:model.live="listId" class="rounded-lg border-gray-300 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                    @foreach ($lists as $option)
-                        <option value="{{ $option->id }}">{{ $option->icon }} {{ $option->name }}</option>
-                    @endforeach
-                </select>
-            </label>
         </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
+            {{-- Kept inside the component: the header slot is rendered outside of it, where wire:model does not reach --}}
+            <div class="flex justify-end">
+                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    {{ __('Add to') }}
+                    <select wire:model.live="listId" class="rounded-lg border-gray-300 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                        @foreach ($lists as $option)
+                            <option value="{{ $option->id }}">{{ $option->icon }} {{ $option->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+
             <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                 <div class="grid gap-4 md:grid-cols-[15rem_1fr]">
                     <form wire:submit="saveSettings">

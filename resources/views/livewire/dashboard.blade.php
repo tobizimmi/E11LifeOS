@@ -59,6 +59,37 @@ new #[Layout('layouts.app')] class extends Component
         $this->currentUser()->forceFill(['dashboard_widgets' => $widgets])->save();
     }
 
+    /**
+     * Drag & drop of a card on the dashboard.
+     */
+    public function sortWidget(string $key, int $position): void
+    {
+        $visible = $this->visibleWidgets();
+        abort_unless(in_array($key, $visible, true), 404);
+        $visible = array_values(array_diff($visible, [$key]));
+        array_splice($visible, max(0, min($position, count($visible))), 0, [$key]);
+        // Cards of modules the member cannot use right now keep their place at the end.
+        $hidden = array_values(array_diff(DashboardWidgets::forUser($this->currentUser()), $visible));
+        $this->currentUser()->forceFill(['dashboard_widgets' => [...$visible, ...$hidden]])->save();
+    }
+
+    /**
+     * The member's cards in order, without those of modules they cannot use.
+     *
+     * @return list<string>
+     */
+    private function visibleWidgets(): array
+    {
+        return array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), fn (string $key) => $this->widgetAvailable($key)));
+    }
+
+    private function widgetAvailable(string $key): bool
+    {
+        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE];
+
+        return ! isset($modules[$key]) || $this->currentUser()->canUseAddon($modules[$key]);
+    }
+
     public function dismissOnboarding(): void
     {
         $this->currentUser()->forceFill(['onboarding_dismissed_at' => now()])->save();
@@ -103,11 +134,7 @@ new #[Layout('layouts.app')] class extends Component
             ->values();
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
         $hasRecipes = $this->currentUser()->canUseAddon(Addons::RECIPES);
-        $hasPortfolio = $this->currentUser()->canUseAddon(Addons::PORTFOLIO);
-        $hasRealEstate = $this->currentUser()->canUseAddon(Addons::REAL_ESTATE);
-        $hasFinance = $this->currentUser()->canUseAddon(Addons::FINANCE);
-        $available = fn (string $key) => ($key !== 'meals' || $hasRecipes) && ($key !== 'portfolio' || $hasPortfolio) && ($key !== 'real_estate' || $hasRealEstate) && ($key !== 'tax' || $hasFinance);
-        $widgets = array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), $available));
+        $widgets = $this->visibleWidgets();
 
         return $data + [
             'onboarding' => \App\Support\Onboarding::isVisible($this->currentUser()) ? \App\Support\Onboarding::steps($this->currentUser()) : null,
@@ -125,7 +152,7 @@ new #[Layout('layouts.app')] class extends Component
             'hasRecipes' => $hasRecipes,
             'todaysMeals' => $hasRecipes ? $this->todaysMeals() : collect(),
             'widgets' => $widgets,
-            'allWidgets' => array_filter(DashboardWidgets::all(), $available, ARRAY_FILTER_USE_KEY),
+            'allWidgets' => array_filter(DashboardWidgets::all(), fn (string $key) => $this->widgetAvailable($key), ARRAY_FILTER_USE_KEY),
             'portfolio' => in_array('portfolio', $widgets, true) ? PortfolioLink::summary($this->currentUser()) : null,
             'portfolioEvents' => in_array('portfolio', $widgets, true) ? array_slice(PortfolioLink::events($this->currentUser(), today(), today()->addDays(30)), 0, 3) : [],
             'weather' => in_array('weather', $widgets, true) && $this->currentUser()->weather_latitude !== null
@@ -240,8 +267,10 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
                     @foreach ($widgets as $widget)
+                        <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" class="group/widget relative">
+                            <button type="button" class="widget-handle absolute right-2 top-2 z-10 cursor-grab opacity-70 sm:opacity-0 focus:opacity-100 rounded-md bg-white/80 px-1.5 py-0.5 text-xs text-gray-400 shadow-sm ring-1 ring-gray-200 sm:group-hover/widget:opacity-100 hover:text-gray-700 dark:bg-gray-900/80 dark:ring-gray-700" title="{{ __('Drag to move the card') }}" aria-label="{{ __('Drag to move the card') }}">⋮⋮</button>
                         @switch($widget)
                             @case('tasks')
                     <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
@@ -488,6 +517,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                         @endswitch
+                        </div>
                     @endforeach
                 </div>
             @endif

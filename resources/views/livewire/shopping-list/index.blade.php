@@ -447,17 +447,23 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🛒 {{ __('Shopping List') }}</h2>
-            <div class="flex flex-wrap items-center gap-2 text-sm">
-                <a href="{{ route('shopping-list.offers', ['list' => $list->id]) }}" wire:navigate class="rounded-lg bg-amber-50 px-3 py-1.5 font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800">🏷️ {{ __('Offers') }}</a>
-                <button type="button" wire:click="$toggle('shoppingMode')" aria-pressed="{{ $shoppingMode ? 'true' : 'false' }}" @class(['rounded-lg px-3 py-1.5 font-medium ring-1', 'bg-indigo-600 text-white ring-indigo-600' => $shoppingMode, 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => ! $shoppingMode])>🛍️ {{ __('Shopping mode') }}</button>
-            </div>
         </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-3xl space-y-4 px-4 sm:px-6 lg:px-8">
 
-            {{-- Lists: tap to switch, drag to reorder --}}
+            {{-- Kept inside the component: the header slot is rendered outside of it, where wire:click does not reach --}}
+            <div class="flex flex-wrap items-center justify-end gap-2 text-sm">
+                @if ($shoppingMode)
+                    <span class="me-auto text-xs text-gray-500 dark:text-gray-400">🔆 {{ __('Shopping mode is on – big buttons, the screen stays on.') }}</span>
+                @endif
+                <a href="{{ route('shopping-list.offers', ['list' => $list->id]) }}" wire:navigate class="rounded-lg bg-amber-50 px-3 py-1.5 font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800">🏷️ {{ __('Offers') }}</a>
+                <button type="button" wire:click="$toggle('shoppingMode')" aria-pressed="{{ $shoppingMode ? 'true' : 'false' }}" @class(['rounded-lg px-3 py-1.5 font-medium ring-1', 'bg-indigo-600 text-white ring-indigo-600' => $shoppingMode, 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => ! $shoppingMode])>🛍️ {{ $shoppingMode ? __('End shopping mode') : __('Shopping mode') }}</button>
+            </div>
+
+            {{-- Lists: tap to switch, drag to reorder (hidden while shopping) --}}
+            @unless ($shoppingMode)
             <nav class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="{{ __('Shopping lists') }}">
                 <ul class="flex min-w-max items-center gap-2" x-sort="$wire.sortLists($item, $position)" x-sort:config="{ filter: '.no-sort', animation: 150 }">
                     @foreach ($lists as $tab)
@@ -476,6 +482,7 @@ new #[Layout('layouts.app')] class extends Component
                     </li>
                 </ul>
             </nav>
+            @endunless
 
             {{-- Current list: store, actions, add --}}
             <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800 sm:p-5">
@@ -498,13 +505,15 @@ new #[Layout('layouts.app')] class extends Component
                                 <option value="{{ $store->id }}" @selected($list->store_id === $store->id)>🏪 {{ $store->name }}</option>
                             @endforeach
                         </select>
+                        @unless ($shoppingMode)
                         <button type="button" wire:click="$set('storesOpen', true)" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Stores & walking route') }}" aria-label="{{ __('Stores & walking route') }}">⚙︎</button>
                         <button type="button" wire:click="editList" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Edit list') }}" aria-label="{{ __('Edit list') }}">✎</button>
                         <button type="button" wire:click="{{ $shareUrl ? '$toggle(\'sharing\')' : 'createShareLink' }}" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Share') }}" aria-label="{{ __('Share') }}">🔗</button>
+                        @endunless
                     </div>
                 </div>
 
-                @if ($sharing && $shareUrl)
+                @if ($sharing && $shareUrl && ! $shoppingMode)
                     <div class="mt-3 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-900/50">
                         <p class="text-gray-700 dark:text-gray-300">🔗 {{ __('Anyone with this link can see the list, tick items off and add new ones – no login needed.') }}</p>
                         <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ copied: false }">

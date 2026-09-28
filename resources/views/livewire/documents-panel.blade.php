@@ -301,6 +301,7 @@ new class extends Component
     }
 }; ?>
 
+<x-drop-zone model="upload" method="uploadDocument" :label="$instanceId ? __('Drop files here – they go to paperless') : __('Drop files here')">
 <section class="space-y-2" aria-label="{{ __('Documents & e-mails') }}" @if ($documents->contains(fn ($document) => $document->isPending() && $document->paperless_task_id)) wire:poll.5s @endif>
     <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">🗂 {{ __('Documents & e-mails') }}</h3>
@@ -451,3 +452,4 @@ new class extends Component
         </ul>
     @endif
 </section>
+</x-drop-zone>

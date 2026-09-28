@@ -246,6 +246,38 @@ class Vpn
     }
 
     /**
+     * Why an address in a private network may not answer, as far as the VPN is concerned
+     * (null when the VPN is not the likely cause, e.g. for public addresses).
+     */
+    public static function reachabilityHint(string $url): ?string
+    {
+        $host = strtolower(trim((string) parse_url($url, PHP_URL_HOST), '[]'));
+        $isPrivate = filter_var($host, FILTER_VALIDATE_IP)
+            ? ! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)
+            : (bool) preg_match('/\.(local|lan|home|fritz\.box|internal)$/', $host);
+
+        if (! $isPrivate) {
+            return null;
+        }
+
+        if (! self::routes($url)) {
+            return __(':host lies in a private network but does not go through the VPN. Switch the VPN on in the server settings, or add the network under “Networks through the VPN”.', ['host' => $host]);
+        }
+
+        if (! self::isRunning()) {
+            return __('The address goes through the VPN, but the VPN is not running – see server settings → VPN.');
+        }
+
+        $tunnel = self::tunnelState();
+
+        if ($tunnel !== null && ($tunnel['handshake_at'] === null || $tunnel['handshake_at'] < now()->subMinutes(3)->getTimestamp())) {
+            return __('The address goes through the VPN, but the VPN has no connection to your router yet (no handshake) – see server settings → VPN.');
+        }
+
+        return null;
+    }
+
+    /**
      * Likely causes when an address cannot be reached through the VPN, most specific first.
      *
      * @param  array{handshake_at: ?int, received: int, sent: int}|null  $tunnel  from tunnelState()

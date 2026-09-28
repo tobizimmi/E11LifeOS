@@ -189,4 +189,20 @@ class ExternalDocumentsTest extends TestCase
         $this->get(route('paperless.document', [$shared->id, 41, 'thumb']))->assertOk();
         $this->get(route('paperless.document', [$personal->id, 42, 'thumb']))->assertNotFound();
     }
+
+    public function test_an_unreachable_paperless_in_the_home_network_points_to_the_vpn(): void
+    {
+        Http::fake(['192.168.10.210:2212/*' => Http::failedConnection('cURL error 28: Connection timed out after 10000 milliseconds')]);
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('profile.paperless-form')
+            ->call('add')
+            ->set('name', 'Zuhause')->set('url', 'http://192.168.10.210:2212')->set('token', 'secret-token')
+            ->call('save')
+            ->assertSee('192.168.10.210 liegt in einem privaten Netz, geht aber nicht durchs VPN')
+            ->assertDontSee('Adresse und Token prüfen');
+
+        $this->assertSame(0, PaperlessInstance::count());
+    }
 }

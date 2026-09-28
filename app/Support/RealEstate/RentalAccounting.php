@@ -122,7 +122,7 @@ class RentalAccounting
                         'tenant_id' => $tenant->id,
                         'month' => $date->toDateString(),
                         'amount' => (float) $match->amount,
-                        'paid_on' => $match->booked_on,
+                        'paid_on' => $match->booked_on->toDateString(),
                         'transaction_id' => $match->id,
                     ]);
                     $used[] = $match->id;

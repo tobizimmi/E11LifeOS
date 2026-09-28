@@ -10,6 +10,7 @@ use App\Models\RealEstate;
 use App\Models\RealEstateInvoice;
 use App\Support\Paperless\PaperlessClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -204,5 +205,25 @@ class ExternalDocumentsTest extends TestCase
             ->assertDontSee('Adresse und Token prüfen');
 
         $this->assertSame(0, PaperlessInstance::count());
+    }
+
+    public function test_an_older_paperless_without_the_api_version_is_asked_without_it(): void
+    {
+        Http::fake(fn (Request $request) => str_contains($request->header('Accept')[0] ?? '', 'version=')
+            ? Http::response(['detail' => 'Invalid version in "Accept" header.'], 406)
+            : Http::response(['count' => 7, 'results' => []]));
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('profile.paperless-form')
+            ->call('add')
+            ->set('name', 'Zuhause')->set('url', 'https://paperless.test')->set('token', 'secret-token')
+            ->call('save')
+            ->assertSee('Verbunden – 7 Dokumente in paperless.');
+
+        // Remembered: the next request goes out without a version right away.
+        Http::fake(fn (Request $request) => Http::response(['count' => 7, 'results' => []]));
+        (new PaperlessClient('https://paperless.test', 'secret-token'))->count();
+        Http::assertSent(fn ($request) => ($request->header('Accept')[0] ?? '') === 'application/json');
     }
 }

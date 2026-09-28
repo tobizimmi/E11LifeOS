@@ -18,6 +18,11 @@ use Throwable;
  */
 class PaperlessClient
 {
+    /**
+     * API version the app is written for; older instances are asked without a version.
+     */
+    private const API_VERSION = 5;
+
     public function __construct(private string $baseUrl, private string $token) {}
 
     /**
@@ -164,7 +169,7 @@ class PaperlessClient
     {
         abort_unless(in_array($variant, ['thumb', 'preview', 'download'], true), 404);
 
-        return $this->request()->timeout(30)->get($this->baseUrl.'/api/documents/'.$id.'/'.$variant.'/')->throw();
+        return $this->send(fn (PendingRequest $request) => $request->timeout(30)->get($this->baseUrl.'/api/documents/'.$id.'/'.$variant.'/'));
     }
 
     /**
@@ -174,14 +179,15 @@ class PaperlessClient
      */
     public function upload(UploadedFile $file, ?string $title = null, array $tagIds = []): string
     {
-        $request = $this->request()->timeout(60)->attach('document', (string) file_get_contents($file->getRealPath()), $file->getClientOriginalName());
         $data = array_filter(['title' => $title]);
 
         foreach ($tagIds as $index => $tagId) {
             $data['tags['.$index.']'] = $tagId;
         }
 
-        $response = $request->post($this->baseUrl.'/api/documents/post_document/', $data)->throw();
+        $response = $this->send(fn (PendingRequest $request) => $request->timeout(60)
+            ->attach('document', (string) file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+            ->post($this->baseUrl.'/api/documents/post_document/', $data));
 
         return trim((string) $response->body(), "\" \n");
     }
@@ -206,18 +212,44 @@ class PaperlessClient
      */
     public function update(int $id, array $data): void
     {
-        $this->request()->patch($this->baseUrl.'/api/documents/'.$id.'/', $data)->throw();
+        $this->send(fn (PendingRequest $request) => $request->patch($this->baseUrl.'/api/documents/'.$id.'/', $data));
     }
 
     public function addNote(int $id, string $note): void
     {
-        $this->request()->post($this->baseUrl.'/api/documents/'.$id.'/notes/', ['note' => $note])->throw();
+        $this->send(fn (PendingRequest $request) => $request->post($this->baseUrl.'/api/documents/'.$id.'/notes/', ['note' => $note]));
     }
 
     private function request(): PendingRequest
     {
-        return Http::withHeaders(['Authorization' => 'Token '.$this->token, 'Accept' => 'application/json; version=5'])->timeout(10)->withoutRedirecting()
+        $accept = Cache::get($this->versionCacheKey()) === 'none' ? 'application/json' : 'application/json; version='.self::API_VERSION;
+
+        return Http::withHeaders(['Authorization' => 'Token '.$this->token, 'Accept' => $accept])->timeout(10)->withoutRedirecting()
             ->withOptions(Vpn::httpOptions($this->baseUrl));
+    }
+
+    /**
+     * Sends a request and throws on errors. Older paperless versions reject the API version the
+     * app asks for (HTTP 406 "Invalid version"): then the request is repeated without a version,
+     * which is remembered for this address.
+     *
+     * @param  \Closure(PendingRequest): Response  $call
+     */
+    private function send(\Closure $call): Response
+    {
+        $response = $call($this->request());
+
+        if ($response->status() === 406 && str_contains($response->body(), 'version') && Cache::get($this->versionCacheKey()) !== 'none') {
+            Cache::put($this->versionCacheKey(), 'none', now()->addDay());
+            $response = $call($this->request());
+        }
+
+        return $response->throw();
+    }
+
+    private function versionCacheKey(): string
+    {
+        return 'paperless-api-version:'.md5($this->baseUrl);
     }
 
     /**
@@ -226,7 +258,7 @@ class PaperlessClient
     private function get(string $path, array $query = []): Response
     {
         try {
-            return $this->request()->get($this->baseUrl.$path, $query)->throw();
+            return $this->send(fn (PendingRequest $request) => $request->get($this->baseUrl.$path, $query));
         } catch (Throwable $exception) {
             throw new PaperlessException(__('paperless is not reachable: :message', ['message' => class_basename($exception).' '.str($exception->getMessage())->limit(120)]), 0, $exception);
         }

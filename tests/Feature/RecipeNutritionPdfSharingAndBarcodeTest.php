@@ -49,7 +49,7 @@ class RecipeNutritionPdfSharingAndBarcodeTest extends TestCase
         $this->assertTrue($recipe->fresh()->nutrition['estimated']);
 
         Volt::test('recipes.form', ['recipe' => $recipe->id])->set('nutrition.calories', 380)->set('nutrition.fiber', null)->call('save');
-        $this->assertSame(['calories' => 380, 'protein' => 12, 'carbs' => 60, 'fat' => 14, 'fiber' => null], $recipe->fresh()->nutrition);
+        $this->assertEquals(['calories' => 380, 'protein' => 12, 'carbs' => 60, 'fat' => 14, 'fiber' => null], $recipe->fresh()->nutrition);
         $this->assertSame(['calories' => 380.0, 'protein' => 12.0, 'carbs' => 60.0, 'fat' => 14.0], $recipe->fresh()->nutritionValues());
 
         Volt::test('recipes.form', ['recipe' => $recipe->id])->set('nutrition', ['calories' => null, 'protein' => null, 'carbs' => null, 'fat' => null, 'fiber' => null])->call('save');

@@ -20,6 +20,8 @@ class Addons
 
     public const BUSINESS = 'business';
 
+    public const REAL_ESTATE = 'real_estate';
+
     /**
      * @return array<string, array{label: string, icon: string, description: string, default: bool}>
      */
@@ -36,6 +38,12 @@ class Addons
                 'label' => __('Finances'),
                 'icon' => '💶',
                 'description' => __('Bank accounts, statement import, categories, reports and savings analysis for the household.'),
+                'default' => true,
+            ],
+            self::REAL_ESTATE => [
+                'label' => __('Real estate'),
+                'icon' => '🏠',
+                'description' => __('Plan buying and renovating a property: purchase costs, financing, budget by trade, invoices, subsidies and tax.'),
                 'default' => true,
             ],
             self::BUSINESS => [

@@ -97,6 +97,7 @@ new class extends Component
             'hasPortfolio' => Auth::user()->canUseAddon(Addons::PORTFOLIO),
             'hasFinance' => Auth::user()->canUseAddon(Addons::FINANCE),
             'hasBusiness' => Auth::user()->canUseAddon(Addons::BUSINESS),
+            'hasRealEstate' => Auth::user()->canUseAddon(Addons::REAL_ESTATE),
             'tasksCollection' => $tasksCollection,
             'todayTaskCount' => (new TaskLists($tasksCollection, Auth::user()))->counts()[TaskLists::TODAY],
             'collections' => Collection::query()
@@ -173,6 +174,9 @@ new class extends Component
                     @endif
                     @if ($hasFinance)
                         <x-sidebar-link :href="route('finance.index')" :active="request()->routeIs('finance.*')" wire:navigate>💶 {{ __('Finances') }}</x-sidebar-link>
+                    @endif
+                    @if ($hasRealEstate)
+                        <x-sidebar-link :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>🏠 {{ __('Real estate') }}</x-sidebar-link>
                     @endif
                     @if ($hasPortfolio)
                         <x-sidebar-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*')" wire:navigate>📈 {{ __('Portfolio') }}</x-sidebar-link>

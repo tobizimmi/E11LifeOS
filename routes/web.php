@@ -19,6 +19,7 @@ use App\Http\Controllers\PushController;
 use App\Http\Controllers\RealEstateReceiptController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
+use App\Http\Controllers\RentalDocumentController;
 use App\Http\Controllers\XRechnungController;
 use App\Models\Collection;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -80,6 +81,12 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('real-estate', 'real-estate.index')->name('real-estate.index')->middleware('addon:real_estate');
     Volt::route('real-estate/{realEstate}', 'real-estate.show')->whereNumber('realEstate')->name('real-estate.show')->middleware('addon:real_estate');
     Route::get('real-estate/invoices/{invoice}/receipt', RealEstateReceiptController::class)->whereNumber('invoice')->name('real-estate.receipt')->middleware('addon:real_estate');
+    Route::middleware('addon:real_estate')->controller(RentalDocumentController::class)->group(function () {
+        Route::get('real-estate/tenants/{tenant}/lease', 'lease')->whereNumber('tenant')->name('real-estate.lease');
+        Route::get('real-estate/utility-statements/{statement}/tenants/{tenant}', 'utilityStatement')->whereNumber(['statement', 'tenant'])->name('real-estate.utility-statement');
+        Route::get('real-estate/applicants/{applicant}/pdf', 'applicant')->whereNumber('applicant')->name('real-estate.applicant-pdf');
+        Route::get('real-estate/{realEstate}/self-disclosure', 'blankSelfDisclosure')->whereNumber('realEstate')->name('real-estate.self-disclosure-form');
+    });
     Volt::route('business', 'business.index')->name('business.index')->middleware('addon:business');
     Volt::route('business/invoices/create', 'business.invoice-form')->name('business.invoices.create')->middleware('addon:business');
     Volt::route('business/invoices/{invoice}/edit', 'business.invoice-form')->whereNumber('invoice')->name('business.invoices.edit')->middleware('addon:business');
@@ -136,6 +143,7 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
 // Public recipe links (no login; only recipes someone shared, see PublicRecipeController).
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');
+    Volt::route('apply/{token}', 'rental.apply')->where('token', '[A-Za-z0-9]+')->name('rental.apply');
     Volt::route('s/{token}', 'shopping-list.shared')->where('token', '[A-Za-z0-9]+')->name('shopping-list.shared');
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');

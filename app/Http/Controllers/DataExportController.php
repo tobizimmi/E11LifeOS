@@ -92,8 +92,8 @@ class DataExportController extends Controller
                 ]),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household
-                ? RealEstate::query()->visibleTo($user, $household->id)->with(['budgetItems', 'invoices', 'loans', 'subsidies'])->orderBy('id')->get()
-                    ->map(fn (RealEstate $realEstate) => $realEstate->makeHidden(['household_id', 'created_by'])->toArray())
+                ? RealEstate::query()->visibleTo($user, $household->id)->with(['budgetItems', 'invoices', 'loans', 'subsidies', 'tenants.payments', 'utilityStatements', 'valuations', 'applicants'])->orderBy('id')->get()
+                    ->map(fn (RealEstate $realEstate) => $realEstate->makeHidden(['household_id', 'created_by', 'applicant_token'])->toArray())
                 : [],
             'documents_and_mail_links' => $household
                 ? ExternalLink::where('household_id', $household->id)->where('created_by', $user->id)->orderBy('id')->get()

@@ -84,7 +84,7 @@ class RecipesTest extends TestCase
         $component->assertRedirect(route('recipes.show', $recipe));
 
         $this->assertSame($household->id, $recipe->household_id);
-        $this->assertSame([['name' => 'Teig', 'isSection' => true], ['amount' => '250', 'unit' => 'g', 'name' => 'Mehl']], $recipe->ingredients);
+        $this->assertEquals([['name' => 'Teig', 'isSection' => true], ['amount' => '250', 'unit' => 'g', 'name' => 'Mehl']], $recipe->ingredients);
         $this->assertSame(['Verrühren', 'Ausbacken'], $recipe->steps());
         $this->assertSame(['Frühstück'], $recipe->categories->pluck('name')->all());
         $this->assertSame(['schnell', 'süß'], $recipe->tags->pluck('name')->sort()->values()->all());

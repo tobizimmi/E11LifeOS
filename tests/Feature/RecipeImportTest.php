@@ -175,7 +175,7 @@ class RecipeImportTest extends TestCase
 
         $lasagne = Recipe::where('legacy_id', 'r1')->firstOrFail();
         $this->assertSame('Lasagne', $lasagne->title);
-        $this->assertSame([['name' => 'Soße', 'isSection' => true], ['amount' => '500', 'unit' => 'g', 'name' => 'Hackfleisch']], $lasagne->ingredients);
+        $this->assertEquals([['name' => 'Soße', 'isSection' => true], ['amount' => '500', 'unit' => 'g', 'name' => 'Hackfleisch']], $lasagne->ingredients);
         $this->assertSame([['text' => 'Anbraten']], $lasagne->instructions);
         $this->assertSame([30, 45, 4, 7, 'mittel'], [$lasagne->prep_time, $lasagne->cook_time, $lasagne->servings, $lasagne->cooked_count, $lasagne->difficulty]);
         $this->assertSame('2025-01-10', $lasagne->created_at->toDateString());

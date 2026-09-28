@@ -22,6 +22,7 @@ class CollectionTemplates
             'projects' => ['label' => __('Projects'), 'icon' => '🚀', 'description' => __('Status, due date and assignee – ideal as a board.')],
             'contracts' => ['label' => __('Contracts & documents'), 'icon' => '📑', 'description' => __('Provider, cost, customer number and cancellation deadline with e-mail reminder; attach the documents to each contract.')],
             'budget' => ['label' => __('Household budget'), 'icon' => '💶', 'description' => __('Expenses and income with category and date – the table adds up the amounts.')],
+            'inventory' => ['label' => __('Household inventory'), 'icon' => '🧰', 'description' => __('Appliances and valuables with purchase date, price, warranty and maintenance reminders – attach the receipt and manual from paperless to each device.')],
             'pantry' => ['label' => __('Pantry'), 'icon' => '🥫', 'description' => __('Stock, minimum stock, storage place and best-before date with reminder.')],
             'bookmarks' => ['label' => __('Bookmarks / read later'), 'icon' => '🔖', 'description' => __('Links to read later with status – ideal as a board.')],
             'journal' => ['label' => __('Journal'), 'icon' => '📔', 'description' => __('One entry per day with mood and your notes – private by default.'), 'private' => true],
@@ -54,6 +55,16 @@ class CollectionTemplates
                 self::select(__('Category'), [__('Groceries'), __('Home'), __('Mobility'), __('Leisure'), __('Health'), __('Other')]),
                 ['name' => __('Date'), 'type' => CollectionProperty::TYPE_DATE],
                 ['name' => __('Paid by'), 'type' => CollectionProperty::TYPE_PERSON],
+            ],
+            'inventory' => [
+                self::select(__('Room'), [__('Kitchen'), __('Living room'), __('Bedroom'), __('Bathroom'), __('Office'), __('Cellar'), __('Garage'), __('Garden')]),
+                ['name' => __('Manufacturer & model'), 'type' => CollectionProperty::TYPE_TEXT],
+                ['name' => __('Serial number'), 'type' => CollectionProperty::TYPE_TEXT],
+                ['name' => __('Purchased on'), 'type' => CollectionProperty::TYPE_DATE],
+                ['name' => __('Price (€)'), 'type' => CollectionProperty::TYPE_NUMBER],
+                ['name' => __('Warranty until'), 'type' => CollectionProperty::TYPE_DATE, 'options' => ['remind_days' => 30]],
+                ['name' => __('Next maintenance'), 'type' => CollectionProperty::TYPE_DATE, 'options' => ['remind_days' => 7, 'create_task' => true]],
+                ['name' => __('Manual'), 'type' => CollectionProperty::TYPE_URL],
             ],
             'pantry' => [
                 ['name' => __('Quantity'), 'type' => CollectionProperty::TYPE_NUMBER],
@@ -90,7 +101,7 @@ class CollectionTemplates
         }
 
         $defaultView = match ($template) {
-            'contracts', 'reading' => 'cards',
+            'contracts', 'reading', 'inventory' => 'cards',
             'pantry', 'journal' => 'list',
             'projects', 'bookmarks' => 'board',
             default => null,

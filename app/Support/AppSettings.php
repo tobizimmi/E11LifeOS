@@ -43,6 +43,13 @@ class AppSettings
 
         'backup_path' => ['group' => 'backup', 'config' => ['backup.path'], 'secret' => false, 'type' => 'text'],
         'backup_keep' => ['group' => 'backup', 'config' => ['backup.keep'], 'secret' => false, 'type' => 'number'],
+        'backup_remote_url' => ['group' => 'backup', 'config' => ['backup.remote_url'], 'secret' => false, 'type' => 'text'],
+        'backup_remote_username' => ['group' => 'backup', 'config' => ['backup.remote_username'], 'secret' => false, 'type' => 'text'],
+        'backup_remote_password' => ['group' => 'backup', 'config' => ['backup.remote_password'], 'secret' => true, 'type' => 'text'],
+        'backup_encryption_password' => ['group' => 'backup', 'config' => ['backup.encryption_password'], 'secret' => true, 'type' => 'text'],
+
+        'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],
+        'error_report_email' => ['group' => 'security', 'config' => ['security.error_report_email'], 'secret' => false, 'type' => 'email'],
 
         'legacy_db_host' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.host'], 'secret' => false, 'type' => 'text'],
         'legacy_db_port' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.port'], 'secret' => false, 'type' => 'number'],
@@ -89,7 +96,11 @@ class AppSettings
             }
 
             foreach (self::FIELDS[$key]['config'] as $path) {
-                config([$path => self::FIELDS[$key]['type'] === 'number' ? (int) $value : $value]);
+                config([$path => match (self::FIELDS[$key]['type']) {
+                    'number' => (int) $value,
+                    'yesno' => $value === '1',
+                    default => $value,
+                }]);
             }
         }
 

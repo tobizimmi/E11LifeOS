@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\ApiToken;
 use App\Models\User;
+use App\Support\TwoFactor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -20,12 +21,18 @@ class AuthController extends ApiController
             'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'max:255'],
             'device_name' => ['nullable', 'string', 'max:100'],
+            'code' => ['nullable', 'string', 'max:30'],
         ]);
 
         $user = User::where('email', $data['email'])->first();
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             return response()->json(['success' => false, 'error' => __('auth.failed')], 422);
+        }
+
+        // With two-factor authentication the app has to send the code of the authenticator app too.
+        if ($user->hasTwoFactor() && ! TwoFactor::verify($user, (string) ($data['code'] ?? ''))) {
+            return response()->json(['success' => false, 'two_factor_required' => true, 'error' => blank($data['code'] ?? null) ? __('Enter the 6-digit code from your authenticator app.') : __('The code is not valid.')], 422);
         }
 
         $token = ApiToken::issue($user, $data['device_name'] ?? 'App');

@@ -138,6 +138,10 @@ den Versand von Rechnungen, Angeboten und Mahnungen.
 |---|---|---|
 | `BACKUP_PATH` | Optional | Ordner für die nächtlichen ZIP-Backups (Datenbank + Dateien). Leer = `storage/backups` in der App. Besser außerhalb, z. B. `/var/www/vhosts/zimmimail.de/backups/e11lifeos-live`. |
 | `BACKUP_KEEP` | Optional | Wie viele Backups behalten werden (Standard 14) |
+| `BACKUP_REMOTE_URL`, `_USERNAME`, `_PASSWORD` | Empfohlen | WebDAV-Ordner für eine Kopie außer Haus (z. B. Hetzner Storage Box, Nextcloud, NAS). Jedes Backup wird verschlüsselt hochgeladen, alte Kopien werden aufgeräumt (`BACKUP_REMOTE_KEEP`, Standard 30). |
+| `BACKUP_ENCRYPTION_PASSWORD` | Mit Kopie außer Haus Pflicht | Passwort für die Verschlüsselung der Kopien. **Ohne dieses Passwort lässt sich kein Backup wiederherstellen** – im Passwortmanager ablegen. Entschlüsseln: `php artisan backup:decrypt datei.zip.enc` |
+| `SECURITY_REQUIRE_TWO_FACTOR` | Optional | `true` = alle Mitglieder müssen die Zwei-Faktor-Anmeldung einrichten, bevor sie die App nutzen können |
+| `ERROR_REPORT_EMAIL` | Empfohlen | Adresse für Fehlermeldungen vom Server (höchstens einmal pro Fehler und Stunde); die letzten Fehler stehen auch auf der Admin-Seite |
 
 ### Portfolio: Banksync (FinTS)
 

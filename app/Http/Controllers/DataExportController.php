@@ -9,15 +9,18 @@ use App\Models\BusinessProfile;
 use App\Models\Collection;
 use App\Models\Comment;
 use App\Models\Customer;
+use App\Models\ExternalLink;
 use App\Models\FinanceRule;
 use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\MealPlan;
+use App\Models\PaperlessInstance;
 use App\Models\Portfolio;
 use App\Models\PortfolioSetting;
 use App\Models\PriceAlert;
 use App\Models\Product;
+use App\Models\RealEstate;
 use App\Models\Recipe;
 use App\Models\RecurringInvoice;
 use App\Models\ShoppingListEntry;
@@ -42,7 +45,9 @@ class DataExportController extends Controller
 
         $data = [
             'exported_at' => now()->toIso8601String(),
-            'user' => $user->only(['id', 'name', 'email', 'created_at']),
+            'user' => $user->only(['id', 'name', 'email', 'created_at', 'weekly_digest', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'tax_rate', 'tax_children']) + [
+                'two_factor_enabled' => $user->hasTwoFactor(),
+            ],
             'household' => $household?->only(['id', 'name', 'created_at']),
             'household_members' => $household?->members()->with('user:id,name,email')->get()
                 ->map->only(['role', 'joined_at', 'user']),
@@ -83,9 +88,18 @@ class DataExportController extends Controller
                 : [],
             'bank_accounts' => BankAccount::where('user_id', $user->id)->with(['transactions' => fn ($query) => $query->orderBy('booked_on')])->orderBy('id')->get()
                 ->map(fn (BankAccount $account) => $account->only(['id', 'name', 'iban', 'created_at']) + [
-                    'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category'])->all(),
+                    'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category', 'tax_category', 'tax_amount'])->all(),
                 ]),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
+            'real_estate' => $household
+                ? RealEstate::query()->visibleTo($user, $household->id)->with(['budgetItems', 'invoices', 'loans', 'subsidies'])->orderBy('id')->get()
+                    ->map(fn (RealEstate $realEstate) => $realEstate->makeHidden(['household_id', 'created_by'])->toArray())
+                : [],
+            'documents_and_mail_links' => $household
+                ? ExternalLink::where('household_id', $household->id)->where('created_by', $user->id)->orderBy('id')->get()
+                    ->map->only(['linkable_type', 'linkable_id', 'kind', 'paperless_instance_id', 'paperless_document_id', 'url', 'title', 'created_at'])
+                : [],
+            'paperless_instances' => PaperlessInstance::where('user_id', $user->id)->orderBy('id')->get()->map->only(['id', 'name', 'url', 'shared', 'created_at']),
             'comments' => Comment::where('user_id', $user->id)->orderBy('id')->get()->map->only(['item_id', 'body', 'created_at']),
             'portfolio' => [
                 'portfolios' => $user->portfolios()->with(['positions', 'transactions', 'savingsPlans'])->get()->map(fn (Portfolio $portfolio) => $portfolio->only(['name', 'description', 'broker', 'color']) + [

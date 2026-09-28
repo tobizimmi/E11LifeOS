@@ -8,6 +8,7 @@ use App\Support\Vpn;
 use App\Support\WebPush;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,11 @@ new #[Layout('layouts.app')] class extends Component
      * @var array{ok: bool, message: string}|null
      */
     public ?array $vpnTestResult = null;
+
+    /**
+     * @var array{ok: bool, message: string}|null
+     */
+    public ?array $realtimeTestResult = null;
 
     /**
      * Per import: "*" = all old accounts, "" = the account with the target's e-mail, else an e-mail.
@@ -99,10 +105,12 @@ new #[Layout('layouts.app')] class extends Component
             'form.error_report_email' => ['nullable', 'email'],
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
+            'form.reverb_publish_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.vpn_enabled' => ['nullable', 'in:0,1'],
             'form.vpn_socks_port' => ['nullable', 'integer', 'between:1024,65535'],
             'form.vpn_wireguard_config' => ['nullable', 'string', fn ($attribute, $value, $fail) => filled($value) && Vpn::parse((string) $value) === null ? $fail(__('This is not a complete WireGuard configuration ([Interface] with PrivateKey and Address, [Peer] with PublicKey and Endpoint).')) : null],
-            'form.*' => ['nullable', 'string', 'max:2000'],
+            // Length limit for the text fields ("max" would compare the value of numeric ones).
+            'form.*' => ['nullable', 'string', fn ($attribute, $value, $fail) => mb_strlen((string) $value) > 2000 ? $fail(__('validation.max.string', ['attribute' => $attribute, 'max' => 2000])) : null],
         ], attributes: ['form.mail_from_address' => __('Sender address'), 'form.vapid_subject' => __('Contact')]);
 
         $values = [];
@@ -164,6 +172,21 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Calls an address inside the private network through the VPN.
      */
+    /**
+     * Sends a test message through Reverb and reports whether it arrived there.
+     */
+    public function testRealtime(): void
+    {
+        $this->authorize('admin');
+
+        try {
+            Broadcast::connection(config('broadcasting.default'))->broadcast(['admin-test'], 'ping', []);
+            $this->realtimeTestResult = ['ok' => true, 'message' => __('Reverb accepted the test message.')];
+        } catch (\Throwable $exception) {
+            $this->realtimeTestResult = ['ok' => false, 'message' => __('Reverb could not be reached: :message', ['message' => \Illuminate\Support\Str::limit(trim(strip_tags($exception->getMessage())), 160)])];
+        }
+    }
+
     public function testVpn(): void
     {
         $this->authorize('admin');
@@ -307,6 +330,7 @@ new #[Layout('layouts.app')] class extends Component
         'push' => ['title' => __('Web push'), 'text' => __('Key pair for push notifications. Create it once with the button and never change it afterwards, otherwise every device has to switch notifications on again.')],
         'portfolio' => ['title' => __('Portfolio'), 'text' => __('Keys for bank sync, Instagram analysis and optional data sources.')],
         'backup' => ['title' => __('Backups'), 'text' => __('Nightly ZIP backup of the database and uploaded files. With a WebDAV folder and a password, each backup is also encrypted (XChaCha20-Poly1305, key derived from the password) and copied off the server – keep the password safe, without it the backup cannot be opened.')],
+        'realtime' => ['title' => __('Live updates (Reverb)'), 'text' => __('Open pages update themselves when someone else changes something. The server sends these updates to the Reverb process; behind the path-based proxy it has to reach it directly. Enter the port Reverb was started with (PM2 process “reverb”, e.g. 3021 for staging and 3011 for live).')],
         'vpn' => ['title' => __('VPN (WireGuard)'), 'text' => __('Connects the server with a private network, e.g. your home network, so paperless or a NAS there can be reached. Create a WireGuard connection in your router (FritzBox: Internet → Permit Access → VPN (WireGuard) → “Connect a single device”) and paste the configuration file here. Only addresses in the listed networks go through the VPN. Staging and live need a connection and a port of their own.')],
         'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
@@ -341,6 +365,7 @@ new #[Layout('layouts.app')] class extends Component
         'backup_encryption_password' => [__('Encryption password for the copies'), ''],
         'require_two_factor' => [__('Two-factor authentication required'), ''],
         'error_report_email' => [__('Send error reports to'), 'admin@example.com'],
+        'reverb_publish_port' => [__('Port of the local Reverb process'), '3021'],
         'vpn_enabled' => [__('VPN switched on'), ''],
         'vpn_socks_port' => [__('Local port (optional)'), '25344'],
         'vpn_networks' => [__('Networks through the VPN (empty = AllowedIPs)'), '192.168.178.0/24, fritz.box'],
@@ -461,6 +486,14 @@ new #[Layout('layouts.app')] class extends Component
                                 <x-secondary-button type="button" wire:click="sendTestMail">{{ __('Send test e-mail') }}</x-secondary-button>
                             </div>
                             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }} {{ __('Current mailer: :mailer', ['mailer' => $mailer]) }}</p>
+                        @elseif ($group === 'realtime')
+                            <div class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Currently sent to: :address', ['address' => config('broadcasting.connections.reverb.options.scheme').'://'.config('broadcasting.connections.reverb.options.host').':'.config('broadcasting.connections.reverb.options.port')]) }}</p>
+                                <x-secondary-button type="button" wire:click="testRealtime" wire:loading.attr="disabled" wire:target="testRealtime">{{ __('Test live updates') }}</x-secondary-button>
+                                @if ($realtimeTestResult)
+                                    <p @class(['text-sm', 'text-emerald-700 dark:text-emerald-300' => $realtimeTestResult['ok'], 'text-red-700 dark:text-red-300' => ! $realtimeTestResult['ok']]) role="status">{{ $realtimeTestResult['message'] }}</p>
+                                @endif
+                            </div>
                         @elseif ($group === 'vpn')
                             <div class="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
                                 <p class="flex flex-wrap items-center gap-2">

@@ -149,4 +149,31 @@ class AdminSettingsTest extends TestCase
 
         $this->assertSame(0, DB::table('failed_jobs')->count());
     }
+
+    public function test_live_updates_are_sent_to_the_local_reverb_port_and_can_be_tested(): void
+    {
+        $this->admin();
+
+        Volt::test('admin.settings')
+            ->set('form.reverb_publish_port', '3021')
+            ->set('form.vpn_socks_port', '25344')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        AppSettings::apply();
+        $this->assertSame('127.0.0.1', config('broadcasting.connections.reverb.options.host'));
+        $this->assertSame(3021, config('broadcasting.connections.reverb.options.port'));
+        $this->assertSame('http', config('broadcasting.connections.reverb.options.scheme'));
+
+        Volt::test('admin.settings')->call('testRealtime')->assertSee('Reverb hat die Testnachricht angenommen.');
+
+        config([
+            'broadcasting.default' => 'pusher',
+            'broadcasting.connections.pusher.key' => 'key',
+            'broadcasting.connections.pusher.secret' => 'secret',
+            'broadcasting.connections.pusher.app_id' => '1',
+            'broadcasting.connections.pusher.options' => ['host' => '127.0.0.1', 'port' => 9, 'scheme' => 'http', 'useTLS' => false],
+        ]);
+        Volt::test('admin.settings')->call('testRealtime')->assertSee('Reverb nicht erreichbar');
+    }
 }

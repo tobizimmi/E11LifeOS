@@ -103,6 +103,7 @@ Damit Änderungen anderer Haushaltsmitglieder sofort erscheinen.
 | `REVERB_APP_KEY` | Pflicht | Zufallswert, z. B. `openssl rand -hex 16`. **Muss** mit der GitHub-Variable `REVERB_APP_KEY_LIVE` bzw. `REVERB_APP_KEY_STAGING` übereinstimmen (sie wird beim Build ins JavaScript eingebaut). |
 | `REVERB_APP_SECRET` | Pflicht | Zufallswert, z. B. `openssl rand -hex 32`. Geheim. |
 | `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Pflicht | `zimmimail.de`, `443`, `https` |
+| `REVERB_PUBLISH_HOST`, `REVERB_PUBLISH_PORT`, `REVERB_PUBLISH_SCHEME` | Empfohlen | Wohin der Server selbst Live-Updates schickt: `127.0.0.1`, der Reverb-Port (`3011` Live, `3021` Staging), `http`. Ohne diese Werte geht es an die öffentliche Adresse – dort leitet Apache aber nur den WebSocket-Pfad weiter, die Updates scheitern dann („Pusher error: <!DOCTYPE html>“). Alternativ in den Server-Einstellungen unter „Live-Updates (Reverb)“ nur den Port eintragen. |
 | `VITE_REVERB_PATH` | Pflicht | `/E11LifeOS` bzw. `/E11LifeOS-staging` |
 
 ### E-Mail

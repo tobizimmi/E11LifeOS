@@ -51,6 +51,8 @@ class AppSettings
         'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],
         'error_report_email' => ['group' => 'security', 'config' => ['security.error_report_email'], 'secret' => false, 'type' => 'email'],
 
+        'reverb_publish_port' => ['group' => 'realtime', 'config' => ['broadcasting.connections.reverb.options.port'], 'secret' => false, 'type' => 'number'],
+
         'vpn_enabled' => ['group' => 'vpn', 'config' => ['vpn.enabled'], 'secret' => false, 'type' => 'yesno'],
         'vpn_socks_port' => ['group' => 'vpn', 'config' => ['vpn.socks_port'], 'secret' => false, 'type' => 'number'],
         'vpn_networks' => ['group' => 'vpn', 'config' => ['vpn.networks'], 'secret' => false, 'type' => 'text'],
@@ -112,6 +114,15 @@ class AppSettings
         // A mail server entered here switches sending on.
         if (($stored['mail_host'] ?? '') !== '') {
             config(['mail.default' => 'smtp']);
+        }
+
+        // With the port of the local Reverb process the app sends live updates to it directly.
+        if (($stored['reverb_publish_port'] ?? '') !== '') {
+            config([
+                'broadcasting.connections.reverb.options.host' => '127.0.0.1',
+                'broadcasting.connections.reverb.options.scheme' => 'http',
+                'broadcasting.connections.reverb.options.useTLS' => false,
+            ]);
         }
     }
 

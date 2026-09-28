@@ -418,7 +418,7 @@ new class extends Component
             'statementModel' => $statementModel,
             'statementResult' => $statementModel ? RentalAccounting::utilityStatement($statementModel->setRelation('realEstate', $realEstate), $tenants) : null,
             'applicants' => $applicants,
-            'applicantCounts' => $realEstate->applicants()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+            'applicantCounts' => $realEstate->applicants()->reorder()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'monthlyRentTotal' => $monthlyTotal,
             'years' => range((int) now()->year + 1, max(2000, min((int) now()->year - 5, (int) ($realEstate->purchase_date?->year ?? now()->year)))),
             'hasFinance' => Auth::user()->canUseAddon(Addons::FINANCE),

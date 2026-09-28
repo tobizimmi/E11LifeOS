@@ -77,7 +77,7 @@ class RentalAccounting
      */
     public static function receivedIn(RealEstate $realEstate, int $year): float
     {
-        return round((float) RealEstateRentPayment::whereIn('tenant_id', $realEstate->tenants()->select('id'))
+        return round((float) RealEstateRentPayment::whereIn('tenant_id', $realEstate->tenants()->reorder()->select('id'))
             ->whereBetween('paid_on', [$year.'-01-01', $year.'-12-31'])->sum('amount'), 2);
     }
 

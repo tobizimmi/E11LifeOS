@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\BookkeepingEntry;
 use App\Models\ExternalLink;
 use App\Models\Item;
 use App\Models\RealEstate;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ExternalLinks
 {
-    public const TYPES = ['item', 'real_estate', 'real_estate_invoice', 'transaction'];
+    public const TYPES = ['item', 'real_estate', 'real_estate_invoice', 'transaction', 'bookkeeping_entry'];
 
     /**
      * Mail links from the common mail apps; web mail uses https.
@@ -33,6 +34,7 @@ class ExternalLinks
             'real_estate' => RealEstate::query()->visibleTo($user, $householdId)->find($id),
             'real_estate_invoice' => RealEstateInvoice::query()->whereIn('real_estate_id', RealEstate::query()->visibleTo($user, $householdId)->select('id'))->find($id),
             'transaction' => Transaction::where('user_id', $user->id)->where('household_id', $householdId)->find($id),
+            'bookkeeping_entry' => BookkeepingEntry::where('user_id', $user->id)->where('household_id', $householdId)->find($id),
             default => null,
         };
     }

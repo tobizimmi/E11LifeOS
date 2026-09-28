@@ -18,6 +18,11 @@ class BookkeepingEntry extends Model
     /** @use HasFactory<BookkeepingEntryFactory> */
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::deleted(fn (BookkeepingEntry $entry) => ExternalLink::where('linkable_type', 'bookkeeping_entry')->where('linkable_id', $entry->id)->get()->each->delete());
+    }
+
     public const EXPENSE = 'expense';
 
     public const INCOME = 'income';

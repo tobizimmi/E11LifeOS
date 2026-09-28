@@ -104,7 +104,9 @@ new #[Layout('layouts.app')] class extends Component
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
         $hasRecipes = $this->currentUser()->canUseAddon(Addons::RECIPES);
         $hasPortfolio = $this->currentUser()->canUseAddon(Addons::PORTFOLIO);
-        $available = fn (string $key) => ($key !== 'meals' || $hasRecipes) && ($key !== 'portfolio' || $hasPortfolio);
+        $hasRealEstate = $this->currentUser()->canUseAddon(Addons::REAL_ESTATE);
+        $hasFinance = $this->currentUser()->canUseAddon(Addons::FINANCE);
+        $available = fn (string $key) => ($key !== 'meals' || $hasRecipes) && ($key !== 'portfolio' || $hasPortfolio) && ($key !== 'real_estate' || $hasRealEstate) && ($key !== 'tax' || $hasFinance);
         $widgets = array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), $available));
 
         return $data + [
@@ -129,6 +131,11 @@ new #[Layout('layouts.app')] class extends Component
             'weather' => in_array('weather', $widgets, true) && $this->currentUser()->weather_latitude !== null
                 ? \App\Support\Weather::today($this->currentUser()->weather_latitude, $this->currentUser()->weather_longitude)
                 : null,
+            'realEstates' => in_array('real_estate', $widgets, true)
+                ? \App\Support\RealEstate\RealEstateLink::properties($this->currentUser(), $this->householdId)->map(fn ($realEstate) => ['model' => $realEstate, 'summary' => \App\Support\RealEstate\RealEstatePlan::summary($realEstate)])
+                : collect(),
+            'realEstateEvents' => in_array('real_estate', $widgets, true) ? array_slice(\App\Support\RealEstate\RealEstateLink::events($this->currentUser(), $this->householdId, today()->subDays(30), today()->addDays(30)), 0, 3) : [],
+            'taxYear' => in_array('tax', $widgets, true) ? \App\Support\Finance\TaxYear::build($this->currentUser(), $this->householdId, (int) now()->year) : null,
             'deadlines' => DashboardWidgets::deadlines($this->currentUser(), $this->householdId),
             'monthlyCosts' => DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId),
         ];
@@ -422,6 +429,42 @@ new #[Layout('layouts.app')] class extends Component
                                     </li>
                                 @endforeach
                             </ul>
+                        @endif
+                    </section>
+                                @break
+                            @case('real_estate')
+                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <x-dashboard-card-header :title="__('Real estate')" :href="route('real-estate.index')" />
+                        @forelse ($realEstates as $row)
+                            <a href="{{ route('real-estate.show', $row['model']) }}" wire:navigate wire:key="dashboard-real-estate-{{ $row['model']->id }}" class="mt-3 block rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                                <p class="flex justify-between gap-2 text-sm"><span class="truncate font-medium text-gray-900 dark:text-gray-100">🏠 {{ $row['model']->name }}</span><span class="shrink-0 text-gray-500 dark:text-gray-400">{{ \App\Models\RealEstate::statusLabels()[$row['model']->status] ?? '' }}</span></p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ __(':paid of :total paid', ['paid' => number_format($row['summary']['paid_total'], 0, ',', '.').' €', 'total' => number_format($row['summary']['expected_total'], 0, ',', '.').' €']) }}
+                                    · <span @class(['text-red-700 dark:text-red-400' => $row['summary']['funding']['gap'] > 0])>{{ $row['summary']['funding']['gap'] > 0 ? '⚠ '.__('gap :amount', ['amount' => number_format($row['summary']['funding']['gap'], 0, ',', '.').' €']) : '✓ '.__('financed') }}</span>
+                                </p>
+                                @if ($row['summary']['progress'] !== null)
+                                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ $row['summary']['progress'] }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ __('Renovation progress') }}"><div class="h-full rounded-full bg-indigo-500" style="width: {{ $row['summary']['progress'] }}%"></div></div>
+                                @endif
+                            </a>
+                        @empty
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No property yet.') }} <a href="{{ route('real-estate.index') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('Plan a property') }}</a></p>
+                        @endforelse
+                        @if ($realEstateEvents !== [])
+                            <ul class="mt-3 space-y-1 border-t border-gray-100 pt-2 text-xs dark:border-gray-700">
+                                @foreach ($realEstateEvents as $event)
+                                    <li @class(['text-red-700 dark:text-red-400' => $event['overdue'], 'text-gray-600 dark:text-gray-300' => ! $event['overdue']])>{{ \Illuminate\Support\Carbon::parse($event['date'])->translatedFormat('j. M') }} · {{ $event['title'] }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </section>
+                                @break
+                            @case('tax')
+                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <x-dashboard-card-header :title="__('Tax :year', ['year' => now()->year])" :href="route('finance.index', ['tab' => 'tax'])" />
+                        @if ($taxYear)
+                            <p @class(['mt-2 text-3xl font-semibold', 'text-green-700 dark:text-green-400' => $taxYear['effect'] >= 0, 'text-red-700 dark:text-red-400' => $taxYear['effect'] < 0])>≈ {{ number_format(abs($taxYear['effect']), 0, ',', '.') }} €</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $taxYear['effect'] >= 0 ? __('less income tax (estimate)') : __('more income tax (estimate)') }}</p>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ trans_choice(':count tax-relevant booking|:count tax-relevant bookings', $taxYear['bookings']->count()) }} · {{ __('deductible :amount', ['amount' => number_format($taxYear['deductible'], 0, ',', '.').' €']) }}</p>
                         @endif
                     </section>
                                 @break

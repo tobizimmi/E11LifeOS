@@ -90,6 +90,46 @@ class PaperlessClient
     }
 
     /**
+     * Documents that still carry an inbox tag (newly consumed, e.g. from a mail rule), newest first.
+     *
+     * @return list<array{id: int, title: string, created: ?string, tags: list<int>, content: string}>
+     */
+    public function inbox(int $limit = 25): array
+    {
+        return collect($this->get('/api/documents/', ['is_in_inbox' => 'true', 'page_size' => $limit, 'ordering' => '-added', 'truncate_content' => 'true'])->json('results') ?? [])
+            ->map(fn (array $document) => [
+                'id' => (int) $document['id'],
+                'title' => (string) ($document['title'] ?? ''),
+                'created' => isset($document['created']) ? substr((string) $document['created'], 0, 10) : null,
+                'tags' => array_map('intval', (array) ($document['tags'] ?? [])),
+                'content' => mb_substr(trim((string) ($document['content'] ?? '')), 0, 300),
+            ])->values()->all();
+    }
+
+    /**
+     * Ids of the tags paperless treats as inbox tags.
+     *
+     * @return list<int>
+     */
+    public function inboxTagIds(): array
+    {
+        return Cache::remember('paperless-inbox-tags:'.md5($this->baseUrl.$this->token), 600, fn () => collect($this->get('/api/tags/', ['is_inbox_tag' => 'true', 'page_size' => 100])->json('results') ?? [])
+            ->filter(fn (array $tag) => (bool) ($tag['is_inbox_tag'] ?? true))
+            ->map(fn (array $tag) => (int) $tag['id'])->values()->all());
+    }
+
+    /**
+     * Removes the inbox tags from a document, so it leaves the inbox in paperless too.
+     */
+    public function removeFromInbox(int $id): void
+    {
+        $inboxTags = $this->inboxTagIds();
+        $tags = array_values(array_diff($this->document($id)['tags'], $inboxTags));
+
+        $this->update($id, ['tags' => $tags]);
+    }
+
+    /**
      * @return array{id: int, title: string, created: ?string, tags: list<int>, notes: list<array{note: string, created: ?string}>}
      */
     public function document(int $id): array

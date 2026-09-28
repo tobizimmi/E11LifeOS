@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Support\Portfolio\PortfolioLink;
+use App\Support\RealEstate\RealEstateLink;
 use Illuminate\Support\Str;
 
 /**
@@ -92,7 +93,10 @@ class BrainSearch
         // Portfolios are personal: only the asking member's own depot is added.
         $portfolio = $viewer->canUseAddon(Addons::PORTFOLIO) ? PortfolioLink::brainDocument($viewer, $question) : null;
 
-        return $portfolio ? array_slice([$portfolio, ...$documents], 0, self::MAX_DOCUMENTS) : $documents;
+        $realEstate = RealEstateLink::brainDocument($viewer, $householdId, $question);
+        $extra = array_values(array_filter([$portfolio, $realEstate]));
+
+        return $extra !== [] ? array_slice([...$extra, ...$documents], 0, self::MAX_DOCUMENTS) : $documents;
     }
 
     /**

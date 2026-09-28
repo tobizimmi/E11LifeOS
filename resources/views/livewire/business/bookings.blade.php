@@ -381,6 +381,12 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </form>
 
+            @if ($editingId)
+                <div class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <livewire:documents-panel type="bookkeeping_entry" :id="$editingId" :wire:key="'documents-booking-'.$editingId" />
+                </div>
+            @endif
+
             <x-slot:footer>
                 <x-primary-button form="entry-form" wire:loading.attr="disabled" wire:target="receipt,saveEntry">{{ __('Save') }}</x-primary-button>
                 @if ($editingId)

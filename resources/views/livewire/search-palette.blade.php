@@ -64,6 +64,7 @@ new class extends Component
             __('Portfolio') => Auth::user()->canUseAddon(Addons::PORTFOLIO)
                 ? PortfolioLink::search(Auth::user(), $term, self::RESULTS_PER_GROUP)
                 : [],
+            __('Real estate') => \App\Support\RealEstate\RealEstateLink::search(Auth::user(), $this->householdId, $term, self::RESULTS_PER_GROUP),
             __('Shopping List') => ShoppingListEntry::where('household_id', $this->householdId)
                 ->whereRaw('LOWER(label) LIKE ?', ['%'.mb_strtolower($term).'%'])
                 ->orderBy('checked')

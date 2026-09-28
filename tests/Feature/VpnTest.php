@@ -6,6 +6,8 @@ use App\Models\AppSetting;
 use App\Models\User;
 use App\Support\Vpn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -81,5 +83,34 @@ class VpnTest extends TestCase
 
         Volt::test('admin.settings')->assertSee('wireproxy ist nicht installiert');
         Volt::test('admin.settings')->call('testVpn')->assertHasErrors('vpnTestUrl');
+    }
+
+    public function test_a_failed_connection_test_names_the_likely_cause(): void
+    {
+        config(['vpn.enabled' => true, 'vpn.socks_port' => 25111, 'vpn.info_port' => 26111, 'vpn.wireguard_config' => str_replace('192.168.178.0/24, 0.0.0.0/0', '10.8.0.0/24', self::CONFIG)]);
+        $handshake = 0;
+        $timeout = Http::failedConnection('cURL error 28: Connection timed out after 10001 milliseconds');
+        Http::fake(function (Request $request) use (&$handshake, $timeout) {
+            return str_ends_with($request->url(), ':26111/metrics')
+                ? Http::response("public_key=abc\nendpoint=1.2.3.4:51820\nlast_handshake_time_sec={$handshake}\nrx_bytes=0\ntx_bytes=1480\n")
+                : $timeout($request);
+        });
+
+        $result = Vpn::test('http://192.168.10.210:2212');
+
+        $this->assertFalse($result['ok']);
+        $hints = implode(' ', $result['hints']);
+        $this->assertStringContainsString('192.168.10.210 ist in AllowedIPs', $hints);
+        $this->assertStringContainsString('192.168.10.0/24', $hints);
+        $this->assertStringContainsString('Noch kein WireGuard-Handshake', $hints);
+        $this->assertStringContainsString('PersistentKeepalive', $hints);
+
+        // Tunnel up and the network covered: the problem lies behind the router.
+        config(['vpn.wireguard_config' => str_replace('10.8.0.0/24', '192.168.10.0/24', config('vpn.wireguard_config'))."\nPersistentKeepalive = 25\n"]);
+        $handshake = now()->subSeconds(40)->getTimestamp();
+
+        $hints = Vpn::test('http://192.168.10.210:2212')['hints'];
+        $this->assertCount(1, $hints);
+        $this->assertStringContainsString('Der Tunnel steht', $hints[0]);
     }
 }

@@ -7,6 +7,7 @@ use App\Models\Collection;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -72,5 +73,25 @@ class HouseholdBroadcastingTest extends TestCase
 
             $this->assertSame('$refresh', $listeners["echo-private:household.{$household->id},.items.updated"] ?? null, $component);
         }
+    }
+
+    public function test_an_unreachable_websocket_server_neither_breaks_saving_nor_leaves_failed_jobs(): void
+    {
+        config([
+            'broadcasting.default' => 'pusher',
+            'broadcasting.connections.pusher.key' => 'key',
+            'broadcasting.connections.pusher.secret' => 'secret',
+            'broadcasting.connections.pusher.app_id' => '1',
+            'broadcasting.connections.pusher.options' => ['host' => '127.0.0.1', 'port' => 9, 'scheme' => 'http', 'useTLS' => false],
+            'queue.default' => 'database',
+        ]);
+
+        [$user, $household] = $this->memberWithHousehold();
+
+        ShoppingListEntry::create(['household_id' => $household->id, 'label' => 'Milch', 'created_by' => $user->id]);
+
+        $this->assertDatabaseHas('shopping_list_entries', ['label' => 'Milch']);
+        $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame(0, DB::table('failed_jobs')->count());
     }
 }

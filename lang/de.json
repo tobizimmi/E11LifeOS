@@ -2889,5 +2889,19 @@
     "Loan": "Kredit",
     "Other assets": "Sonstiges Vermögen",
     "Other debts": "Sonstige Schulden",
-    "New applicant for :property": "Neue Bewerbung für :property"
+    "New applicant for :property": "Neue Bewerbung für :property",
+    "Failed jobs were queued again.": "Die fehlgeschlagenen Aufgaben wurden erneut eingereiht.",
+    "Failed jobs were deleted.": "Die fehlgeschlagenen Aufgaben wurden gelöscht.",
+    "Retry all": "Alle erneut versuchen",
+    "Delete all": "Alle löschen",
+    "Delete all failed jobs?": "Alle fehlgeschlagenen Aufgaben löschen?",
+    ":host is not covered by AllowedIPs in the [Peer] section (:allowed). Add the home network, e.g. :network.": ":host ist in AllowedIPs im [Peer]-Abschnitt nicht enthalten (:allowed). Ergänze das Heimnetz, z. B. :network.",
+    "No WireGuard handshake yet – the tunnel is not up. Check the Endpoint (public address and port of your router), that the router forwards this UDP port, that the router knows this connection (its public key), and that the server may send UDP traffic.": "Noch kein WireGuard-Handshake – der Tunnel steht nicht. Prüfe den Endpoint (öffentliche Adresse und Port deines Routers), ob der Router diesen UDP-Port weiterleitet, ob der Router diese Verbindung kennt (ihren öffentlichen Schlüssel) und ob der Server UDP nach außen senden darf.",
+    "The last WireGuard handshake was :time – the connection has broken off. Check whether the router is reachable and add “PersistentKeepalive = 25” to the [Peer] section.": "Der letzte WireGuard-Handshake war :time – die Verbindung ist abgerissen. Prüfe, ob der Router erreichbar ist, und ergänze „PersistentKeepalive = 25“ im [Peer]-Abschnitt.",
+    "The state of the tunnel is unknown. Check the Endpoint and keys of the WireGuard configuration, that the router forwards the UDP port and knows this connection, and that it lets the VPN connection into the home network.": "Der Zustand des Tunnels ist unbekannt. Prüfe Endpoint und Schlüssel der WireGuard-Konfiguration, ob der Router den UDP-Port weiterleitet und diese Verbindung kennt und ob er die VPN-Verbindung ins Heimnetz lässt.",
+    "The tunnel is up (last handshake :time), but the address does not answer. Check that the router lets the VPN connection into the home network, that the service runs on this port and that the firewall of the target device allows access from the VPN network.": "Der Tunnel steht (letzter Handshake :time), aber die Adresse antwortet nicht. Prüfe, ob der Router die VPN-Verbindung ins Heimnetz lässt, ob der Dienst auf diesem Port läuft und ob die Firewall des Zielgeräts Zugriffe aus dem VPN-Netz erlaubt.",
+    "Tip: “PersistentKeepalive = 25” in the [Peer] section keeps the connection open behind routers and firewalls.": "Tipp: „PersistentKeepalive = 25“ im [Peer]-Abschnitt hält die Verbindung hinter Routern und Firewalls offen.",
+    "Last handshake :time": "Letzter Handshake :time",
+    "no handshake": "kein Handshake",
+    "wireproxy runs, but the router has not answered yet.": "wireproxy läuft, aber der Router hat noch nicht geantwortet."
 }

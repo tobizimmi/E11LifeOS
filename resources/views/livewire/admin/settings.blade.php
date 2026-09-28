@@ -9,6 +9,7 @@ use App\Support\WebPush;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
@@ -173,6 +174,39 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Reads the accounts of the old database, so that one can be chosen as source.
      */
+    /**
+     * Puts all failed background jobs back into the queue.
+     */
+    public function retryFailedJobs(): void
+    {
+        $this->authorize('admin');
+        Artisan::call('queue:retry', ['id' => ['all']]);
+        $this->dispatch('toast', message: __('Failed jobs were queued again.'));
+    }
+
+    public function deleteFailedJobs(): void
+    {
+        $this->authorize('admin');
+        Artisan::call('queue:flush');
+        $this->dispatch('toast', message: __('Failed jobs were deleted.'));
+    }
+
+    /**
+     * The latest failed jobs with the job name and the first line of the error.
+     *
+     * @return list<array{job: string, queue: string, failed_at: string, error: string}>
+     */
+    private function recentFailedJobs(): array
+    {
+        return rescue(fn () => DB::table('failed_jobs')->latest('failed_at')->limit(10)->get()
+            ->map(fn (object $job) => [
+                'job' => class_basename((string) (json_decode($job->payload, true)['displayName'] ?? '?')),
+                'queue' => (string) $job->queue,
+                'failed_at' => (string) $job->failed_at,
+                'error' => \Illuminate\Support\Str::limit(strtok((string) $job->exception, "\n"), 300),
+            ])->all(), [], false);
+    }
+
     public function loadAccounts(string $name): void
     {
         $this->authorize('admin');
@@ -245,9 +279,11 @@ new #[Layout('layouts.app')] class extends Component
             'imports' => ['portfolio' => Cache::get(RunAdminCommand::cacheKey('portfolio')), 'recipes' => Cache::get(RunAdminCommand::cacheKey('recipes'))],
             'users' => User::orderBy('name')->get(['id', 'name', 'email']),
             'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
+            'recentFailedJobs' => $this->recentFailedJobs(),
             'recentErrors' => Cache::get(\App\Support\ErrorReporter::CACHE_KEY, []),
             'remoteBackup' => Cache::get('backup:remote-last'),
             'vpnStatus' => Vpn::status(),
+            'vpnTunnel' => Vpn::isRunning() ? Vpn::tunnelState() : null,
             'vpnNetworks' => Vpn::networks(),
             'status' => [
                 __('AI (Claude)') => BrainAi::isConfigured(),
@@ -362,7 +398,18 @@ new #[Layout('layouts.app')] class extends Component
                     </details>
                 @endif
                 @if ($failedJobs > 0)
-                    <p class="mt-3 text-xs text-orange-700 dark:text-orange-400">{{ trans_choice(':count background job failed.|:count background jobs failed.', $failedJobs) }}</p>
+                    <details class="mt-3 text-xs">
+                        <summary class="cursor-pointer text-orange-700 dark:text-orange-400">{{ trans_choice(':count background job failed.|:count background jobs failed.', $failedJobs) }}</summary>
+                        <ul class="mt-2 space-y-1.5">
+                            @foreach ($recentFailedJobs as $job)
+                                <li class="rounded bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($job['failed_at'])->format('d.m. H:i') }}</span> <strong>{{ $job['job'] }}</strong> <span class="text-gray-500">({{ $job['queue'] }})</span><br>{{ $job['error'] }}</li>
+                            @endforeach
+                        </ul>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <x-secondary-button type="button" wire:click="retryFailedJobs">↻ {{ __('Retry all') }}</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="deleteFailedJobs" wire:confirm="{{ __('Delete all failed jobs?') }}">🗑 {{ __('Delete all') }}</x-secondary-button>
+                        </div>
+                    </details>
                 @endif
             </section>
 
@@ -418,7 +465,15 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
                                 <p class="flex flex-wrap items-center gap-2">
                                     @if (($vpnStatus['state'] ?? null) === 'running' && \Illuminate\Support\Carbon::parse($vpnStatus['at'])->gt(now()->subMinutes(2)))
-                                        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">● {{ __('connected') }}</span>
+                                        @if ($vpnTunnel && $vpnTunnel['handshake_at'] && $vpnTunnel['handshake_at'] > now()->subMinutes(3)->getTimestamp())
+                                            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">● {{ __('connected') }}</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Last handshake :time', ['time' => \Illuminate\Support\Carbon::createFromTimestamp($vpnTunnel['handshake_at'])->diffForHumans()]) }}</span>
+                                        @elseif ($vpnTunnel)
+                                            <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">● {{ __('no handshake') }}</span>
+                                            <span class="text-xs text-amber-800 dark:text-amber-200">{{ $vpnTunnel['handshake_at'] ? __('Last handshake :time', ['time' => \Illuminate\Support\Carbon::createFromTimestamp($vpnTunnel['handshake_at'])->diffForHumans()]) : __('wireproxy runs, but the router has not answered yet.') }}</span>
+                                        @else
+                                            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">● {{ __('running') }}</span>
+                                        @endif
                                     @elseif (($vpnStatus['state'] ?? null) === 'error')
                                         <span class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-200">● {{ __('error') }}</span>
                                         <span class="text-xs text-red-700 dark:text-red-300">{{ $vpnStatus['message'] }}</span>
@@ -440,6 +495,13 @@ new #[Layout('layouts.app')] class extends Component
                                 </div>
                                 @if ($vpnTestResult)
                                     <p @class(['text-sm', 'text-emerald-700 dark:text-emerald-300' => $vpnTestResult['ok'], 'text-red-700 dark:text-red-300' => ! $vpnTestResult['ok']]) role="status">{{ $vpnTestResult['message'] }}</p>
+                                    @if (! empty($vpnTestResult['hints']))
+                                        <ul class="list-disc space-y-1 ps-5 text-xs text-gray-700 dark:text-gray-300">
+                                            @foreach ($vpnTestResult['hints'] as $hint)
+                                                <li>{{ $hint }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
                                 @endif
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test. paperless instances and the WebDAV backup with an address inside these networks use the VPN automatically.') }}</p>
                             </div>

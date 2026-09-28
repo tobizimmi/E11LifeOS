@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -125,5 +126,27 @@ class AdminSettingsTest extends TestCase
         Volt::test('admin.settings')->assertSee('No account with this e-mail address.');
 
         Volt::test('admin.settings')->call('startImport', 'unknown')->assertNotFound();
+    }
+
+    public function test_failed_background_jobs_are_listed_with_their_error_and_can_be_cleared(): void
+    {
+        $this->admin();
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) Str::uuid(),
+            'connection' => 'database',
+            'queue' => 'default',
+            'payload' => json_encode(['displayName' => 'Illuminate\\Broadcasting\\BroadcastEvent']),
+            'exception' => "Illuminate\\Broadcasting\\BroadcastException: Pusher error: cURL error 7: Failed to connect.\n#0 stack",
+            'failed_at' => now(),
+        ]);
+
+        Volt::test('admin.settings')
+            ->assertSee('1 Hintergrundaufgabe fehlgeschlagen')
+            ->assertSee('BroadcastEvent')
+            ->assertSee('cURL error 7: Failed to connect.')
+            ->assertDontSee('#0 stack')
+            ->call('deleteFailedJobs');
+
+        $this->assertSame(0, DB::table('failed_jobs')->count());
     }
 }

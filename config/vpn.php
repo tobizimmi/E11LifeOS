@@ -22,6 +22,11 @@ return [
     'socks_port' => (int) env('VPN_SOCKS_PORT', 25000 + crc32(base_path()) % 1000),
 
     // The wireproxy program (installed with "php artisan vpn:install").
+    /*
+     * Local status endpoint of wireproxy ("-i"): tells whether the WireGuard handshake works.
+     */
+    'info_port' => (int) env('VPN_INFO_PORT', 26000 + crc32(base_path()) % 1000),
+
     'binary' => env('VPN_WIREPROXY_BINARY', storage_path('app/vpn/wireproxy')),
 
     'download_url' => env('VPN_WIREPROXY_URL', 'https://github.com/whyvl/wireproxy/releases/latest/download/wireproxy_linux_{arch}.tar.gz'),

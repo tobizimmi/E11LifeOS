@@ -78,11 +78,14 @@ class RunVpn extends Command
         $this->stop();
 
         $files = Vpn::writeFiles(storage_path('app/vpn'));
-        $this->process = new Process([$binary, '-c', $files['wireproxy']]);
-        $this->process->setTimeout(null);
-        $this->process->start();
+        $this->start([$binary, '-c', $files['wireproxy'], '-i', '127.0.0.1:'.(int) config('vpn.info_port')]);
+
+        // Older wireproxy versions know no status endpoint ("-i"): run without it.
+        if (! $this->process->isRunning() && str_contains($this->process->getErrorOutput().$this->process->getOutput(), '-i')) {
+            $this->start([$binary, '-c', $files['wireproxy']]);
+        }
+
         $this->runningHash = $hash;
-        usleep(1_500_000);
 
         if ($this->process->isRunning()) {
             $this->info('wireproxy started on port '.config('vpn.socks_port'));
@@ -90,6 +93,17 @@ class RunVpn extends Command
         } else {
             $this->report('error', mb_substr(trim($this->process->getErrorOutput().' '.$this->process->getOutput()) ?: $error ?: __('wireproxy stopped right away.'), 0, 300));
         }
+    }
+
+    /**
+     * @param  list<string>  $command
+     */
+    private function start(array $command): void
+    {
+        $this->process = new Process($command);
+        $this->process->setTimeout(null);
+        $this->process->start();
+        usleep(1_500_000);
     }
 
     private function stop(): void

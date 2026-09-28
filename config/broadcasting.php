@@ -43,6 +43,9 @@ return [
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                // Live updates are sent during the request: never let a slow websocket server hold it up.
+                'connect_timeout' => 2,
+                'timeout' => 3,
             ],
         ],
 

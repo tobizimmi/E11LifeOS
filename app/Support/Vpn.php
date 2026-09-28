@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\IpUtils;
@@ -187,9 +188,9 @@ class Vpn
     }
 
     /**
-     * Calls an address through the VPN and describes the result.
+     * Calls an address through the VPN and describes the result, with likely causes on failure.
      *
-     * @return array{ok: bool, message: string}
+     * @return array{ok: bool, message: string, hints?: list<string>}
      */
     public static function test(string $url): array
     {
@@ -204,8 +205,84 @@ class Vpn
 
             return ['ok' => true, 'message' => __('Reached through the VPN (HTTP :status).', ['status' => $response->status()])];
         } catch (Throwable $exception) {
-            return ['ok' => false, 'message' => __('Not reachable through the VPN: :message', ['message' => str($exception->getMessage())->limit(160)])];
+            return ['ok' => false, 'message' => __('Not reachable through the VPN: :message', ['message' => str($exception->getMessage())->limit(160)]), 'hints' => self::diagnose($url, self::tunnelState())];
         }
+    }
+
+    /**
+     * State of the tunnel from wireproxy's status endpoint: whether and when the last WireGuard
+     * handshake happened and how much came back. Null while the endpoint is not available.
+     *
+     * @return array{handshake_at: ?int, received: int, sent: int}|null
+     */
+    public static function tunnelState(): ?array
+    {
+        try {
+            $response = Http::timeout(3)->get('http://127.0.0.1:'.(int) config('vpn.info_port').'/metrics');
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $handshake = 0;
+        $received = 0;
+        $sent = 0;
+
+        foreach (preg_split('/\R/', $response->body()) as $line) {
+            [$key, $value] = array_pad(explode('=', trim($line), 2), 2, '');
+
+            match ($key) {
+                'last_handshake_time_sec' => $handshake = max($handshake, (int) $value),
+                'rx_bytes' => $received += (int) $value,
+                'tx_bytes' => $sent += (int) $value,
+                default => null,
+            };
+        }
+
+        return ['handshake_at' => $handshake > 0 ? $handshake : null, 'received' => $received, 'sent' => $sent];
+    }
+
+    /**
+     * Likely causes when an address cannot be reached through the VPN, most specific first.
+     *
+     * @param  array{handshake_at: ?int, received: int, sent: int}|null  $tunnel  from tunnelState()
+     * @return list<string>
+     */
+    public static function diagnose(string $url, ?array $tunnel = null): array
+    {
+        $hints = [];
+        $parsed = self::parse((string) config('vpn.wireguard_config'));
+        $host = strtolower(trim((string) parse_url($url, PHP_URL_HOST), '[]'));
+        $allowed = collect($parsed['peers'] ?? [])->flatMap(fn (array $peer) => self::split($peer['allowedips'] ?? ''))->values();
+
+        if (filter_var($host, FILTER_VALIDATE_IP) && $allowed->isNotEmpty() && ! $allowed->contains(fn (string $network) => IpUtils::checkIp($host, $network))) {
+            $hints[] = __(':host is not covered by AllowedIPs in the [Peer] section (:allowed). Add the home network, e.g. :network.', [
+                'host' => $host,
+                'allowed' => $allowed->implode(', '),
+                'network' => preg_replace('/\.\d+$/', '.0/24', $host),
+            ]);
+        }
+
+        $brokenOff = $tunnel !== null && $tunnel['handshake_at'] !== null && $tunnel['handshake_at'] < now()->subMinutes(3)->getTimestamp();
+
+        if ($tunnel !== null && $tunnel['handshake_at'] === null) {
+            $hints[] = __('No WireGuard handshake yet – the tunnel is not up. Check the Endpoint (public address and port of your router), that the router forwards this UDP port, that the router knows this connection (its public key), and that the server may send UDP traffic.');
+        } elseif ($brokenOff) {
+            $hints[] = __('The last WireGuard handshake was :time – the connection has broken off. Check whether the router is reachable and add “PersistentKeepalive = 25” to the [Peer] section.', ['time' => Carbon::createFromTimestamp($tunnel['handshake_at'])->diffForHumans()]);
+        } elseif ($tunnel === null) {
+            $hints[] = __('The state of the tunnel is unknown. Check the Endpoint and keys of the WireGuard configuration, that the router forwards the UDP port and knows this connection, and that it lets the VPN connection into the home network.');
+        } else {
+            $hints[] = __('The tunnel is up (last handshake :time), but the address does not answer. Check that the router lets the VPN connection into the home network, that the service runs on this port and that the firewall of the target device allows access from the VPN network.', ['time' => Carbon::createFromTimestamp($tunnel['handshake_at'])->diffForHumans()]);
+        }
+
+        if ($parsed && ! $brokenOff && collect($parsed['peers'])->every(fn (array $peer) => blank($peer['persistentkeepalive'] ?? null))) {
+            $hints[] = __('Tip: “PersistentKeepalive = 25” in the [Peer] section keeps the connection open behind routers and firewalls.');
+        }
+
+        return $hints;
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\Attachment;
 use App\Models\BankAccount;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
+use App\Models\CalendarSubscription;
 use App\Models\Collection;
 use App\Models\Comment;
 use App\Models\Customer;
@@ -25,6 +26,7 @@ use App\Models\Product;
 use App\Models\RealEstate;
 use App\Models\Recipe;
 use App\Models\RecurringInvoice;
+use App\Models\SavingsGoal;
 use App\Models\ShoppingListEntry;
 use App\Models\TargetAllocation;
 use App\Models\TimeEntry;
@@ -92,9 +94,11 @@ class DataExportController extends Controller
                 ->map(fn (BankAccount $account) => $account->only(['id', 'name', 'iban', 'balance', 'balance_on', 'created_at']) + [
                     'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category', 'tax_category', 'tax_amount'])->all(),
                 ]),
+            'calendar_subscriptions' => CalendarSubscription::where('user_id', $user->id)->orderBy('name')->get()->map->only(['name', 'fetched_at']),
             'net_worth' => [
                 'items' => NetWorthItem::where('user_id', $user->id)->orderBy('position')->get()->map->only(['name', 'kind', 'value']),
                 'history' => NetWorthSnapshot::where('user_id', $user->id)->orderBy('taken_on')->get()->map->only(['taken_on', 'assets', 'liabilities', 'breakdown']),
+                'savings_goals' => SavingsGoal::where('user_id', $user->id)->orderBy('position')->get()->map->only(['name', 'icon', 'target_amount', 'saved_amount', 'target_date']),
             ],
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household

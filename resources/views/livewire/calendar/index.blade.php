@@ -1,9 +1,11 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\CalendarSubscription;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Support\CalendarEvents;
+use App\Support\IcsCalendar;
 use App\Support\QuickCapture;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -42,6 +44,10 @@ new #[Layout('layouts.app')] class extends Component
     public array $hidden = [];
 
     public string $newTask = '';
+
+    public string $subscriptionName = '';
+
+    public string $subscriptionUrl = '';
 
     public function mount(): void
     {
@@ -138,6 +144,27 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Subscribes to an external calendar (ICS link, e.g. the secret address from Google Calendar).
+     */
+    public function addSubscription(): void
+    {
+        $this->validate([
+            'subscriptionName' => ['required', 'string', 'max:100'],
+            'subscriptionUrl' => ['required', 'string', 'max:2000', fn ($attribute, $value, $fail) => IcsCalendar::validUrl((string) $value) ? null : $fail(__('Enter the calendar address (ICS link, starts with https:// or webcal://).'))],
+        ], attributes: ['subscriptionName' => __('Name'), 'subscriptionUrl' => __('Calendar address')]);
+
+        $subscription = CalendarSubscription::create(['user_id' => Auth::id(), 'name' => trim($this->subscriptionName), 'url' => trim($this->subscriptionUrl)]);
+        IcsCalendar::fetch($subscription);
+        $this->reset('subscriptionName', 'subscriptionUrl');
+        $this->dispatch('toast', message: $subscription->fresh()->error ? __('Saved, but the calendar could not be loaded yet.') : __('Calendar added'));
+    }
+
+    public function deleteSubscription(int $id): void
+    {
+        CalendarSubscription::where('user_id', Auth::id())->findOrFail($id)->delete();
+    }
+
+    /**
      * @return array{0: Carbon, 1: Carbon}
      */
     private function range(): array
@@ -175,6 +202,7 @@ new #[Layout('layouts.app')] class extends Component
                 default => $from->translatedFormat('j. M').' – '.$until->translatedFormat('j. M Y'),
             },
             'month' => $anchor->month,
+            'subscriptions' => CalendarSubscription::where('user_id', Auth::id())->orderBy('name')->get(),
             'colors' => [
                 'indigo' => 'bg-indigo-50 text-indigo-900 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-100 dark:ring-indigo-800',
                 'amber' => 'bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-800',
@@ -182,6 +210,7 @@ new #[Layout('layouts.app')] class extends Component
                 'sky' => 'bg-sky-50 text-sky-900 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-100 dark:ring-sky-800',
                 'violet' => 'bg-violet-50 text-violet-900 ring-violet-200 dark:bg-violet-900/30 dark:text-violet-100 dark:ring-violet-800',
                 'rose' => 'bg-rose-50 text-rose-900 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-100 dark:ring-rose-800',
+                'slate' => 'bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700',
             ],
         ];
     }
@@ -292,7 +321,7 @@ new #[Layout('layouts.app')] class extends Component
                                         @if ($dayEvents->isNotEmpty())
                                             <div class="mt-1 flex flex-wrap gap-0.5 px-0.5 sm:hidden" aria-hidden="true">
                                                 @foreach ($dayEvents->take(6) as $event)
-                                                    <span class="h-1.5 w-1.5 rounded-full {{ ['indigo' => 'bg-indigo-500', 'amber' => 'bg-amber-500', 'emerald' => 'bg-emerald-500', 'sky' => 'bg-sky-500', 'violet' => 'bg-violet-500', 'rose' => 'bg-rose-500'][$sources[$event['source']]['color'] ?? 'indigo'] }}"></span>
+                                                    <span class="h-1.5 w-1.5 rounded-full {{ ['indigo' => 'bg-indigo-500', 'amber' => 'bg-amber-500', 'emerald' => 'bg-emerald-500', 'sky' => 'bg-sky-500', 'violet' => 'bg-violet-500', 'rose' => 'bg-rose-500', 'slate' => 'bg-slate-400'][$sources[$event['source']]['color'] ?? 'indigo'] }}"></span>
                                                 @endforeach
                                             </div>
                                         @endif
@@ -328,6 +357,33 @@ new #[Layout('layouts.app')] class extends Component
                             <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing planned for this day.') }}</li>
                         @endforelse
                     </ul>
+
+                    <details class="border-t border-gray-100 pt-3 text-sm dark:border-gray-700" @if ($errors->has('subscriptionUrl') || $errors->has('subscriptionName')) open @endif>
+                        <summary class="cursor-pointer font-medium text-gray-700 dark:text-gray-300">🗓️ {{ __('Show other calendars') }} @if ($subscriptions->isNotEmpty())({{ $subscriptions->count() }})@endif</summary>
+                        <ul class="mt-2 space-y-1">
+                            @foreach ($subscriptions as $subscription)
+                                <li wire:key="subscription-{{ $subscription->id }}" class="flex items-start gap-2">
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-gray-800 dark:text-gray-200">{{ $subscription->name }}</span>
+                                        @if ($subscription->error)
+                                            <span class="block text-xs text-red-600 dark:text-red-400">{{ __('Could not be loaded: :message', ['message' => \Illuminate\Support\Str::limit($subscription->error, 80)]) }}</span>
+                                        @elseif ($subscription->fetched_at)
+                                            <span class="block text-xs text-gray-400">{{ __('Updated :time', ['time' => $subscription->fetched_at->diffForHumans()]) }}</span>
+                                        @endif
+                                    </span>
+                                    <button type="button" wire:click="deleteSubscription({{ $subscription->id }})" wire:confirm="{{ __('Remove this calendar?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <form wire:submit="addSubscription" class="mt-2 space-y-2">
+                            <x-text-input wire:model="subscriptionName" class="block w-full text-sm" placeholder="{{ __('Name, e.g. Work') }}" aria-label="{{ __('Name') }}" />
+                            <x-input-error :messages="$errors->get('subscriptionName')" />
+                            <x-text-input wire:model="subscriptionUrl" class="block w-full text-sm" placeholder="https://calendar.google.com/…/basic.ics" aria-label="{{ __('Calendar address') }}" />
+                            <x-input-error :messages="$errors->get('subscriptionUrl')" />
+                            <x-secondary-button type="submit">＋ {{ __('Add calendar') }}</x-secondary-button>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Google: calendar settings → “Secret address in iCal format”. iCloud: share calendar → public calendar. Outlook: settings → shared calendars → publish (ICS). Updated hourly, only visible to you.') }}</p>
+                        </form>
+                    </details>
                 </aside>
             </div>
         </div>

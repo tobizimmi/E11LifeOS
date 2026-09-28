@@ -196,6 +196,7 @@ new class extends Component
                     @if ($hasNetWorth)
                         <x-sidebar-link :href="route('net-worth.index')" :active="request()->routeIs('net-worth.*')" wire:navigate>💎 {{ __('Net worth') }}</x-sidebar-link>
                     @endif
+                    <x-sidebar-link :href="route('contracts.index')" :active="request()->routeIs('contracts.*') || request()->routeIs('letters.*')" wire:navigate>📑 {{ __('Contract costs') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
                 </div>
 

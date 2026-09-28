@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\RealEstate;
 use App\Models\RealEstateApplicant;
+use App\Models\RealEstateHandover;
 use App\Models\RealEstateRentPayment;
 use App\Models\RealEstateTenant;
 use App\Models\RealEstateUtilityStatement;
@@ -15,16 +16,20 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 /**
- * Letting of a property: tenants and leases, rent received (matched with bank bookings),
- * the yearly utility statement and applicants with their self-disclosure.
+ * Letting of a property: tenants and leases (index rent, tenant portal), rent received (matched
+ * with bank bookings, payment reminders), the yearly utility statement, handover protocols and
+ * applicants with their self-disclosure.
  */
 new class extends Component
 {
-    use InteractsWithHousehold;
+    use InteractsWithHousehold, WithFileUploads;
 
-    public const SECTIONS = ['tenants', 'rent', 'utilities', 'applicants'];
+    public const SECTIONS = ['tenants', 'rent', 'utilities', 'handovers', 'applicants'];
+
+    private const MAX_PHOTOS = 12;
 
     #[Locked]
     public int $realEstateId;
@@ -63,6 +68,32 @@ new class extends Component
     public string $applicantIntro = '';
 
     public string $applicantRent = '';
+
+    /**
+     * Current consumer price index entered per tenant (index rent calculator).
+     *
+     * @var array<int, string>
+     */
+    public array $indexCurrent = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $indexMonth = [];
+
+    public bool $handoverFormOpen = false;
+
+    public ?int $editingHandoverId = null;
+
+    /**
+     * @var array{tenant_id: string, kind: string, handed_over_on: string, notes: string, meters: list<array{label: string, number: string, reading: string}>, keys: list<array{label: string, count: string}>, rooms: list<array{label: string, ok: bool, notes: string}>}
+     */
+    public array $handover = [];
+
+    /**
+     * @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile>
+     */
+    public array $handoverPhotos = [];
 
     public function mount(int $realEstateId): void
     {
@@ -148,7 +179,7 @@ new class extends Component
             'unit' => '', 'name' => '', 'email' => '', 'phone' => '', 'previous_address' => '', 'persons' => '1', 'area' => $realEstate->living_area ? (string) $realEstate->living_area : '',
             'move_in_on' => today()->addMonthNoOverflow()->startOfMonth()->toDateString(), 'move_out_on' => '',
             'cold_rent' => $realEstate->monthly_rent ? (string) $realEstate->monthly_rent : '', 'utilities_advance' => '', 'deposit' => '', 'deposit_paid_on' => '',
-            'payment_reference' => '', 'lease_end_on' => '', 'notice_months' => '3', 'rent_adjustment' => 'none', 'due_day' => '3', 'special_terms' => '', 'notes' => '',
+            'payment_reference' => '', 'lease_end_on' => '', 'notice_months' => '3', 'rent_adjustment' => 'none', 'index_base' => '', 'index_base_month' => '', 'due_day' => '3', 'special_terms' => '', 'notes' => '',
         ];
     }
 
@@ -177,7 +208,7 @@ new class extends Component
 
     public function saveTenant(): void
     {
-        foreach (['cold_rent', 'utilities_advance', 'deposit', 'area'] as $field) {
+        foreach (['cold_rent', 'utilities_advance', 'deposit', 'area', 'index_base'] as $field) {
             $this->tenant[$field] = self::number($this->tenant[$field] ?? '');
         }
 
@@ -200,6 +231,8 @@ new class extends Component
             'tenant.lease_end_on' => ['nullable', 'date', 'after:tenant.move_in_on'],
             'tenant.notice_months' => ['required', 'integer', 'min:1', 'max:12'],
             'tenant.rent_adjustment' => ['required', Rule::in(RealEstateTenant::RENT_ADJUSTMENTS)],
+            'tenant.index_base' => ['nullable', 'numeric', 'min:1', 'max:1000'],
+            'tenant.index_base_month' => ['nullable', 'date_format:Y-m'],
             'tenant.due_day' => ['required', 'integer', 'min:1', 'max:28'],
             'tenant.special_terms' => ['nullable', 'string', 'max:5000'],
             'tenant.notes' => ['nullable', 'string', 'max:5000'],
@@ -228,6 +261,181 @@ new class extends Component
     public function deleteTenant(int $id): void
     {
         $this->findTenant($id)->delete();
+    }
+
+    // ── Index rent & tenant portal ───────────────────────────────────────
+
+    /**
+     * Takes over the index adjustment: new cold rent, the current index becomes the new base.
+     */
+    public function applyIndexRent(int $tenantId): void
+    {
+        $tenant = $this->findTenant($tenantId);
+        $this->validate(["indexCurrent.$tenantId" => ['required', 'numeric', 'min:1', 'max:1000'], "indexMonth.$tenantId" => ['nullable', 'date_format:Y-m']], attributes: ["indexCurrent.$tenantId" => __('Current index')]);
+        $calculation = RentalAccounting::indexRent($tenant, (float) $this->indexCurrent[$tenantId]);
+
+        if (! $calculation) {
+            return;
+        }
+
+        if (! $calculation['allowed']) {
+            $this->addError("indexCurrent.$tenantId", __('An index rent may change at most once a year – next on :date.', ['date' => $calculation['allowed_from']->format('d.m.Y')]));
+
+            return;
+        }
+
+        $tenant->update([
+            'cold_rent' => $calculation['new'],
+            'index_base' => (float) $this->indexCurrent[$tenantId],
+            'index_base_month' => ($this->indexMonth[$tenantId] ?? '') ?: now()->format('Y-m'),
+            'last_rent_change_on' => $calculation['effective_on'],
+        ]);
+        unset($this->indexCurrent[$tenantId], $this->indexMonth[$tenantId]);
+        $this->message = __('New cold rent :amount from :date saved.', ['amount' => number_format($calculation['new'], 2, ',', '.').' €', 'date' => $calculation['effective_on']->format('d.m.Y')]);
+    }
+
+    public function createPortalLink(int $tenantId): void
+    {
+        $this->findTenant($tenantId)->update(['portal_token' => Str::random(48)]);
+    }
+
+    public function revokePortalLink(int $tenantId): void
+    {
+        $this->findTenant($tenantId)->update(['portal_token' => null]);
+    }
+
+    // ── Handover protocols ───────────────────────────────────────────────
+
+    private function findHandover(int $id): RealEstateHandover
+    {
+        return $this->realEstate()->handovers()->find($id) ?? abort(404);
+    }
+
+    public function newHandover(?int $tenantId = null, string $kind = 'move_in'): void
+    {
+        abort_unless(in_array($kind, RealEstateHandover::KINDS, true), 404);
+        $tenant = $tenantId ? $this->findTenant($tenantId) : null;
+        $this->resetValidation();
+        $this->reset('handoverPhotos', 'editingHandoverId');
+        $this->section = 'handovers';
+        $this->handover = [
+            'tenant_id' => $tenant ? (string) $tenant->id : '',
+            'kind' => $kind,
+            'handed_over_on' => ($kind === 'move_out' ? $tenant?->move_out_on : $tenant?->move_in_on)?->toDateString() ?? today()->toDateString(),
+            'notes' => '',
+            'meters' => collect([__('Electricity'), __('Gas'), __('Cold water'), __('Hot water'), __('Heating')])->map(fn (string $label) => ['label' => $label, 'number' => '', 'reading' => ''])->all(),
+            'keys' => collect([__('Front door'), __('Flat door'), __('Letterbox'), __('Cellar')])->map(fn (string $label) => ['label' => $label, 'count' => ''])->all(),
+            'rooms' => collect([__('Hallway'), __('Living room'), __('Bedroom'), __('Kitchen'), __('Bathroom')])->map(fn (string $label) => ['label' => $label, 'ok' => true, 'notes' => ''])->all(),
+        ];
+        $this->handoverFormOpen = true;
+    }
+
+    public function editHandover(int $id): void
+    {
+        $handover = $this->findHandover($id);
+        $this->resetValidation();
+        $this->reset('handoverPhotos');
+        $this->editingHandoverId = $handover->id;
+        $this->handover = [
+            'tenant_id' => (string) ($handover->tenant_id ?? ''),
+            'kind' => $handover->kind,
+            'handed_over_on' => $handover->handed_over_on->toDateString(),
+            'notes' => (string) $handover->notes,
+            'meters' => $handover->meters ?? [],
+            'keys' => $handover->keys ?? [],
+            'rooms' => $handover->rooms ?? [],
+        ];
+        $this->handoverFormOpen = true;
+    }
+
+    public function addHandoverRow(string $group): void
+    {
+        $this->handover[$group][] = match ($group) {
+            'meters' => ['label' => '', 'number' => '', 'reading' => ''],
+            'keys' => ['label' => '', 'count' => ''],
+            'rooms' => ['label' => '', 'ok' => true, 'notes' => ''],
+            default => abort(404),
+        };
+    }
+
+    public function removeHandoverRow(string $group, int $index): void
+    {
+        abort_unless(in_array($group, ['meters', 'keys', 'rooms'], true), 404);
+        unset($this->handover[$group][$index]);
+        $this->handover[$group] = array_values($this->handover[$group]);
+    }
+
+    public function cancelHandover(): void
+    {
+        $this->reset('handoverFormOpen', 'editingHandoverId', 'handover', 'handoverPhotos');
+    }
+
+    public function saveHandover(): void
+    {
+        $data = $this->validate([
+            'handover.tenant_id' => ['nullable', Rule::exists('real_estate_tenants', 'id')->where('real_estate_id', $this->realEstateId)],
+            'handover.kind' => ['required', Rule::in(RealEstateHandover::KINDS)],
+            'handover.handed_over_on' => ['required', 'date'],
+            'handover.notes' => ['nullable', 'string', 'max:5000'],
+            'handover.meters' => ['array', 'max:30'],
+            'handover.meters.*.label' => ['nullable', 'string', 'max:100'],
+            'handover.meters.*.number' => ['nullable', 'string', 'max:100'],
+            'handover.meters.*.reading' => ['nullable', 'string', 'max:50'],
+            'handover.keys' => ['array', 'max:30'],
+            'handover.keys.*.label' => ['nullable', 'string', 'max:100'],
+            'handover.keys.*.count' => ['nullable', 'integer', 'min:0', 'max:99'],
+            'handover.rooms' => ['array', 'max:40'],
+            'handover.rooms.*.label' => ['nullable', 'string', 'max:100'],
+            'handover.rooms.*.ok' => ['boolean'],
+            'handover.rooms.*.notes' => ['nullable', 'string', 'max:1000'],
+            'handoverPhotos' => ['array', 'max:'.self::MAX_PHOTOS],
+            'handoverPhotos.*' => ['image', 'max:8192'],
+        ], attributes: ['handover.handed_over_on' => __('Date')])['handover'];
+
+        $keep = fn (array $rows) => array_values(array_filter($rows, fn (array $row) => trim((string) ($row['label'] ?? '')) !== ''));
+        $attributes = [
+            'tenant_id' => ($data['tenant_id'] ?? '') !== '' ? (int) $data['tenant_id'] : null,
+            'kind' => $data['kind'],
+            'handed_over_on' => $data['handed_over_on'],
+            'notes' => ($data['notes'] ?? '') ?: null,
+            'meters' => $keep($data['meters'] ?? []),
+            'keys' => $keep($data['keys'] ?? []),
+            'rooms' => array_map(fn (array $room) => ['label' => $room['label'], 'ok' => (bool) ($room['ok'] ?? true), 'notes' => (string) ($room['notes'] ?? '')], $keep($data['rooms'] ?? [])),
+        ];
+
+        $handover = $this->editingHandoverId
+            ? tap($this->findHandover($this->editingHandoverId))->update($attributes)
+            : $this->realEstate()->handovers()->create($attributes + ['created_by' => Auth::id()]);
+
+        $photos = $handover->photos ?? [];
+
+        foreach ($this->handoverPhotos as $photo) {
+            if (count($photos) >= self::MAX_PHOTOS) {
+                break;
+            }
+
+            $photos[] = $photo->store('handovers/'.$handover->id, RealEstateHandover::DISK);
+        }
+
+        $handover->update(['photos' => $photos]);
+        $this->cancelHandover();
+        $this->message = __('Handover protocol saved.');
+    }
+
+    public function removeHandoverPhoto(int $id, int $index): void
+    {
+        $handover = $this->findHandover($id);
+        $photos = $handover->photos ?? [];
+        abort_unless(isset($photos[$index]), 404);
+
+        \Illuminate\Support\Facades\Storage::disk(RealEstateHandover::DISK)->delete($photos[$index]);
+        unset($photos[$index]);
+        $handover->update(['photos' => array_values($photos)]);
+    }
+
+    public function deleteHandover(int $id): void
+    {
+        $this->findHandover($id)->delete();
     }
 
     // ── Rent ─────────────────────────────────────────────────────────────
@@ -418,6 +626,9 @@ new class extends Component
             'statementModel' => $statementModel,
             'statementResult' => $statementModel ? RentalAccounting::utilityStatement($statementModel->setRelation('realEstate', $realEstate), $tenants) : null,
             'applicants' => $applicants,
+            'handovers' => $this->section === 'handovers' ? $realEstate->handovers()->with('tenant')->get() : collect(),
+            'handoverKinds' => RealEstateHandover::kindLabels(),
+            'indexCalculations' => collect($this->indexCurrent)->filter(fn ($value) => is_numeric($value) && (float) $value > 0)->mapWithKeys(fn ($value, $id) => [$id => ($tenant = $tenants->firstWhere('id', (int) $id)) ? RentalAccounting::indexRent($tenant, (float) $value) : null])->filter(),
             'applicantCounts' => $realEstate->applicants()->reorder()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'monthlyRentTotal' => $monthlyTotal,
             'years' => range((int) now()->year + 1, max(2000, min((int) now()->year - 5, (int) ($realEstate->purchase_date?->year ?? now()->year)))),
@@ -443,7 +654,7 @@ new class extends Component
 
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="inline-flex rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist" aria-label="{{ __('Letting') }}">
-            @foreach (['tenants' => '👥 '.__('Tenants'), 'rent' => '💶 '.__('Rent received'), 'utilities' => '🧮 '.__('Utility statement'), 'applicants' => '📝 '.__('Applicants')] as $key => $label)
+            @foreach (['tenants' => '👥 '.__('Tenants'), 'rent' => '💶 '.__('Rent received'), 'utilities' => '🧮 '.__('Utility statement'), 'handovers' => '📋 '.__('Handovers'), 'applicants' => '📝 '.__('Applicants')] as $key => $label)
                 <button type="button" role="tab" aria-selected="{{ $section === $key ? 'true' : 'false' }}" wire:click="$set('section', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm whitespace-nowrap', 'bg-indigo-600 text-white' => $section === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $section !== $key])>
                     {{ $label }}@if ($key === 'applicants' && ($applicantCounts['new'] ?? 0) > 0) <span class="ms-1 rounded-full bg-red-500 px-1.5 text-xs text-white">{{ $applicantCounts['new'] }}</span>@endif
                 </button>
@@ -548,12 +759,23 @@ new class extends Component
                         </div>
                         <div>
                             <x-input-label for="tenant-adjustment" :value="__('Rent adjustment')" />
-                            <select id="tenant-adjustment" wire:model="tenant.rent_adjustment" class="{{ $input }}">
+                            <select id="tenant-adjustment" wire:model.live="tenant.rent_adjustment" class="{{ $input }}">
                                 @foreach ($adjustments as $key => $label)
                                     <option value="{{ $key }}">{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>
+                        @if (($tenant['rent_adjustment'] ?? '') === 'index')
+                            <div>
+                                <x-input-label for="tenant-index-base" :value="__('Consumer price index at the start (2020 = 100)')" />
+                                <input id="tenant-index-base" inputmode="decimal" wire:model="tenant.index_base" placeholder="119,4" class="{{ $input }}">
+                                <x-input-error :messages="$errors->get('tenant.index_base')" class="mt-1" />
+                            </div>
+                            <div>
+                                <x-input-label for="tenant-index-month" :value="__('Index month')" />
+                                <input id="tenant-index-month" type="month" wire:model="tenant.index_base_month" class="{{ $input }}">
+                            </div>
+                        @endif
                         <div>
                             <x-input-label for="tenant-lease-end" :value="__('Fixed term until (optional)')" />
                             <input id="tenant-lease-end" type="date" wire:model="tenant.lease_end_on" class="{{ $input }}">
@@ -608,6 +830,44 @@ new class extends Component
                                 <button type="button" wire:click="deleteTenant({{ $row->id }})" wire:confirm="{{ __('Delete this tenant with all rent payments?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Delete') }}</button>
                             </div>
                         </div>
+
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                            <button type="button" wire:click="newHandover({{ $row->id }}, 'move_in')" class="rounded-md bg-gray-100 px-2.5 py-1 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">📋 {{ __('Move-in protocol') }}</button>
+                            <button type="button" wire:click="newHandover({{ $row->id }}, 'move_out')" class="rounded-md bg-gray-100 px-2.5 py-1 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">📋 {{ __('Move-out protocol') }}</button>
+                            @if ($row->portal_token)
+                                <span class="flex items-center gap-1 rounded-md bg-indigo-50 px-2.5 py-1 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200" x-data="{ copied: false }">
+                                    🔗 <button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from(route('rental.portal', $row->portal_token)) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="underline" x-text="copied ? @js(__('Copied!')) : @js(__('Copy tenant portal link'))"></button>
+                                    <button type="button" wire:click="revokePortalLink({{ $row->id }})" wire:confirm="{{ __('Turn off the tenant portal link?') }}" class="ms-1 text-indigo-500" aria-label="{{ __('Turn off link') }}">×</button>
+                                </span>
+                            @else
+                                <button type="button" wire:click="createPortalLink({{ $row->id }})" class="rounded-md bg-gray-100 px-2.5 py-1 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200" title="{{ __('A link for the tenant with the lease, sent statements and handover protocols – no login needed.') }}">🔗 {{ __('Create tenant portal link') }}</button>
+                            @endif
+                        </div>
+
+                        @if ($row->rent_adjustment === 'index')
+                            <div class="mt-3 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-900/40">
+                                <p class="font-medium text-gray-800 dark:text-gray-200">📈 {{ __('Index rent') }}
+                                    <span class="font-normal text-gray-500">· {{ $row->index_base ? __('base :index (:month)', ['index' => number_format($row->index_base, 1, ',', '.'), 'month' => $row->index_base_month ?: '–']) : __('enter the index at the start under Edit') }} · {{ __('next change possible from :date', ['date' => $row->nextIndexChangeOn()->format('d.m.Y')]) }}</span>
+                                </p>
+                                @if ($row->index_base)
+                                    <div class="mt-2 flex flex-wrap items-end gap-2">
+                                        <label class="text-xs text-gray-600 dark:text-gray-300">{{ __('Current index') }}
+                                            <input inputmode="decimal" wire:model.live.debounce.400ms="indexCurrent.{{ $row->id }}" placeholder="124,1" class="{{ $input }} w-28">
+                                        </label>
+                                        <label class="text-xs text-gray-600 dark:text-gray-300">{{ __('Month') }}
+                                            <input type="month" wire:model.live="indexMonth.{{ $row->id }}" class="{{ $input }}">
+                                        </label>
+                                        @if ($calc = $indexCalculations[$row->id] ?? null)
+                                            <p class="text-sm text-gray-700 dark:text-gray-200">{{ __(':old → :new (:percent %) from :date', ['old' => $euro($calc['old']), 'new' => $euro($calc['new']), 'percent' => number_format($calc['percent'], 2, ',', '.'), 'date' => $calc['effective_on']->format('d.m.Y')]) }}</p>
+                                            <a href="{{ route('real-estate.index-rent', ['tenant' => $row->id, 'index' => $indexCurrent[$row->id], 'month' => ($indexMonth[$row->id] ?? '') ?: null]) }}" target="_blank" class="text-indigo-600 underline dark:text-indigo-400">📄 {{ __('Letter (PDF)') }}</a>
+                                            <button type="button" wire:click="applyIndexRent({{ $row->id }})" wire:confirm="{{ __('Save the new cold rent?') }}" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Apply') }}</button>
+                                        @endif
+                                    </div>
+                                    <x-input-error :messages="$errors->get('indexCurrent.'.$row->id)" class="mt-1" />
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Consumer price index (2020 = 100) from Destatis, table 61111-0002.') }}</p>
+                                @endif
+                            </div>
+                        @endif
                     </li>
                 @empty
                     <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('No tenants yet. Add them here or take over an applicant.') }}</li>
@@ -702,7 +962,15 @@ new class extends Component
                                             @endif
                                         </td>
                                     @endforeach
-                                    <td @class(['ps-3 py-2 text-right whitespace-nowrap', 'font-medium text-red-700 dark:text-red-400' => $row['arrears'] > 0, 'text-gray-500' => $row['arrears'] <= 0])>{{ $euro($row['arrears']) }}</td>
+                                    <td @class(['ps-3 py-2 text-right whitespace-nowrap', 'font-medium text-red-700 dark:text-red-400' => $row['arrears'] > 0, 'text-gray-500' => $row['arrears'] <= 0])>
+                                        {{ $euro($row['arrears']) }}
+                                        @if ($row['arrears'] > 0)
+                                            <span class="block text-xs font-normal">
+                                                <a href="{{ route('real-estate.dunning', ['tenant' => $row['tenant']->id, 'year' => $year, 'level' => 1]) }}" target="_blank" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Payment reminder') }}</a> ·
+                                                <a href="{{ route('real-estate.dunning', ['tenant' => $row['tenant']->id, 'year' => $year, 'level' => 2]) }}" target="_blank" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Dunning letter') }}</a>
+                                            </span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -710,6 +978,131 @@ new class extends Component
                 </div>
                 <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Click a month to mark the rent as received (or undo it). The received rent is used for Anlage V in the tax tab.') }}</p>
             @endif
+        </section>
+    @endif
+
+    {{-- ── Handover protocols ──────────────────────────────────── --}}
+    @if ($section === 'handovers')
+        <section class="{{ $card }}" aria-labelledby="handovers-heading">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h3 id="handovers-heading" class="font-semibold text-gray-900 dark:text-gray-100">📋 {{ __('Handover protocols') }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Meter readings, keys, the state of the rooms and photos at move-in and move-out – as PDF to sign.') }}</p>
+                </div>
+                @unless ($handoverFormOpen)
+                    <x-primary-button type="button" wire:click="newHandover">＋ {{ __('New protocol') }}</x-primary-button>
+                @endunless
+            </div>
+
+            @if ($handoverFormOpen)
+                <form wire:submit="saveHandover" class="mt-4 space-y-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                    <div class="grid gap-3 sm:grid-cols-3">
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Tenant') }}
+                            <select wire:model="handover.tenant_id" class="{{ $input }}">
+                                <option value="">–</option>
+                                @foreach ($activeTenants->concat($formerTenants) as $option)
+                                    <option value="{{ $option->id }}">{{ $option->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Kind') }}
+                            <select wire:model="handover.kind" class="{{ $input }}">
+                                @foreach ($handoverKinds as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Date') }}
+                            <input type="date" wire:model="handover.handed_over_on" class="{{ $input }}">
+                            <x-input-error :messages="$errors->get('handover.handed_over_on')" class="mt-1" />
+                        </label>
+                    </div>
+
+                    <fieldset>
+                        <legend class="text-sm font-medium text-gray-800 dark:text-gray-200">⚡ {{ __('Meter readings') }}</legend>
+                        @foreach ($handover['meters'] ?? [] as $index => $meter)
+                            <div wire:key="meter-{{ $index }}" class="mt-1 grid grid-cols-[1fr_1fr_7rem_auto] gap-2">
+                                <input wire:model="handover.meters.{{ $index }}.label" placeholder="{{ __('Meter') }}" aria-label="{{ __('Meter') }}" class="{{ $input }} mt-0">
+                                <input wire:model="handover.meters.{{ $index }}.number" placeholder="{{ __('Meter number') }}" aria-label="{{ __('Meter number') }}" class="{{ $input }} mt-0">
+                                <input wire:model="handover.meters.{{ $index }}.reading" inputmode="decimal" placeholder="{{ __('Reading') }}" aria-label="{{ __('Reading') }}" class="{{ $input }} mt-0">
+                                <button type="button" wire:click="removeHandoverRow('meters', {{ $index }})" class="px-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                            </div>
+                        @endforeach
+                        <button type="button" wire:click="addHandoverRow('meters')" class="mt-1 text-xs text-indigo-600 underline dark:text-indigo-400">＋ {{ __('Meter') }}</button>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend class="text-sm font-medium text-gray-800 dark:text-gray-200">🔑 {{ __('Keys') }}</legend>
+                        @foreach ($handover['keys'] ?? [] as $index => $key)
+                            <div wire:key="key-{{ $index }}" class="mt-1 grid grid-cols-[1fr_6rem_auto] gap-2">
+                                <input wire:model="handover.keys.{{ $index }}.label" placeholder="{{ __('Key') }}" aria-label="{{ __('Key') }}" class="{{ $input }} mt-0">
+                                <input type="number" min="0" max="99" wire:model="handover.keys.{{ $index }}.count" placeholder="{{ __('Count') }}" aria-label="{{ __('Count') }}" class="{{ $input }} mt-0">
+                                <button type="button" wire:click="removeHandoverRow('keys', {{ $index }})" class="px-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                            </div>
+                        @endforeach
+                        <button type="button" wire:click="addHandoverRow('keys')" class="mt-1 text-xs text-indigo-600 underline dark:text-indigo-400">＋ {{ __('Key') }}</button>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend class="text-sm font-medium text-gray-800 dark:text-gray-200">🚪 {{ __('Rooms') }}</legend>
+                        @foreach ($handover['rooms'] ?? [] as $index => $room)
+                            <div wire:key="room-{{ $index }}" class="mt-1 grid grid-cols-[1fr_auto_2fr_auto] items-center gap-2">
+                                <input wire:model="handover.rooms.{{ $index }}.label" placeholder="{{ __('Room') }}" aria-label="{{ __('Room') }}" class="{{ $input }} mt-0">
+                                <label class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="handover.rooms.{{ $index }}.ok" class="rounded border-gray-300"> {{ __('OK') }}</label>
+                                <input wire:model="handover.rooms.{{ $index }}.notes" placeholder="{{ __('Notes / defects') }}" aria-label="{{ __('Notes / defects') }}" class="{{ $input }} mt-0">
+                                <button type="button" wire:click="removeHandoverRow('rooms', {{ $index }})" class="px-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                            </div>
+                        @endforeach
+                        <button type="button" wire:click="addHandoverRow('rooms')" class="mt-1 text-xs text-indigo-600 underline dark:text-indigo-400">＋ {{ __('Room') }}</button>
+                    </fieldset>
+
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Further agreements') }}
+                        <textarea rows="3" wire:model="handover.notes" class="{{ $input }}" placeholder="{{ __('e.g. wall in the bedroom is repainted by 15.10.') }}"></textarea>
+                    </label>
+
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">📷 {{ __('Photos') }}
+                        <input type="file" wire:model="handoverPhotos" multiple accept="image/*" capture="environment" class="mt-1 block w-full text-sm">
+                        <x-input-error :messages="array_merge($errors->get('handoverPhotos'), $errors->get('handoverPhotos.*'))" class="mt-1" />
+                    </label>
+
+                    <div class="flex flex-wrap gap-2">
+                        <x-primary-button wire:loading.attr="disabled" wire:target="handoverPhotos,saveHandover">{{ __('Save') }}</x-primary-button>
+                        <x-secondary-button type="button" wire:click="cancelHandover">{{ __('Cancel') }}</x-secondary-button>
+                    </div>
+                </form>
+            @endif
+
+            <ul class="mt-4 space-y-3">
+                @forelse ($handovers as $item)
+                    <li wire:key="handover-{{ $item->id }}" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $handoverKinds[$item->kind] ?? $item->kind }} · {{ $item->handed_over_on->format('d.m.Y') }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">{{ $item->tenant?->name ?? '–' }} · {{ trans_choice(':count meter|:count meters', count($item->meters ?? [])) }} · {{ trans_choice(':count photo|:count photos', count($item->photos ?? [])) }}
+                                    @if (collect($item->rooms ?? [])->contains(fn ($room) => ! ($room['ok'] ?? true))) · <span class="text-amber-700 dark:text-amber-300">{{ __('with defects') }}</span>@endif
+                                </p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 text-sm">
+                                <a href="{{ route('real-estate.handover-pdf', $item) }}" target="_blank" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">📄 PDF</a>
+                                <button type="button" wire:click="editHandover({{ $item->id }})" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Edit') }}</button>
+                                <button type="button" wire:click="deleteHandover({{ $item->id }})" wire:confirm="{{ __('Delete this protocol with its photos?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Delete') }}</button>
+                            </div>
+                        </div>
+                        @if (! empty($item->photos))
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @foreach ($item->photos as $index => $photo)
+                                    <div wire:key="handover-photo-{{ $item->id }}-{{ $index }}" class="group relative">
+                                        <a href="{{ route('real-estate.handover-photo', [$item, $index]) }}" target="_blank"><img src="{{ route('real-estate.handover-photo', [$item, $index]) }}" alt="{{ __('Photo :number', ['number' => $index + 1]) }}" class="h-16 w-16 rounded-md object-cover" loading="lazy"></a>
+                                        <button type="button" wire:click="removeHandoverPhoto({{ $item->id }}, {{ $index }})" wire:confirm="{{ __('Remove this photo?') }}" class="absolute -right-1 -top-1 hidden h-5 w-5 rounded-full bg-red-600 text-xs text-white group-hover:block" aria-label="{{ __('Remove') }}">×</button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </li>
+                @empty
+                    <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('No handover protocols yet.') }}</li>
+                @endforelse
+            </ul>
         </section>
     @endif
 

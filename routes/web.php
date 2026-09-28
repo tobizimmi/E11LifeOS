@@ -88,6 +88,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('real-estate/tenants/{tenant}/lease', 'lease')->whereNumber('tenant')->name('real-estate.lease');
         Route::get('real-estate/utility-statements/{statement}/tenants/{tenant}', 'utilityStatement')->whereNumber(['statement', 'tenant'])->name('real-estate.utility-statement');
         Route::get('real-estate/applicants/{applicant}/pdf', 'applicant')->whereNumber('applicant')->name('real-estate.applicant-pdf');
+        Route::get('real-estate/tenants/{tenant}/index-rent', 'indexRent')->whereNumber('tenant')->name('real-estate.index-rent');
+        Route::get('real-estate/tenants/{tenant}/dunning', 'dunning')->whereNumber('tenant')->name('real-estate.dunning');
+        Route::get('real-estate/handovers/{handover}/pdf', 'handover')->whereNumber('handover')->name('real-estate.handover-pdf');
+        Route::get('real-estate/handovers/{handover}/photos/{index}', 'handoverPhoto')->whereNumber(['handover', 'index'])->name('real-estate.handover-photo');
         Route::get('real-estate/{realEstate}/self-disclosure', 'blankSelfDisclosure')->whereNumber('realEstate')->name('real-estate.self-disclosure-form');
     });
     Volt::route('business', 'business.index')->name('business.index')->middleware('addon:business');
@@ -151,6 +155,12 @@ Route::middleware('throttle:60,1')->group(function () {
     Volt::route('s/{token}', 'shopping-list.shared')->where('token', '[A-Za-z0-9]+')->name('shopping-list.shared');
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
+    Volt::route('tenant/{token}', 'rental.portal')->where('token', '[A-Za-z0-9]+')->name('rental.portal');
+    Route::controller(RentalDocumentController::class)->where(['token' => '[A-Za-z0-9]+'])->group(function () {
+        Route::get('tenant/{token}/lease', 'portalLease')->name('rental.portal.lease');
+        Route::get('tenant/{token}/statements/{statement}', 'portalStatement')->whereNumber('statement')->name('rental.portal.statement');
+        Route::get('tenant/{token}/handovers/{handover}', 'portalHandover')->whereNumber('handover')->name('rental.portal.handover');
+    });
     Route::get('calendar/{token}.ics', CalendarFeedController::class)->where('token', '[A-Za-z0-9]+')->name('calendar.feed');
     Route::get('d/{token}', [PublicDocumentController::class, 'show'])->where('token', '[A-Za-z0-9]+')->name('documents.public');
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->where('token', '[A-Za-z0-9]+')->name('documents.public.pdf');

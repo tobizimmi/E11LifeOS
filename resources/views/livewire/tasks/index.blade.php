@@ -8,7 +8,9 @@ use App\Models\HouseholdMember;
 use App\Models\Item;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\ChecklistTemplate;
 use App\Support\BrainAi;
+use App\Support\ChecklistTemplates;
 use App\Support\QuickCapture;
 use App\Support\Recurrence;
 use App\Support\TaskInput;
@@ -57,6 +59,15 @@ new #[Layout('layouts.app')] class extends Component
     public array $ignoredPhrases = [];
 
     public bool $selecting = false;
+
+    public bool $templatesOpen = false;
+
+    /**
+     * Chosen checklist: a built-in key or "own-{id}".
+     */
+    public string $templateKey = '';
+
+    public string $templateDate = '';
 
     /**
      * Ids of the tasks picked in selection mode.
@@ -154,6 +165,65 @@ new #[Layout('layouts.app')] class extends Component
     public function previewTask(string $text): void
     {
         $this->draft = mb_substr($text, 0, 500);
+    }
+
+    // ── Checklist templates ──────────────────────────────────────────────
+
+    /**
+     * @return array<string, array{name: string, icon: string, anchor: string, default_offset: int, tasks: list<array{title: string, offset: int, subtasks: list<string>}>, own: bool}>
+     */
+    private function checklistTemplates(): array
+    {
+        $own = ChecklistTemplate::where('household_id', $this->householdId)->orderBy('name')->get()
+            ->mapWithKeys(fn (ChecklistTemplate $template) => ['own-'.$template->id => ['name' => $template->name, 'icon' => $template->icon ?: '📋', 'anchor' => __('Due'), 'default_offset' => 0, 'tasks' => $template->tasks, 'own' => true]])
+            ->all();
+
+        return array_map(fn (array $template) => $template + ['own' => false], ChecklistTemplates::builtIn()) + $own;
+    }
+
+    public function openTemplates(): void
+    {
+        $this->templatesOpen = true;
+        $this->reset('templateKey', 'templateDate');
+    }
+
+    public function closeTemplates(): void
+    {
+        $this->reset('templatesOpen', 'templateKey', 'templateDate');
+    }
+
+    public function chooseTemplate(string $key): void
+    {
+        $template = $this->checklistTemplates()[$key] ?? abort(404);
+        $this->templateKey = $key;
+        $this->templateDate = today()->addDays($template['default_offset'])->toDateString();
+    }
+
+    public function applyTemplate(): void
+    {
+        $template = $this->checklistTemplates()[$this->templateKey] ?? abort(404);
+        $this->validate(['templateDate' => ['required', 'date']]);
+
+        $count = ChecklistTemplates::apply($this->currentUser(), (int) $this->householdId, $template, Carbon::parse($this->templateDate));
+
+        $this->closeTemplates();
+        $this->list = TaskLists::ALL;
+        $this->dispatch('toast', message: trans_choice(':count task from “:name” added|:count tasks from “:name” added', $count, ['name' => $template['name']]));
+    }
+
+    public function deleteTemplate(int $templateId): void
+    {
+        ChecklistTemplate::where('household_id', $this->householdId)->findOrFail($templateId)->delete();
+        $this->reset('templateKey');
+    }
+
+    public function saveAsTemplate(int $taskId): void
+    {
+        $task = $this->findTask($taskId);
+        abort_if($task->subtasks() === [], 422);
+
+        ChecklistTemplates::saveFromTask($task, $this->currentUser());
+        $this->dispatch('toast', message: __('Saved as checklist template'));
     }
 
     /**
@@ -518,6 +588,7 @@ new #[Layout('layouts.app')] class extends Component
             : null;
 
         return [
+            'checklistTemplates' => $this->templatesOpen ? $this->checklistTemplates() : [],
             'collection' => $collection,
             'lists' => $lists,
             'counts' => $lists->counts(),
@@ -643,6 +714,7 @@ new #[Layout('layouts.app')] class extends Component
                             />
                             <x-voice-button for="new-task" submit />
                             <button type="button" x-on:click="const input = $refs.input; if (! input.value.trim()) { input.focus(); return } $wire.addTaskWithDetails(input.value).then((added) => { if (added) { input.value = '' } })" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Add and fill in details') }}" aria-label="{{ __('Add and fill in details') }}">⤢</button>
+                            <button type="button" wire:click="openTemplates" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('From a checklist template') }}" aria-label="{{ __('From a checklist template') }}">📋</button>
                             <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700" aria-label="{{ __('Add task') }}">＋</button>
                         </div>
                         <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
@@ -989,6 +1061,9 @@ new #[Layout('layouts.app')] class extends Component
                             <input x-ref="subtask" id="new-subtask" type="text" enterkeyhint="done" placeholder="{{ __('Add a subtask') }}" class="flex-1 border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-0 py-1 text-sm focus:border-indigo-500 focus:ring-0 dark:text-gray-100" aria-label="{{ __('Add a subtask') }}" />
                             <x-voice-button for="new-subtask" class="py-0.5" />
                         </form>
+                        @if ($subtasks !== [])
+                            <button type="button" wire:click="saveAsTemplate({{ $openTask->id }})" class="mt-2 text-xs text-indigo-600 hover:underline dark:text-indigo-400">📋 {{ __('Save as checklist template') }}</button>
+                        @endif
                     </div>
 
                     {{-- Notes --}}
@@ -1035,6 +1110,61 @@ new #[Layout('layouts.app')] class extends Component
                 </button>
                 <x-secondary-button type="button" wire:click="closeTask">{{ __('Close') }}</x-secondary-button>
                 <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">🗑 {{ __('Delete') }}</button>
+            </x-slot:footer>
+        </x-sheet>
+    @endif
+    {{-- Checklist templates: pick one, choose the day, the tasks are created --}}
+    @if ($templatesOpen)
+        <x-sheet close="closeTemplates" :label="__('Checklist templates')" size="md">
+            <x-slot:header>📋 {{ __('Checklist templates') }}</x-slot:header>
+            @php
+                $chosen = $checklistTemplates[$templateKey] ?? null;
+            @endphp
+            @if (! $chosen)
+                <ul class="space-y-2">
+                    @foreach ($checklistTemplates as $key => $template)
+                        <li wire:key="checklist-{{ $key }}" class="flex items-center gap-2">
+                            <button type="button" wire:click="chooseTemplate('{{ $key }}')" class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-start ring-1 ring-gray-200 hover:bg-gray-50 dark:ring-gray-700 dark:hover:bg-gray-700/50">
+                                <span class="text-2xl" aria-hidden="true">{{ $template['icon'] }}</span>
+                                <span class="min-w-0">
+                                    <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $template['name'] }}</span>
+                                    <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count task|:count tasks', count($template['tasks'])) }} · {{ trans_choice(':count item|:count items', collect($template['tasks'])->sum(fn ($task) => count($task['subtasks']))) }}</span>
+                                </span>
+                            </button>
+                            @if ($template['own'])
+                                <button type="button" wire:click="deleteTemplate({{ (int) substr($key, 4) }})" wire:confirm="{{ __('Delete this template?') }}" class="rounded-lg p-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">🗑</button>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Your own templates: open a task with sub-items and choose “Save as checklist template”.') }}</p>
+            @else
+                <form wire:submit="applyTemplate" id="checklist-form" class="space-y-4">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ $chosen['icon'] }} {{ $chosen['name'] }}</p>
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">{{ $chosen['anchor'] }}
+                        <input type="date" wire:model.live="templateDate" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    </label>
+                    <x-input-error :messages="$errors->get('templateDate')" />
+                    <ul class="space-y-2 text-sm">
+                        @foreach ($chosen['tasks'] as $task)
+                            <li class="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/50">
+                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $task['title'] }}</span>
+                                @if ($templateDate)
+                                    <span class="text-xs text-gray-500">· {{ \Illuminate\Support\Carbon::parse($templateDate)->addDays($task['offset'])->translatedFormat('D, j. M Y') }}</span>
+                                @endif
+                                <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $task['subtasks']) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </form>
+            @endif
+            <x-slot:footer>
+                @if ($chosen)
+                    <x-primary-button type="submit" form="checklist-form">{{ __('Create tasks') }}</x-primary-button>
+                    <x-secondary-button type="button" wire:click="$set('templateKey', '')">{{ __('Back') }}</x-secondary-button>
+                @else
+                    <x-secondary-button type="button" wire:click="closeTemplates">{{ __('Close') }}</x-secondary-button>
+                @endif
             </x-slot:footer>
         </x-sheet>
     @endif

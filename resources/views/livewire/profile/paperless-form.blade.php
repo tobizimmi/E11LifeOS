@@ -2,6 +2,7 @@
 
 use App\Models\PaperlessInstance;
 use App\Support\Paperless\PaperlessClient;
+use App\Support\Vpn;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -77,7 +78,10 @@ new class extends Component
             $count = (new PaperlessClient($url, $token))->count();
         } catch (Throwable $exception) {
             $this->ok = false;
-            $this->status = __('Connection failed – check address and token. (:message)', ['message' => str($exception->getMessage())->limit(120)]);
+            $hint = $exception->getPrevious() instanceof \Illuminate\Http\Client\ConnectionException ? Vpn::reachabilityHint($url) : null;
+            $this->status = $hint
+                ? __('paperless did not answer. :hint', ['hint' => $hint])
+                : __('Connection failed – check address and token. (:message)', ['message' => str($exception->getMessage())->limit(120)]);
 
             return;
         }

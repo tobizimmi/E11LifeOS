@@ -10,6 +10,7 @@ use App\Models\RealEstate;
 use App\Models\RealEstateInvoice;
 use App\Support\Paperless\PaperlessClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -188,5 +189,41 @@ class ExternalDocumentsTest extends TestCase
             ->assertSet('instanceId', $shared->id);
         $this->get(route('paperless.document', [$shared->id, 41, 'thumb']))->assertOk();
         $this->get(route('paperless.document', [$personal->id, 42, 'thumb']))->assertNotFound();
+    }
+
+    public function test_an_unreachable_paperless_in_the_home_network_points_to_the_vpn(): void
+    {
+        Http::fake(['192.168.10.210:2212/*' => Http::failedConnection('cURL error 28: Connection timed out after 10000 milliseconds')]);
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('profile.paperless-form')
+            ->call('add')
+            ->set('name', 'Zuhause')->set('url', 'http://192.168.10.210:2212')->set('token', 'secret-token')
+            ->call('save')
+            ->assertSee('192.168.10.210 liegt in einem privaten Netz, geht aber nicht durchs VPN')
+            ->assertDontSee('Adresse und Token prüfen');
+
+        $this->assertSame(0, PaperlessInstance::count());
+    }
+
+    public function test_an_older_paperless_without_the_api_version_is_asked_without_it(): void
+    {
+        Http::fake(fn (Request $request) => str_contains($request->header('Accept')[0] ?? '', 'version=')
+            ? Http::response(['detail' => 'Invalid version in "Accept" header.'], 406)
+            : Http::response(['count' => 7, 'results' => []]));
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('profile.paperless-form')
+            ->call('add')
+            ->set('name', 'Zuhause')->set('url', 'https://paperless.test')->set('token', 'secret-token')
+            ->call('save')
+            ->assertSee('Verbunden – 7 Dokumente in paperless.');
+
+        // Remembered: the next request goes out without a version right away.
+        Http::fake(fn (Request $request) => Http::response(['count' => 7, 'results' => []]));
+        (new PaperlessClient('https://paperless.test', 'secret-token'))->count();
+        Http::assertSent(fn ($request) => ($request->header('Accept')[0] ?? '') === 'application/json');
     }
 }

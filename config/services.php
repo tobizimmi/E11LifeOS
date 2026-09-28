@@ -74,6 +74,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Current supermarket offers for the offers page (marktguru.de; keys are read from its
+    // website when left empty).
+    'offers' => [
+        'provider' => env('OFFERS_PROVIDER', 'marktguru'),
+        'api_key' => env('OFFERS_API_KEY'),
+        'client_key' => env('OFFERS_CLIENT_KEY'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

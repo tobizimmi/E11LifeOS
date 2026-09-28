@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['household_id', 'label', 'quantity', 'aisle', 'checked', 'created_by'])]
+#[Fillable(['household_id', 'shopping_list_id', 'label', 'quantity', 'aisle', 'checked', 'position', 'note', 'price', 'created_by'])]
 #[ObservedBy(ShoppingListEntryObserver::class)]
 class ShoppingListEntry extends Model
 {
@@ -25,6 +25,8 @@ class ShoppingListEntry extends Model
     {
         static::creating(function (ShoppingListEntry $entry) {
             $entry->aisle ??= ShoppingAisles::guess((string) $entry->label, $entry->household_id);
+            // Callers that do not know about several lists (inbox, recipes …) fill the first list.
+            $entry->shopping_list_id ??= ShoppingList::defaultFor($entry->household_id)->id;
         });
     }
 
@@ -32,12 +34,19 @@ class ShoppingListEntry extends Model
     {
         return [
             'checked' => 'boolean',
+            'position' => 'integer',
+            'price' => 'float',
         ];
     }
 
     public function household(): BelongsTo
     {
         return $this->belongsTo(Household::class);
+    }
+
+    public function list(): BelongsTo
+    {
+        return $this->belongsTo(ShoppingList::class, 'shopping_list_id');
     }
 
     public function creator(): BelongsTo

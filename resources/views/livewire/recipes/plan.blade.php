@@ -4,7 +4,8 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
-use App\Models\ShoppingListEntry;
+use App\Models\ShoppingList;
+use App\Support\ShoppingLists;
 use App\Support\MealSuggestions;
 use App\Support\ShoppingIngredients;
 use Illuminate\Support\Carbon;
@@ -40,6 +41,8 @@ new #[Layout('layouts.app')] class extends Component
     public bool $addingPrivate = false;
 
     public bool $choosingShopping = false;
+
+    public ?int $shoppingListId = null;
 
     /**
      * Indexes of the combined week ingredients that go onto the shopping list.
@@ -182,6 +185,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $stock = MealSuggestions::pantry(Auth::user(), (int) $this->householdId)['stock'];
         $this->selectedShopping = array_keys(array_filter($this->weekIngredients(), fn (array $ingredient) => ! MealSuggestions::inStock($ingredient['name'], $stock)));
+        $this->shoppingListId ??= ShoppingList::defaultFor((int) $this->householdId)->id;
         $this->choosingShopping = true;
     }
 
@@ -261,6 +265,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function addWeekToShoppingList(): void
     {
+        $list = ShoppingList::where('household_id', $this->householdId)->find($this->shoppingListId) ?? ShoppingList::defaultFor((int) $this->householdId);
         $ingredients = $this->weekIngredients();
         $added = 0;
 
@@ -271,12 +276,7 @@ new #[Layout('layouts.app')] class extends Component
                 continue;
             }
 
-            ShoppingListEntry::create([
-                'household_id' => $this->householdId,
-                'label' => mb_substr($ingredient['name'], 0, 255),
-                'quantity' => $ingredient['quantity'] !== '' ? mb_substr($ingredient['quantity'], 0, 255) : null,
-                'created_by' => Auth::id(),
-            ]);
+            ShoppingLists::add($list, $ingredient['name'], $ingredient['quantity'] !== '' ? mb_substr($ingredient['quantity'], 0, 255) : null, Auth::id());
             $added++;
         }
 
@@ -406,6 +406,19 @@ new #[Layout('layouts.app')] class extends Component
                 <form wire:submit="addWeekToShoppingList" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-2">
                     <p class="font-medium text-gray-900 dark:text-gray-100">{{ __('Which ingredients do you need?') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Scaled to the planned servings; equal ingredients are added up.') }}</p>
+                    @php
+                        $shoppingLists = \App\Models\ShoppingList::where('household_id', $this->householdId)->orderBy('position')->orderBy('id')->get();
+                    @endphp
+                    @if ($shoppingLists->count() > 1)
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            {{ __('List') }}
+                            <select wire:model="shoppingListId" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                @foreach ($shoppingLists as $shoppingList)
+                                    <option value="{{ $shoppingList->id }}">{{ $shoppingList->icon }} {{ $shoppingList->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
                     <div class="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                         @forelse ($weekIngredients as $index => $ingredient)
                             <label class="flex items-baseline gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="week-ingredient-{{ $index }}">

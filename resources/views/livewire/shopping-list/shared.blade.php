@@ -1,8 +1,9 @@
 <?php
 
-use App\Models\Household;
+use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
 use App\Support\ShoppingAisles;
+use App\Support\ShoppingLists;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
@@ -21,21 +22,21 @@ new #[Layout('layouts.guest')] class extends Component
     public function mount(string $token): void
     {
         $this->token = $token;
-        $this->household();
+        $this->list();
     }
 
-    private function household(): Household
+    private function list(): ShoppingList
     {
-        $household = strlen($this->token) >= 32 ? Household::where('shopping_share_token', $this->token)->first() : null;
+        $list = strlen($this->token) >= 32 ? ShoppingList::where('share_token', $this->token)->first() : null;
 
-        abort_unless($household, 404);
+        abort_unless($list, 404);
 
-        return $household;
+        return $list;
     }
 
     public function toggle(int $id): void
     {
-        $entry = ShoppingListEntry::where('household_id', $this->household()->id)->find($id) ?? abort(404);
+        $entry = ShoppingListEntry::where('shopping_list_id', $this->list()->id)->find($id) ?? abort(404);
         $entry->update(['checked' => ! $entry->checked]);
     }
 
@@ -43,19 +44,22 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $validated = $this->validate(['label' => ['required', 'string', 'max:255']]);
 
-        ShoppingListEntry::create(['household_id' => $this->household()->id, 'label' => trim($validated['label'])]);
+        $list = $this->list();
+        ShoppingLists::add($list, $validated['label'], null, null);
         $this->reset('label');
     }
 
     public function with(): array
     {
-        $household = $this->household();
-        $entries = ShoppingListEntry::where('household_id', $household->id)->orderBy('label')->get();
+        $list = $this->list()->load('household', 'store');
+        $household = $list->household;
+        $entries = ShoppingListEntry::where('shopping_list_id', $list->id)->orderBy('label')->get();
         $aisles = ShoppingAisles::all();
-        $order = array_flip(array_keys($aisles));
+        $order = array_flip($list->store?->aisleOrder() ?? array_keys($aisles));
 
         return [
             'household' => $household,
+            'list' => $list,
             'openCount' => $entries->where('checked', false)->count(),
             'groups' => $entries->where('checked', false)
                 ->groupBy(fn (ShoppingListEntry $entry) => array_key_exists((string) ($entry->aisle ??= ShoppingAisles::guess($entry->label)), $aisles) ? $entry->aisle : ShoppingAisles::OTHER)
@@ -67,7 +71,7 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div wire:poll.15s>
-    <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🛒 {{ __('Shopping list of :household', ['household' => $household->name]) }}</h1>
+    <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $list->icon }} {{ $list->name }} <span class="text-sm font-normal text-gray-500">· {{ $household->name }}</span></h1>
     <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count item still open|:count items still open', $openCount) }}</p>
 
     <form wire:submit="add" class="mt-4 flex gap-2">

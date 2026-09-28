@@ -102,6 +102,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('business/report/download', BusinessReportController::class)->name('business.report.download')->middleware('addon:business');
     Volt::route('business/settings', 'business.settings')->name('business.settings')->middleware('addon:business');
     Volt::route('shopping-list', 'shopping-list.index')->name('shopping-list.index');
+    Volt::route('shopping-list/offers', 'shopping-list.offers')->name('shopping-list.offers');
 });
 
 // Recipes addon (can be switched off per household on the Household page).

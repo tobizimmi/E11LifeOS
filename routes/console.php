@@ -13,6 +13,7 @@ Artisan::command('inspire', function () {
 Schedule::command('collections:deadline-tasks')->dailyAt('06:45');
 Schedule::command('real-estate:reminders')->dailyAt('07:10');
 Schedule::command('real-estate:purge-applicants')->dailyAt('03:40');
+Schedule::command('net-worth:snapshot')->dailyAt('23:40');
 Schedule::command('reminders:send')->dailyAt('07:00');
 Schedule::command('reminders:timed')->everyMinute()->withoutOverlapping();
 Schedule::command('digest:weekly')->hourlyAt(2)->withoutOverlapping();

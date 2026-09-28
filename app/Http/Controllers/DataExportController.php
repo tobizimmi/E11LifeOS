@@ -15,6 +15,8 @@ use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\MealPlan;
+use App\Models\NetWorthItem;
+use App\Models\NetWorthSnapshot;
 use App\Models\PaperlessInstance;
 use App\Models\Portfolio;
 use App\Models\PortfolioSetting;
@@ -87,9 +89,13 @@ class DataExportController extends Controller
                     ->map->only(['id', 'label', 'quantity', 'checked', 'created_at', 'updated_at'])
                 : [],
             'bank_accounts' => BankAccount::where('user_id', $user->id)->with(['transactions' => fn ($query) => $query->orderBy('booked_on')])->orderBy('id')->get()
-                ->map(fn (BankAccount $account) => $account->only(['id', 'name', 'iban', 'created_at']) + [
+                ->map(fn (BankAccount $account) => $account->only(['id', 'name', 'iban', 'balance', 'balance_on', 'created_at']) + [
                     'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category', 'tax_category', 'tax_amount'])->all(),
                 ]),
+            'net_worth' => [
+                'items' => NetWorthItem::where('user_id', $user->id)->orderBy('position')->get()->map->only(['name', 'kind', 'value']),
+                'history' => NetWorthSnapshot::where('user_id', $user->id)->orderBy('taken_on')->get()->map->only(['taken_on', 'assets', 'liabilities', 'breakdown']),
+            ],
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household
                 ? RealEstate::query()->visibleTo($user, $household->id)->with(['budgetItems', 'invoices', 'loans', 'subsidies', 'tenants.payments', 'utilityStatements', 'valuations', 'applicants'])->orderBy('id')->get()

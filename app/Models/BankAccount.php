@@ -12,11 +12,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A bank account whose transactions were imported; personal to its owner.
  */
-#[Fillable(['household_id', 'user_id', 'name', 'iban'])]
+#[Fillable(['household_id', 'user_id', 'name', 'iban', 'balance', 'balance_on'])]
 class BankAccount extends Model
 {
     /** @use HasFactory<BankAccountFactory> */
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'balance' => 'float',
+            'balance_on' => 'date',
+        ];
+    }
 
     public function household(): BelongsTo
     {
@@ -31,5 +39,19 @@ class BankAccount extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * The entered balance plus everything booked after its day; null while no balance was entered.
+     */
+    public function currentBalance(): ?float
+    {
+        if ($this->balance === null) {
+            return null;
+        }
+
+        $later = $this->transactions()->when($this->balance_on, fn ($query) => $query->where('booked_on', '>', $this->balance_on->toDateString()))->sum('amount');
+
+        return round($this->balance + (float) $later, 2);
     }
 }

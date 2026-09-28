@@ -3,6 +3,7 @@
 use App\Models\RealEstate;
 use App\Models\User;
 use App\Notifications\NewRentalApplicant;
+use App\Support\InAppNotifications;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -111,6 +112,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         if ($realEstate->created_by && ($owner = User::find($realEstate->created_by))) {
             $owner->notify(new NewRentalApplicant($applicant));
+            InAppNotifications::record($owner, '📝 '.__('New applicant for :property', ['property' => $realEstate->name]), $applicant->name, route('real-estate.show', ['realEstate' => $realEstate->id, 'tab' => 'rental']));
         }
 
         $this->sent = true;

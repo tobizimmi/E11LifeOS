@@ -103,7 +103,7 @@
                 x-data="{
                     help: false,
                     pending: null,
-                    routes: @js(['h' => route('dashboard'), 't' => route('tasks.index'), 'e' => route('shopping-list.index'), 'i' => route('inbox.index'), 'p' => route('pages.index'), 'r' => route('recipes.index'), 'f' => route('finance.index'), 'c' => route('collections.index')]),
+                    routes: @js(['h' => route('dashboard'), 't' => route('tasks.index'), 'k' => route('calendar.index'), 'e' => route('shopping-list.index'), 'i' => route('inbox.index'), 'p' => route('pages.index'), 'r' => route('recipes.index'), 'f' => route('finance.index'), 'c' => route('collections.index')]),
                     typing(event) { return event.target.closest('input, textarea, select, [contenteditable], .ProseMirror') },
                     key(event) {
                         if (event.metaKey || event.ctrlKey || event.altKey || this.typing(event)) return;
@@ -125,7 +125,7 @@
                             <button type="button" x-on:click="help = false" class="text-xl text-gray-400" aria-label="{{ __('Close') }}">×</button>
                         </div>
                         <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                            @foreach ([['Ctrl K · /', __('Search, jump to or create')], ['N', __('Create something new')], ['G H', __('Dashboard')], ['G T', __('To-Do')], ['G E', __('Shopping List')], ['G I', __('Inbox')], ['G P', __('Pages')], ['G C', __('Collections')], ['G R', __('Recipes')], ['G F', __('Finances')], ['?', __('This overview')], ['Esc', __('Close')]] as [$shortcut, $meaning])
+                            @foreach ([['Ctrl K · /', __('Search, jump to or create')], ['N', __('Create something new')], ['G H', __('Dashboard')], ['G T', __('To-Do')], ['G K', __('Calendar')], ['G E', __('Shopping List')], ['G I', __('Inbox')], ['G P', __('Pages')], ['G C', __('Collections')], ['G R', __('Recipes')], ['G F', __('Finances')], ['?', __('This overview')], ['Esc', __('Close')]] as [$shortcut, $meaning])
                                 <dt><kbd class="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">{{ $shortcut }}</kbd></dt>
                                 <dd class="text-gray-700 dark:text-gray-300">{{ $meaning }}</dd>
                             @endforeach

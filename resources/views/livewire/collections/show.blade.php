@@ -2108,7 +2108,8 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
 
-                <div class="border-t border-gray-100 pt-4 dark:border-gray-700">
+                <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <livewire:documents-panel type="item" :id="$openEntry->id" :wire:key="'documents-entry-'.$openEntry->id" />
                     <livewire:links-panel type="item" :id="$openEntry->id" :wire:key="'links-entry-'.$openEntry->id" />
                 </div>
 

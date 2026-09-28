@@ -32,7 +32,7 @@
         </div>
         <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Estimated effect overall') }}</p>
-            <p @class(['mt-1 text-2xl font-semibold', 'text-green-700 dark:text-green-400' => $taxData['effect'] >= 0, 'text-red-700 dark:text-red-400' => $taxData['effect'] < 0])>{{ $taxData['effect'] >= 0 ? '−' : '+' }}{{ $euro(abs($taxData['effect'])) }}</p>
+            <p @class(['mt-1 text-2xl font-semibold', 'text-green-700 dark:text-green-400' => $taxData['effect'] >= 0, 'text-red-700 dark:text-red-400' => $taxData['effect'] < 0])>≈ {{ $euro(abs($taxData['effect'])) }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $taxData['effect'] >= 0 ? __('less income tax') : __('more income tax') }} · {{ __('rate :rate %', ['rate' => number_format($taxData['rate'], 0)]) }}</p>
         </div>
     </div>
@@ -65,8 +65,8 @@
                     @foreach ($taxData['deductions'] as $key => $row)
                         <tr>
                             <td class="py-1.5" title="{{ $taxCategories[$key]['hint'] }}">{{ $taxCategories[$key]['icon'] }} {{ $taxCategories[$key]['label'] }} <span class="text-xs text-gray-400">· {{ $taxCategories[$key]['form'] }}</span></td>
-                            <td class="py-1.5 text-end tabular-nums text-gray-600 dark:text-gray-300">{{ $euro($row['spent']) }}</td>
-                            <td class="py-1.5 text-end tabular-nums font-medium text-gray-900 dark:text-gray-100">{{ $euro($row['deductible']) }}</td>
+                            <td class="whitespace-nowrap py-1.5 ps-2 text-end tabular-nums text-gray-600 dark:text-gray-300">{{ $euro($row['spent']) }}</td>
+                            <td class="whitespace-nowrap py-1.5 ps-2 text-end tabular-nums font-medium text-gray-900 dark:text-gray-100">{{ $euro($row['deductible']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -77,9 +77,9 @@
         <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="credits-heading">
             <h3 id="credits-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Direct tax reductions') }}</h3>
             <dl class="mt-3 space-y-1.5 text-sm">
-                <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🧹 {{ __('Household services: 20 % of :amount', ['amount' => $euro($taxData['credits']['household_services']['spent'])]) }}</dt><dd class="font-medium">{{ $euro($taxData['credits']['household_services']['credit']) }}</dd></div>
-                <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🔧 {{ __('Craftsmen: 20 % of :amount labour', ['amount' => $euro($taxData['credits']['craftsman']['spent'])]) }}@if ($taxData['credits']['craftsman']['from_properties'] > 0) <span class="text-xs text-gray-400">({{ __(':amount from properties', ['amount' => $euro($taxData['credits']['craftsman']['from_properties'])]) }})</span>@endif</dt><dd class="font-medium">{{ $euro($taxData['credits']['craftsman']['credit']) }}</dd></div>
-                <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🌱 {{ __('Energy renovation (§ 35c)') }}</dt><dd class="font-medium">{{ $euro($taxData['credits']['energy']['credit']) }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🧹 {{ __('Household services: 20 % of :amount', ['amount' => $euro($taxData['credits']['household_services']['spent'])]) }}</dt><dd class="whitespace-nowrap font-medium">{{ $euro($taxData['credits']['household_services']['credit']) }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🔧 {{ __('Craftsmen: 20 % of :amount labour', ['amount' => $euro($taxData['credits']['craftsman']['spent'])]) }}@if ($taxData['credits']['craftsman']['from_properties'] > 0) <span class="text-xs text-gray-400">({{ __(':amount from properties', ['amount' => $euro($taxData['credits']['craftsman']['from_properties'])]) }})</span>@endif</dt><dd class="whitespace-nowrap font-medium">{{ $euro($taxData['credits']['craftsman']['credit']) }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🌱 {{ __('Energy renovation (§ 35c)') }}</dt><dd class="whitespace-nowrap font-medium">{{ $euro($taxData['credits']['energy']['credit']) }}</dd></div>
             </dl>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Enter the labour costs of a booking below – only they count for § 35a. Caps: 4,000 € and 1,200 € per household.') }}</p>
         </section>
@@ -92,14 +92,14 @@
                 @foreach ($taxData['properties'] as $row)
                     <li class="flex flex-wrap items-center justify-between gap-2 py-2">
                         <a href="{{ route('real-estate.show', ['realEstate' => $row['model']->id, 'tab' => 'tax', 'year' => $taxYear]) }}" wire:navigate class="text-gray-800 hover:underline dark:text-gray-200">🏠 {{ $row['model']->name }}</a>
-                        <span class="text-gray-600 dark:text-gray-300">
-                            @if ($row['tax']['rental'])
-                                {{ __('Anlage V: :result', ['result' => $euro($row['tax']['rental']['result'])]) }}
-                            @endif
-                            @if ($row['tax']['owner'] && $row['tax']['owner']['labor'] > 0)
-                                · {{ __(':amount craftsman labour', ['amount' => $euro($row['tax']['owner']['labor'])]) }}
-                            @endif
-                        </span>
+                        @php
+                            $parts = array_filter([
+                                $row['tax']['rental'] ? __('Anlage V: :result', ['result' => $euro($row['tax']['rental']['result'])]) : null,
+                                ($row['tax']['owner']['labor'] ?? 0) > 0 ? __(':amount craftsman labour', ['amount' => $euro($row['tax']['owner']['labor'])]) : null,
+                                ($row['tax']['owner']['energy'] ?? 0) > 0 ? __('§ 35c: :amount', ['amount' => $euro($row['tax']['owner']['energy'])]) : null,
+                            ]);
+                        @endphp
+                        <span class="text-gray-600 dark:text-gray-300">{{ $parts ? implode(' · ', $parts) : __('nothing tax-relevant this year') }}</span>
                     </li>
                 @endforeach
                 @if ($taxData['business'])

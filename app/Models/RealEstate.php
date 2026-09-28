@@ -46,6 +46,15 @@ class RealEstate extends Model
         'visibility' => Item::VISIBILITY_SHARED,
     ];
 
+    protected static function booted(): void
+    {
+        // Invoices one by one, so their receipts and document links are removed too.
+        static::deleting(function (RealEstate $realEstate): void {
+            $realEstate->invoices()->get()->each->delete();
+            ExternalLink::where('linkable_type', 'real_estate')->where('linkable_id', $realEstate->id)->get()->each->delete();
+        });
+    }
+
     protected function casts(): array
     {
         return [

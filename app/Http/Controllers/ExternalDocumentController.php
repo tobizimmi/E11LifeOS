@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ExternalLink;
+use App\Support\ExternalLinks;
+use App\Support\Paperless\PaperlessClient;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
+
+/**
+ * Serves linked documents: paperless files are fetched live with the viewer's own paperless
+ * token (nothing is stored), mail copies from the app's storage.
+ */
+class ExternalDocumentController extends Controller
+{
+    public function paperless(Request $request, int $document, string $variant): Response
+    {
+        $client = PaperlessClient::for($request->user());
+
+        try {
+            $response = $client->file($document, $variant);
+        } catch (Throwable $exception) {
+            report($exception);
+            abort(502, __('paperless is not reachable.'));
+        }
+
+        $type = $response->header('Content-Type') ?: 'application/octet-stream';
+
+        // Only show what a browser can display safely inline; everything else is downloaded.
+        $inline = $variant !== 'download' && (str_starts_with($type, 'image/') || str_starts_with($type, 'application/pdf'));
+        $disposition = $response->header('Content-Disposition') ?: 'attachment';
+
+        return response($response->body(), 200, [
+            'Content-Type' => $type,
+            'Content-Disposition' => $inline ? 'inline' : $disposition,
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; object-src 'self'",
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    public function file(Request $request, ExternalLink $link): StreamedResponse
+    {
+        abort_unless($link->kind === ExternalLink::FILE && $link->path && ExternalLinks::canSee($request->user(), $link) && Storage::disk(ExternalLink::DISK)->exists($link->path), 404);
+
+        return Storage::disk(ExternalLink::DISK)->download($link->path, $link->title, [
+            'Content-Type' => $link->mime_type ?: 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+}

@@ -29,6 +29,8 @@ class RealEstateInvoice extends Model
     protected static function booted(): void
     {
         static::deleted(function (RealEstateInvoice $invoice) {
+            ExternalLink::where('linkable_type', 'real_estate_invoice')->where('linkable_id', $invoice->id)->get()->each->delete();
+
             if ($invoice->receipt_path) {
                 Storage::disk(self::RECEIPT_DISK)->delete($invoice->receipt_path);
             }

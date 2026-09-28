@@ -508,7 +508,8 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </section>
 
-                        <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+                        <div class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                            <livewire:documents-panel type="item" :id="$selectedPage->id" :wire:key="'documents-page-'.$selectedPage->id" />
                             <livewire:links-panel type="item" :id="$selectedPage->id" :wire:key="'links-page-'.$selectedPage->id" />
                         </div>
                     </article>

@@ -2830,5 +2830,12 @@
     "Search, jump to or create": "Suchen, springen oder anlegen",
     "Create something new": "Etwas Neues anlegen",
     "This overview": "Diese Übersicht",
-    "Shopping trip": "Einkauf"
+    "Shopping trip": "Einkauf",
+    "Drop files here": "Dateien hier ablegen",
+    "Drop files here – they go to paperless": "Dateien hier ablegen – sie gehen an paperless",
+    "or drop files here": "oder Dateien hier ablegen",
+    "Drop the invoice here": "Rechnung hier ablegen",
+    "Drop the receipt here": "Beleg hier ablegen",
+    "Drag to move the card": "Ziehen, um die Kachel zu verschieben",
+    "Drag to another day or list": "Auf einen anderen Tag oder eine Liste ziehen"
 }

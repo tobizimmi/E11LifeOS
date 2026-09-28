@@ -2074,9 +2074,9 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                 </div>
 
-                <div>
+                <x-drop-zone model="documentUploads" multiple>
                     <div class="mb-2 flex items-center justify-between gap-2">
-                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📎 {{ __('Documents') }}</h3>
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📎 {{ __('Documents') }} <span class="hidden font-normal normal-case text-gray-400 sm:inline">· {{ __('or drop files here') }}</span></h3>
                         <label class="cursor-pointer text-sm text-indigo-600 hover:underline dark:text-indigo-400">
                             + {{ __('Add files') }}
                             <input type="file" multiple wire:model="documentUploads" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
@@ -2106,7 +2106,7 @@ new #[Layout('layouts.app')] class extends Component
                     @else
                         <p class="text-sm text-gray-400">{{ __('No documents yet.') }}</p>
                     @endif
-                </div>
+                </x-drop-zone>
 
                 <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-gray-700">
                     <livewire:documents-panel type="item" :id="$openEntry->id" :wire:key="'documents-entry-'.$openEntry->id" />

@@ -35,6 +35,7 @@
     @endif
 
     @if ($manualOpen)
+        <x-drop-zone model="receiptPhoto" :label="__('Drop the receipt here')">
         <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="manual-heading">
             <div class="flex items-center justify-between gap-2">
                 <h3 id="manual-heading" class="font-semibold text-gray-900 dark:text-gray-100">🧾 {{ __('Add receipt or cash expense') }}</h3>
@@ -112,6 +113,7 @@
                 @endif
             </form>
         </section>
+        </x-drop-zone>
     @endif
 
     @if ($aiError)

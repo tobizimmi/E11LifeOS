@@ -283,6 +283,66 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: __('Moved to tomorrow'));
     }
 
+    /**
+     * Drag & drop inside the task list: dropping into another date group sets that date,
+     * the position inside the group becomes the manual order.
+     */
+    public function moveTask(int $taskId, string $groupKey, int $position): void
+    {
+        $task = $this->findTask($taskId);
+        $lists = new TaskLists(Collection::tasksFor((int) $this->householdId)->load('properties'), $this->currentUser());
+        $current = $lists->due($task);
+        $today = now()->startOfDay();
+
+        $date = match (true) {
+            $groupKey === 'none' => '',
+            $groupKey === 'today' => $today->toDateString(),
+            $groupKey === 'tomorrow' => $today->copy()->addDay()->toDateString(),
+            $groupKey === 'overdue' => $current !== '' && $current < $today->toDateString() ? $current : $today->copy()->subDay()->toDateString(),
+            $groupKey === 'week' => $current > $today->copy()->addDay()->toDateString() && $current <= $today->copy()->addDays(7)->toDateString() ? $current : $today->copy()->addDays(2)->toDateString(),
+            $groupKey === 'later' => $current > $today->copy()->addDays(7)->toDateString() ? $current : $today->copy()->addDays(8)->toDateString(),
+            (bool) preg_match('/^day-(\d{4}-\d{2}-\d{2})$/', $groupKey, $day) => $day[1],
+            (bool) preg_match('/^month-(\d{4}-\d{2})$/', $groupKey, $month) => str_starts_with($current, $month[1]) ? $current : $month[1].'-01',
+            default => abort(404),
+        };
+
+        if ($date !== $current) {
+            $this->setValue($task, 'due', $date !== '' ? $date : null);
+
+            if ($date === '') {
+                $task->due_time = null;
+            }
+
+            $task->save();
+        }
+
+        // Manual order among the tasks of the same group.
+        $siblings = collect($lists->groups($this->list))->firstWhere('key', $groupKey)['tasks'] ?? [];
+        $ordered = collect($siblings)->reject(fn (Item $item) => $item->id === $task->id)->values();
+        $ordered->splice(max(0, min($position, $ordered->count())), 0, [$task]);
+
+        foreach ($ordered as $index => $item) {
+            if ($item->position !== $index + 1) {
+                $item->forceFill(['position' => $index + 1])->saveQuietly();
+            }
+        }
+    }
+
+    /**
+     * Drag & drop onto a list in the sidebar: "Today" / "Upcoming" set the date, "Mine"
+     * assigns the task to me, "Done" completes it.
+     */
+    public function dropOnList(int $taskId, string $list): void
+    {
+        match ($list) {
+            TaskLists::TODAY => $this->setDue($taskId, 'today'),
+            TaskLists::UPCOMING => $this->setDue($taskId, 'tomorrow'),
+            TaskLists::MINE => $this->setAssignee($taskId, (string) $this->currentUser()->id),
+            TaskLists::DONE => $this->toggleDone($taskId),
+            default => null,
+        };
+    }
+
     public function setPriority(int $taskId, string $priority): void
     {
         $task = $this->findTask($taskId);
@@ -516,6 +576,7 @@ new #[Layout('layouts.app')] class extends Component
             <nav class="lg:w-52 shrink-0 mb-4 lg:mb-0" aria-label="{{ __('Lists') }}">
                 <div class="flex lg:flex-col gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 lg:mx-0 lg:px-0">
                     @foreach (\App\Support\TaskLists::LISTS as $key)
+                        <div class="shrink-0 rounded-lg" x-sort="$wire.dropOnList($item, '{{ $key }}')" x-sort:group="tasks" x-sort:config="{ sort: false, ghostClass: 'hidden' }">
                         <button
                             type="button"
                             wire:click="showList('{{ $key }}')"
@@ -532,6 +593,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span @class(['text-xs tabular-nums', 'text-indigo-100' => $list === $key, 'text-gray-400' => $list !== $key])>{{ $counts[$key] }}</span>
                             @endif
                         </button>
+                        </div>
                     @endforeach
                 </div>
 
@@ -638,7 +700,13 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </div>
 
-                        <ul class="space-y-1.5">
+                        <ul class="min-h-[2.5rem] space-y-1.5"
+                            @if ($list !== \App\Support\TaskLists::DONE && ! $selecting)
+                                x-sort="$wire.moveTask($item, @js($group['key']), $position)"
+                                x-sort:group="tasks"
+                                x-sort:config="{ handle: '.task-handle', animation: 150, ghostClass: 'opacity-40' }"
+                            @endif
+                        >
                             @foreach ($group['tasks'] as $task)
                                 @php
                                     $due = $lists->due($task);
@@ -650,6 +718,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @endphp
                                 <li
                                     wire:key="task-{{ $task->id }}-{{ $task->updated_at?->timestamp }}"
+                                    x-sort:item="{{ $task->id }}"
                                     x-data="{
                                         startX: 0, startY: 0, dx: 0, swiping: false, leaving: false,
                                         start(e) { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; this.swiping = true },
@@ -692,6 +761,9 @@ new #[Layout('layouts.app')] class extends Component
                                             'ring-gray-200 dark:ring-gray-700' => ! $isSelected && (int) $openTaskId !== $task->id,
                                         ])
                                     >
+                                        @if (! $selecting && $list !== \App\Support\TaskLists::DONE)
+                                            <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-600" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
+                                        @endif
                                         @if ($selecting)
                                             <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />
                                         @else

@@ -301,6 +301,7 @@ new #[Layout('layouts.app')] class extends Component
         <x-sheet close="closeForm" :label="$editingId ? __('Edit receipt') : __('New receipt')" wire:key="entry-form-{{ $editingId ?? 'new' }}">
             <x-slot:header><strong class="text-gray-800 dark:text-gray-100">📥 {{ $editingId ? __('Edit receipt') : __('New receipt') }}</strong></x-slot:header>
 
+            <x-drop-zone model="receipt" :label="__('Drop the receipt here')">
             <form id="entry-form" wire:submit="saveEntry" class="space-y-4">
                 <div class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-gray-900" role="radiogroup" aria-label="{{ __('Type') }}">
                     @foreach (['expense' => __('Expense'), 'income' => __('Income')] as $value => $label)
@@ -380,6 +381,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
             </form>
+            </x-drop-zone>
 
             @if ($editingId)
                 <div class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-700">

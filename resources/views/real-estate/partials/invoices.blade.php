@@ -1,5 +1,6 @@
 {{-- Invoices of the property (variables from real-estate/show). --}}
 <div class="space-y-5">
+    <x-drop-zone model="receipt" :label="__('Drop the invoice here')">
     <form wire:submit="saveInvoice" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 dark:bg-gray-800">
         <h3 class="font-semibold text-gray-900 sm:col-span-2 lg:col-span-4 dark:text-gray-100">{{ $editingInvoiceId ? __('Edit invoice') : __('New invoice') }}</h3>
 
@@ -56,6 +57,7 @@
             @endif
         </div>
     </form>
+    </x-drop-zone>
 
     @if ($editingInvoiceId)
         <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">

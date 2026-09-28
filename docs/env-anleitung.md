@@ -183,6 +183,22 @@ E-Mails kommen über paperless in die App (PHP braucht dafür kein IMAP):
    **Inbox → paperless-Posteingang** und lassen sich dort als Ausgabe, Immobilien-Rechnung,
    Business-Beleg oder Aufgabe ablegen. Das Dokument bleibt in paperless und wird nur verknüpft.
 
+### VPN (WireGuard) ins Heimnetz
+
+Wird normalerweise unter **Server-Einstellungen → VPN (WireGuard)** eingetragen; alternativ
+`VPN_ENABLED`, `VPN_WIREGUARD_CONFIG`, `VPN_NETWORKS`, `VPN_SOCKS_PORT`.
+
+1. In der FritzBox unter *Internet → Freigaben → VPN (WireGuard)* „Einzelnes Gerät verbinden“
+   wählen und die Konfigurationsdatei herunterladen – je eine für Staging und Live.
+2. Den Inhalt in das Feld „WireGuard-Konfiguration“ kopieren, „VPN eingeschaltet“ auf Ja, speichern.
+3. Mit „Verbindung testen“ z. B. `http://192.168.178.20:8000` (paperless) prüfen.
+
+Technik: Der Deploy lädt einmalig `wireproxy` (`php artisan vpn:install`) und startet den
+PM2-Prozess `e11lifeos-vpn(-staging)` (`php artisan vpn:run`). Er braucht keine Root-Rechte und
+stellt einen lokalen SOCKS5-Proxy bereit. Nur Anfragen an Adressen in den eingetragenen Netzen
+(leer = AllowedIPs der Konfiguration) laufen darüber – paperless und das WebDAV-Backup nutzen
+ihn automatisch, alles andere geht wie bisher direkt ins Internet.
+
 ### Einmalige Datenübernahmen
 
 In der Vorlage auskommentiert (`#`). Nur für den Import das `#` entfernen, ausfüllen,

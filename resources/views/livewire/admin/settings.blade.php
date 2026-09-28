@@ -4,6 +4,7 @@ use App\Jobs\RunAdminCommand;
 use App\Models\User;
 use App\Support\AppSettings;
 use App\Support\BrainAi;
+use App\Support\Vpn;
 use App\Support\WebPush;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,13 @@ new #[Layout('layouts.app')] class extends Component
     public array $clear = [];
 
     public string $testRecipient = '';
+
+    public string $vpnTestUrl = '';
+
+    /**
+     * @var array{ok: bool, message: string}|null
+     */
+    public ?array $vpnTestResult = null;
 
     /**
      * Per import: "*" = all old accounts, "" = the account with the target's e-mail, else an e-mail.
@@ -90,6 +98,9 @@ new #[Layout('layouts.app')] class extends Component
             'form.error_report_email' => ['nullable', 'email'],
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
+            'form.vpn_enabled' => ['nullable', 'in:0,1'],
+            'form.vpn_socks_port' => ['nullable', 'integer', 'between:1024,65535'],
+            'form.vpn_wireguard_config' => ['nullable', 'string', fn ($attribute, $value, $fail) => filled($value) && Vpn::parse((string) $value) === null ? $fail(__('This is not a complete WireGuard configuration ([Interface] with PrivateKey and Address, [Peer] with PublicKey and Endpoint).')) : null],
             'form.*' => ['nullable', 'string', 'max:2000'],
         ], attributes: ['form.mail_from_address' => __('Sender address'), 'form.vapid_subject' => __('Contact')]);
 
@@ -147,6 +158,16 @@ new #[Layout('layouts.app')] class extends Component
         } catch (\Throwable $exception) {
             $this->addError('testRecipient', __('Sending failed: :message', ['message' => mb_substr($exception->getMessage(), 0, 300)]));
         }
+    }
+
+    /**
+     * Calls an address inside the private network through the VPN.
+     */
+    public function testVpn(): void
+    {
+        $this->authorize('admin');
+        $this->validate(['vpnTestUrl' => ['required', 'url:http,https', 'max:500']], attributes: ['vpnTestUrl' => __('Address')]);
+        $this->vpnTestResult = Vpn::test($this->vpnTestUrl);
     }
 
     /**
@@ -226,6 +247,8 @@ new #[Layout('layouts.app')] class extends Component
             'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
             'recentErrors' => Cache::get(\App\Support\ErrorReporter::CACHE_KEY, []),
             'remoteBackup' => Cache::get('backup:remote-last'),
+            'vpnStatus' => Vpn::status(),
+            'vpnNetworks' => Vpn::networks(),
             'status' => [
                 __('AI (Claude)') => BrainAi::isConfigured(),
                 __('Sending e-mails') => config('mail.default') !== 'log' && config('mail.default') !== 'array',
@@ -235,6 +258,7 @@ new #[Layout('layouts.app')] class extends Component
                 __('Encrypted backup off the server') => filled(config('backup.remote_url')) && filled(config('backup.encryption_password')),
                 __('Error reports by e-mail') => filled(config('security.error_report_email')),
                 __('Two-factor authentication required') => (bool) config('security.require_two_factor'),
+                __('VPN connected') => Vpn::isRunning(),
             ],
         ];
     }
@@ -247,6 +271,7 @@ new #[Layout('layouts.app')] class extends Component
         'push' => ['title' => __('Web push'), 'text' => __('Key pair for push notifications. Create it once with the button and never change it afterwards, otherwise every device has to switch notifications on again.')],
         'portfolio' => ['title' => __('Portfolio'), 'text' => __('Keys for bank sync, Instagram analysis and optional data sources.')],
         'backup' => ['title' => __('Backups'), 'text' => __('Nightly ZIP backup of the database and uploaded files. With a WebDAV folder and a password, each backup is also encrypted (XChaCha20-Poly1305, key derived from the password) and copied off the server – keep the password safe, without it the backup cannot be opened.')],
+        'vpn' => ['title' => __('VPN (WireGuard)'), 'text' => __('Connects the server with a private network, e.g. your home network, so paperless or a NAS there can be reached. Create a WireGuard connection in your router (FritzBox: Internet → Permit Access → VPN (WireGuard) → “Connect a single device”) and paste the configuration file here. Only addresses in the listed networks go through the VPN. Staging and live need a connection and a port of their own.')],
         'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
@@ -280,6 +305,10 @@ new #[Layout('layouts.app')] class extends Component
         'backup_encryption_password' => [__('Encryption password for the copies'), ''],
         'require_two_factor' => [__('Two-factor authentication required'), ''],
         'error_report_email' => [__('Send error reports to'), 'admin@example.com'],
+        'vpn_enabled' => [__('VPN switched on'), ''],
+        'vpn_socks_port' => [__('Local port (optional)'), '25344'],
+        'vpn_networks' => [__('Networks through the VPN (empty = AllowedIPs)'), '192.168.178.0/24, fritz.box'],
+        'vpn_wireguard_config' => [__('WireGuard configuration'), "[Interface]\nPrivateKey = …\nAddress = 192.168.178.201/24\nDNS = 192.168.178.1\n\n[Peer]\nPublicKey = …\nEndpoint = xyz.myfritz.net:51820\nAllowedIPs = 192.168.178.0/24"],
         'legacy_db_host' => [__('Host'), '127.0.0.1'],
         'legacy_db_port' => [__('Port'), '3306'],
         'legacy_db_database' => [__('Database'), 'portfolio_manager'],
@@ -345,7 +374,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="mt-4 grid gap-4 sm:grid-cols-2">
                             @foreach (AppSettings::FIELDS as $key => $field)
                                 @continue($field['group'] !== $group)
-                                <div wire:key="field-{{ $key }}">
+                                <div wire:key="field-{{ $key }}" @class(['sm:col-span-2' => $field['type'] === 'textarea'])>
                                     <x-input-label :for="'setting-'.$key" :value="$labels[$key][0]" />
                                     @if ($field['type'] === 'select')
                                         <select id="setting-{{ $key }}" wire:model="form.{{ $key }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
@@ -357,6 +386,11 @@ new #[Layout('layouts.app')] class extends Component
                                             <option value="">{{ __('No') }}</option>
                                             <option value="1">{{ __('Yes') }}</option>
                                         </select>
+                                    @elseif ($field['type'] === 'textarea')
+                                        <textarea id="setting-{{ $key }}" rows="8" wire:model="form.{{ $key }}" spellcheck="false" autocomplete="off" class="mt-1 block w-full rounded-lg border-gray-300 font-mono text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ isset($stored[$key]) ? '•••••••• '.__('(saved – paste a new configuration to replace it)') : $labels[$key][1] }}"></textarea>
+                                        @if (isset($stored[$key]))
+                                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><input type="checkbox" wire:model="clear.{{ $key }}" class="rounded border-gray-300 text-red-600" /> {{ __('remove') }}</label>
+                                        @endif
                                     @elseif ($field['secret'])
                                         <x-text-input :id="'setting-'.$key" type="password" autocomplete="new-password" wire:model="form.{{ $key }}" class="mt-1 block w-full" :placeholder="isset($stored[$key]) ? '•••••••• '.__('(saved)') : (isset($current[$key]) ? '•••••••• '.__('(from .env)') : $labels[$key][1])" />
                                         @if (isset($stored[$key]))
@@ -380,6 +414,35 @@ new #[Layout('layouts.app')] class extends Component
                                 <x-secondary-button type="button" wire:click="sendTestMail">{{ __('Send test e-mail') }}</x-secondary-button>
                             </div>
                             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }} {{ __('Current mailer: :mailer', ['mailer' => $mailer]) }}</p>
+                        @elseif ($group === 'vpn')
+                            <div class="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
+                                <p class="flex flex-wrap items-center gap-2">
+                                    @if (($vpnStatus['state'] ?? null) === 'running' && \Illuminate\Support\Carbon::parse($vpnStatus['at'])->gt(now()->subMinutes(2)))
+                                        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">● {{ __('connected') }}</span>
+                                    @elseif (($vpnStatus['state'] ?? null) === 'error')
+                                        <span class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-200">● {{ __('error') }}</span>
+                                        <span class="text-xs text-red-700 dark:text-red-300">{{ $vpnStatus['message'] }}</span>
+                                    @else
+                                        <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">● {{ __('not connected') }}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('The connection is kept up by the PM2 process “vpn” (set up automatically on the next deploy).') }}</span>
+                                    @endif
+                                </p>
+                                @if ($vpnNetworks !== [])
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Through the VPN: :networks', ['networks' => implode(', ', $vpnNetworks)]) }}</p>
+                                @endif
+                                <div class="flex flex-wrap items-end gap-2">
+                                    <div class="min-w-0 flex-1">
+                                        <x-input-label for="vpn-test-url" :value="__('Test an address in the network')" />
+                                        <x-text-input id="vpn-test-url" type="url" wire:model="vpnTestUrl" placeholder="http://192.168.178.20:8000" class="mt-1 block w-full" />
+                                        <x-input-error :messages="$errors->get('vpnTestUrl')" class="mt-1" />
+                                    </div>
+                                    <x-secondary-button type="button" wire:click="testVpn" wire:loading.attr="disabled" wire:target="testVpn">{{ __('Test connection') }}</x-secondary-button>
+                                </div>
+                                @if ($vpnTestResult)
+                                    <p @class(['text-sm', 'text-emerald-700 dark:text-emerald-300' => $vpnTestResult['ok'], 'text-red-700 dark:text-red-300' => ! $vpnTestResult['ok']]) role="status">{{ $vpnTestResult['message'] }}</p>
+                                @endif
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test. paperless instances and the WebDAV backup with an address inside these networks use the VPN automatically.') }}</p>
+                            </div>
                         @elseif ($group === 'push' && blank(config('services.webpush.public_key')))
                             <div class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700">
                                 <x-secondary-button type="button" wire:click="generateVapidKeys">🔑 {{ __('Create push keys') }}</x-secondary-button>

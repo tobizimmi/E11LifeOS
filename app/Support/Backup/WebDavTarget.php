@@ -2,6 +2,7 @@
 
 namespace App\Support\Backup;
 
+use App\Support\Vpn;
 use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -48,7 +49,7 @@ class WebDavTarget
 
     private function request(): PendingRequest
     {
-        $request = Http::timeout(60);
+        $request = Http::timeout(60)->withOptions(Vpn::httpOptions($this->url));
 
         return filled($this->username) ? $request->withBasicAuth((string) $this->username, (string) $this->password) : $request;
     }

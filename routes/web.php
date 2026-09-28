@@ -6,6 +6,7 @@ use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\FinanceReportPdfController;
+use App\Http\Controllers\FinanceTaxExportController;
 use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
@@ -71,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
     })->name('todos.index');
     Volt::route('tasks', 'tasks.index')->name('tasks.index');
     Volt::route('finance', 'finance.index')->name('finance.index')->middleware('addon:finance');
+    Route::get('finance/tax/{year}.csv', FinanceTaxExportController::class)->whereNumber('year')->name('finance.tax-export')->middleware('addon:finance');
     Route::get('finance/report.pdf', FinanceReportPdfController::class)->name('finance.report')->middleware('addon:finance');
     Volt::route('real-estate', 'real-estate.index')->name('real-estate.index')->middleware('addon:real_estate');
     Volt::route('real-estate/{realEstate}', 'real-estate.show')->whereNumber('realEstate')->name('real-estate.show')->middleware('addon:real_estate');

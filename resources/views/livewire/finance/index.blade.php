@@ -14,6 +14,8 @@ use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\FinancePeriod;
 use App\Support\Finance\FinanceReceiptAi;
 use App\Support\Finance\FinanceReport;
+use App\Support\Finance\TaxCategories;
+use App\Support\Finance\TaxYear;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -41,6 +43,11 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(as: 'category', except: '')]
     public string $categoryFilter = '';
+
+    #[Url(as: 'taxyear', except: 0)]
+    public int $taxYear = 0;
+
+    public string $taxSearch = '';
 
     public int $limit = self::TRANSACTIONS_PER_PAGE;
 
@@ -100,6 +107,7 @@ new #[Layout('layouts.app')] class extends Component
             $this->period = FinancePeriod::DEFAULT;
         }
 
+        $this->taxYear = $this->taxYear >= 2000 && $this->taxYear <= 2100 ? $this->taxYear : (int) now()->year - (now()->month <= 5 ? 1 : 0);
         $this->resolveHousehold();
         $firstAccountId = $this->accounts()->value('id');
 
@@ -297,6 +305,71 @@ new #[Layout('layouts.app')] class extends Component
 
     // ── Report ───────────────────────────────────────────────────────────
 
+    // ── Tax ──────────────────────────────────────────────────────────────
+
+    public function setTaxCategory(int $transactionId, string $category): void
+    {
+        abort_unless($category === '' || array_key_exists($category, TaxCategories::all()), 422);
+        $transaction = $this->findTransaction($transactionId);
+        $transaction->update(['tax_category' => $category ?: null, 'tax_amount' => $category === '' ? null : $transaction->tax_amount]);
+    }
+
+    /**
+     * The tax-relevant part of a booking, e.g. the labour costs of a craftsman invoice (empty = whole amount).
+     */
+    public function setTaxAmount(int $transactionId, string $amount): void
+    {
+        $amount = trim(str_replace(['€', ' '], '', $amount));
+        $amount = str_contains($amount, ',') ? str_replace(['.', ','], ['', '.'], $amount) : $amount;
+        $transaction = $this->findTransaction($transactionId);
+
+        if ($amount !== '' && (! is_numeric($amount) || (float) $amount < 0 || (float) $amount > abs($transaction->amount))) {
+            $this->addError('taxAmount.'.$transactionId, __('At most the amount of the booking.'));
+
+            return;
+        }
+
+        $transaction->update(['tax_amount' => $amount === '' ? null : round((float) $amount, 2)]);
+    }
+
+    public function acceptTaxSuggestions(): void
+    {
+        $accepted = 0;
+
+        foreach ($this->taxSuggestions() as $row) {
+            $row['transaction']->update(['tax_category' => $row['category']]);
+            $accepted++;
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count booking assigned.|:count bookings assigned.', $accepted));
+    }
+
+    public function saveTaxSettings(string $rate, string $children): void
+    {
+        $data = validator(['rate' => $rate, 'children' => $children], [
+            'rate' => ['required', 'numeric', 'min:0', 'max:45'],
+            'children' => ['required', 'integer', 'min:0', 'max:20'],
+        ])->validate();
+
+        $this->currentUser()->update(['tax_rate' => (float) $data['rate'], 'tax_children' => (int) $data['children']]);
+    }
+
+    /**
+     * Untagged expenses of the tax year that look tax-relevant.
+     *
+     * @return list<array{transaction: Transaction, category: string}>
+     */
+    private function taxSuggestions(): array
+    {
+        return Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)
+            ->whereNull('tax_category')->where('amount', '<', 0)
+            ->whereBetween('booked_on', [$this->taxYear.'-01-01', $this->taxYear.'-12-31'])
+            ->orderBy('booked_on')->get()
+            ->map(fn (Transaction $transaction) => ['transaction' => $transaction, 'category' => TaxCategories::suggest($transaction)])
+            ->filter(fn (array $row) => $row['category'] !== null)
+            ->values()->all();
+    }
+
     // ── Manual bookings / receipts ───────────────────────────────────────
 
     public function openManual(): void
@@ -481,6 +554,20 @@ new #[Layout('layouts.app')] class extends Component
             $data['budgetCategories'] = collect(FinanceCategories::all())->reject(fn (array $category) => in_array($category['group'], ['income', 'transfer'], true));
         }
 
+        if ($this->tab === 'tax') {
+            $data['taxYearData'] = TaxYear::build($this->currentUser(), (int) $this->householdId, $this->taxYear);
+            $data['taxSuggestions'] = $this->taxSuggestions();
+            $data['taxCategories'] = TaxCategories::all();
+            $data['taxSearchResults'] = trim($this->taxSearch) === '' ? collect() : Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)
+                ->whereNull('tax_category')->where('amount', '<', 0)
+                ->whereBetween('booked_on', [$this->taxYear.'-01-01', $this->taxYear.'-12-31'])
+                ->where(fn ($query) => $query->whereRaw('LOWER(counterparty) LIKE ?', ['%'.mb_strtolower(trim($this->taxSearch)).'%'])->orWhereRaw('LOWER(purpose) LIKE ?', ['%'.mb_strtolower(trim($this->taxSearch)).'%']))
+                ->orderByDesc('booked_on')->limit(20)->get();
+            $firstBooking = Transaction::where('user_id', $this->currentUser()->id)->min('booked_on');
+            $data['taxYears'] = collect(range((int) now()->year, min((int) now()->year - 1, $firstBooking ? (int) substr((string) $firstBooking, 0, 4) : (int) now()->year - 1)))
+                ->push($this->taxYear)->unique()->sortDesc()->values()->all();
+        }
+
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period);
             $data['report'] = FinanceReport::build(FinancePeriod::query($this->currentUser(), (int) $this->householdId, $this->period, $this->accountId())->get(), $from, $to);
@@ -509,11 +596,11 @@ new #[Layout('layouts.app')] class extends Component
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
                 <div class="inline-flex rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                    @foreach (['report' => '📊 '.__('Report'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'import' => '⬆ '.__('Import')] as $key => $label)
+                    @foreach (['report' => '📊 '.__('Report'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'tax' => '🏛 '.__('Tax'), 'import' => '⬆ '.__('Import')] as $key => $label)
                         <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                     @endforeach
                 </div>
-                @if (! in_array($tab, ['import', 'budgets'], true))
+                @if (! in_array($tab, ['import', 'budgets', 'tax'], true))
                     <select wire:model.live="period" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Period') }}">
                         @foreach ($periods as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -530,7 +617,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
-            @if ($accounts->isEmpty() && $tab !== 'import' && ! $manualOpen)
+            @if ($accounts->isEmpty() && ! in_array($tab, ['import', 'tax'], true) && ! $manualOpen)
                 <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🏦</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Import your first bank statement') }}</h3>
@@ -546,6 +633,8 @@ new #[Layout('layouts.app')] class extends Component
                 @include('finance.partials.transactions')
             @elseif ($tab === 'budgets')
                 @include('finance.partials.budgets')
+            @elseif ($tab === 'tax')
+                @include('finance.partials.tax')
             @else
                 @include('finance.partials.import')
             @endif

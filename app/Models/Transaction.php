@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * One booking of an imported bank statement (negative amount = expense).
  */
-#[Fillable(['household_id', 'user_id', 'bank_account_id', 'booked_on', 'amount', 'counterparty', 'purpose', 'category', 'category_locked', 'import_hash'])]
+#[Fillable(['household_id', 'user_id', 'bank_account_id', 'booked_on', 'amount', 'counterparty', 'purpose', 'category', 'category_locked', 'tax_category', 'tax_amount', 'import_hash'])]
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
@@ -23,6 +23,7 @@ class Transaction extends Model
             'booked_on' => 'date',
             'amount' => 'float',
             'category_locked' => 'boolean',
+            'tax_amount' => 'float',
         ];
     }
 

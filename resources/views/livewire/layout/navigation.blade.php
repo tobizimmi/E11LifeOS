@@ -76,7 +76,7 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect()];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect()];
         }
 
         $tree = new PageTree(
@@ -93,6 +93,7 @@ new class extends Component
                 ? collect($tree->ancestors($this->currentPageId))->pluck('id')->push($this->currentPageId)->all()
                 : [],
             'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
+            'shoppingCount' => \App\Models\ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false)->count(),
             'hasRecipes' => Auth::user()->canUseAddon(Addons::RECIPES),
             'hasPortfolio' => Auth::user()->canUseAddon(Addons::PORTFOLIO),
             'hasFinance' => Auth::user()->canUseAddon(Addons::FINANCE),
@@ -109,7 +110,7 @@ new class extends Component
     }
 }; ?>
 
-<div x-data="{ sidebarOpen: false }" x-on:keydown.escape.window="sidebarOpen = false">
+<div x-data="{ sidebarOpen: false }" x-on:keydown.escape.window="sidebarOpen = false" x-on:open-sidebar.window="sidebarOpen = true">
     {{-- Mobile top bar: fixed, so the menu button stays reachable while scrolling (spacer below keeps the content clear of it) --}}
     <div class="lg:hidden h-14" aria-hidden="true"></div>
     <div class="lg:hidden fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-gray-200/70 dark:border-gray-800 bg-white/80 backdrop-blur dark:bg-gray-900/80 px-3">
@@ -168,7 +169,7 @@ new class extends Component
                 <div class="space-y-0.5">
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
                     <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
-                    <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.index')" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
                     @if ($hasRecipes)
                         <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>
                     @endif

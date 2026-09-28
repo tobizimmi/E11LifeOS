@@ -68,4 +68,23 @@ class SearchPaletteTest extends TestCase
 
         $this->actingAs($user)->get(route('pages.index'))->assertOk()->assertSeeVolt('search-palette');
     }
+
+    public function test_the_palette_jumps_to_places_and_creates_tasks_items_and_inbox_entries(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('search-palette')
+            ->assertSee('Springen zu')->assertSee('Einkaufsliste')
+            ->set('query', 'angebot')->assertSee('Angebote')->assertDontSee('Mitglieder')
+            ->set('query', 'Milch')->assertSee('Einkaufsliste: „Milch“')
+            ->call('addToShopping')->assertSet('query', '')->assertDispatched('close-search')
+            ->set('query', 'Steuer machen morgen')->call('createTask')
+            ->set('query', 'Idee für den Garten')->call('addToInbox');
+
+        $this->assertSame('Milch', ShoppingListEntry::sole()->label);
+        $this->assertSame('Steuer machen', Item::where('type', Item::TYPE_TODO)->sole()->title);
+        $this->assertSame('Idee für den Garten', Item::where('type', Item::TYPE_INBOX)->sole()->title);
+        Volt::test('search-palette')->call('createTask')->assertStatus(422);
+    }
 }

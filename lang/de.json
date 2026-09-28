@@ -2815,5 +2815,20 @@
     "Weekly flyers": "Wochenprospekte",
     "Offers come from marktguru.de and may differ per branch. Prices without guarantee.": "Die Angebote stammen von marktguru.de und können je Filiale abweichen. Preise ohne Gewähr.",
     "already on the list": "schon auf der Liste",
-    "The offers service cannot be reached right now.": "Der Angebotsdienst ist gerade nicht erreichbar."
+    "The offers service cannot be reached right now.": "Der Angebotsdienst ist gerade nicht erreichbar.",
+    "Task “:title” created.": "Aufgabe „:title“ angelegt.",
+    "Nothing to create.": "Nichts zum Anlegen.",
+    "Saved to the inbox.": "In der Inbox gespeichert.",
+    "Search, jump to or create …": "Suchen, springen oder anlegen …",
+    "Task: “:text”": "Aufgabe: „:text“",
+    "Shopping list: “:text”": "Einkaufsliste: „:text“",
+    "Inbox: “:text”": "Inbox: „:text“",
+    "Go to": "Springen zu",
+    "? shows all shortcuts": "? zeigt alle Tastenkürzel",
+    "Quick navigation": "Schnellnavigation",
+    "Keyboard shortcuts": "Tastenkürzel",
+    "Search, jump to or create": "Suchen, springen oder anlegen",
+    "Create something new": "Etwas Neues anlegen",
+    "This overview": "Diese Übersicht",
+    "Shopping trip": "Einkauf"
 }

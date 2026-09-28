@@ -2903,5 +2903,12 @@
     "Tip: “PersistentKeepalive = 25” in the [Peer] section keeps the connection open behind routers and firewalls.": "Tipp: „PersistentKeepalive = 25“ im [Peer]-Abschnitt hält die Verbindung hinter Routern und Firewalls offen.",
     "Last handshake :time": "Letzter Handshake :time",
     "no handshake": "kein Handshake",
-    "wireproxy runs, but the router has not answered yet.": "wireproxy läuft, aber der Router hat noch nicht geantwortet."
+    "wireproxy runs, but the router has not answered yet.": "wireproxy läuft, aber der Router hat noch nicht geantwortet.",
+    "Port of the local Reverb process": "Port des lokalen Reverb-Prozesses",
+    "Live updates (Reverb)": "Live-Updates (Reverb)",
+    "Open pages update themselves when someone else changes something. The server sends these updates to the Reverb process; behind the path-based proxy it has to reach it directly. Enter the port Reverb was started with (PM2 process “reverb”, e.g. 3021 for staging and 3011 for live).": "Offene Seiten aktualisieren sich von selbst, wenn jemand anderes etwas ändert. Der Server schickt diese Updates an den Reverb-Prozess; hinter dem Pfad-Proxy muss er ihn direkt erreichen. Trage den Port ein, mit dem Reverb gestartet wurde (PM2-Prozess „reverb“, z. B. 3021 für Staging und 3011 für Live).",
+    "Reverb accepted the test message.": "Reverb hat die Testnachricht angenommen.",
+    "Reverb could not be reached: :message": "Reverb nicht erreichbar: :message",
+    "Currently sent to: :address": "Aktuell gesendet an: :address",
+    "Test live updates": "Live-Updates testen"
 }

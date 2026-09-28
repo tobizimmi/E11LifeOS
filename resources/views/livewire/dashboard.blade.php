@@ -59,6 +59,11 @@ new #[Layout('layouts.app')] class extends Component
         $this->currentUser()->forceFill(['dashboard_widgets' => $widgets])->save();
     }
 
+    public function dismissOnboarding(): void
+    {
+        $this->currentUser()->forceFill(['onboarding_dismissed_at' => now()])->save();
+    }
+
     public function resetWidgets(): void
     {
         $this->currentUser()->forceFill(['dashboard_widgets' => null])->save();
@@ -103,6 +108,7 @@ new #[Layout('layouts.app')] class extends Component
         $widgets = array_values(array_filter(DashboardWidgets::forUser($this->currentUser()), $available));
 
         return $data + [
+            'onboarding' => \App\Support\Onboarding::isVisible($this->currentUser()) ? \App\Support\Onboarding::steps($this->currentUser()) : null,
             'tasksCollection' => $tasks,
             'dueProperty' => $dueProperty,
             'assigneeProperty' => $assigneeProperty,
@@ -163,6 +169,31 @@ new #[Layout('layouts.app')] class extends Component
                     {{ __('You are not a member of a household yet. Ask a household member for an invite code.') }}
                 </div>
             @else
+                @if ($onboarding)
+                    <section class="rounded-lg bg-indigo-50 p-6 shadow-sm dark:bg-indigo-900/20" aria-labelledby="onboarding-heading">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 id="onboarding-heading" class="font-semibold text-gray-900 dark:text-gray-100">👋 {{ __('First steps') }}</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">{{ __(':done of :total done – a few minutes to get the most out of :app.', ['done' => collect($onboarding)->where('done', true)->count(), 'total' => count($onboarding), 'app' => config('app.name')]) }}</p>
+                            </div>
+                            <button type="button" wire:click="dismissOnboarding" class="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400" title="{{ __('Hide') }}" aria-label="{{ __('Hide first steps') }}">✕</button>
+                        </div>
+                        <ol class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            @foreach ($onboarding as $step)
+                                <li wire:key="onboarding-{{ $step['key'] }}">
+                                    <a href="{{ $step['url'] }}" wire:navigate @class(['flex h-full gap-3 rounded-lg bg-white p-3 text-sm shadow-sm hover:ring-1 hover:ring-indigo-300 dark:bg-gray-800', 'opacity-60' => $step['done']])>
+                                        <span aria-hidden="true">{{ $step['done'] ? '✅' : '⬜' }}</span>
+                                        <span>
+                                            <span @class(['block font-medium text-gray-900 dark:text-gray-100', 'line-through' => $step['done']])>{{ $step['label'] }}<span class="sr-only">{{ $step['done'] ? ' – '.__('done') : '' }}</span></span>
+                                            <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $step['hint'] }}</span>
+                                        </span>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ol>
+                    </section>
+                @endif
+
                 <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
                     <div class="flex items-center justify-between gap-3 mb-3">
                         <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ __('Quick capture') }}</h3>

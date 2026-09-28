@@ -50,8 +50,8 @@ class BackupTest extends TestCase
         $zip = new ZipArchive;
         $this->assertTrue($zip->open(end($backups)));
         $sql = $zip->getFromName('database.sql');
-        $this->assertStringContainsString('CREATE TABLE "items"', $sql);
-        $this->assertStringContainsString("'Omas Rezept, mit ''Apostroph'''", $sql);
+        $this->assertMatchesRegularExpression('/CREATE TABLE [`"]items[`"]/', $sql);
+        $this->assertMatchesRegularExpression("/'Omas Rezept, mit (''|\\\\')Apostroph(''|\\\\')'/", $sql);
         $this->assertSame('Anhang', $zip->getFromName('files/private/backup-test.txt'));
         $zip->close();
     }

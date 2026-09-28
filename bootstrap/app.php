@@ -2,6 +2,8 @@
 
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAddonEnabled;
+use App\Http\Middleware\RequireTwoFactor;
+use App\Support\ErrorReporter;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -25,10 +27,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.token' => AuthenticateApiToken::class,
         ]);
 
+        $middleware->web(append: [RequireTwoFactor::class]);
+
         // Sign in before route model binding, so unknown tokens get 401 instead of 404.
         $middleware->prependToPriorityList(SubstituteBindings::class, AuthenticateApiToken::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Latest errors for the admin page, and an e-mail to the configured address.
+        $exceptions->report(fn (Throwable $exception) => ErrorReporter::handle($exception));
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

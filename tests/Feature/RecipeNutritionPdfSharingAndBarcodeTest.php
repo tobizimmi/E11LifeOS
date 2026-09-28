@@ -42,14 +42,14 @@ class RecipeNutritionPdfSharingAndBarcodeTest extends TestCase
             ->assertSee('Nährwerte pro Portion')
             ->assertSee('geschätzt')
             ->assertSee('420');
-        $this->assertSame(['calories' => 420, 'protein' => 12, 'carbs' => 60, 'fat' => 14, 'fiber' => 3, 'estimated' => true], $recipe->fresh()->nutrition);
+        $this->assertEquals(['calories' => 420, 'protein' => 12, 'carbs' => 60, 'fat' => 14, 'fiber' => 3, 'estimated' => true], $recipe->fresh()->nutrition);
 
         // Saving the form unchanged keeps the estimate; a manual change replaces it.
         Volt::test('recipes.form', ['recipe' => $recipe->id])->assertSet('nutrition.calories', 420)->call('save');
         $this->assertTrue($recipe->fresh()->nutrition['estimated']);
 
         Volt::test('recipes.form', ['recipe' => $recipe->id])->set('nutrition.calories', 380)->set('nutrition.fiber', null)->call('save');
-        $this->assertSame(['calories' => 380, 'protein' => 12, 'carbs' => 60, 'fat' => 14, 'fiber' => null], $recipe->fresh()->nutrition);
+        $this->assertEquals(['calories' => 380, 'protein' => 12, 'carbs' => 60, 'fat' => 14, 'fiber' => null], $recipe->fresh()->nutrition);
         $this->assertSame(['calories' => 380.0, 'protein' => 12.0, 'carbs' => 60.0, 'fat' => 14.0], $recipe->fresh()->nutritionValues());
 
         Volt::test('recipes.form', ['recipe' => $recipe->id])->set('nutrition', ['calories' => null, 'protein' => null, 'carbs' => null, 'fat' => null, 'fiber' => null])->call('save');

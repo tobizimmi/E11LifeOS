@@ -15,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children'])]
-#[Hidden(['password', 'remember_token', 'calendar_token'])]
+#[Hidden(['password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -34,9 +34,18 @@ class User extends Authenticatable
                 ->get()
                 ->each->delete();
 
-            Item::where('created_by', $user->id)
+            $privateItems = Item::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE);
+            ExternalLink::where('linkable_type', 'item')->whereIn('linkable_id', (clone $privateItems)->select('id'))->get()->each->delete();
+            $privateItems->delete();
+
+            // Private properties with their invoices, receipts and document links.
+            RealEstate::where('created_by', $user->id)
                 ->where('visibility', Item::VISIBILITY_PRIVATE)
-                ->delete();
+                ->get()
+                ->each->delete();
+
+            // Mail copies attached to the user's bank bookings (the bookings go with the foreign key cascade).
+            ExternalLink::where('linkable_type', 'transaction')->whereIn('linkable_id', Transaction::where('user_id', $user->id)->select('id'))->get()->each->delete();
 
             // Private recipes too (one by one, so their photos are removed as well).
             Recipe::where('created_by', $user->id)
@@ -80,6 +89,10 @@ class User extends Authenticatable
             'weather_longitude' => 'float',
             'tax_rate' => 'float',
             'tax_children' => 'integer',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
+            'onboarding_dismissed_at' => 'datetime',
         ];
     }
 
@@ -129,5 +142,10 @@ class User extends Authenticatable
     public function hasPaperless(): bool
     {
         return PaperlessInstance::query()->availableTo($this)->exists();
+    }
+
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && filled($this->two_factor_secret);
     }
 }

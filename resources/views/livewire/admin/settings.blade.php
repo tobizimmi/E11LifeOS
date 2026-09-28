@@ -85,6 +85,9 @@ new #[Layout('layouts.app')] class extends Component
             'form.vapid_subject' => ['nullable', 'regex:/^(mailto:|https:\/\/)/'],
             'form.instagram_limit' => ['nullable', 'integer', 'between:1,100'],
             'form.backup_keep' => ['nullable', 'integer', 'between:1,365'],
+            'form.backup_remote_url' => ['nullable', 'url:https'],
+            'form.require_two_factor' => ['nullable', 'in:0,1'],
+            'form.error_report_email' => ['nullable', 'email'],
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.*' => ['nullable', 'string', 'max:2000'],
@@ -221,12 +224,17 @@ new #[Layout('layouts.app')] class extends Component
             'imports' => ['portfolio' => Cache::get(RunAdminCommand::cacheKey('portfolio')), 'recipes' => Cache::get(RunAdminCommand::cacheKey('recipes'))],
             'users' => User::orderBy('name')->get(['id', 'name', 'email']),
             'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
+            'recentErrors' => Cache::get(\App\Support\ErrorReporter::CACHE_KEY, []),
+            'remoteBackup' => Cache::get('backup:remote-last'),
             'status' => [
                 __('AI (Claude)') => BrainAi::isConfigured(),
                 __('Sending e-mails') => config('mail.default') !== 'log' && config('mail.default') !== 'array',
                 __('Web push') => filled(config('services.webpush.public_key')) && filled(config('services.webpush.private_key')),
                 __('Bank sync (FinTS)') => filled(config('services.fints.product_id')),
                 __('Instagram analysis') => filled(config('services.instagram.apify_key')) && BrainAi::isConfigured(),
+                __('Encrypted backup off the server') => filled(config('backup.remote_url')) && filled(config('backup.encryption_password')),
+                __('Error reports by e-mail') => filled(config('security.error_report_email')),
+                __('Two-factor authentication required') => (bool) config('security.require_two_factor'),
             ],
         ];
     }
@@ -238,7 +246,8 @@ new #[Layout('layouts.app')] class extends Component
         'mail' => ['title' => __('E-mail'), 'text' => __('For daily reminders, “Forgot password” and sending invoices, quotes and reminders. Use the SMTP data of your mailbox (e.g. created in Plesk under “Mail”).')],
         'push' => ['title' => __('Web push'), 'text' => __('Key pair for push notifications. Create it once with the button and never change it afterwards, otherwise every device has to switch notifications on again.')],
         'portfolio' => ['title' => __('Portfolio'), 'text' => __('Keys for bank sync, Instagram analysis and optional data sources.')],
-        'backup' => ['title' => __('Backups'), 'text' => __('Nightly ZIP backup of the database and uploaded files.')],
+        'backup' => ['title' => __('Backups'), 'text' => __('Nightly ZIP backup of the database and uploaded files. With a WebDAV folder and a password, each backup is also encrypted (XChaCha20-Poly1305, key derived from the password) and copied off the server – keep the password safe, without it the backup cannot be opened.')],
+        'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
     ];
@@ -265,6 +274,12 @@ new #[Layout('layouts.app')] class extends Component
         'pushover_app_token' => [__('Pushover app token (optional)'), ''],
         'backup_path' => [__('Folder (empty = storage/backups)'), '/var/www/vhosts/zimmimail.de/backups/e11lifeos'],
         'backup_keep' => [__('Keep backups'), '14'],
+        'backup_remote_url' => [__('WebDAV folder for copies off the server'), 'https://u12345.your-storagebox.de/e11lifeos/'],
+        'backup_remote_username' => [__('WebDAV user name'), 'u12345'],
+        'backup_remote_password' => [__('WebDAV password'), ''],
+        'backup_encryption_password' => [__('Encryption password for the copies'), ''],
+        'require_two_factor' => [__('Two-factor authentication required'), ''],
+        'error_report_email' => [__('Send error reports to'), 'admin@example.com'],
         'legacy_db_host' => [__('Host'), '127.0.0.1'],
         'legacy_db_port' => [__('Port'), '3306'],
         'legacy_db_database' => [__('Database'), 'portfolio_manager'],
@@ -304,6 +319,19 @@ new #[Layout('layouts.app')] class extends Component
                         <li class="flex items-center gap-2"><span @class(['text-emerald-600' => $ready, 'text-gray-400' => ! $ready])>{{ $ready ? '✓' : '–' }}</span> {{ $label }}</li>
                     @endforeach
                 </ul>
+                @if ($remoteBackup)
+                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Last copy off the server: :date', ['date' => \Illuminate\Support\Carbon::parse($remoteBackup)->diffForHumans()]) }}</p>
+                @endif
+                @if ($recentErrors !== [])
+                    <details class="mt-3 text-xs">
+                        <summary class="cursor-pointer text-orange-700 dark:text-orange-400">{{ trans_choice(':count recent error|:count recent errors', count($recentErrors)) }}</summary>
+                        <ul class="mt-2 space-y-1.5">
+                            @foreach ($recentErrors as $error)
+                                <li class="rounded bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($error['at'])->format('d.m. H:i') }}</span> <strong>{{ $error['type'] }}</strong>: {{ $error['message'] }}<br><span class="text-gray-500">{{ $error['where'] }} · {{ $error['url'] }}</span></li>
+                            @endforeach
+                        </ul>
+                    </details>
+                @endif
                 @if ($failedJobs > 0)
                     <p class="mt-3 text-xs text-orange-700 dark:text-orange-400">{{ trans_choice(':count background job failed.|:count background jobs failed.', $failedJobs) }}</p>
                 @endif
@@ -323,6 +351,11 @@ new #[Layout('layouts.app')] class extends Component
                                         <select id="setting-{{ $key }}" wire:model="form.{{ $key }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
                                             <option value="">{{ __('STARTTLS (port 587)') }}</option>
                                             <option value="smtps">{{ __('SSL/TLS (port 465)') }}</option>
+                                        </select>
+                                    @elseif ($field['type'] === 'yesno')
+                                        <select id="setting-{{ $key }}" wire:model="form.{{ $key }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                            <option value="">{{ __('No') }}</option>
+                                            <option value="1">{{ __('Yes') }}</option>
                                         </select>
                                     @elseif ($field['secret'])
                                         <x-text-input :id="'setting-'.$key" type="password" autocomplete="new-password" wire:model="form.{{ $key }}" class="mt-1 block w-full" :placeholder="isset($stored[$key]) ? '•••••••• '.__('(saved)') : (isset($current[$key]) ? '•••••••• '.__('(from .env)') : $labels[$key][1])" />

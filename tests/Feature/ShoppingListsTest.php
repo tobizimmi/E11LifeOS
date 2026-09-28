@@ -175,4 +175,20 @@ class ShoppingListsTest extends TestCase
 
         Volt::test('shopping-list.offers')->assertSee('gerade nicht erreichbar')->assertSee('https://www.rewe.de/angebote/', false);
     }
+
+    /**
+     * The layout renders the header slot outside of the Livewire component, so wire: directives there would do nothing.
+     */
+    public function test_interactive_controls_are_rendered_inside_the_component_not_in_the_header(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        foreach (['shopping-list.index' => 'shoppingMode', 'shopping-list.offers' => 'wire:model.live="listId"'] as $route => $control) {
+            $html = $this->get(route($route))->assertOk()->getContent();
+            $this->assertGreaterThan(strpos($html, '<main'), strpos($html, $control), $route);
+        }
+
+        Volt::test('shopping-list.index')->set('shoppingMode', true)->assertSet('shoppingMode', true)->assertSee('Einkaufsmodus beenden');
+    }
 }

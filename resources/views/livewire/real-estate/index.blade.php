@@ -66,12 +66,16 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🏠 {{ __('Real estate') }}</h2>
-            <x-primary-button type="button" wire:click="$toggle('creating')">+ {{ __('New real estate') }}</x-primary-button>
         </div>
     </x-slot>
 
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+            {{-- Kept inside the component: the header slot is rendered outside of it, where wire:click does not reach --}}
+            <div class="flex justify-end">
+                <x-primary-button type="button" wire:click="$toggle('creating')">+ {{ __('New real estate') }}</x-primary-button>
+            </div>
+
             @if ($creating || $realEstates->isEmpty())
                 <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-2 lg:col-span-5 dark:text-gray-100">{{ __('Plan a property') }}</h3>

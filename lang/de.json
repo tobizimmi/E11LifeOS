@@ -2837,5 +2837,7 @@
     "Drop the invoice here": "Rechnung hier ablegen",
     "Drop the receipt here": "Beleg hier ablegen",
     "Drag to move the card": "Ziehen, um die Kachel zu verschieben",
-    "Drag to another day or list": "Auf einen anderen Tag oder eine Liste ziehen"
+    "Drag to another day or list": "Auf einen anderen Tag oder eine Liste ziehen",
+    "End shopping mode": "Einkaufsmodus beenden",
+    "Shopping mode is on – big buttons, the screen stays on.": "Einkaufsmodus aktiv – große Schaltflächen, der Bildschirm bleibt an."
 }

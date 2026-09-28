@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
 use App\Support\Addons;
+use App\Support\InAppNotifications;
 use App\Support\PageMover;
 use App\Support\PageTree;
 use App\Support\TaskLists;
@@ -29,7 +30,7 @@ new class extends Component
     /**
      * @var array<string, string>
      */
-    protected $listeners = ['item-captured' => '$refresh'];
+    protected $listeners = ['item-captured' => '$refresh', 'notifications-read' => '$refresh'];
 
     protected function requiresHousehold(): bool
     {
@@ -76,7 +77,7 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect()];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect(), 'unreadNotifications' => InAppNotifications::unreadCount(Auth::user())];
         }
 
         $tree = new PageTree(
@@ -100,6 +101,8 @@ new class extends Component
             'hasBusiness' => Auth::user()->canUseAddon(Addons::BUSINESS),
             'hasRealEstate' => Auth::user()->canUseAddon(Addons::REAL_ESTATE),
             'tasksCollection' => $tasksCollection,
+            'unreadNotifications' => InAppNotifications::unreadCount(Auth::user()),
+            'hasNetWorth' => Auth::user()->canUseAddon(Addons::FINANCE) || Auth::user()->canUseAddon(Addons::PORTFOLIO) || Auth::user()->canUseAddon(Addons::REAL_ESTATE),
             'todayTaskCount' => (new TaskLists($tasksCollection, Auth::user()))->counts()[TaskLists::TODAY],
             'collections' => Collection::query()
                 ->visibleTo(Auth::user(), $this->householdId)
@@ -123,9 +126,12 @@ new class extends Component
             <x-application-logo class="h-7 w-auto fill-current" />
             {{ config('app.name') }}
         </a>
-        <button type="button" x-on:click="$dispatch('open-search')" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Search') }}">
-            <x-search-icon class="h-6 w-6" />
-        </button>
+        <div class="flex items-center">
+            <x-notification-bell :count="$unreadNotifications" />
+            <button type="button" x-on:click="$dispatch('open-search')" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Search') }}">
+                <x-search-icon class="h-6 w-6" />
+            </button>
+        </div>
     </div>
 
     {{-- Backdrop (mobile) --}}
@@ -143,6 +149,7 @@ new class extends Component
                 <x-application-logo class="h-7 w-auto fill-current" />
                 {{ config('app.name') }}
             </a>
+            <x-notification-bell :count="$unreadNotifications" class="hidden lg:block" />
             <button type="button" x-on:click="sidebarOpen = false" class="lg:hidden p-1 text-gray-400 hover:text-gray-600" aria-label="{{ __('Close menu') }}">
                 <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -169,6 +176,7 @@ new class extends Component
                 <div class="space-y-0.5">
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
                     <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('calendar.index')" :active="request()->routeIs('calendar.*')" wire:navigate>📅 {{ __('Calendar') }}</x-sidebar-link>
                     <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
                     @if ($hasRecipes)
                         <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>
@@ -184,6 +192,9 @@ new class extends Component
                     @endif
                     @if ($hasBusiness)
                         <x-sidebar-link :href="route('business.index')" :active="request()->routeIs('business.*')" wire:navigate>💼 {{ __('Small business') }}</x-sidebar-link>
+                    @endif
+                    @if ($hasNetWorth)
+                        <x-sidebar-link :href="route('net-worth.index')" :active="request()->routeIs('net-worth.*')" wire:navigate>💎 {{ __('Net worth') }}</x-sidebar-link>
                     @endif
                     <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
                 </div>

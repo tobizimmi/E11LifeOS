@@ -94,6 +94,10 @@ new #[Layout('layouts.app')] class extends Component
                 <livewire:quick-capture />
             </div>
 
+            @if (auth()->user()->hasPaperless())
+                <livewire:paperless-inbox lazy />
+            @endif
+
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
                 <ul class="space-y-3">
                     @forelse ($entries as $entry)

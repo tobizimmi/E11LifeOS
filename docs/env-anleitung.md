@@ -169,6 +169,20 @@ den Versand von Rechnungen, Angeboten und Mahnungen.
 Keine neue Variable nötig für die **Mobile-API** (Expo-App): Die App meldet sich mit
 E-Mail und Passwort an und nutzt `APP_URL` + `/api/v1`.
 
+### paperless-ngx und Mail-Weiterleitung
+
+Keine Variable nötig: Jede Person verbindet ihre paperless-Instanz selbst im Profil
+(Adresse + API-Token) und entscheidet dort, ob sie nur für sie selbst oder für den ganzen Haushalt gilt.
+
+E-Mails kommen über paperless in die App (PHP braucht dafür kein IMAP):
+
+1. In paperless unter **E-Mail → E-Mail-Konten** das Postfach eintragen (z. B. `belege@deine-domain.de`).
+2. Unter **E-Mail → E-Mail-Regeln** eine Regel anlegen: Anhänge verarbeiten (oder die ganze
+   Mail als PDF) und den Posteingangs-Tag vergeben.
+3. Rechnungen und Briefe an dieses Postfach weiterleiten. Sie erscheinen in der App unter
+   **Inbox → paperless-Posteingang** und lassen sich dort als Ausgabe, Immobilien-Rechnung,
+   Business-Beleg oder Aufgabe ablegen. Das Dokument bleibt in paperless und wird nur verknüpft.
+
 ### Einmalige Datenübernahmen
 
 In der Vorlage auskommentiert (`#`). Nur für den Import das `#` entfernen, ausfüllen,

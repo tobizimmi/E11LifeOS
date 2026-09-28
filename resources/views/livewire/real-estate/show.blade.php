@@ -414,12 +414,14 @@ new #[Layout('layouts.app')] class extends Component
             ? tap($model->invoices()->findOrFail($this->editingInvoiceId))->update($attributes)
             : $model->invoices()->create($attributes + ['created_by' => Auth::id()]);
 
-        if ($this->receipt && $this->receiptToPaperless && Auth::user()->hasPaperless()) {
+        $paperless = $this->receipt && $this->receiptToPaperless ? \App\Models\PaperlessInstance::defaultFor(Auth::user()) : null;
+
+        if ($paperless) {
             try {
-                $taskId = \App\Support\Paperless\PaperlessClient::for(Auth::user())->upload($this->receipt, trim($invoice->vendor.' '.$invoice->number));
+                $taskId = \App\Support\Paperless\PaperlessClient::for($paperless, Auth::user())->upload($this->receipt, trim($invoice->vendor.' '.$invoice->number));
                 \App\Models\ExternalLink::create([
                     'household_id' => $this->householdId, 'created_by' => Auth::id(), 'linkable_type' => 'real_estate_invoice', 'linkable_id' => $invoice->id,
-                    'kind' => \App\Models\ExternalLink::PAPERLESS, 'paperless_task_id' => mb_substr($taskId, 0, 64), 'title' => mb_substr(trim($invoice->vendor.' '.$invoice->number), 0, 255),
+                    'kind' => \App\Models\ExternalLink::PAPERLESS, 'paperless_instance_id' => $paperless->id, 'paperless_task_id' => mb_substr($taskId, 0, 64), 'title' => mb_substr(trim($invoice->vendor.' '.$invoice->number), 0, 255),
                 ]);
                 $this->receipt = null;
             } catch (Throwable $exception) {

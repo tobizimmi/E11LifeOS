@@ -2,6 +2,7 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ExternalLink;
+use App\Models\PaperlessInstance;
 use App\Support\ExternalLinks;
 use App\Support\Paperless\PaperlessClient;
 use Illuminate\Support\Facades\Auth;
@@ -51,6 +52,11 @@ new class extends Component
 
     public ?string $message = null;
 
+    /**
+     * paperless instance used for searching and uploading (own or shared with the household).
+     */
+    public ?int $instanceId = null;
+
     public function mount(string $type, int $id): void
     {
         abort_unless(in_array($type, ExternalLinks::TYPES, true), 404);
@@ -58,6 +64,20 @@ new class extends Component
         $this->type = $type;
         $this->targetId = $id;
         $this->assertVisible();
+        $this->instanceId = PaperlessInstance::defaultFor(Auth::user())?->id;
+    }
+
+    private function instance(?int $id = null): PaperlessInstance
+    {
+        $instance = PaperlessInstance::query()->availableTo(Auth::user())->find($id ?? $this->instanceId);
+        abort_unless($instance, 404);
+
+        return $instance;
+    }
+
+    private function client(?int $instanceId = null): PaperlessClient
+    {
+        return PaperlessClient::for($this->instance($instanceId), Auth::user());
     }
 
     private function assertVisible(): void
@@ -92,8 +112,10 @@ new class extends Component
     {
         $this->assertVisible();
 
-        if (! $this->links()->where('paperless_document_id', $documentId)->exists()) {
-            $this->create(['kind' => ExternalLink::PAPERLESS, 'paperless_document_id' => $documentId, 'title' => mb_substr($title ?: '#'.$documentId, 0, 255)]);
+        $instance = $this->instance();
+
+        if (! $this->links()->where('paperless_instance_id', $instance->id)->where('paperless_document_id', $documentId)->exists()) {
+            $this->create(['kind' => ExternalLink::PAPERLESS, 'paperless_instance_id' => $instance->id, 'paperless_document_id' => $documentId, 'title' => mb_substr($title ?: '#'.$documentId, 0, 255)]);
         }
 
         $this->mode = '';
@@ -128,9 +150,9 @@ new class extends Component
 
         $title = trim($this->uploadTitle) ?: pathinfo($this->upload->getClientOriginalName(), PATHINFO_FILENAME);
 
-        if (Auth::user()->hasPaperless()) {
+        if ($this->instanceId) {
             try {
-                $taskId = PaperlessClient::for(Auth::user())->upload($this->upload, $title);
+                $taskId = $this->client()->upload($this->upload, $title);
             } catch (Throwable $exception) {
                 report($exception);
                 $this->addError('upload', __('paperless is not reachable.'));
@@ -138,7 +160,7 @@ new class extends Component
                 return;
             }
 
-            $this->create(['kind' => ExternalLink::PAPERLESS, 'paperless_task_id' => mb_substr($taskId, 0, 64), 'title' => mb_substr($title, 0, 255)]);
+            $this->create(['kind' => ExternalLink::PAPERLESS, 'paperless_instance_id' => $this->instanceId, 'paperless_task_id' => mb_substr($taskId, 0, 64), 'title' => mb_substr($title, 0, 255)]);
             $this->message = __('Sent to paperless – it appears here as soon as paperless has processed it.');
         } else {
             $extension = strtolower($this->upload->getClientOriginalExtension() ?: $this->upload->guessExtension() ?: 'bin');
@@ -173,14 +195,17 @@ new class extends Component
     {
         $this->assertVisible();
 
-        return $this->links()->where('kind', ExternalLink::PAPERLESS)->whereNotNull('paperless_document_id')->findOrFail($this->editingDocumentId);
+        $link = $this->links()->where('kind', ExternalLink::PAPERLESS)->whereNotNull('paperless_document_id')->findOrFail($this->editingDocumentId);
+        abort_unless($link->paperless_instance_id && $link->paperlessInstance?->isAvailableTo(Auth::user()), 404);
+
+        return $link;
     }
 
     public function saveDocument(): void
     {
         $link = $this->editingLink();
         $this->validate(['editTitle' => ['required', 'string', 'max:128'], 'newTag' => ['nullable', 'integer'], 'note' => ['nullable', 'string', 'max:5000']]);
-        $client = PaperlessClient::for(Auth::user());
+        $client = $this->client($link->paperless_instance_id);
 
         try {
             $document = $client->document($link->paperless_document_id);
@@ -212,13 +237,13 @@ new class extends Component
      */
     private function resolvePending(): void
     {
-        if (! Auth::user()->hasPaperless()) {
-            return;
-        }
+        foreach ($this->links()->where('kind', ExternalLink::PAPERLESS)->whereNull('paperless_document_id')->whereNotNull('paperless_task_id')->where('created_by', Auth::id())->with('paperlessInstance')->get() as $link) {
+            if (! $link->paperlessInstance?->isAvailableTo(Auth::user())) {
+                continue;
+            }
 
-        foreach ($this->links()->where('kind', ExternalLink::PAPERLESS)->whereNull('paperless_document_id')->whereNotNull('paperless_task_id')->where('created_by', Auth::id())->get() as $link) {
             try {
-                $result = PaperlessClient::for(Auth::user())->taskResult($link->paperless_task_id);
+                $result = PaperlessClient::for($link->paperlessInstance, Auth::user())->taskResult($link->paperless_task_id);
             } catch (Throwable) {
                 return;
             }
@@ -240,17 +265,23 @@ new class extends Component
         $tags = [];
         $document = null;
 
-        if ($user->hasPaperless() && ($this->mode === 'paperless' || $this->editingDocumentId)) {
-            try {
-                $client = PaperlessClient::for($user);
+        $instances = PaperlessInstance::query()->availableTo($user)->orderBy('name')->get();
 
-                if ($this->mode === 'paperless') {
-                    $results = $client->search($this->query);
+        if (! $instances->contains('id', $this->instanceId)) {
+            $this->instanceId = PaperlessInstance::defaultFor($user)?->id;
+        }
+
+        if ($instances->isNotEmpty() && ($this->mode === 'paperless' || $this->editingDocumentId)) {
+            try {
+                if ($this->mode === 'paperless' && $this->instanceId) {
+                    $results = $this->client()->search($this->query);
                 }
 
                 if ($this->editingDocumentId) {
+                    $link = $this->editingLink();
+                    $client = $this->client($link->paperless_instance_id);
                     $tags = $client->tags();
-                    $document = $client->document($this->editingLink()->paperless_document_id);
+                    $document = $client->document($link->paperless_document_id);
                 }
             } catch (Throwable $exception) {
                 $error = $exception->getMessage();
@@ -258,9 +289,10 @@ new class extends Component
         }
 
         return [
-            'documents' => $this->links()->orderBy('id')->get(),
-            'hasPaperless' => $user->hasPaperless(),
-            'paperlessBase' => $user->hasPaperless() ? rtrim((string) $user->paperless_url, '/') : null,
+            'documents' => $this->links()->with('paperlessInstance')->orderBy('id')->get(),
+            'hasPaperless' => $instances->isNotEmpty(),
+            'instances' => $instances,
+            'availableInstanceIds' => $instances->pluck('id')->all(),
             'results' => $results,
             'error' => $error,
             'tags' => $tags,
@@ -285,6 +317,16 @@ new class extends Component
         <p class="text-xs text-gray-600 dark:text-gray-400" role="status">{{ $message }}</p>
     @endif
 
+    @if (in_array($mode, ['paperless', 'upload'], true) && $instances->count() > 1)
+        <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">{{ __('paperless instance') }}
+            <select wire:model.live="instanceId" class="rounded-md border-gray-300 py-0.5 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                @foreach ($instances as $instance)
+                    <option value="{{ $instance->id }}">{{ $instance->name }}{{ $instance->shared ? ' 👥' : ' 🔒' }}</option>
+                @endforeach
+            </select>
+        </label>
+    @endif
+
     @if ($mode === 'paperless')
         <div class="rounded-md bg-gray-50 p-2 dark:bg-gray-900/50">
             <x-text-input wire:model.live.debounce.300ms="query" type="search" class="block w-full text-sm" :placeholder="__('Search in paperless (full text) …')" :aria-label="__('Search in paperless')" autofocus />
@@ -295,7 +337,7 @@ new class extends Component
                 @forelse ($results as $result)
                     <li wire:key="paperless-result-{{ $result['id'] }}">
                         <button type="button" wire:click="linkPaperless({{ $result['id'] }}, @js($result['title']))" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-sm hover:bg-white dark:hover:bg-gray-800">
-                            <img src="{{ route('paperless.document', [$result['id'], 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 shrink-0 rounded object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                            <img src="{{ route('paperless.document', [$instanceId, $result['id'], 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 shrink-0 rounded object-cover ring-1 ring-gray-200 dark:ring-gray-700">
                             <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $result['title'] }}</span>
                             <span class="shrink-0 text-xs text-gray-500">{{ $result['created'] ? \Illuminate\Support\Carbon::parse($result['created'])->format('d.m.Y') : '' }}</span>
                         </button>
@@ -320,7 +362,7 @@ new class extends Component
             <input type="file" wire:model="upload" accept=".pdf,.eml,.msg,.jpg,.jpeg,.png,.webp,.txt,.doc,.docx,.odt" class="block w-full text-sm text-gray-700 dark:text-gray-300" aria-label="{{ __('File') }}">
             <p wire:loading wire:target="upload" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
             <x-input-error :messages="$errors->get('upload')" />
-            @if ($hasPaperless)
+            @if ($instanceId)
                 <x-text-input wire:model="uploadTitle" type="text" class="block w-full text-sm" :placeholder="__('Title in paperless (optional)')" :aria-label="__('Title')" />
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('The file is stored in paperless, not in this app.') }}</p>
             @else
@@ -334,10 +376,13 @@ new class extends Component
         <ul class="space-y-1.5">
             @foreach ($documents as $document)
                 <li wire:key="external-{{ $document->id }}" class="rounded-md bg-gray-50 px-2 py-1.5 text-sm dark:bg-gray-900/50">
+                    @php
+                        $viewable = $document->kind === 'paperless' && $document->paperless_document_id && in_array($document->paperless_instance_id, $availableInstanceIds, true);
+                    @endphp
                     <div class="flex items-center gap-2">
-                        @if ($document->kind === 'paperless' && $document->paperless_document_id && $hasPaperless)
-                            <a href="{{ route('paperless.document', [$document->paperless_document_id, 'preview']) }}" target="_blank" class="shrink-0" title="{{ __('Preview') }}">
-                                <img src="{{ route('paperless.document', [$document->paperless_document_id, 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 rounded object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                        @if ($viewable)
+                            <a href="{{ route('paperless.document', [$document->paperless_instance_id, $document->paperless_document_id, 'preview']) }}" target="_blank" class="shrink-0" title="{{ __('Preview') }}">
+                                <img src="{{ route('paperless.document', [$document->paperless_instance_id, $document->paperless_document_id, 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 rounded object-cover ring-1 ring-gray-200 dark:ring-gray-700">
                             </a>
                         @else
                             <span class="w-8 shrink-0 text-center text-lg" aria-hidden="true">{{ ['paperless' => '📄', 'mail' => '✉️', 'file' => '📎'][$document->kind] ?? '📄' }}</span>
@@ -353,15 +398,15 @@ new class extends Component
                                 <span class="block truncate text-gray-700 dark:text-gray-300">{{ $document->title }}</span>
                                 <span class="text-xs text-gray-500">{{ $document->paperless_task_id ? '⏳ '.__('paperless is processing …') : '' }}</span>
                             @else
-                                @if ($hasPaperless)
-                                    <a href="{{ route('paperless.document', [$document->paperless_document_id, 'preview']) }}" target="_blank" class="block truncate text-indigo-700 hover:underline dark:text-indigo-300">{{ $document->title }}</a>
+                                @if ($viewable)
+                                    <a href="{{ route('paperless.document', [$document->paperless_instance_id, $document->paperless_document_id, 'preview']) }}" target="_blank" class="block truncate text-indigo-700 hover:underline dark:text-indigo-300">{{ $document->title }}</a>
                                 @else
                                     <span class="block truncate text-gray-800 dark:text-gray-200">{{ $document->title }}</span>
                                 @endif
-                                <span class="text-xs text-gray-500">paperless #{{ $document->paperless_document_id }}@if ($paperlessBase) · <a href="{{ $paperlessBase }}/documents/{{ $document->paperless_document_id }}/details" target="_blank" rel="noopener" class="underline">{{ __('open in paperless') }}</a>@endif</span>
+                                <span class="text-xs text-gray-500">{{ $document->paperlessInstance?->name ?? 'paperless' }} #{{ $document->paperless_document_id }}@if ($document->paperlessInstance) · <a href="{{ $document->paperlessInstance->baseUrl() }}/documents/{{ $document->paperless_document_id }}/details" target="_blank" rel="noopener" class="underline">{{ __('open in paperless') }}</a>@endif @unless ($viewable) · {{ __('no access') }}@endunless</span>
                             @endif
                         </div>
-                        @if ($document->kind === 'paperless' && $document->paperless_document_id && $hasPaperless)
+                        @if ($viewable)
                             <button type="button" wire:click="editDocument({{ $document->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Title, tag or note in paperless') }}" aria-label="{{ __('Edit in paperless') }}">✎</button>
                         @endif
                         <button type="button" wire:click="unlink({{ $document->id }})" wire:confirm="{{ __('Remove this link? The document itself stays where it is.') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove link') }}">✕</button>

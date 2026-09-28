@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Collection;
 use App\Models\ExternalLink;
 use App\Models\Item;
+use App\Models\PaperlessInstance;
 use App\Models\RealEstate;
 use App\Models\RealEstateInvoice;
 use App\Support\Paperless\PaperlessClient;
@@ -37,30 +38,50 @@ class ExternalDocumentsTest extends TestCase
         ]);
     }
 
+    private function paperlessInstance(int $userId, int $householdId, bool $shared = false): PaperlessInstance
+    {
+        return PaperlessInstance::create(['user_id' => $userId, 'household_id' => $householdId, 'name' => 'Archiv', 'url' => 'https://paperless.test', 'token' => 'secret-token', 'shared' => $shared]);
+    }
+
     private function entry(Collection $collection, int $userId): Item
     {
         return Item::create(['household_id' => $collection->household_id, 'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Hausratversicherung', 'visibility' => Item::VISIBILITY_SHARED, 'created_by' => $userId]);
     }
 
-    public function test_paperless_is_connected_after_a_successful_test_and_the_token_stays_secret(): void
+    public function test_an_instance_is_connected_after_a_successful_test_and_is_personal_or_shared(): void
     {
         $this->fakePaperless();
-        [$user] = $this->memberWithHousehold();
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
         $this->actingAs($user);
 
         Volt::test('profile.paperless-form')
-            ->set('url', 'https://paperless.test/')->set('token', 'secret-token')
+            ->call('add')
+            ->set('name', 'Familienarchiv')->set('url', 'https://paperless.test/')->set('token', 'secret-token')
             ->call('save')
             ->assertHasNoErrors()
             ->assertSee('Verbunden – 2 Dokumente in paperless.');
 
-        $user->refresh();
-        $this->assertSame(['https://paperless.test', 'secret-token'], [$user->paperless_url, $user->paperless_token]);
-        $this->assertNotSame('secret-token', \DB::table('users')->where('id', $user->id)->value('paperless_token'));
-        $this->assertArrayNotHasKey('paperless_token', $user->toArray());
+        $instance = PaperlessInstance::sole();
+        $this->assertSame(['Familienarchiv', 'https://paperless.test', 'secret-token', false], [$instance->name, $instance->url, $instance->token, $instance->shared]);
+        $this->assertNotSame('secret-token', \DB::table('paperless_instances')->value('token'));
+        $this->assertArrayNotHasKey('token', $instance->toArray());
         Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Token secret-token'));
 
-        Volt::test('profile.paperless-form')->set('url', 'http://127.0.0.1:8000')->call('save')->assertHasErrors('url');
+        // Personal: the partner does not get it; shared with the household: they do.
+        $this->assertTrue($user->hasPaperless());
+        $this->assertFalse($partner->hasPaperless());
+        Volt::test('profile.paperless-form')->call('toggleShared', $instance->id);
+        $this->assertTrue($partner->fresh()->hasPaperless());
+
+        $this->actingAs($partner);
+        Volt::test('profile.paperless-form')->assertSee('geteilt von')->call('toggleShared', $instance->id)->assertNotFound();
+        Volt::test('profile.paperless-form')->call('remove', $instance->id)->assertNotFound();
+        [$stranger] = $this->memberWithHousehold();
+        $this->assertFalse($stranger->hasPaperless());
+
+        $this->actingAs($user);
+        Volt::test('profile.paperless-form')->call('add')->set('url', 'http://127.0.0.1:8000')->set('token', 'x')->call('save')->assertHasErrors('url');
         $this->assertNull(PaperlessClient::normaliseUrl('file:///etc/passwd'));
         $this->assertNull(PaperlessClient::normaliseUrl('https://user:pw@paperless.test'));
     }
@@ -69,7 +90,7 @@ class ExternalDocumentsTest extends TestCase
     {
         $this->fakePaperless();
         [$user, $household] = $this->memberWithHousehold();
-        $user->update(['paperless_url' => 'https://paperless.test', 'paperless_token' => 'secret-token']);
+        $instance = $this->paperlessInstance($user->id, $household->id);
         $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id]);
         $this->actingAs($user);
 
@@ -78,13 +99,13 @@ class ExternalDocumentsTest extends TestCase
             ->set('query', 'kaufvertrag')
             ->assertSee('Grundbuchauszug')
             ->call('linkPaperless', 41, 'Kaufvertrag Lindenstraße')
-            ->assertSee('paperless #41');
+            ->assertSee('Archiv #41');
 
         $link = ExternalLink::sole();
-        $this->assertSame([ExternalLink::PAPERLESS, 41, 'real_estate', $realEstate->id], [$link->kind, $link->paperless_document_id, $link->linkable_type, $link->linkable_id]);
+        $this->assertSame([ExternalLink::PAPERLESS, $instance->id, 41, 'real_estate', $realEstate->id], [$link->kind, $link->paperless_instance_id, $link->paperless_document_id, $link->linkable_type, $link->linkable_id]);
 
-        $this->get(route('paperless.document', [41, 'thumb']))->assertOk()->assertHeader('Content-Type', 'image/webp');
-        $this->get(route('paperless.document', [41, 'preview']))->assertOk()->assertHeader('Content-Disposition', 'inline');
+        $this->get(route('paperless.document', [$instance->id, 41, 'thumb']))->assertOk()->assertHeader('Content-Type', 'image/webp');
+        $this->get(route('paperless.document', [$instance->id, 41, 'preview']))->assertOk()->assertHeader('Content-Disposition', 'inline');
 
         $panel->call('editDocument', $link->id)->assertSee('Steuer')
             ->set('editTitle', 'Kaufvertrag (notariell)')->set('newTag', '2')->set('note', 'Original im Ordner')
@@ -99,7 +120,7 @@ class ExternalDocumentsTest extends TestCase
 
         // As soon as paperless has processed the upload (task SUCCESS), the document id is filled in.
         $uploaded = ExternalLink::where('title', 'Angebot Dach')->sole();
-        $this->assertSame([77, null], [$uploaded->paperless_document_id, $uploaded->paperless_task_id]);
+        $this->assertSame([77, null, $instance->id], [$uploaded->paperless_document_id, $uploaded->paperless_task_id, $uploaded->paperless_instance_id]);
     }
 
     public function test_mail_links_and_mail_copies_without_paperless(): void
@@ -138,11 +159,34 @@ class ExternalDocumentsTest extends TestCase
         $this->actingAs($partner);
         $this->get(route('external-links.file', $link))->assertNotFound();
         Volt::test('documents-panel', ['type' => 'real_estate_invoice', 'id' => $invoice->id])->assertNotFound();
-        // Without paperless access of their own, nothing is proxied.
-        $this->get(route('paperless.document', [41, 'thumb']))->assertNotFound();
+        // Someone else's personal instance is never used for them.
+        $personal = $this->paperlessInstance($user->id, $household->id);
+        $this->get(route('paperless.document', [$personal->id, 41, 'thumb']))->assertNotFound();
 
         $this->actingAs($user)->get(route('external-links.file', $link))->assertOk();
         $private->delete();
         $this->assertSame(0, ExternalLink::count());
+    }
+
+    public function test_a_shared_instance_previews_for_the_household_and_personal_links_show_only_the_title(): void
+    {
+        $this->fakePaperless();
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
+        $shared = $this->paperlessInstance($user->id, $household->id, shared: true);
+        $personal = $this->paperlessInstance($user->id, $household->id);
+        $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id]);
+        foreach ([[$shared, 41, 'Kaufvertrag'], [$personal, 42, 'Privates Schreiben']] as [$instance, $id, $title]) {
+            ExternalLink::create(['household_id' => $household->id, 'created_by' => $user->id, 'linkable_type' => 'real_estate', 'linkable_id' => $realEstate->id, 'kind' => 'paperless', 'paperless_instance_id' => $instance->id, 'paperless_document_id' => $id, 'title' => $title]);
+        }
+
+        $this->actingAs($partner);
+        Volt::test('documents-panel', ['type' => 'real_estate', 'id' => $realEstate->id])
+            ->assertSee(route('paperless.document', [$shared->id, 41, 'thumb']))
+            ->assertDontSee(route('paperless.document', [$personal->id, 42, 'thumb']))
+            ->assertSee('Privates Schreiben')->assertSee('kein Zugriff')
+            ->assertSet('instanceId', $shared->id);
+        $this->get(route('paperless.document', [$shared->id, 41, 'thumb']))->assertOk();
+        $this->get(route('paperless.document', [$personal->id, 42, 'thumb']))->assertNotFound();
     }
 }

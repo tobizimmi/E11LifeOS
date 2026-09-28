@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ExternalLink;
+use App\Models\PaperlessInstance;
 use App\Support\ExternalLinks;
 use App\Support\Paperless\PaperlessClient;
 use Illuminate\Http\Request;
@@ -12,14 +13,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
- * Serves linked documents: paperless files are fetched live with the viewer's own paperless
- * token (nothing is stored), mail copies from the app's storage.
+ * Serves linked documents: paperless files are fetched live through an instance the viewer may
+ * use – their own or one shared with the household (nothing is stored) – and mail copies from
+ * the app's storage.
  */
 class ExternalDocumentController extends Controller
 {
-    public function paperless(Request $request, int $document, string $variant): Response
+    public function paperless(Request $request, PaperlessInstance $instance, int $document, string $variant): Response
     {
-        $client = PaperlessClient::for($request->user());
+        $client = PaperlessClient::for($instance, $request->user());
 
         try {
             $response = $client->file($document, $variant);

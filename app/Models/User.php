@@ -14,8 +14,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'paperless_url', 'paperless_token'])]
-#[Hidden(['password', 'remember_token', 'calendar_token', 'paperless_token'])]
+#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children'])]
+#[Hidden(['password', 'remember_token', 'calendar_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -80,7 +80,6 @@ class User extends Authenticatable
             'weather_longitude' => 'float',
             'tax_rate' => 'float',
             'tax_children' => 'integer',
-            'paperless_token' => 'encrypted',
         ];
     }
 
@@ -125,10 +124,10 @@ class User extends Authenticatable
     }
 
     /**
-     * Whether the user connected a paperless-ngx instance (Profile).
+     * Whether the user can use a paperless-ngx instance: their own or one shared with the household.
      */
     public function hasPaperless(): bool
     {
-        return filled($this->paperless_url) && filled($this->paperless_token);
+        return PaperlessInstance::query()->availableTo($this)->exists();
     }
 }

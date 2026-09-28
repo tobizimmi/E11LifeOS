@@ -75,7 +75,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('finance', 'finance.index')->name('finance.index')->middleware('addon:finance');
     Route::get('finance/tax/{year}.csv', FinanceTaxExportController::class)->whereNumber('year')->name('finance.tax-export')->middleware('addon:finance');
     Route::get('finance/report.pdf', FinanceReportPdfController::class)->name('finance.report')->middleware('addon:finance');
-    Route::get('paperless/documents/{document}/{variant}', [ExternalDocumentController::class, 'paperless'])->whereNumber('document')->whereIn('variant', ['thumb', 'preview', 'download'])->name('paperless.document')->middleware('throttle:120,1');
+    Route::get('paperless/{instance}/documents/{document}/{variant}', [ExternalDocumentController::class, 'paperless'])->whereNumber(['instance', 'document'])->whereIn('variant', ['thumb', 'preview', 'download'])->name('paperless.document')->middleware('throttle:120,1');
     Route::get('external-links/{link}/file', [ExternalDocumentController::class, 'file'])->whereNumber('link')->name('external-links.file');
     Volt::route('real-estate', 'real-estate.index')->name('real-estate.index')->middleware('addon:real_estate');
     Volt::route('real-estate/{realEstate}', 'real-estate.show')->whereNumber('realEstate')->name('real-estate.show')->middleware('addon:real_estate');

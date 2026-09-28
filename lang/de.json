@@ -2461,5 +2461,16 @@
     "Store in paperless": "In paperless ablegen",
     "paperless is not reachable – the receipt was saved in the app.": "paperless ist nicht erreichbar – der Beleg wurde in der App gespeichert.",
     "§ 35c: :amount": "§ 35c: :amount",
-    "nothing tax-relevant this year": "in diesem Jahr nichts steuerlich Relevantes"
+    "nothing tax-relevant this year": "in diesem Jahr nichts steuerlich Relevantes",
+    "paperless instance": "paperless-Instanz",
+    "no access": "kein Zugriff",
+    "Link documents from paperless-ngx to entries, properties and invoices, preview them and upload new ones. The documents stay in paperless; the app only remembers which document belongs where.": "Verknüpfe Dokumente aus paperless-ngx mit Einträgen, Immobilien und Rechnungen, sieh sie dir an und lade neue hoch. Die Dokumente bleiben in paperless; die App merkt sich nur, welches Dokument wohin gehört.",
+    "For each instance you decide: only for you, or for the whole household – then everyone in the household works with your token and sees what it may see in paperless.": "Pro Instanz entscheidest du: nur für dich oder für den ganzen Haushalt – dann arbeiten alle im Haushalt mit deinem Token und sehen, was er in paperless sehen darf.",
+    "shared by :name": "geteilt von :name",
+    "Who may use it": "Wer darf sie nutzen",
+    "Only me": "Nur ich",
+    "Remove this paperless connection? Links to its documents are kept, but cannot be previewed any more.": "Diese paperless-Verbindung entfernen? Verknüpfungen zu ihren Dokumenten bleiben, lassen sich aber nicht mehr ansehen.",
+    "e.g. Family archive": "z. B. Familienarchiv",
+    "Whole household (uses my token)": "Ganzer Haushalt (nutzt meinen Token)",
+    "Connect paperless": "paperless verbinden"
 }

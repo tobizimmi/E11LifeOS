@@ -2,6 +2,7 @@
 
 namespace App\Support\Paperless;
 
+use App\Models\PaperlessInstance;
 use App\Models\User;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -18,11 +19,14 @@ class PaperlessClient
 {
     public function __construct(private string $baseUrl, private string $token) {}
 
-    public static function for(User $user): self
+    /**
+     * Client for an instance the user may use (own or shared with the household).
+     */
+    public static function for(PaperlessInstance $instance, User $user): self
     {
-        abort_unless($user->hasPaperless(), 404);
+        abort_unless($instance->isAvailableTo($user), 404);
 
-        return new self(rtrim((string) $user->paperless_url, '/'), (string) $user->paperless_token);
+        return new self($instance->baseUrl(), (string) $instance->token);
     }
 
     /**

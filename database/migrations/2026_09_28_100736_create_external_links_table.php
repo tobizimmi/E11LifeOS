@@ -11,6 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Connections to paperless-ngx: each belongs to a member and is either only theirs or
+        // shared with the whole household (the others then use its token).
+        Schema::create('paperless_instances', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('household_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->string('url');
+            $table->text('token');
+            $table->boolean('shared')->default(false);
+            $table->timestamps();
+        });
+
         // Documents that live elsewhere, attached to entries, properties or invoices: paperless-ngx
         // documents (only the id is stored), links to e-mails and – where no link works – a copy of
         // the mail as a file.
@@ -22,6 +35,7 @@ return new class extends Migration
             $table->unsignedBigInteger('linkable_id');
             // "paperless", "mail" or "file".
             $table->string('kind', 10);
+            $table->foreignId('paperless_instance_id')->nullable()->constrained()->nullOnDelete();
             $table->unsignedBigInteger('paperless_document_id')->nullable();
             // Upload still being processed by paperless (consumption task).
             $table->string('paperless_task_id', 64)->nullable();
@@ -33,11 +47,6 @@ return new class extends Migration
 
             $table->index(['linkable_type', 'linkable_id']);
         });
-
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('paperless_url')->nullable()->after('tax_children');
-            $table->text('paperless_token')->nullable()->after('paperless_url');
-        });
     }
 
     /**
@@ -46,9 +55,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('external_links');
-
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['paperless_url', 'paperless_token']);
-        });
+        Schema::dropIfExists('paperless_instances');
     }
 };

@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * A document that lives outside the app, attached to an entry, a property or an invoice:
  * a paperless-ngx document (only its id), a link to an e-mail, or a copy of the mail as a file.
  */
-#[Fillable(['household_id', 'created_by', 'linkable_type', 'linkable_id', 'kind', 'paperless_document_id', 'paperless_task_id', 'url', 'title', 'path', 'mime_type'])]
+#[Fillable(['household_id', 'created_by', 'linkable_type', 'linkable_id', 'kind', 'paperless_instance_id', 'paperless_document_id', 'paperless_task_id', 'url', 'title', 'path', 'mime_type'])]
 class ExternalLink extends Model
 {
     public const PAPERLESS = 'paperless';
@@ -35,6 +36,11 @@ class ExternalLink extends Model
         return [
             'paperless_document_id' => 'integer',
         ];
+    }
+
+    public function paperlessInstance(): BelongsTo
+    {
+        return $this->belongsTo(PaperlessInstance::class);
     }
 
     public function isPending(): bool

@@ -73,6 +73,48 @@ class RentalAccounting
     }
 
     /**
+     * Index rent (§ 557b BGB): the cold rent changes in the same proportion as the consumer
+     * price index since the base (move-in or last change). The new rent applies from the start
+     * of the second month after the tenant received the letter, at most once a year.
+     *
+     * @return array{old: float, new: float, increase: float, percent: float, allowed: bool, allowed_from: Carbon, effective_on: Carbon}|null
+     */
+    public static function indexRent(RealEstateTenant $tenant, float $currentIndex, ?Carbon $letterOn = null): ?array
+    {
+        if (! $tenant->index_base || $tenant->index_base <= 0 || $currentIndex <= 0) {
+            return null;
+        }
+
+        $letterOn ??= today();
+        $new = round($tenant->cold_rent * $currentIndex / $tenant->index_base, 2);
+
+        return [
+            'old' => round($tenant->cold_rent, 2),
+            'new' => $new,
+            'increase' => round($new - $tenant->cold_rent, 2),
+            'percent' => round(($currentIndex / $tenant->index_base - 1) * 100, 2),
+            'allowed' => $letterOn->gte($tenant->nextIndexChangeOn()),
+            'allowed_from' => $tenant->nextIndexChangeOn(),
+            'effective_on' => $letterOn->copy()->startOfMonth()->addMonths(2),
+        ];
+    }
+
+    /**
+     * Months of a year in which the tenant has not (fully) paid although the rent was due.
+     *
+     * @return list<array{month: int, expected: float, paid: float, open: float}>
+     */
+    public static function openMonths(RealEstateTenant $tenant, int $year): array
+    {
+        $row = collect(self::rentOverview($tenant->realEstate, $year)['tenants'])->first(fn (array $row) => $row['tenant']->id === $tenant->id);
+
+        return collect($row['months'] ?? [])
+            ->filter(fn (array $month) => in_array($month['status'], ['open', 'partial'], true))
+            ->map(fn (array $month, int $number) => ['month' => $number, 'expected' => (float) $month['expected'], 'paid' => $month['paid'], 'open' => round((float) $month['expected'] - $month['paid'], 2)])
+            ->values()->all();
+    }
+
+    /**
      * Rent (incl. advance payments) received in a year – the income for Anlage V.
      */
     public static function receivedIn(RealEstate $realEstate, int $year): float

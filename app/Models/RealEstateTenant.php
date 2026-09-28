@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'real_estate_id', 'created_by', 'unit', 'name', 'email', 'phone', 'previous_address', 'persons', 'area', 'move_in_on', 'move_out_on',
     'cold_rent', 'utilities_advance', 'deposit', 'deposit_paid_on', 'payment_reference', 'lease_end_on', 'notice_months', 'rent_adjustment',
-    'due_day', 'special_terms', 'notes',
+    'index_base', 'index_base_month', 'last_rent_change_on', 'portal_token', 'due_day', 'special_terms', 'notes',
 ])]
 class RealEstateTenant extends Model
 {
@@ -40,6 +40,8 @@ class RealEstateTenant extends Model
             'lease_end_on' => 'date',
             'notice_months' => 'integer',
             'due_day' => 'integer',
+            'index_base' => 'float',
+            'last_rent_change_on' => 'date',
         ];
     }
 
@@ -91,6 +93,20 @@ class RealEstateTenant extends Model
     public function realEstate(): BelongsTo
     {
         return $this->belongsTo(RealEstate::class);
+    }
+
+    public function handovers(): HasMany
+    {
+        return $this->hasMany(RealEstateHandover::class, 'tenant_id')->orderByDesc('handed_over_on');
+    }
+
+    /**
+     * The earliest day an index rent may change again: twelve months after the last change
+     * (or the move-in), § 557b BGB.
+     */
+    public function nextIndexChangeOn(): Carbon
+    {
+        return ($this->last_rent_change_on ?? $this->move_in_on)->copy()->addYear();
     }
 
     public function payments(): HasMany

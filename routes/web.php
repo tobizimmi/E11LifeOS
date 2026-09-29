@@ -52,6 +52,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('cashflow', 'cashflow.index')->name('cashflow.index');
     Volt::route('knowledge', 'knowledge.index')->name('knowledge.index');
     Volt::route('emergency', 'emergency.index')->name('emergency.index');
+    Volt::route('vehicles', 'vehicles.index')->name('vehicles.index');
+    Volt::route('vehicles/{vehicle}', 'vehicles.show')->whereNumber('vehicle')->name('vehicles.show');
     Route::get('emergency/pdf', [EmergencyFolderController::class, 'pdf'])->name('emergency.pdf');
     Volt::route('quotes', 'quotes.index')->name('quotes.index');
     Volt::route('quotes/{comparison}', 'quotes.show')->whereNumber('comparison')->name('quotes.show');

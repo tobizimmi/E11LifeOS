@@ -4,6 +4,7 @@ namespace App\Support\Life;
 
 use App\Models\EmergencyEntry;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Support\Carbon;
 
 /**
@@ -18,7 +19,9 @@ class LifeDates
     public const REMIND_BEFORE = [7, 1, 0];
 
     /**
-     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int}>
+     * Shared records (a vehicle of the household) are shown to everyone but only remind the person who created them ("remind").
+     *
+     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int, remind: bool}>
      */
     public static function between(User $user, Carbon $from, Carbon $until): array
     {
@@ -31,8 +34,11 @@ class LifeDates
                 'url' => route('emergency.index', ['section' => $entry->section]),
                 'kind' => 'document',
                 'remind_days' => $entry->remind_days,
+                'remind' => true,
             ];
         }
+
+        array_push($events, ...self::vehicleEvents($user, $from, $until));
 
         usort($events, fn (array $a, array $b) => [$a['date'], $a['title']] <=> [$b['date'], $b['title']]);
 
@@ -42,7 +48,7 @@ class LifeDates
     /**
      * Events for which a reminder is due today: at their own lead time, a week and a day before and on the day.
      *
-     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int}>
+     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int, remind: bool}>
      */
     public static function dueForReminder(User $user): array
     {
@@ -52,7 +58,42 @@ class LifeDates
         return array_values(array_filter(self::between($user, $today, $today->copy()->addDays($maxLead)), function (array $event) use ($today) {
             $daysLeft = (int) $today->diffInDays(Carbon::parse($event['date']), false);
 
-            return in_array($daysLeft, [...self::REMIND_BEFORE, $event['remind_days']], true);
+            return $event['remind'] && in_array($daysLeft, [...self::REMIND_BEFORE, $event['remind_days']], true);
         }));
+    }
+
+    /**
+     * Inspection, service and tyre changes of the vehicles the member can see.
+     *
+     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int, remind: bool}>
+     */
+    private static function vehicleEvents(User $user, Carbon $from, Carbon $until): array
+    {
+        $household = $user->currentHousehold();
+
+        if (! $household) {
+            return [];
+        }
+
+        $events = [];
+
+        foreach (Vehicle::query()->visibleTo($user, $household->id)->get() as $vehicle) {
+            $url = route('vehicles.show', $vehicle);
+            $remind = $vehicle->created_by === $user->id;
+
+            foreach ([['inspection_due', '✅ '.__('Inspection (TÜV)'), 30], ['service_due', '🔧 '.__('Service'), 14]] as [$field, $label, $lead]) {
+                if ($vehicle->{$field} && $vehicle->{$field}->between($from, $until)) {
+                    $events[] = ['date' => $vehicle->{$field}->toDateString(), 'title' => $label.' · '.$vehicle->name, 'url' => $url, 'kind' => 'vehicle', 'remind_days' => $lead, 'remind' => $remind];
+                }
+            }
+
+            if ($vehicle->tyre_reminders) {
+                foreach (VehicleStats::tyreChangesBetween($from, $until) as $change) {
+                    $events[] = ['date' => $change['date']->toDateString(), 'title' => '🛞 '.$change['label'].' · '.$vehicle->name, 'url' => $url, 'kind' => 'vehicle', 'remind_days' => 14, 'remind' => $remind];
+                }
+            }
+        }
+
+        return $events;
     }
 }

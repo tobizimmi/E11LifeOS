@@ -172,6 +172,7 @@ new class extends Component
             ['🧭 '.__('Cashflow analysis'), route('cashflow.index'), 'cashflow rich dad poor dad kiyosaki einnahmen ausgaben bilanz passives einkommen finanzielle freiheit'],
             ['💡 '.__('Money knowledge'), route('knowledge.index'), 'wissen tipps steuern börse finanzierung neuerungen news favoriten'],
             ['🗂️ '.__('Emergency folder'), route('emergency.index'), 'notfall notfallordner vorsorge vollmacht patientenverfügung testament ausweis reisepass vertrauensperson'],
+            ['🚗 '.__('Vehicles'), route('vehicles.index'), 'auto fahrzeug tüv hu inspektion tanken fahrtenbuch reifen kfz'],
         ];
 
         if ($user->canUseAddon(Addons::RECIPES)) {

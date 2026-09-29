@@ -159,8 +159,6 @@ new class extends Component
             ['📅 '.__('Calendar'), route('calendar.index'), 'kalender termine calendar monat woche'],
             ['🔔 '.__('Notifications'), route('notifications.index'), 'benachrichtigungen glocke notifications'],
             ['💎 '.__('Net worth'), route('net-worth.index'), 'vermögen nettovermögen net worth schulden'],
-            ['🧭 '.__('Cashflow analysis'), route('cashflow.index'), 'cashflow rich dad poor dad kiyosaki einnahmen ausgaben bilanz passives einkommen finanzielle freiheit'],
-            ['💡 '.__('Money knowledge'), route('knowledge.index'), 'wissen tipps steuern börse finanzierung neuerungen news favoriten'],
             ['📑 '.__('Contract costs'), route('contracts.index'), 'verträge kosten kündigung fristen contracts'],
             ['⚖️ '.__('Quote comparisons'), route('quotes.index'), 'angebote vergleich angebotsvergleich quotes kaufen anschaffung handwerker'],
             ['✉️ '.__('Letters'), route('letters.index'), 'brief kündigung widerspruch adresse letter vorlage'],
@@ -171,6 +169,9 @@ new class extends Component
             ['✨ '.__('Ask your Second Brain'), route('brain.ask'), 'ki ai frage'],
             ['👥 '.__('Members'), route('household.show'), 'haushalt mitglieder members'],
             ['⚙️ '.__('Profile'), route('profile'), 'profil einstellungen settings'],
+            ['🧭 '.__('Cashflow analysis'), route('cashflow.index'), 'cashflow rich dad poor dad kiyosaki einnahmen ausgaben bilanz passives einkommen finanzielle freiheit'],
+            ['💡 '.__('Money knowledge'), route('knowledge.index'), 'wissen tipps steuern börse finanzierung neuerungen news favoriten'],
+            ['🗂️ '.__('Emergency folder'), route('emergency.index'), 'notfall notfallordner vorsorge vollmacht patientenverfügung testament ausweis reisepass vertrauensperson'],
         ];
 
         if ($user->canUseAddon(Addons::RECIPES)) {

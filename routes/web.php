@@ -5,6 +5,7 @@ use App\Http\Controllers\BookkeepingReceiptController;
 use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
+use App\Http\Controllers\EmergencyFolderController;
 use App\Http\Controllers\ExternalDocumentController;
 use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
@@ -50,6 +51,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
     Volt::route('cashflow', 'cashflow.index')->name('cashflow.index');
     Volt::route('knowledge', 'knowledge.index')->name('knowledge.index');
+    Volt::route('emergency', 'emergency.index')->name('emergency.index');
+    Route::get('emergency/pdf', [EmergencyFolderController::class, 'pdf'])->name('emergency.pdf');
     Volt::route('quotes', 'quotes.index')->name('quotes.index');
     Volt::route('quotes/{comparison}', 'quotes.show')->whereNumber('comparison')->name('quotes.show');
     Volt::route('letters', 'letters.index')->name('letters.index');
@@ -161,6 +164,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Volt::route('s/{token}', 'shopping-list.shared')->where('token', '[A-Za-z0-9]+')->name('shopping-list.shared');
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
+    Volt::route('emergency/access/{token}', 'emergency.access')->where('token', '[A-Za-z0-9]+')->name('emergency.access');
+    Route::get('emergency/access/{token}/pdf', [EmergencyFolderController::class, 'sharedPdf'])->where('token', '[A-Za-z0-9]+')->name('emergency.shared-pdf');
     Volt::route('tenant/{token}', 'rental.portal')->where('token', '[A-Za-z0-9]+')->name('rental.portal');
     Route::controller(RentalDocumentController::class)->where(['token' => '[A-Za-z0-9]+'])->group(function () {
         Route::get('tenant/{token}/lease', 'portalLease')->name('rental.portal.lease');

@@ -216,6 +216,10 @@ new class extends Component
                     <x-sidebar-link icon="document-text" :href="route('contracts.index')" :active="request()->routeIs('contracts.*') || request()->routeIs('letters.*')" wire:navigate>{{ __('Contract costs') }}</x-sidebar-link>
                 </div>
                 <div class="space-y-0.5">
+                    <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Life & provisions') }}</h3>
+                    <x-sidebar-link icon="shield-check" :href="route('emergency.index')" :active="request()->routeIs('emergency.*')" wire:navigate>{{ __('Emergency folder') }}</x-sidebar-link>
+                </div>
+                <div class="space-y-0.5">
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
                     <x-sidebar-link icon="user-group" :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>{{ __('Members') }}</x-sidebar-link>
                 </div>

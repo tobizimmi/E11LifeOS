@@ -211,6 +211,7 @@ new #[Layout('layouts.app')] class extends Component
                 'violet' => 'bg-violet-50 text-violet-900 ring-violet-200 dark:bg-violet-900/30 dark:text-violet-100 dark:ring-violet-800',
                 'rose' => 'bg-rose-50 text-rose-900 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-100 dark:ring-rose-800',
                 'slate' => 'bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700',
+                'teal' => 'bg-teal-50 text-teal-900 ring-teal-200 dark:bg-teal-900/30 dark:text-teal-100 dark:ring-teal-800',
             ],
         ];
     }
@@ -323,7 +324,7 @@ new #[Layout('layouts.app')] class extends Component
                                         @if ($dayEvents->isNotEmpty())
                                             <div class="mt-1 flex flex-wrap gap-0.5 px-0.5 sm:hidden" aria-hidden="true">
                                                 @foreach ($dayEvents->take(6) as $event)
-                                                    <span class="h-1.5 w-1.5 rounded-full {{ ['indigo' => 'bg-indigo-500', 'amber' => 'bg-amber-500', 'emerald' => 'bg-emerald-500', 'sky' => 'bg-sky-500', 'violet' => 'bg-violet-500', 'rose' => 'bg-rose-500', 'slate' => 'bg-slate-400'][$sources[$event['source']]['color'] ?? 'indigo'] }}"></span>
+                                                    <span class="h-1.5 w-1.5 rounded-full {{ ['indigo' => 'bg-indigo-500', 'amber' => 'bg-amber-500', 'emerald' => 'bg-emerald-500', 'sky' => 'bg-sky-500', 'violet' => 'bg-violet-500', 'rose' => 'bg-rose-500', 'slate' => 'bg-slate-400', 'teal' => 'bg-teal-500'][$sources[$event['source']]['color'] ?? 'indigo'] }}"></span>
                                                 @endforeach
                                             </div>
                                         @endif

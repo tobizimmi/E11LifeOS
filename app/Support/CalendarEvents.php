@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\RealEstateTenant;
 use App\Models\User;
+use App\Support\Life\LifeDates;
 use App\Support\Portfolio\PortfolioLink;
 use App\Support\RealEstate\RealEstateLink;
 use Illuminate\Support\Carbon;
@@ -34,6 +35,8 @@ class CalendarEvents
 
     public const EXTERNAL = 'external';
 
+    public const LIFE = 'life';
+
     /**
      * @return array<string, array{label: string, icon: string, color: string}>
      */
@@ -46,6 +49,7 @@ class CalendarEvents
             self::REAL_ESTATE => $user->canUseAddon(Addons::REAL_ESTATE) ? ['label' => __('Real estate'), 'icon' => '🏠', 'color' => 'sky'] : null,
             self::BUSINESS => $user->canUseAddon(Addons::BUSINESS) ? ['label' => __('Small business'), 'icon' => '💼', 'color' => 'violet'] : null,
             self::PORTFOLIO => $user->canUseAddon(Addons::PORTFOLIO) ? ['label' => __('Portfolio'), 'icon' => '📈', 'color' => 'rose'] : null,
+            self::LIFE => ['label' => __('Life & provisions'), 'icon' => '🗂️', 'color' => 'teal'],
             self::EXTERNAL => CalendarSubscription::where('user_id', $user->id)->exists() ? ['label' => __('Other calendars'), 'icon' => '🗓️', 'color' => 'slate'] : null,
         ]);
     }
@@ -86,6 +90,12 @@ class CalendarEvents
             foreach (PortfolioLink::events($user, $from, $until) as $event) {
                 $amount = $event['amount'] !== null ? ' ('.number_format($event['amount'], 2, ',', '.').' €)' : '';
                 $events[] = self::event($event['date'], self::PORTFOLIO, ($event['kind'] === 'dividend' ? '💰 ' : '📈 ').$event['title'].$amount, route('portfolio.security', ['symbol' => $event['symbol']]));
+            }
+        }
+
+        if (in_array(self::LIFE, $allowed, true)) {
+            foreach (LifeDates::between($user, $from, $until) as $event) {
+                $events[] = self::event($event['date'], self::LIFE, $event['title'], $event['url'], overdue: $event['date'] < today()->toDateString());
             }
         }
 

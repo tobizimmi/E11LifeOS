@@ -2,6 +2,7 @@
 
 namespace App\Support\Life;
 
+use App\Models\Contact;
 use App\Models\EmergencyEntry;
 use App\Models\HealthEntry;
 use App\Models\HomeTask;
@@ -43,6 +44,7 @@ class LifeDates
 
         array_push($events, ...self::vehicleEvents($user, $from, $until));
         array_push($events, ...self::homeEvents($user, $from, $until));
+        array_push($events, ...self::peopleEvents($user, $from, $until));
 
         HealthEntry::query()->whereHas('profile', fn ($query) => $query->where('user_id', $user->id))->with('profile')
             ->where('kind', '!=', HealthEntry::MEDICATION)->whereBetween('next_due_on', [$from->toDateString(), $until->toDateString()])->get()
@@ -134,6 +136,41 @@ class LifeDates
 
                 if ($date->between($from, $until)) {
                     $events[] = ['date' => $date->toDateString(), 'title' => '🔢 '.__('Read the meters'), 'url' => route('house.index', ['tab' => 'meters']), 'kind' => 'home', 'remind_days' => 0, 'remind' => $meterOwners->contains($user->id)];
+                }
+            }
+        }
+
+        return $events;
+    }
+
+    /**
+     * Birthdays and anniversaries of the people the member can see (every year in the range).
+     *
+     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int, remind: bool}>
+     */
+    private static function peopleEvents(User $user, Carbon $from, Carbon $until): array
+    {
+        $household = $user->currentHousehold();
+
+        if (! $household) {
+            return [];
+        }
+
+        $events = [];
+
+        foreach (Contact::query()->visibleTo($user, $household->id)->where(fn ($query) => $query->whereNotNull('birthday')->orWhereNotNull('anniversary'))->get() as $contact) {
+            foreach (['birthday', 'anniversary'] as $field) {
+                if (! $contact->{$field}) {
+                    continue;
+                }
+
+                for ($date = Contact::nextOccurrence($contact->{$field}, $from); $date->lte($until); $date = Contact::nextOccurrence($contact->{$field}, $date->copy()->addDay())) {
+                    $years = $date->year - $contact->{$field}->year;
+                    $title = $field === 'birthday'
+                        ? '🎂 '.($contact->birth_year_known && $years > 0 ? __(':name turns :age', ['name' => $contact->name, 'age' => $years]) : __('Birthday of :name', ['name' => $contact->name]))
+                        : '💍 '.trim(($contact->anniversary_label ?: __('Anniversary')).' · '.$contact->name).($years > 0 ? ' ('.$years.')' : '');
+
+                    $events[] = ['date' => $date->toDateString(), 'title' => $title, 'url' => route('people.index', ['person' => $contact->id]), 'kind' => 'people', 'remind_days' => $contact->remind_days, 'remind' => $contact->created_by === $user->id];
                 }
             }
         }

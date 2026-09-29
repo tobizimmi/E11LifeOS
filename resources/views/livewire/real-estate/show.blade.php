@@ -435,6 +435,7 @@ new #[Layout('layouts.app')] class extends Component
         $attributes = collect($data['invoice'])->map(fn ($value) => $value === '' ? null : $value)->all();
         $attributes['labor_amount'] = (float) ($attributes['labor_amount'] ?? 0);
 
+        $isNew = ! $this->editingInvoiceId;
         $invoice = $this->editingInvoiceId
             ? tap($model->invoices()->findOrFail($this->editingInvoiceId))->update($attributes)
             : $model->invoices()->create($attributes + ['created_by' => Auth::id()]);
@@ -468,6 +469,12 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->resetInvoice();
+
+        // A new invoice stays open so further documents (e.g. earlier instalment invoices) can be attached.
+        if ($isNew) {
+            $this->editInvoice($invoice->id);
+            $this->dispatch('toast', message: __('Invoice saved – you can now attach further documents below.'));
+        }
     }
 
     public function markInvoicePaid(int $id): void
@@ -620,6 +627,9 @@ new #[Layout('layouts.app')] class extends Component
             'programs' => SubsidyPrograms::all(),
             'schedule' => $this->scheduleLoanId && ($scheduleLoan = $model->loans->firstWhere('id', $this->scheduleLoanId)) ? RealEstatePlan::schedule($scheduleLoan) : [],
             'transactionMatches' => $this->tab === 'invoices' ? $this->transactionMatches($model->invoices) : [],
+            'invoiceDocumentCounts' => $this->tab === 'invoices'
+                ? \App\Models\ExternalLink::where('linkable_type', 'real_estate_invoice')->whereIn('linkable_id', $model->invoices->pluck('id'))->selectRaw('linkable_id, count(*) as total')->groupBy('linkable_id')->pluck('total', 'linkable_id')
+                : collect(),
             'deadlines' => collect()
                 ->concat($model->invoices->reject->isPaid()->filter(fn ($invoice) => $invoice->due_on)->map(fn ($invoice) => ['date' => $invoice->due_on, 'label' => __('Invoice :vendor due', ['vendor' => $invoice->vendor]), 'overdue' => $invoice->isOverdue()]))
                 ->concat($model->subsidies->whereIn('status', ['idea', 'applied'])->filter(fn ($subsidy) => $subsidy->deadline_on)->map(fn ($subsidy) => ['date' => $subsidy->deadline_on, 'label' => __('Deadline :program', ['program' => $subsidy->title]), 'overdue' => $subsidy->deadline_on->lt(today())]))

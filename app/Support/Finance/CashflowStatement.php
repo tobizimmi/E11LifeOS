@@ -12,6 +12,7 @@ use App\Models\RealEstateLoan;
 use App\Models\RealEstateTenant;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Support\Addons;
 use App\Support\Business\EuerReport;
 use App\Support\RealEstate\RealEstateLink;
@@ -162,6 +163,12 @@ class CashflowStatement
 
             foreach ($realEstate->loans as $loan) {
                 $liabilities[] = ['label' => trim(($loan->lender ?: __('Loan')).' · '.$realEstate->name), 'value' => self::remainingDebt($loan, $realEstate), 'url' => route('real-estate.show', ['realEstate' => $realEstate->id, 'tab' => 'purchase'])];
+            }
+        }
+
+        if ($householdId) {
+            foreach (Vehicle::where('household_id', $householdId)->where('created_by', $user->id)->get() as $vehicle) {
+                $doodads[] = ['label' => $vehicle->name.' ('.__('vehicle').')', 'value' => (float) ($vehicle->current_value ?? $vehicle->purchase_price), 'url' => route('vehicles.show', $vehicle)];
             }
         }
 

@@ -35,6 +35,7 @@ use App\Models\TargetAllocation;
 use App\Models\TimeEntry;
 use App\Models\TrustedPerson;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Models\WatchlistItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -112,6 +113,10 @@ class DataExportController extends Controller
                 'entries' => EmergencyEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['section', 'kind', 'title', 'details', 'location', 'expires_on', 'remind_days']),
                 'trusted_people' => TrustedPerson::where('user_id', $user->id)->orderBy('name')->get()->map->only(['name', 'email', 'wait_days', 'requested_at', 'granted_at']),
             ],
+            'vehicles' => $household
+                ? Vehicle::query()->where('household_id', $household->id)->where('created_by', $user->id)->with('logs')->orderBy('id')->get()
+                    ->map(fn (Vehicle $vehicle) => $vehicle->makeHidden(['household_id', 'created_by'])->toArray())
+                : [],
             'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household

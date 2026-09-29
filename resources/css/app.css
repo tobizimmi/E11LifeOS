@@ -209,3 +209,52 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Feedback while Livewire works on a click (set by resources/js/app.js). */
+[data-busy] {
+    cursor: progress;
+    opacity: 0.65;
+    position: relative;
+}
+
+button[data-busy]::after,
+a[data-busy]::after {
+    animation: e11-spin 0.7s linear infinite;
+    border: 2px solid currentColor;
+    border-radius: 9999px;
+    border-right-color: transparent;
+    content: '';
+    display: inline-block;
+    height: 0.8em;
+    margin-inline-start: 0.4em;
+    vertical-align: -0.1em;
+    width: 0.8em;
+}
+
+button:not(:disabled):active {
+    transform: scale(0.97);
+}
+
+#e11-progress {
+    background: linear-gradient(90deg, #6366f1, #a855f7);
+    height: 3px;
+    left: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: fixed;
+    top: 0;
+    transition: opacity 0.2s, width 8s cubic-bezier(0.1, 0.8, 0.2, 1);
+    width: 0;
+    z-index: 100;
+}
+
+#e11-progress.is-active {
+    opacity: 1;
+    width: 85%;
+}
+
+@keyframes e11-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

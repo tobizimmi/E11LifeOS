@@ -10,6 +10,7 @@ use App\Support\Finance\BankCsvImporter;
 use App\Support\Finance\Categorizer;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\Positions;
+use Fhp\CurlException;
 use RuntimeException;
 use Throwable;
 
@@ -24,7 +25,7 @@ class BankSync
         'ing' => ['name' => 'ING', 'blz' => '50010517', 'url' => 'https://fints.ing.de/fints/', 'tan_mode' => 'none', 'hint' => 'Access ID = ING customer number, PIN = banking PIN.'],
         'dkb' => ['name' => 'DKB', 'blz' => '12030000', 'url' => 'https://fints.dkb.de/fints', 'tan_mode' => null, 'hint' => 'Access ID = login name, confirmation in the DKB app.'],
         'comdirect' => ['name' => 'comdirect', 'blz' => '20041155', 'url' => 'https://fints.comdirect.de/fints', 'tan_mode' => null, 'hint' => 'Access ID = customer number, confirmation via photoTAN/push.'],
-        'consorsbank' => ['name' => 'Consorsbank', 'blz' => '76030080', 'url' => 'https://fints.consorsbank.de/fints', 'tan_mode' => null, 'hint' => 'Access ID = account number.'],
+        'consorsbank' => ['name' => 'Consorsbank', 'blz' => '76030080', 'url' => 'https://brokerage-hbci.consorsbank.de/hbci', 'tan_mode' => null, 'hint' => 'Access ID = account number.'],
         'smartbroker' => ['name' => 'Smartbroker+ (Baader Bank)', 'blz' => '70033100', 'url' => 'https://fints.baaderbank.de/', 'tan_mode' => null, 'hint' => 'FinTS must be activated once at Baader Bank.'],
         'flatex' => ['name' => 'flatex', 'blz' => '30153700', 'url' => 'https://fints.flatex.de/banking-proxy/servlet/MRBankServer', 'tan_mode' => null, 'hint' => 'Access ID = customer number.'],
         'sparkasse' => ['name' => 'Sparkasse', 'blz' => '', 'url' => '', 'tan_mode' => null, 'hint' => 'Enter your BLZ and the FinTS address of your Sparkasse (see its website).'],
@@ -102,6 +103,10 @@ class BankSync
         try {
             $result = $call();
         } catch (Throwable $exception) {
+            if ($exception instanceof CurlException) {
+                $exception = new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url), previous: $exception);
+            }
+
             $connection->update(['sync_status' => 'error', 'sync_message' => mb_substr($exception->getMessage(), 0, 1000), 'pending_state' => null, 'pending_until' => null]);
 
             throw $exception instanceof RuntimeException ? $exception : new RuntimeException($exception->getMessage(), previous: $exception);

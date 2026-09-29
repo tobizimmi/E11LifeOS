@@ -3157,5 +3157,11 @@
     "Please choose at most two months.": "Bitte höchstens zwei Monate wählen.",
     "You are not a member of a household yet.": "Du bist noch in keinem Haushalt.",
     "Loading …": "Wird geladen …",
-    "Skip to content": "Zum Inhalt springen"
+    "Skip to content": "Zum Inhalt springen",
+    "Answer of the bank: “:detail”": "Antwort der Bank: „:detail“",
+    "The bank server :host refused the request (HTTP :status). Usually the FinTS address is out of date, the FinTS product ID is not (yet) activated for this bank, or the bank blocks requests from this server. Check the FinTS address in the connection settings.": "Der Bankserver :host hat die Anfrage abgelehnt (HTTP :status). Meist ist die FinTS-Adresse veraltet, die FinTS-Produkt-ID für diese Bank (noch) nicht freigeschaltet oder die Bank sperrt Anfragen von diesem Server. Prüfe die FinTS-Adresse in den Verbindungseinstellungen.",
+    "The bank server :host does not know this FinTS address (HTTP 404). Check the FinTS address in the connection settings.": "Der Bankserver :host kennt diese FinTS-Adresse nicht (HTTP 404). Prüfe die FinTS-Adresse in den Verbindungseinstellungen.",
+    "The bank server :host has a problem right now (HTTP :status). Please try again later.": "Der Bankserver :host hat gerade ein Problem (HTTP :status). Bitte später erneut versuchen.",
+    "The bank server :host answered with HTTP :status.": "Der Bankserver :host hat mit HTTP :status geantwortet.",
+    "The bank server :host cannot be reached: :message": "Der Bankserver :host ist nicht erreichbar: :message"
 }

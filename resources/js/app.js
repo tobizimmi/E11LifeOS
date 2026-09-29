@@ -568,3 +568,85 @@ document.addEventListener('alpine:init', () => {
         };
     });
 });
+
+/**
+ * Immediate feedback for every Livewire action: the clicked button (or the submit button of a
+ * form) is marked busy until the server answered, and a thin bar appears at the top when a
+ * request takes longer than a moment.
+ */
+const LivewireFeedback = {
+    busy: new Set(),
+    pending: 0,
+    barTimer: null,
+
+    bar() {
+        let bar = document.getElementById('e11-progress');
+
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'e11-progress';
+            bar.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(bar);
+        }
+
+        return bar;
+    },
+
+    mark(element) {
+        if (!element || element.hasAttribute('data-busy')) {
+            return;
+        }
+
+        element.setAttribute('data-busy', '');
+        element.setAttribute('aria-busy', 'true');
+        this.busy.add(element);
+        // Never leave a button stuck if no request follows (e.g. client-only actions).
+        setTimeout(() => this.pending === 0 && this.release(element), 400);
+    },
+
+    release(element) {
+        element.removeAttribute('data-busy');
+        element.removeAttribute('aria-busy');
+        this.busy.delete(element);
+    },
+
+    start() {
+        this.pending++;
+        clearTimeout(this.barTimer);
+        this.barTimer = setTimeout(() => this.bar().classList.add('is-active'), 250);
+    },
+
+    done() {
+        this.pending = Math.max(0, this.pending - 1);
+
+        if (this.pending === 0) {
+            clearTimeout(this.barTimer);
+            this.bar().classList.remove('is-active');
+            [...this.busy].forEach((element) => this.release(element));
+        }
+    },
+};
+
+document.addEventListener('click', (event) => {
+    const trigger = event.target.closest?.('[wire\\:click], [wire\\:click\\.prevent], [wire\\:click\\.stop]');
+
+    if (trigger && !trigger.hasAttribute('wire:confirm')) {
+        LivewireFeedback.mark(trigger);
+    }
+}, true);
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+
+    if (form?.matches?.('[wire\\:submit], [wire\\:submit\\.prevent]')) {
+        LivewireFeedback.mark(event.submitter ?? form.querySelector('[type=submit], button:not([type])'));
+    }
+}, true);
+
+document.addEventListener('livewire:init', () => {
+    window.Livewire.hook('request', ({ succeed, fail }) => {
+        LivewireFeedback.start();
+        succeed(() => LivewireFeedback.done());
+        fail(() => LivewireFeedback.done());
+    });
+});

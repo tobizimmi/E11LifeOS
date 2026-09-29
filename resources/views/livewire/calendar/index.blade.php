@@ -284,7 +284,9 @@ new #[Layout('layouts.app')] class extends Component
                             @endforelse
                         </div>
                     @else
-                        <div class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                        {{-- Swipe left/right to page (touch); the next period slides in from the other side --}}
+                        <div class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="e11Swipe({ onRight: () => $wire.previous(), onLeft: () => $wire.next(), enterFromOpposite: true })">
+                          <div x-ref="content" style="touch-action: pan-y" x-on:pointerdown="start($event)" x-on:pointermove="move($event)" x-on:pointerup="end()" x-on:pointercancel="end()">
                             <div class="grid grid-cols-7 border-b border-gray-100 text-center text-xs font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
                                 @foreach ($days->take(7) as $day)
                                     <div class="py-2">{{ $day->translatedFormat('D') }}</div>
@@ -328,6 +330,7 @@ new #[Layout('layouts.app')] class extends Component
                                     </div>
                                 @endforeach
                             </div>
+                          </div>
                         </div>
                         <p class="mt-2 hidden text-xs text-gray-500 sm:block dark:text-gray-400">{{ __('Tip: drag a task to another day. Click a day to see everything and to add a task.') }}</p>
                     @endif

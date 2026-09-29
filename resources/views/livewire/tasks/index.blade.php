@@ -791,30 +791,11 @@ new #[Layout('layouts.app')] class extends Component
                                 <li
                                     wire:key="task-{{ $task->id }}-{{ $task->updated_at?->timestamp }}"
                                     x-sort:item="{{ $task->id }}"
-                                    x-data="{
-                                        startX: 0, startY: 0, dx: 0, swiping: false, leaving: false,
-                                        start(e) { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; this.swiping = true },
-                                        move(e) {
-                                            if (! this.swiping) return;
-                                            const dx = e.touches[0].clientX - this.startX, dy = e.touches[0].clientY - this.startY;
-                                            if (Math.abs(dy) > Math.abs(dx) && Math.abs(this.dx) < 10) { this.swiping = false; this.dx = 0; return }
-                                            this.dx = Math.max(-110, Math.min(110, dx));
-                                        },
-                                        end() {
-                                            this.swiping = false;
-                                            if (this.dx > 80) { this.complete() }
-                                            else if (this.dx < -80) { $wire.postpone({{ $task->id }}) }
-                                            this.dx = 0;
-                                        },
-                                        complete() {
-                                            @if (! $task->done && $list !== \App\Support\TaskLists::DONE)
-                                                this.leaving = true;
-                                                setTimeout(() => $wire.toggleDone({{ $task->id }}), 350);
-                                            @else
-                                                $wire.toggleDone({{ $task->id }});
-                                            @endif
-                                        },
-                                    }"
+                                    x-data="e11Swipe({
+                                        onRight: () => $wire.toggleDone({{ $task->id }}),
+                                        leaveOnRight: {{ ! $task->done && $list !== \App\Support\TaskLists::DONE ? 'true' : 'false' }},
+                                        onLeft: {{ $task->done ? 'null' : '() => $wire.postpone('.$task->id.')' }},
+                                    })"
                                     class="relative overflow-hidden rounded-xl"
                                 >
                                     <div class="absolute inset-0 flex items-center justify-between px-4 text-sm text-white" aria-hidden="true" :class="dx > 0 ? 'bg-green-600' : (dx < 0 ? 'bg-amber-500' : '')">
@@ -822,11 +803,13 @@ new #[Layout('layouts.app')] class extends Component
                                         <span x-show="dx < 0" class="ml-auto">{{ __('Tomorrow') }} →</span>
                                     </div>
                                     <div
-                                        x-on:touchstart.passive="start($event)"
-                                        x-on:touchmove.passive="move($event)"
-                                        x-on:touchend="end()"
-                                        :style="`transform: translateX(${dx}px)`"
-                                        :class="{ 'opacity-40 scale-[0.98]': leaving, 'transition-transform': ! swiping }"
+                                        x-ref="content"
+                                        style="touch-action: pan-y"
+                                        x-on:pointerdown="start($event)"
+                                        x-on:pointermove="move($event)"
+                                        x-on:pointerup="end()"
+                                        x-on:pointercancel="end()"
+                                        :class="{ 'opacity-40': leaving }"
                                         @class([
                                             'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 duration-300',
                                             'ring-indigo-500' => $isSelected || (int) $openTaskId === $task->id,

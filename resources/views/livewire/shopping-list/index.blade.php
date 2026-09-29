@@ -499,7 +499,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-sm">
                         <label class="sr-only" for="list-store">{{ __('Store') }}</label>
-                        <select id="list-store" wire:change="setListStore($event.target.value)" class="rounded-lg border-gray-300 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                        <select id="list-store" wire:change="setListStore($event.target.value)" class="min-w-0 max-w-[60%] rounded-lg border-gray-300 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                             <option value="">🏪 {{ __('Any store') }}</option>
                             @foreach ($stores as $store)
                                 <option value="{{ $store->id }}" @selected($list->store_id === $store->id)>🏪 {{ $store->name }}</option>

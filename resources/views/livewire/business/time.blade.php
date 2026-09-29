@@ -299,7 +299,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforeach
                 </select>
                 @if ($filter !== 'billed')
-                    <button type="button" wire:click="bill" @disabled($selected === []) class="ms-auto rounded-lg bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 disabled:opacity-40 dark:bg-gray-200 dark:text-gray-800">🧾 {{ __('Bill selected') }}@if ($selected !== []) ({{ count($selected) }})@endif</button>
+                    <button type="button" wire:click="bill" @disabled($selected === []) class="ms-auto rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40 dark:bg-indigo-500">🧾 {{ __('Bill selected') }}@if ($selected !== []) ({{ count($selected) }})@endif</button>
                 @endif
             </div>
             <x-input-error :messages="$errors->get('bill')" />

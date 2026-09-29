@@ -273,9 +273,9 @@ new #[Layout('layouts.app')] class extends Component
                 {{-- Portfolio switcher --}}
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="flex flex-wrap gap-1.5" role="tablist">
-                        <button type="button" wire:click="$set('portfolioId', 0)" @class(['rounded-full px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => ! $portfolioId, 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => $portfolioId])>{{ __('All portfolios') }}</button>
+                        <button type="button" wire:click="$set('portfolioId', 0)" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => ! $portfolioId, 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => $portfolioId])>{{ __('All portfolios') }}</button>
                         @foreach ($portfolioList as $portfolio)
-                            <button type="button" wire:click="$set('portfolioId', {{ $portfolio->id }})" wire:key="depot-{{ $portfolio->id }}" @class(['flex items-center gap-1.5 rounded-full px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $portfolioId === $portfolio->id, 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => $portfolioId !== $portfolio->id])>
+                            <button type="button" wire:click="$set('portfolioId', {{ $portfolio->id }})" wire:key="depot-{{ $portfolio->id }}" @class(['flex items-center gap-1.5 rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $portfolioId === $portfolio->id, 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => $portfolioId !== $portfolio->id])>
                                 <span class="h-2 w-2 rounded-full" style="background: {{ $portfolio->color }}" aria-hidden="true"></span>{{ $portfolio->name }}
                             </button>
                         @endforeach

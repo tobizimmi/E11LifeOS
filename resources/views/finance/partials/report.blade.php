@@ -120,7 +120,7 @@
                                 </div>
                                 <div class="relative mt-1.5 h-2.5 rounded-full bg-gray-100 dark:bg-gray-700">
                                     <div class="h-2.5 rounded-full" style="width: {{ min(100, $value) }}%; background: {{ $color }}"></div>
-                                    <div class="absolute -top-1 h-4.5 w-0.5 bg-gray-800 dark:bg-gray-200" style="left: {{ $target }}%; height: 18px" title="{{ __('Guideline :target %', ['target' => $target]) }}"></div>
+                                    <div class="absolute -top-1 h-4.5 w-0.5 bg-indigo-600 dark:bg-indigo-500" style="left: {{ $target }}%; height: 18px" title="{{ __('Guideline :target %', ['target' => $target]) }}"></div>
                                 </div>
                             </li>
                         @endforeach

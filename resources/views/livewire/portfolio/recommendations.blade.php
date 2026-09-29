@@ -103,9 +103,9 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="refresh" wire:loading.attr="disabled" class="rounded-lg px-3 py-2 text-sm text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-700">↻ {{ __('Recalculate') }}</button>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-1.5">
-                    <button type="button" wire:click="$set('rating', '')" @class(['rounded-full px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $rating === '', 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $rating !== ''])>{{ __('All') }} ({{ $counts->sum() }})</button>
+                    <button type="button" wire:click="$set('rating', '')" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $rating === '', 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $rating !== ''])>{{ __('All') }} ({{ $counts->sum() }})</button>
                     @foreach ($ratings as $key => [$label, $classes])
-                        <button type="button" wire:click="$set('rating', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $rating === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $rating !== $key])>{{ $label }} ({{ $counts[$key] ?? 0 }})</button>
+                        <button type="button" wire:click="$set('rating', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $rating === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $rating !== $key])>{{ $label }} ({{ $counts[$key] ?? 0 }})</button>
                     @endforeach
                 </div>
             </section>

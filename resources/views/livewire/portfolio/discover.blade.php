@@ -86,7 +86,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="flex flex-wrap items-center gap-2 px-4 py-3">
                     <h3 class="me-2 font-semibold text-gray-900 dark:text-gray-100">{{ __('Market scan') }}</h3>
                     @foreach ($screeners as $key => $label)
-                        <button type="button" wire:click="$set('screener', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-xs', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $screener === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $screener !== $key])>{{ $label }}</button>
+                        <button type="button" wire:click="$set('screener', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-xs', 'bg-indigo-600 text-white dark:bg-indigo-500' => $screener === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $screener !== $key])>{{ $label }}</button>
                     @endforeach
                 </div>
                 @if ($list->isEmpty())

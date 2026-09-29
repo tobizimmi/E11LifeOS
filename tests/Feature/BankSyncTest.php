@@ -297,4 +297,39 @@ class BankSyncTest extends TestCase
         $connection->rememberAccounts($reported);
         $this->assertSame(['1001'], $connection->fresh()->skippedAccounts('statement'));
     }
+
+    public function test_balances_reach_finances_and_each_depot_is_compared_with_its_own_portfolio(): void
+    {
+        [$user, $household] = $this->owner();
+        $main = Portfolio::factory()->for($user)->create(['name' => 'Hauptdepot']);
+        $kids = Portfolio::factory()->for($user)->create(['name' => 'Kinderdepot']);
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'portfolio_id' => $main->id]);
+        $connection->rememberAccounts([
+            ['number' => '1001', 'iban' => 'DE02120300000000001001', 'type' => 'giro', 'product' => 'Girokonto', 'owner' => null, 'currency' => 'EUR', 'bookings' => true, 'holdings' => false],
+            ['number' => '5005', 'iban' => null, 'type' => 'depot', 'product' => null, 'owner' => null, 'currency' => 'EUR', 'bookings' => false, 'holdings' => true],
+            ['number' => '6006', 'iban' => null, 'type' => 'depot', 'product' => 'Junior-Depot', 'owner' => null, 'currency' => 'EUR', 'bookings' => false, 'holdings' => true],
+        ]);
+        Security::factory()->create(['symbol' => 'SAP.DE', 'name' => 'SAP SE', 'isin' => 'DE0007164600', 'price_updated_at' => now()]);
+        $holding = fn (string $account, float $quantity) => ['isin' => 'DE0007164600', 'wkn' => '716460', 'name' => 'SAP SE', 'quantity' => $quantity, 'acquisition_price' => 100.0, 'price' => 120.0, 'value' => $quantity * 120, 'currency' => 'EUR', 'price_date' => '2026-09-25', 'account_number' => $account];
+
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->twice()->andReturn(
+            ['status' => 'done', 'holdings' => [], 'accounts' => [], 'errors' => [], 'balances' => ['1001' => ['iban' => 'DE02120300000000001001', 'amount' => 1523.45, 'currency' => 'EUR', 'date' => '2026-09-29']]],
+            ['status' => 'done', 'holdings' => [$holding('5005', 12), $holding('6006', 3)], 'accounts' => [], 'errors' => []],
+        ));
+
+        $page = Volt::test('portfolio.banking')
+            ->call('sync', $connection->id, 'statement')
+            ->assertSee('1.523,45 EUR');
+        $account = BankAccount::sole();
+        $this->assertSame(['DKB Girokonto 1001', 1523.45, '2026-09-29'], [$account->name, $account->balance, $account->balance_on->toDateString()]);
+
+        $page->call('setAccountPortfolio', $connection->id, '6006', (string) $kids->id)
+            ->call('sync', $connection->id, 'depot')
+            ->assertSee('Junior-Depot')
+            ->assertSee('in den verknüpften Depots übernehmen')
+            ->call('applyToPortfolio', $connection->id);
+
+        $this->assertSame(12.0, $main->positions()->sole()->quantity);
+        $this->assertSame(3.0, $kids->positions()->sole()->quantity);
+    }
 }

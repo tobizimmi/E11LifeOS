@@ -69,9 +69,35 @@ class BankConnection extends Model
             return $account + [
                 'use_bookings' => $previous['use_bookings'] ?? $account['bookings'],
                 'use_holdings' => $previous['use_holdings'] ?? $account['holdings'],
+                'portfolio_id' => $previous['portfolio_id'] ?? null,
+                'balance' => $previous['balance'] ?? null,
+                'balance_on' => $previous['balance_on'] ?? null,
             ];
         })->values()->all();
         $this->save();
+    }
+
+    /**
+     * Stores the booked balances the bank reported per account number.
+     *
+     * @param  array<string, array{amount: float, date: string}>  $balances
+     */
+    public function rememberBalances(array $balances): void
+    {
+        $this->accounts = collect($this->accounts ?? [])->map(fn (array $account) => isset($balances[$account['number']])
+            ? ['balance' => $balances[$account['number']]['amount'], 'balance_on' => $balances[$account['number']]['date']] + $account
+            : $account)->all();
+        $this->save();
+    }
+
+    /**
+     * Portfolio the holdings of a depot account are compared with: the account's own choice, else the connection's.
+     */
+    public function portfolioIdFor(?string $accountNumber): ?int
+    {
+        $account = collect($this->accounts ?? [])->firstWhere('number', $accountNumber);
+
+        return ($account['portfolio_id'] ?? null) ?: $this->portfolio_id;
     }
 
     public function hasPendingTan(): bool

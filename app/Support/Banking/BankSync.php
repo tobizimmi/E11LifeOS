@@ -5,6 +5,7 @@ namespace App\Support\Banking;
 use App\Models\BankAccount;
 use App\Models\BankConnection;
 use App\Models\BankDepotPosition;
+use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
 use App\Support\Finance\BankCsvImporter;
 use App\Support\Finance\Categorizer;
@@ -152,6 +153,11 @@ class BankSync
             $connection->rememberAccounts($result['bank_accounts']);
         }
 
+        if (($result['balances'] ?? []) !== []) {
+            $connection->rememberBalances($result['balances']);
+            $this->storeBalances($connection, $result['balances'], create: $operation === 'statement');
+        }
+
         if ($operation === 'accounts') {
             return ['message' => trim(trans_choice(':count account found.|:count accounts found.', count($result['bank_accounts'] ?? [])).' '.$errors)];
         }
@@ -187,35 +193,72 @@ class BankSync
     }
 
     /**
-     * Bank holdings next to the linked portfolio: ISIN → symbol, quantity difference.
+     * Balances go to the matching finance account (by IBAN), so the net worth uses the bank's figure.
      *
-     * @return list<array{position: BankDepotPosition, symbol: ?string, portfolio_quantity: float, difference: float}>
+     * @param  array<string, array{iban: ?string, amount: float, date: string}>  $balances
+     */
+    private function storeBalances(BankConnection $connection, array $balances, bool $create): void
+    {
+        $products = collect($connection->accounts ?? [])->pluck('product', 'number');
+
+        foreach ($balances as $number => $balance) {
+            if (! $balance['iban']) {
+                continue;
+            }
+
+            $account = BankAccount::where('user_id', $connection->user_id)->where('iban', $balance['iban'])->first();
+
+            if (! $account && $create) {
+                $account = BankAccount::create([
+                    'user_id' => $connection->user_id, 'household_id' => $connection->household_id, 'iban' => $balance['iban'],
+                    'name' => trim($connection->bank_name.' '.($products[$number] ?? '')).' '.substr($balance['iban'], -4),
+                ]);
+            }
+
+            $account?->update(['balance' => $balance['amount'], 'balance_on' => $balance['date']]);
+        }
+    }
+
+    /**
+     * Bank holdings next to the linked portfolio of their depot account: ISIN → symbol, quantity difference.
+     *
+     * @return list<array{position: BankDepotPosition, portfolio_id: ?int, symbol: ?string, portfolio_quantity: float, difference: float}>
      */
     public function compare(BankConnection $connection): array
     {
-        $holdings = $connection->depotPositions()->get();
+        $holdings = $connection->depotPositions()->reorder()->orderBy('account_number')->orderBy('name')->get();
         $resolved = $this->market->resolveMany($holdings->pluck('isin')->filter()->merge($holdings->pluck('wkn')->filter())->all());
-        $positions = $connection->portfolio_id ? PortfolioPosition::where('portfolio_id', $connection->portfolio_id)->get() : collect();
+        $portfolioIds = $holdings->map(fn (BankDepotPosition $holding) => $connection->portfolioIdFor($holding->account_number))->filter()->unique();
+        $positions = PortfolioPosition::whereIn('portfolio_id', $portfolioIds)->get()->groupBy('portfolio_id');
 
-        return $holdings->map(function ($holding) use ($resolved, $positions) {
+        return $holdings->map(function ($holding) use ($connection, $resolved, $positions) {
+            $portfolioId = $connection->portfolioIdFor($holding->account_number);
             $symbol = ($resolved[$holding->isin] ?? $resolved[$holding->wkn] ?? null)?->symbol;
-            $position = $positions->first(fn (PortfolioPosition $position) => ($holding->isin && $position->isin === $holding->isin) || ($symbol && $position->symbol === $symbol));
+            $position = ($positions[$portfolioId] ?? collect())->first(fn (PortfolioPosition $position) => ($holding->isin && $position->isin === $holding->isin) || ($symbol && $position->symbol === $symbol));
             $quantity = (float) ($position?->quantity ?? 0);
 
-            return ['position' => $holding, 'symbol' => $position?->symbol ?? $symbol, 'portfolio_quantity' => $quantity, 'difference' => round($holding->quantity - $quantity, 6)];
+            return ['position' => $holding, 'portfolio_id' => $portfolioId, 'symbol' => $position?->symbol ?? $symbol, 'portfolio_quantity' => $quantity, 'difference' => round($holding->quantity - $quantity, 6)];
         })->all();
     }
 
     /**
-     * Brings the linked portfolio to the bank's quantities with transfer bookings.
+     * Brings the linked portfolios to the bank's quantities with transfer bookings.
      */
     public function applyToPortfolio(BankConnection $connection): int
     {
-        $portfolio = $connection->portfolio ?? throw new RuntimeException(__('Please link a portfolio first.'));
+        $rows = collect($this->compare($connection))->filter(fn (array $row) => $row['portfolio_id'] !== null);
+
+        if ($rows->isEmpty()) {
+            throw new RuntimeException(__('Please link a portfolio first.'));
+        }
+
+        $portfolios = Portfolio::where('user_id', $connection->user_id)->whereIn('id', $rows->pluck('portfolio_id')->unique())->get()->keyBy('id');
         $count = 0;
 
-        foreach ($this->compare($connection) as $row) {
-            if (! $row['symbol'] || abs($row['difference']) < 0.000001) {
+        foreach ($rows as $row) {
+            $portfolio = $portfolios[$row['portfolio_id']] ?? null;
+
+            if (! $portfolio || ! $row['symbol'] || abs($row['difference']) < 0.000001) {
                 continue;
             }
 
@@ -236,7 +279,7 @@ class BankSync
             $count++;
         }
 
-        Positions::recalculate($portfolio);
+        $portfolios->each(fn (Portfolio $portfolio) => Positions::recalculate($portfolio));
 
         return $count;
     }

@@ -56,7 +56,7 @@ class DataExportController extends Controller
 
         $data = [
             'exported_at' => now()->toIso8601String(),
-            'user' => $user->only(['id', 'name', 'email', 'created_at', 'weekly_digest', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'tax_rate', 'tax_children', 'postal_address']) + [
+            'user' => $user->only(['id', 'name', 'email', 'created_at', 'weekly_digest', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan']) + [
                 'two_factor_enabled' => $user->hasTwoFactor(),
             ],
             'household' => $household?->only(['id', 'name', 'created_at']),

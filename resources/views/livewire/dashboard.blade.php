@@ -217,18 +217,25 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @else
                 @if ($onboarding)
-                    <section class="rounded-lg bg-indigo-50 p-6 shadow-sm dark:bg-indigo-900/20" aria-labelledby="onboarding-heading">
+                    @php
+                        $onboardingDone = collect($onboarding)->where('done', true)->count();
+                        $onboardingTotal = count($onboarding);
+                    @endphp
+                    <section class="rounded-2xl bg-indigo-50 p-5 shadow-sm dark:bg-indigo-900/20" aria-labelledby="onboarding-heading" x-data="{ showDone: false }">
                         <div class="flex items-start justify-between gap-3">
-                            <div>
+                            <div class="min-w-0 flex-1">
                                 <h3 id="onboarding-heading" class="font-semibold text-gray-900 dark:text-gray-100">👋 {{ __('First steps') }}</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-300">{{ __(':done of :total done – a few minutes to get the most out of :app.', ['done' => collect($onboarding)->where('done', true)->count(), 'total' => count($onboarding), 'app' => config('app.name')]) }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">{{ __(':done of :total done – a few minutes to get the most out of :app.', ['done' => $onboardingDone, 'total' => $onboardingTotal, 'app' => config('app.name')]) }}</p>
+                                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-950" role="progressbar" aria-valuenow="{{ $onboardingDone }}" aria-valuemin="0" aria-valuemax="{{ $onboardingTotal }}" aria-label="{{ __('First steps') }}">
+                                    <div class="h-full rounded-full bg-indigo-600 dark:bg-indigo-400" style="width: {{ round($onboardingDone / max(1, $onboardingTotal) * 100) }}%"></div>
+                                </div>
                             </div>
                             <button type="button" wire:click="dismissOnboarding" class="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400" title="{{ __('Hide') }}" aria-label="{{ __('Hide first steps') }}">✕</button>
                         </div>
                         <ol class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                            @foreach ($onboarding as $step)
-                                <li wire:key="onboarding-{{ $step['key'] }}">
-                                    <a href="{{ $step['url'] }}" wire:navigate @class(['flex h-full gap-3 rounded-lg bg-white p-3 text-sm shadow-sm hover:ring-1 hover:ring-indigo-300 dark:bg-gray-800', 'opacity-60' => $step['done']])>
+                            @foreach (collect($onboarding)->sortBy('done') as $step)
+                                <li wire:key="onboarding-{{ $step['key'] }}" @if ($step['done']) x-show="showDone" x-cloak @endif>
+                                    <a href="{{ $step['url'] }}" wire:navigate @class(['flex h-full gap-3 rounded-xl bg-white p-3 text-sm shadow-sm hover:ring-1 hover:ring-indigo-300 dark:bg-gray-800', 'opacity-60' => $step['done']])>
                                         <span aria-hidden="true">{{ $step['done'] ? '✅' : '⬜' }}</span>
                                         <span>
                                             <span @class(['block font-medium text-gray-900 dark:text-gray-100', 'line-through' => $step['done']])>{{ $step['label'] }}<span class="sr-only">{{ $step['done'] ? ' – '.__('done') : '' }}</span></span>
@@ -238,6 +245,9 @@ new #[Layout('layouts.app')] class extends Component
                                 </li>
                             @endforeach
                         </ol>
+                        @if ($onboardingDone > 0)
+                            <button type="button" x-on:click="showDone = ! showDone" class="mt-2 text-xs text-indigo-700 hover:underline dark:text-indigo-300" x-text="showDone ? @js(__('Hide completed')) : @js(trans_choice(':count completed step|:count completed steps', $onboardingDone))"></button>
+                        @endif
                     </section>
                 @endif
 

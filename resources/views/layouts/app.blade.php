@@ -46,7 +46,10 @@
             <div class="lg:ps-64">
                 <!-- Page Heading -->
                 @if (isset($header))
-                    <header class="border-b border-gray-200/70 bg-white/60 backdrop-blur dark:border-gray-800 dark:bg-gray-900/60">
+                    {{-- Large title on phones; once it scrolls away, the top bar shows it small (e11Chrome) --}}
+                    <header data-page-header class="border-b border-gray-200/70 bg-white/60 backdrop-blur dark:border-gray-800 dark:bg-gray-900/60"
+                        x-data
+                        x-init="$store.chrome.watch($el)">
                         <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
                             {{ $header }}
                         </div>
@@ -78,22 +81,22 @@
             {{-- Tab bar on phones: the most used places and "create" in thumb reach --}}
             <nav class="e11-material fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/70 bg-white/90 backdrop-blur lg:hidden dark:border-gray-800 dark:bg-gray-900/90" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="{{ __('Quick navigation') }}">
                 <ul class="mx-auto grid max-w-md grid-cols-5 text-[11px]">
-                    @foreach ([['dashboard', '🏠', __('Start')], ['tasks.index', '✅', __('Tasks')], [null, '＋', __('Create')], ['shopping-list.index', '🛒', __('Shopping trip')]] as [$tabRoute, $tabIcon, $tabLabel])
+                    @foreach ([['dashboard', 'home', __('Start')], ['tasks.index', 'check-circle', __('Tasks')], [null, 'plus', __('Create')], ['shopping-list.index', 'shopping-cart', __('Shopping trip')]] as [$tabRoute, $tabIcon, $tabLabel])
                         <li>
                             @if ($tabRoute)
                                 <a href="{{ route($tabRoute) }}" wire:navigate @class(['flex flex-col items-center gap-0.5 py-2', 'text-indigo-600 dark:text-indigo-400' => request()->routeIs($tabRoute.'*'), 'text-gray-600 dark:text-gray-400' => ! request()->routeIs($tabRoute.'*')])>
-                                    <span class="text-lg leading-none" aria-hidden="true">{{ $tabIcon }}</span>{{ $tabLabel }}
+                                    <x-icon :name="$tabIcon" class="h-6 w-6" />{{ $tabLabel }}
                                 </a>
                             @else
                                 <button type="button" x-data x-on:click="$dispatch('open-search')" class="flex w-full flex-col items-center gap-0.5 py-1.5 text-gray-600 dark:text-gray-400">
-                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-lg leading-none text-white shadow" aria-hidden="true">{{ $tabIcon }}</span>{{ $tabLabel }}
+                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow" aria-hidden="true"><x-icon :name="$tabIcon" class="h-5 w-5" stroke-width="2" /></span>{{ $tabLabel }}
                                 </button>
                             @endif
                         </li>
                     @endforeach
                     <li>
                         <button type="button" x-data x-on:click="$dispatch('open-sidebar')" class="flex w-full flex-col items-center gap-0.5 py-2 text-gray-600 dark:text-gray-400">
-                            <span class="text-lg leading-none" aria-hidden="true">☰</span>{{ __('More') }}
+                            <x-icon name="bars-3" class="h-6 w-6" />{{ __('More') }}
                         </button>
                     </li>
                 </ul>

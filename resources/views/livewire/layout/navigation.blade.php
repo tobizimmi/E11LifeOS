@@ -116,16 +116,22 @@ new class extends Component
 <div x-data="{ sidebarOpen: false }" x-on:keydown.escape.window="sidebarOpen = false" x-on:open-sidebar.window="sidebarOpen = true">
     {{-- Mobile top bar: fixed, so the menu button stays reachable while scrolling (spacer below keeps the content clear of it) --}}
     <div class="lg:hidden h-14" aria-hidden="true"></div>
-    <div class="e11-material lg:hidden fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-gray-200/70 dark:border-gray-800 bg-white/80 backdrop-blur dark:bg-gray-900/80 px-3">
+    <div class="e11-material lg:hidden fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b bg-white/80 backdrop-blur transition-colors duration-200 dark:bg-gray-900/80 px-3" :class="$store.chrome.compact ? 'border-gray-200/70 dark:border-gray-800' : 'border-transparent'">
         <button type="button" x-on:click="sidebarOpen = true" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Open menu') }}">
             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
         </button>
-        <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200">
-            <x-application-logo class="h-7 w-auto fill-current" />
-            {{ config('app.name') }}
-        </a>
+        <div class="relative flex min-w-0 flex-1 justify-center">
+            <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2 font-semibold text-gray-800 transition duration-200 dark:text-gray-200" :class="$store.chrome.compact && $store.chrome.title ? 'opacity-0 -translate-y-1 pointer-events-none' : ''">
+                <x-application-logo class="h-7 w-auto fill-current" />
+                {{ config('app.name') }}
+            </a>
+            <span x-cloak x-show="$store.chrome.compact && $store.chrome.title" x-text="$store.chrome.title"
+                x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                class="absolute inset-x-0 top-1/2 -translate-y-1/2 truncate text-center text-[17px] font-semibold text-gray-900 dark:text-gray-100"></span>
+        </div>
         <div class="flex items-center">
             <x-notification-bell :count="$unreadNotifications" />
             <button type="button" x-on:click="$dispatch('open-search')" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Search') }}">
@@ -172,38 +178,44 @@ new class extends Component
                     <span class="flex items-center gap-2"><x-search-icon /> {{ __('Search') }}</span>
                     <kbd class="hidden lg:inline text-xs text-gray-400">Ctrl K</kbd>
                 </button>
-                <x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>🏠 {{ __('Dashboard') }}</x-sidebar-link>
-                <x-sidebar-link :href="route('inbox.index')" :active="request()->routeIs('inbox.index')" :badge="$inboxCount ?: null" wire:navigate>📥 {{ __('Inbox') }}</x-sidebar-link>
-                <x-sidebar-link :href="route('brain.ask')" :active="request()->routeIs('brain.ask')" wire:navigate>✨ {{ __('Ask your Second Brain') }}</x-sidebar-link>
+                <x-sidebar-link icon="home" :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</x-sidebar-link>
+                <x-sidebar-link icon="inbox" :href="route('inbox.index')" :active="request()->routeIs('inbox.index')" :badge="$inboxCount ?: null" wire:navigate>{{ __('Inbox') }}</x-sidebar-link>
+                <x-sidebar-link icon="sparkles" :href="route('brain.ask')" :active="request()->routeIs('brain.ask')" wire:navigate>{{ __('Ask your Second Brain') }}</x-sidebar-link>
             </div>
 
             @if ($householdId !== null)
                 <div class="space-y-0.5">
-                    <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
-                    <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>✅ {{ __('To-Do') }}</x-sidebar-link>
-                    <x-sidebar-link :href="route('calendar.index')" :active="request()->routeIs('calendar.*')" wire:navigate>📅 {{ __('Calendar') }}</x-sidebar-link>
-                    <x-sidebar-link :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>🛒 {{ __('Shopping List') }}</x-sidebar-link>
+                    <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Everyday') }}</h3>
+                    <x-sidebar-link icon="check-circle" :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>{{ __('To-Do') }}</x-sidebar-link>
+                    <x-sidebar-link icon="calendar-days" :href="route('calendar.index')" :active="request()->routeIs('calendar.*')" wire:navigate>{{ __('Calendar') }}</x-sidebar-link>
+                    <x-sidebar-link icon="shopping-cart" :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>{{ __('Shopping List') }}</x-sidebar-link>
                     @if ($hasRecipes)
-                        <x-sidebar-link :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>🍳 {{ __('Recipes') }}</x-sidebar-link>
+                        <x-sidebar-link icon="book-open" :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>{{ __('Recipes') }}</x-sidebar-link>
                     @endif
+                </div>
+                <div class="space-y-0.5">
+                    <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Money & home') }}</h3>
                     @if ($hasFinance)
-                        <x-sidebar-link :href="route('finance.index')" :active="request()->routeIs('finance.*')" wire:navigate>💶 {{ __('Finances') }}</x-sidebar-link>
+                        <x-sidebar-link icon="banknotes" :href="route('finance.index')" :active="request()->routeIs('finance.*')" wire:navigate>{{ __('Finances') }}</x-sidebar-link>
                     @endif
                     @if ($hasRealEstate)
-                        <x-sidebar-link :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>🏠 {{ __('Real estate') }}</x-sidebar-link>
+                        <x-sidebar-link icon="building-office-2" :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>{{ __('Real estate') }}</x-sidebar-link>
                     @endif
                     @if ($hasPortfolio)
-                        <x-sidebar-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*')" wire:navigate>📈 {{ __('Portfolio') }}</x-sidebar-link>
+                        <x-sidebar-link icon="arrow-trending-up" :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*')" wire:navigate>{{ __('Portfolio') }}</x-sidebar-link>
                     @endif
                     @if ($hasBusiness)
-                        <x-sidebar-link :href="route('business.index')" :active="request()->routeIs('business.*')" wire:navigate>💼 {{ __('Small business') }}</x-sidebar-link>
+                        <x-sidebar-link icon="briefcase" :href="route('business.index')" :active="request()->routeIs('business.*')" wire:navigate>{{ __('Small business') }}</x-sidebar-link>
                     @endif
                     @if ($hasNetWorth)
-                        <x-sidebar-link :href="route('net-worth.index')" :active="request()->routeIs('net-worth.*')" wire:navigate>💎 {{ __('Net worth') }}</x-sidebar-link>
+                        <x-sidebar-link icon="chart-pie" :href="route('net-worth.index')" :active="request()->routeIs('net-worth.*')" wire:navigate>{{ __('Net worth') }}</x-sidebar-link>
                     @endif
-                    <x-sidebar-link :href="route('quotes.index')" :active="request()->routeIs('quotes.*')" wire:navigate>⚖️ {{ __('Quote comparisons') }}</x-sidebar-link>
-                    <x-sidebar-link :href="route('contracts.index')" :active="request()->routeIs('contracts.*') || request()->routeIs('letters.*')" wire:navigate>📑 {{ __('Contract costs') }}</x-sidebar-link>
-                    <x-sidebar-link :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>👥 {{ __('Members') }}</x-sidebar-link>
+                    <x-sidebar-link icon="scale" :href="route('quotes.index')" :active="request()->routeIs('quotes.*')" wire:navigate>{{ __('Quote comparisons') }}</x-sidebar-link>
+                    <x-sidebar-link icon="document-text" :href="route('contracts.index')" :active="request()->routeIs('contracts.*') || request()->routeIs('letters.*')" wire:navigate>{{ __('Contract costs') }}</x-sidebar-link>
+                </div>
+                <div class="space-y-0.5">
+                    <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
+                    <x-sidebar-link icon="user-group" :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>{{ __('Members') }}</x-sidebar-link>
                 </div>
 
                 <x-sidebar-section :title="__('Pages')" :add-href="route('pages.index', ['create' => 1])" :all-href="route('pages.index')">

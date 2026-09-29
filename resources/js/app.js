@@ -1131,3 +1131,47 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+document.addEventListener('alpine:init', () => {
+    /**
+     * Phone chrome: the page header is the large title; once it has scrolled under the top bar,
+     * the bar shows the title small and gets its edge line (a scroll edge instead of a fixed divider).
+     */
+    window.Alpine.store('chrome', {
+        compact: false,
+        title: '',
+        observer: null,
+
+        watch(header) {
+            this.observer?.disconnect();
+            this.compact = false;
+            this.title = (header.querySelector('h1, h2')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+            this.observer = new IntersectionObserver(([entry]) => {
+                this.compact = !entry.isIntersecting;
+            }, { rootMargin: '-56px 0px 0px 0px', threshold: 0 });
+            this.observer.observe(header);
+        },
+    });
+});
+
+// Soft cross-fade after wire:navigate page changes (skipped with reduced motion).
+document.addEventListener('livewire:navigated', () => {
+    const main = document.getElementById('main-content');
+
+    if (!main || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
+    main.animate([{ opacity: 0.35, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+});
+
+// A page without a header must not keep the previous page's small title.
+document.addEventListener('livewire:navigating', () => {
+    const chrome = window.Alpine?.store('chrome');
+
+    if (chrome) {
+        chrome.observer?.disconnect();
+        chrome.compact = false;
+        chrome.title = '';
+    }
+});

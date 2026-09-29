@@ -531,7 +531,7 @@ new #[Layout('layouts.app')] class extends Component
                         aria-modal="true"
                     >
                         <img :src="open !== null ? photos[open] : ''" alt="" class="max-h-full max-w-full rounded-md object-contain" />
-                        <button type="button" x-on:click="open = null" class="absolute end-4 top-4 text-3xl text-white" aria-label="{{ __('Close') }}">✕</button>
+                        <button type="button" x-on:click="open = null" class="absolute end-4 top-4 text-3xl text-white" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         <template x-if="photos.length > 1">
                             <div>
                                 <button type="button" x-on:click="open = (open + photos.length - 1) % photos.length" class="absolute start-2 top-1/2 -translate-y-1/2 px-3 text-4xl text-white" aria-label="{{ __('Previous photo') }}">‹</button>

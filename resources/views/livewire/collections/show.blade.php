@@ -1443,7 +1443,7 @@ new #[Layout('layouts.app')] class extends Component
                 @foreach ($savedViews as $savedView)
                     <span wire:key="view-{{ $savedView->id }}" class="group inline-flex items-center">
                         <button type="button" role="tab" aria-selected="{{ $activeView === (string) $savedView->id ? 'true' : 'false' }}" wire:click="applyView({{ $savedView->id }})" @class(['rounded-md px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $activeView === (string) $savedView->id, 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== (string) $savedView->id])>{{ $savedView->name }}</button>
-                        <button type="button" wire:click="deleteView({{ $savedView->id }})" wire:confirm="{{ __('Delete this view?') }}" class="px-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600" aria-label="{{ __('Delete view :name', ['name' => $savedView->name]) }}">✕</button>
+                        <button type="button" wire:click="deleteView({{ $savedView->id }})" wire:confirm="{{ __('Delete this view?') }}" class="px-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600" aria-label="{{ __('Delete view :name', ['name' => $savedView->name]) }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </span>
                 @endforeach
                 <span class="flex-1"></span>
@@ -1496,7 +1496,7 @@ new #[Layout('layouts.app')] class extends Component
                                     />
                                 @endif
                             @endif
-                            <button type="button" wire:click="removeFilter({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove filter') }}">✕</button>
+                            <button type="button" wire:click="removeFilter({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove filter') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </div>
                     @endforeach
                     <button type="button" wire:click="addFilter" class="text-sm text-indigo-600 dark:text-indigo-400 underline">+ {{ __('Add filter') }}</button>
@@ -1731,7 +1731,7 @@ new #[Layout('layouts.app')] class extends Component
                                         </td>
                                     @endforeach
                                     <td class="px-3 py-1.5 text-end">
-                                        <button type="button" wire:click="deleteEntry({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-gray-400 hover:text-red-600" title="{{ __('Delete') }}">✕</button>
+                                        <button type="button" wire:click="deleteEntry({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-gray-400 hover:text-red-600" title="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </td>
                                 </tr>
                             @empty

@@ -147,9 +147,9 @@
                                             @foreach ($property->selectOptions() as $option)
                                                 <span wire:key="option-{{ $property->id }}-{{ $option['id'] }}" class="inline-flex items-center gap-1">
                                                     <x-option-badge :option="$option" />
-                                                    <button type="button" x-data x-on:click="const name = window.prompt(@js(__('Rename option:')), @js($option['name'])); if (name) { $wire.renameOption({{ $property->id }}, @js($option['id']), name) }" class="text-xs text-gray-400 hover:text-gray-700" title="{{ __('Rename') }}">✎</button>
+                                                    <button type="button" x-data x-on:click="const name = window.prompt(@js(__('Rename option:')), @js($option['name'])); if (name) { $wire.renameOption({{ $property->id }}, @js($option['id']), name) }" class="text-xs text-gray-400 hover:text-gray-700" title="{{ __('Rename') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                                     @unless ($property->isSystem())
-                                                        <button type="button" wire:click="deleteOption({{ $property->id }}, @js($option['id']))" wire:confirm="{{ __('Delete this option?') }}" class="text-xs text-gray-400 hover:text-red-600" title="{{ __('Delete') }}">✕</button>
+                                                        <button type="button" wire:click="deleteOption({{ $property->id }}, @js($option['id']))" wire:confirm="{{ __('Delete this option?') }}" class="text-xs text-gray-400 hover:text-red-600" title="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                                     @endunless
                                                 </span>
                                             @endforeach

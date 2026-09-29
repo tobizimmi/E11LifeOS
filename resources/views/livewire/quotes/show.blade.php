@@ -296,8 +296,8 @@ new #[Layout('layouts.app')] class extends Component
                                             <div class="flex items-start justify-between gap-2">
                                                 <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $offer->vendor }}</span>
                                                 <span class="flex shrink-0 gap-1 text-gray-400">
-                                                    <button type="button" wire:click="editQuote({{ $offer->id }})" class="hover:text-indigo-600" aria-label="{{ __('Edit') }}">✎</button>
-                                                    <button type="button" wire:click="deleteQuote({{ $offer->id }})" wire:confirm="{{ __('Delete this quote and its documents?') }}" class="hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                                                    <button type="button" wire:click="editQuote({{ $offer->id }})" class="hover:text-indigo-600" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                                                    <button type="button" wire:click="deleteQuote({{ $offer->id }})" wire:confirm="{{ __('Delete this quote and its documents?') }}" class="hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                                 </span>
                                             </div>
                                             @if ($comparison->chosen_quote_id === $offer->id)

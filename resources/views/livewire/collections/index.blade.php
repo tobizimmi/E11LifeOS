@@ -173,7 +173,7 @@ new #[Layout('layouts.app')] class extends Component
                                             <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $ownTemplate->icon ?: '🗂️' }} {{ $ownTemplate->name }}</span>
                                             <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $ownTemplate->description ?: trans_choice(':count field|:count fields', count($ownTemplate->definition['properties'] ?? [])) }}</span>
                                         </span>
-                                        <button type="button" wire:click.prevent="deleteTemplate({{ $ownTemplate->id }})" wire:confirm="{{ __('Delete this template? Collections created from it stay.') }}" class="self-start px-1 text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete template') }}">✕</button>
+                                        <button type="button" wire:click.prevent="deleteTemplate({{ $ownTemplate->id }})" wire:confirm="{{ __('Delete this template? Collections created from it stay.') }}" class="self-start px-1 text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete template') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </label>
                                 @endforeach
                             </div>

@@ -3222,5 +3222,7 @@
     "Hide completed": "Erledigte ausblenden",
     ":count completed step|:count completed steps": ":count erledigter Schritt|:count erledigte Schritte",
     "Everyday": "Alltag",
-    "Money & home": "Geld & Zuhause"
+    "Money & home": "Geld & Zuhause",
+    "Also used for the weather card on the overview – even with the briefing switched off.": "Wird auch für die Wetter-Kachel auf der Übersicht genutzt – auch wenn das Briefing aus ist.",
+    "The bank did not report a securities account for this login. If your depot has its own login, add it as a separate connection.": "Die Bank hat für diesen Login kein Depot gemeldet. Falls dein Depot einen eigenen Login hat, lege es als eigene Verbindung an."
 }

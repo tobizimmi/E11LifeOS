@@ -318,7 +318,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="flex flex-wrap gap-2">
                             <button type="button" wire:click="sync({{ $connection->id }}, 'depot')" wire:loading.attr="disabled" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">📈 {{ __('Fetch holdings') }}</button>
                             <button type="button" wire:click="sync({{ $connection->id }}, 'statement')" wire:loading.attr="disabled" class="rounded-lg px-3 py-1.5 text-sm text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">💶 {{ __('Fetch bookings') }}</button>
-                            <button type="button" wire:click="editConnection({{ $connection->id }})" class="rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Edit') }}">✎</button>
+                            <button type="button" wire:click="editConnection({{ $connection->id }})" class="rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         </div>
                     </div>
                     <p wire:loading wire:target="sync" class="mt-2 text-xs text-gray-500">{{ __('Connecting to the bank …') }}</p>

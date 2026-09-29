@@ -104,7 +104,7 @@ new class extends Component
                             <strong class="text-gray-800 dark:text-gray-200">{{ $row['model']->user?->name ?? __('Former member') }}</strong>
                             <time datetime="{{ $row['at']->toIso8601String() }}" title="{{ $row['at']->translatedFormat('j. F Y, H:i') }}">{{ $row['at']->diffForHumans() }}</time>
                             @if ($row['model']->user_id === auth()->id())
-                                <button type="button" wire:click="deleteComment({{ $row['model']->id }})" wire:confirm="{{ __('Delete this comment?') }}" class="ms-auto text-gray-400 opacity-0 hover:text-red-600 focus:opacity-100 group-hover:opacity-100" aria-label="{{ __('Delete') }}">✕</button>
+                                <button type="button" wire:click="deleteComment({{ $row['model']->id }})" wire:confirm="{{ __('Delete this comment?') }}" class="ms-auto text-gray-400 opacity-0 hover:text-red-600 focus:opacity-100 group-hover:opacity-100" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             @endif
                         </p>
                         <p class="mt-0.5 whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-100">{{ $row['model']->body }}</p>

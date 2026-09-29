@@ -303,9 +303,9 @@ new #[Layout('layouts.app')] class extends Component
                                         </div>
                                         <span class="tabular-nums text-gray-700 dark:text-gray-300">{{ $euro($row['value']) }}</span>
                                         @if ($group['key'] === 'accounts')
-                                            <button type="button" wire:click="editAccount({{ $row['id'] }})" class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Enter balance') }}" aria-label="{{ __('Enter balance') }}">✎</button>
+                                            <button type="button" wire:click="editAccount({{ $row['id'] }})" class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Enter balance') }}" aria-label="{{ __('Enter balance') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                         @elseif (in_array($group['key'], ['other_assets', 'other_liabilities'], true))
-                                            <button type="button" wire:click="editItem({{ $row['id'] }})" class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}">✎</button>
+                                            <button type="button" wire:click="editItem({{ $row['id'] }})" class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                         @endif
                                     </div>
                                     @if ($group['key'] === 'accounts' && $editingAccountId === $row['id'])

@@ -169,7 +169,7 @@ new class extends Component
                         <span class="text-gray-700 dark:text-gray-300">{{ $valuation->valued_on->format('d.m.Y') }} · {{ $sources[$valuation->source] ?? $valuation->source }}@if ($valuation->notes) · {{ $valuation->notes }}@endif</span>
                         <span class="flex items-center gap-3">
                             <span class="font-medium text-gray-900 dark:text-gray-100">{{ $euro($valuation->value) }}</span>
-                            <button type="button" wire:click="deleteValuation({{ $valuation->id }})" wire:confirm="{{ __('Delete this valuation?') }}" class="text-red-600 dark:text-red-400" aria-label="{{ __('Delete') }}">✕</button>
+                            <button type="button" wire:click="deleteValuation({{ $valuation->id }})" wire:confirm="{{ __('Delete this valuation?') }}" class="text-red-600 dark:text-red-400" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </span>
                     </li>
                 @endforeach

@@ -1170,7 +1170,7 @@ new class extends Component
                                     @endforeach
                                 </select>
                             </div>
-                            <button type="button" wire:click="removeCost({{ $index }})" class="mt-2 text-red-600 dark:text-red-400" aria-label="{{ __('Remove') }}">✕</button>
+                            <button type="button" wire:click="removeCost({{ $index }})" class="mt-2 text-red-600 dark:text-red-400" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </div>
                     @endforeach
                 </div>

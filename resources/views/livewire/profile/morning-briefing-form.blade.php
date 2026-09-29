@@ -99,7 +99,10 @@ new class extends Component
         </div>
         <div>
             <x-input-label for="briefing-place" :value="__('Place for the weather')" />
-            <x-text-input id="briefing-place" wire:model="place" type="text" class="mt-1 block w-full text-sm" :placeholder="__('e.g. Berlin')" />
+            {{-- Linked from the weather card as #briefing-place: scrolled to, highlighted and focused --}}
+            <x-text-input id="briefing-place" wire:model="place" type="text" class="mt-1 block w-full scroll-mt-24 text-sm" :placeholder="__('e.g. Berlin')"
+                x-data x-init="if (location.hash === '#briefing-place') { $nextTick(() => { $el.scrollIntoView({ block: 'center' }); $el.focus({ preventScroll: true }); $el.classList.add('ring-2', 'ring-indigo-500'); }) }" />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Also used for the weather card on the overview – even with the briefing switched off.') }}</p>
             <x-input-error :messages="$errors->get('place')" class="mt-1" />
         </div>
         <div class="flex flex-wrap items-center gap-3 sm:col-span-3">

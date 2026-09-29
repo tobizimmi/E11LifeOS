@@ -105,7 +105,7 @@
                                 <p class="font-medium text-gray-900 dark:text-gray-100">{{ $loan->lender }} · {{ $euro($loan->amount) }}</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ \App\Models\RealEstateLoan::kindLabels()[$loan->kind] }} · {{ number_format($loan->interest_rate, 2, ',', '') }} % {{ __('interest') }} · {{ number_format($loan->repayment_rate, 2, ',', '') }} % {{ __('repayment') }}</p>
                             </div>
-                            <button type="button" wire:click="deleteLoan({{ $loan->id }})" wire:confirm="{{ __('Delete this loan?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                            <button type="button" wire:click="deleteLoan({{ $loan->id }})" wire:confirm="{{ __('Delete this loan?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </div>
                         <p class="mt-1 text-gray-700 dark:text-gray-300">{{ __(':rate per month', ['rate' => $euro($loan->monthlyRate(), 2)]) }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('After :years years: :balance remaining, :interest interest paid', ['years' => $loan->fixed_years, 'balance' => $euro($atEnd['balance']), 'interest' => $euro($atEnd['interest'])]) }}</p>

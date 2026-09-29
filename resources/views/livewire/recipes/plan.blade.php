@@ -391,7 +391,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @endif
                                 </span>
                                 <button type="button" wire:click="rerollSuggestion('{{ $date }}')" class="rounded-md px-2 py-1 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Another recipe') }}" aria-label="{{ __('Another recipe') }}">🔄</button>
-                                <button type="button" wire:click="dropSuggestion('{{ $date }}')" class="rounded-md px-2 py-1 text-sm text-gray-500 hover:text-red-600" title="{{ __('No suggestion for this day') }}" aria-label="{{ __('No suggestion for this day') }}">✕</button>
+                                <button type="button" wire:click="dropSuggestion('{{ $date }}')" class="rounded-md px-2 py-1 text-sm text-gray-500 hover:text-red-600" title="{{ __('No suggestion for this day') }}" aria-label="{{ __('No suggestion for this day') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </li>
                         @endforeach
                     </ul>
@@ -462,7 +462,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <li wire:key="entry-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group cursor-grab rounded-md bg-gray-50 dark:bg-gray-900/60 p-2 text-sm ring-1 ring-gray-200 dark:ring-gray-700">
                                     <p class="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-gray-400">
                                         <span>{{ \App\Models\MealPlan::mealTypeLabel($entry->meal_type) }}@if ($entry->servings) · {{ trans_choice(':count serving|:count servings', $entry->servings) }}@endif</span>
-                                        <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}">✕</button>
+                                        <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </p>
                                     @if ($entry->recipe)
                                         <a href="{{ route('recipes.show', $entry->recipe) }}" wire:navigate class="mt-0.5 flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100 hover:underline">
@@ -493,7 +493,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="w-full max-w-lg space-y-4 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-meal-title">
                 <div class="flex items-center justify-between gap-2">
                     <h3 id="add-meal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ \Illuminate\Support\Carbon::parse($addingDate)->translatedFormat('l, d.m.') }}</h3>
-                    <button type="button" wire:click="cancelAdding" class="text-gray-400 hover:text-gray-700" aria-label="{{ __('Close') }}">✕</button>
+                    <button type="button" wire:click="cancelAdding" class="text-gray-400 hover:text-gray-700" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                 </div>
 
                 <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="{{ __('Meal') }}">

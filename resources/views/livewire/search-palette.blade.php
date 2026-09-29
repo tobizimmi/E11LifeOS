@@ -173,6 +173,7 @@ new class extends Component
             ['💡 '.__('Money knowledge'), route('knowledge.index'), 'wissen tipps steuern börse finanzierung neuerungen news favoriten'],
             ['🗂️ '.__('Emergency folder'), route('emergency.index'), 'notfall notfallordner vorsorge vollmacht patientenverfügung testament ausweis reisepass vertrauensperson'],
             ['🚗 '.__('Vehicles'), route('vehicles.index'), 'auto fahrzeug tüv hu inspektion tanken fahrtenbuch reifen kfz'],
+            ['🏡 '.__('At home'), route('house.index'), 'zuhause wartung heizung rauchmelder zähler zählerstand strom gas wasser verbrauch abschlag'],
         ];
 
         if ($user->canUseAddon(Addons::RECIPES)) {

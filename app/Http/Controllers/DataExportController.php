@@ -13,11 +13,13 @@ use App\Models\Customer;
 use App\Models\EmergencyEntry;
 use App\Models\ExternalLink;
 use App\Models\FinanceRule;
+use App\Models\HomeTask;
 use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\KnowledgeFavorite;
 use App\Models\MealPlan;
+use App\Models\Meter;
 use App\Models\NetWorthItem;
 use App\Models\NetWorthSnapshot;
 use App\Models\PaperlessInstance;
@@ -116,6 +118,13 @@ class DataExportController extends Controller
             'vehicles' => $household
                 ? Vehicle::query()->where('household_id', $household->id)->where('created_by', $user->id)->with('logs')->orderBy('id')->get()
                     ->map(fn (Vehicle $vehicle) => $vehicle->makeHidden(['household_id', 'created_by'])->toArray())
+                : [],
+            'home' => $household
+                ? [
+                    'maintenance' => HomeTask::where('household_id', $household->id)->where('created_by', $user->id)->orderBy('next_due_on')->get()->map->only(['title', 'interval_months', 'last_done_on', 'next_due_on', 'notes']),
+                    'meters' => Meter::where('household_id', $household->id)->where('created_by', $user->id)->with('readings')->get()
+                        ->map(fn (Meter $meter) => $meter->only(['name', 'kind', 'number', 'price_per_unit', 'base_fee_monthly', 'monthly_advance']) + ['readings' => $meter->readings->map->only(['read_on', 'value'])->all()]),
+                ]
                 : [],
             'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),

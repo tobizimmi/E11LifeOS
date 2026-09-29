@@ -94,6 +94,10 @@ new #[Layout('layouts.app')] class extends Component
     {
         $value = trim(str_replace(['€', ' '], '', $value));
 
+        if (preg_match('/^\d{1,3}(\.\d{3})+$/', $value)) {
+            return str_replace('.', '', $value);
+        }
+
         return str_contains($value, ',') ? str_replace(',', '.', str_replace('.', '', $value)) : $value;
     }
 

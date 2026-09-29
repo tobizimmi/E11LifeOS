@@ -209,7 +209,9 @@ new class extends Component
                     @endif
                     @if ($hasNetWorth)
                         <x-sidebar-link icon="chart-pie" :href="route('net-worth.index')" :active="request()->routeIs('net-worth.*')" wire:navigate>{{ __('Net worth') }}</x-sidebar-link>
+                        <x-sidebar-link icon="arrows-right-left" :href="route('cashflow.index')" :active="request()->routeIs('cashflow.*')" wire:navigate>{{ __('Cashflow analysis') }}</x-sidebar-link>
                     @endif
+                    <x-sidebar-link icon="light-bulb" :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')" wire:navigate>{{ __('Money knowledge') }}</x-sidebar-link>
                     <x-sidebar-link icon="scale" :href="route('quotes.index')" :active="request()->routeIs('quotes.*')" wire:navigate>{{ __('Quote comparisons') }}</x-sidebar-link>
                     <x-sidebar-link icon="document-text" :href="route('contracts.index')" :active="request()->routeIs('contracts.*') || request()->routeIs('letters.*')" wire:navigate>{{ __('Contract costs') }}</x-sidebar-link>
                 </div>

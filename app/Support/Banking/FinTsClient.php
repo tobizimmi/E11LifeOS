@@ -12,6 +12,7 @@ use Fhp\CurlException;
 use Fhp\FinTs;
 use Fhp\Model\NoPsd2TanMode;
 use Fhp\Model\SEPAAccount;
+use Fhp\Model\TanMode;
 use Fhp\Options\Credentials;
 use Fhp\Options\FinTsOptions;
 use Fhp\Protocol\ServerException;
@@ -67,7 +68,7 @@ class FinTsClient
             throw new RuntimeException(__('The bank rejected the TAN: :message', ['message' => implode('; ', $exception->getErrors())]));
         }
 
-        return $this->run($fints, $state['operation'], $connection->skippedAccounts($state['operation']));
+        return $this->resume($fints, $connection, $state, $action);
     }
 
     /**
@@ -89,7 +90,29 @@ class FinTsClient
             throw new RuntimeException($this->explain($exception));
         }
 
-        return $this->run($fints, $state['operation'], $connection->skippedAccounts($state['operation']));
+        return $this->resume($fints, $connection, $state, $action);
+    }
+
+    /**
+     * After the TAN: a login continues with the operation, a request that needed its own TAN
+     * (holdings, bookings) is evaluated and the remaining accounts follow.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function resume(FinTs $fints, BankConnection $connection, array $state, BaseAction $action): array
+    {
+        $carry = $state['carry'] ?? [];
+
+        if (isset($carry['account'])) {
+            $result = $carry['result'];
+            $account = (new SEPAAccount)->setAccountNumber($carry['account']['number'])->setIban($carry['account']['iban']);
+            $state['operation'] === 'depot' ? $this->absorbHoldings($action, $account, $result) : $this->absorbBookings($action, $account, $result);
+            $carry['result'] = $result;
+            unset($carry['account']);
+        }
+
+        return $this->run($fints, $state['operation'], $connection->skippedAccounts($state['operation']), $carry);
     }
 
     private function client(BankConnection $connection, string $pin, ?string $persisted = null): FinTs
@@ -123,24 +146,38 @@ class FinTsClient
             }
 
             // Prefer confirmation in the banking app (no typing), else the first procedure.
-            foreach ($modes as $id => $mode) {
-                if ($mode->isDecoupled()) {
-                    $fints->selectTanMode($id);
-
-                    return;
-                }
-            }
-
-            $fints->selectTanMode(array_key_first($modes));
+            $id = collect($modes)->search(fn ($mode) => $mode->isDecoupled());
+            $id = $id === false ? array_key_first($modes) : $id;
+            $fints->selectTanMode($id, $this->tanMedium($fints, $modes[$id]));
         } catch (Throwable) {
             $fints->selectTanMode(new NoPsd2TanMode);
         }
     }
 
     /**
+     * Procedures like pushTAN on several devices need the name of the device (TAN medium) with every
+     * TAN request, otherwise the bank rejects it (9210). The first medium the bank lists is used.
+     */
+    private function tanMedium(FinTs $fints, TanMode $mode): ?string
+    {
+        if (! $mode->needsTanMedium()) {
+            return null;
+        }
+
+        try {
+            $media = $fints->getTanMedia($mode);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $media === [] ? null : reset($media)->getName();
+    }
+
+    /**
+     * @param  array<string, mixed>  $carry  partial result of an operation interrupted by a TAN request
      * @return array<string, mixed>
      */
-    private function tanRequired(FinTs $fints, BaseAction $action, string $operation): array
+    private function tanRequired(FinTs $fints, BaseAction $action, string $operation, array $carry = []): array
     {
         $decoupled = (bool) $fints->getSelectedTanMode()?->isDecoupled();
         $request = $action->getTanRequest();
@@ -150,53 +187,89 @@ class FinTsClient
             'decoupled' => $decoupled,
             'challenge' => $request?->getChallenge() ?: ($decoupled ? __('Please confirm the login in your banking app.') : __('Please enter the TAN.')),
             'medium' => $request?->getTanMediumName(),
-            'state' => ['fints' => $fints->persist(), 'action' => base64_encode(serialize($action)), 'operation' => $operation],
+            'state' => ['fints' => $fints->persist(), 'action' => base64_encode(serialize($action)), 'operation' => $operation, 'carry' => $carry],
         ];
     }
 
     /**
      * @param  list<string>  $skipped  account numbers the user switched off for this operation
+     * @param  array{result?: array<string, mixed>, done?: list<string>}  $carry  state of an operation resumed after a TAN
      * @return array<string, mixed>
      */
-    private function run(FinTs $fints, string $operation, array $skipped = []): array
+    private function run(FinTs $fints, string $operation, array $skipped = [], array $carry = []): array
     {
-        $result = ['status' => 'done', 'holdings' => [], 'accounts' => [], 'bank_accounts' => [], 'balances' => [], 'errors' => []];
+        $result = $carry['result'] ?? ['status' => 'done', 'holdings' => [], 'accounts' => [], 'bank_accounts' => [], 'balances' => [], 'errors' => []];
+        $done = $carry['done'] ?? [];
 
         if ($operation !== 'test') {
-            try {
-                $getAccounts = GetSEPAAccounts::create();
-                $fints->execute($getAccounts);
-                $accounts = $getAccounts->needsTan() ? [] : $getAccounts->getAccounts();
-            } catch (Throwable $exception) {
-                $accounts = [];
-                $result['errors'][] = __('The account list could not be read: :message', ['message' => $exception->getMessage()]);
-            }
+            // The accounts usually come with the bank's account data (UPD). The SEPA account list (HKSPA) is
+            // only requested when the UPD has none – some banks reject it and end the whole dialog.
+            $accounts = $this->updAccounts($fints);
+            $sepaAccounts = [];
 
-            $result['bank_accounts'] = $this->bankAccounts($fints, $accounts);
-
-            if ($operation === 'depot') {
-                // Depots are usually not SEPA accounts: take them from the bank's account data (UPD) first.
-                $depots = $this->depotAccounts($fints);
-                $accounts = [...$depots, ...array_filter($accounts, fn (SEPAAccount $account) => ! collect($depots)->contains(fn (SEPAAccount $depot) => $depot->getAccountNumber() === $account->getAccountNumber()))];
-            }
-
-            $sepaAccounts = $accounts;
-            $accounts = $operation === 'accounts' ? [] : array_filter($accounts, fn (SEPAAccount $account) => ! in_array((string) $account->getAccountNumber(), $skipped, true));
-
-            foreach ($accounts as $account) {
+            if ($accounts === []) {
                 try {
-                    $operation === 'depot' ? $this->readDepot($fints, $account, $result) : $this->readBookings($fints, $account, $result);
-                } catch (Throwable) {
-                    // Current accounts have no securities and vice versa – skip what the bank refuses.
+                    $getAccounts = GetSEPAAccounts::create();
+                    $fints->execute($getAccounts);
+                    $sepaAccounts = $getAccounts->needsTan() ? [] : $getAccounts->getAccounts();
+                    $accounts = $sepaAccounts;
+                } catch (Throwable $exception) {
+                    $result['errors'][] = __('The account list could not be read: :message', ['message' => $this->describe($exception)]);
                 }
             }
 
-            if ($operation !== 'depot') {
-                foreach ($operation === 'accounts' ? $sepaAccounts : $accounts as $account) {
+            $result['bank_accounts'] = $this->bankAccounts($fints, $sepaAccounts);
+
+            if ($operation === 'depot') {
+                // Depots from the UPD (account type or holdings request allowed); without any, all accounts are tried.
+                $depots = $this->depotAccounts($fints);
+                $accounts = $depots !== [] ? $depots : $accounts;
+            }
+
+            $allAccounts = $accounts;
+            $accounts = $operation === 'accounts' ? [] : array_filter($accounts, fn (SEPAAccount $account) => ! in_array((string) $account->getAccountNumber(), $skipped, true));
+            $dialogLost = false;
+
+            foreach ($accounts as $account) {
+                $number = (string) $account->getAccountNumber();
+
+                if (in_array($number, $done, true) || ($operation !== 'depot' && ! $account->getIban())) {
+                    continue;
+                }
+
+                $done[] = $number;
+
+                try {
+                    $pending = $operation === 'depot' ? $this->readDepot($fints, $account, $result) : $this->readBookings($fints, $account, $result);
+
+                    if ($pending) {
+                        return $this->tanRequired($fints, $pending, $operation, [
+                            'result' => $result, 'done' => $done, 'account' => ['number' => $number, 'iban' => $account->getIban()],
+                        ]);
+                    }
+                } catch (Throwable $exception) {
+                    if ($dialogLost = $this->dialogLost($exception)) {
+                        $result['errors'][] = __('The bank ended the connection after a rejected request. Please try again.');
+
+                        break;
+                    }
+
+                    // Without depots in the UPD every account is tried – refusals of current accounts are expected there.
+                    if ($operation !== 'depot' || ($depots ?? []) !== []) {
+                        $result['errors'][] = __('Account :number: :message', ['number' => $account->getAccountNumber(), 'message' => $this->describe($exception)]);
+                    }
+                }
+            }
+
+            if ($operation !== 'depot' && ! $dialogLost) {
+                foreach ($operation === 'accounts' ? $allAccounts : $accounts as $account) {
                     try {
                         $this->readBalance($fints, $account, $result);
-                    } catch (Throwable) {
-                        // Not every account (or bank) reports a balance.
+                    } catch (Throwable $exception) {
+                        // Not every account (or bank) reports a balance; a lost dialog ends the loop.
+                        if ($this->dialogLost($exception)) {
+                            break;
+                        }
                     }
                 }
             }
@@ -281,6 +354,52 @@ class FinTsClient
     }
 
     /**
+     * All accounts of the bank's account data (UPD) as SEPA accounts (without BIC, which the UPD lacks).
+     *
+     * @return list<SEPAAccount>
+     */
+    private function updAccounts(FinTs $fints): array
+    {
+        // php-fints keeps the UPD private; it is read, not changed.
+        $upd = (fn () => $this->upd ?? null)->call($fints);
+        $accounts = [];
+
+        foreach (is_array($upd->hiupd ?? null) ? $upd->hiupd : [] as $hiupd) {
+            $connection = $hiupd->kontoverbindung ?? null;
+
+            if (! $connection?->kontonummer) {
+                continue;
+            }
+
+            $account = new SEPAAccount;
+            $account->setAccountNumber($connection->kontonummer);
+            $account->setSubAccount($connection->unterkontomerkmal);
+            $account->setBlz($connection->kik?->kreditinstitutscode);
+            $account->setIban($hiupd->iban ?? null);
+            $accounts[] = $account;
+        }
+
+        return $accounts;
+    }
+
+    /**
+     * php-fints forgets the dialog when the bank aborts it (9800); every further request then fails.
+     */
+    private function dialogLost(Throwable $exception): bool
+    {
+        return ($exception instanceof ServerException && str_contains(implode(' ', $exception->getErrors()), '9800'))
+            || str_contains($exception->getMessage(), 'Need to login');
+    }
+
+    /**
+     * Readable text of a failed request.
+     */
+    private function describe(Throwable $exception): string
+    {
+        return $exception instanceof ServerException ? implode('; ', $exception->getErrors()) : $exception->getMessage();
+    }
+
+    /**
      * Securities accounts from the bank's account data (UPD): account type 30–39 or accounts that
      * allow the holdings request (HKWPD). They share the login with the current account.
      *
@@ -320,17 +439,30 @@ class FinTsClient
     }
 
     /**
+     * Holdings of a depot; returns the request when the bank asks for a TAN for it.
+     *
      * @param  array<string, mixed>  $result
      */
-    private function readDepot(FinTs $fints, SEPAAccount $account, array &$result): void
+    private function readDepot(FinTs $fints, SEPAAccount $account, array &$result): ?BaseAction
     {
         $action = GetDepotAufstellung::create($account);
         $fints->execute($action);
 
         if ($action->needsTan()) {
-            return;
+            return $action;
         }
 
+        $this->absorbHoldings($action, $account, $result);
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function absorbHoldings(BaseAction $action, SEPAAccount $account, array &$result): void
+    {
+        /** @var GetDepotAufstellung $action */
         foreach ($action->getStatement()->getHoldings() as $holding) {
             $result['holdings'][] = [
                 'isin' => $holding->getISIN(),
@@ -377,21 +509,34 @@ class FinTsClient
     }
 
     /**
+     * Bookings of the last 90 days; returns the request when the bank asks for a TAN for it.
+     *
      * @param  array<string, mixed>  $result
      */
-    private function readBookings(FinTs $fints, SEPAAccount $account, array &$result): void
+    private function readBookings(FinTs $fints, SEPAAccount $account, array &$result): ?BaseAction
     {
         if (! $account->getIban()) {
-            return;
+            return null;
         }
 
         $action = GetStatementOfAccount::create($account, new \DateTime('-90 days'), new \DateTime('today'));
         $fints->execute($action);
 
         if ($action->needsTan()) {
-            return;
+            return $action;
         }
 
+        $this->absorbBookings($action, $account, $result);
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function absorbBookings(BaseAction $action, SEPAAccount $account, array &$result): void
+    {
+        /** @var GetStatementOfAccount $action */
         $bookings = [];
 
         foreach ($action->getStatement()->getStatements() as $day) {

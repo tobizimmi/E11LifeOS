@@ -249,6 +249,18 @@ class BankSyncTest extends TestCase
         $this->assertSame('12030000', $depots[0]->getBlz());
     }
 
+    public function test_the_accounts_are_taken_from_the_account_data_and_a_lost_dialog_is_recognised(): void
+    {
+        $fints = $this->fintsWithAccounts([['1001', 1, ['HKKAZ'], 'DE02120300000000001001'], ['5005', 30, ['HKWPD']]]);
+        $client = new FinTsClient;
+
+        $accounts = (fn () => $this->updAccounts($fints))->call($client);
+        $this->assertSame([['1001', 'DE02120300000000001001'], ['5005', null]], array_map(fn ($account) => [$account->getAccountNumber(), $account->getIban()], $accounts));
+
+        $this->assertTrue((fn () => $this->dialogLost(new \RuntimeException('Need to login (DialogInitialization) before executing other actions')))->call($client));
+        $this->assertFalse((fn () => $this->dialogLost(new \RuntimeException('Something else')))->call($client));
+    }
+
     public function test_the_accounts_of_a_login_are_listed_with_their_type(): void
     {
         $fints = $this->fintsWithAccounts([

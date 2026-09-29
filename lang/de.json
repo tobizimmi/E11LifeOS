@@ -3889,5 +3889,7 @@
     "Large debit: :amount": "Große Abbuchung: :amount",
     "Low balance: :amount": "Kontostand niedrig: :amount",
     ":account goes below zero": ":account rutscht ins Minus",
-    "Expected on :date according to the balance forecast.": "Laut Kontostand-Prognose voraussichtlich am :date."
+    "Expected on :date according to the balance forecast.": "Laut Kontostand-Prognose voraussichtlich am :date.",
+    "The bank ended the connection after a rejected request. Please try again.": "Die Bank hat die Verbindung nach einem abgelehnten Auftrag beendet. Bitte versuche es erneut.",
+    "Account :number: :message": "Konto :number: :message"
 }

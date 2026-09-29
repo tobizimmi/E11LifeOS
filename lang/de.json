@@ -3850,5 +3850,21 @@
     "Compare with": "Abgleich mit",
     "Connection default (:name)": "Wie Verbindung (:name)",
     "No portfolio": "Kein Depot",
-    "Adopt the bank's quantities in the linked portfolios": "Stückzahlen der Bank in den verknüpften Depots übernehmen"
+    "Adopt the bank's quantities in the linked portfolios": "Stückzahlen der Bank in den verknüpften Depots übernehmen",
+    "No account balance yet": "Noch kein Kontostand",
+    "The forecast starts from the current balance of your accounts. Fetch it via the bank sync or enter it once under net worth.": "Die Prognose startet beim aktuellen Kontostand deiner Konten. Rufe ihn über den Banksync ab oder trage ihn einmal beim Nettovermögen ein.",
+    ":account is expected to go below zero on :date. Move money in time or postpone a payment.": ":account rutscht voraussichtlich am :date unter null. Überweise rechtzeitig Geld oder verschiebe eine Zahlung.",
+    "Balance forecast": "Kontostand-Prognose",
+    "Current balance plus recurring income and payments on their next dates, minus your average other spending of :amount per day.": "Aktueller Kontostand plus wiederkehrende Einnahmen und Zahlungen zu ihren nächsten Terminen, abzüglich deiner durchschnittlichen sonstigen Ausgaben von :amount pro Tag.",
+    "Forecast period": "Prognosezeitraum",
+    "In :days days": "In :days Tagen",
+    "Lowest point": "Tiefster Stand",
+    "Expected balance": "Erwarteter Kontostand",
+    "Expected bookings": "Erwartete Buchungen",
+    "No recurring bookings found yet. They are recognised after two to three months of bookings.": "Noch keine wiederkehrenden Buchungen gefunden. Sie werden nach zwei bis drei Monaten mit Buchungen erkannt.",
+    "Per account": "Je Konto",
+    "Below zero from :date": "Ab :date unter null",
+    "Lowest :amount on :date": "Tiefster Stand :amount am :date",
+    "Accounts without a balance are left out. The balance is updated with every bank sync.": "Konten ohne Kontostand bleiben außen vor. Der Stand wird bei jedem Banksync aktualisiert.",
+    "Forecast": "Prognose"
 }

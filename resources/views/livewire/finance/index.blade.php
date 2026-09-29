@@ -6,6 +6,7 @@ use App\Models\FinanceBudget;
 use App\Models\FinanceRule;
 use App\Models\Transaction;
 use App\Support\AiException;
+use App\Support\Finance\BalanceForecast;
 use App\Support\Finance\BankCsvImporter;
 use App\Support\Finance\Budgets;
 use App\Support\Finance\Categorizer;
@@ -37,6 +38,9 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(as: 'account', except: '')]
     public string $accountFilter = '';
+
+    /** Days the balance forecast looks ahead. */
+    public int $forecastDays = 60;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -575,6 +579,11 @@ new #[Layout('layouts.app')] class extends Component
                 ->push($this->taxYear)->unique()->sortDesc()->values()->all();
         }
 
+        if ($this->tab === 'forecast') {
+            $this->forecastDays = in_array($this->forecastDays, BalanceForecast::HORIZONS, true) ? $this->forecastDays : 60;
+            $data['forecast'] = BalanceForecast::for($accounts, $this->forecastDays);
+        }
+
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period);
             $data['report'] = FinanceReport::build(FinancePeriod::query($this->currentUser(), (int) $this->householdId, $this->period, $this->accountId())->get(), $from, $to);
@@ -603,11 +612,11 @@ new #[Layout('layouts.app')] class extends Component
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
                 <div class="inline-flex rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                    @foreach (['report' => '📊 '.__('Report'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'tax' => '🏛 '.__('Tax'), 'import' => '⬆ '.__('Import')] as $key => $label)
+                    @foreach (['report' => '📊 '.__('Report'), 'forecast' => '🔮 '.__('Forecast'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'tax' => '🏛 '.__('Tax'), 'import' => '⬆ '.__('Import')] as $key => $label)
                         <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                     @endforeach
                 </div>
-                @if (! in_array($tab, ['import', 'budgets', 'tax'], true))
+                @if (! in_array($tab, ['import', 'budgets', 'tax', 'forecast'], true))
                     <select wire:model.live="period" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Period') }}">
                         @foreach ($periods as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -636,6 +645,8 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($tab === 'report')
                 @include('finance.partials.report')
+            @elseif ($tab === 'forecast')
+                @include('finance.partials.forecast')
             @elseif ($tab === 'transactions')
                 @include('finance.partials.transactions')
             @elseif ($tab === 'budgets')

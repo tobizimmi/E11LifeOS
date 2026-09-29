@@ -10,6 +10,7 @@ use App\Models\Security;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Banking\FinTsClient;
+use Fhp\CurlException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -158,5 +159,21 @@ class BankSyncTest extends TestCase
         Volt::test('portfolio.banking')->assertDontSee('Fremdbank')->call('editConnection', $foreign->id)->assertNotFound();
         Volt::test('portfolio.banking')->call('sync', $foreign->id, 'depot')->assertNotFound();
         $this->assertNotContains('pin', array_keys($foreign->toArray()));
+    }
+
+    public function test_an_http_error_of_the_bank_is_explained(): void
+    {
+        [$user, $household] = $this->owner();
+        $connection = $this->connection($user, $household, ['pin' => '1111']);
+
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()
+            ->andThrow(new CurlException('Bad response with status code 403', '<html><body>Access Denied</body></html>', 403)));
+
+        Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot');
+
+        $message = $connection->fresh()->sync_message;
+        $this->assertSame('error', $connection->fresh()->sync_status);
+        $this->assertStringContainsString('Der Bankserver fints.dkb.de hat die Anfrage abgelehnt (HTTP 403).', $message);
+        $this->assertStringContainsString('Antwort der Bank: „Access Denied“', $message);
     }
 }

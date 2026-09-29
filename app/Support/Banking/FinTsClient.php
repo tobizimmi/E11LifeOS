@@ -7,6 +7,7 @@ use Fhp\Action\GetDepotAufstellung;
 use Fhp\Action\GetSEPAAccounts;
 use Fhp\Action\GetStatementOfAccount;
 use Fhp\BaseAction;
+use Fhp\CurlException;
 use Fhp\FinTs;
 use Fhp\Model\NoPsd2TanMode;
 use Fhp\Model\SEPAAccount;
@@ -243,6 +244,25 @@ class FinTsClient
         }
 
         $result['accounts'][$account->getIban()] = $bookings;
+    }
+
+    /**
+     * A readable explanation when the bank's server answers with an HTTP error or cannot be reached.
+     */
+    public static function describeConnectionError(CurlException $exception, string $url): string
+    {
+        $host = (string) (parse_url($url, PHP_URL_HOST) ?: $url);
+        $status = (int) $exception->getCode();
+        $detail = trim(preg_replace('/\s+/', ' ', strip_tags((string) $exception->getResponse())));
+        $detail = $detail !== '' ? ' '.__('Answer of the bank: “:detail”', ['detail' => mb_strimwidth($detail, 0, 160, '…')]) : '';
+
+        return match (true) {
+            in_array($status, [401, 403], true) => __('The bank server :host refused the request (HTTP :status). Usually the FinTS address is out of date, the FinTS product ID is not (yet) activated for this bank, or the bank blocks requests from this server. Check the FinTS address in the connection settings.', ['host' => $host, 'status' => $status]).$detail,
+            $status === 404 => __('The bank server :host does not know this FinTS address (HTTP 404). Check the FinTS address in the connection settings.', ['host' => $host]).$detail,
+            $status >= 500 => __('The bank server :host has a problem right now (HTTP :status). Please try again later.', ['host' => $host, 'status' => $status]),
+            $status >= 300 => __('The bank server :host answered with HTTP :status.', ['host' => $host, 'status' => $status]).$detail,
+            default => __('The bank server :host cannot be reached: :message', ['host' => $host, 'message' => (string) ($exception->getCurlMessage() ?: $exception->getMessage())]),
+        };
     }
 
     private function explain(ServerException $exception): string

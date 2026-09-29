@@ -38,6 +38,7 @@ use App\Models\SavingsGoal;
 use App\Models\ShoppingListEntry;
 use App\Models\TargetAllocation;
 use App\Models\TimeEntry;
+use App\Models\Trip;
 use App\Models\TrustedPerson;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -121,6 +122,10 @@ class DataExportController extends Controller
             'vehicles' => $household
                 ? Vehicle::query()->where('household_id', $household->id)->where('created_by', $user->id)->with('logs')->orderBy('id')->get()
                     ->map(fn (Vehicle $vehicle) => $vehicle->makeHidden(['household_id', 'created_by'])->toArray())
+                : [],
+            'trips' => $household
+                ? Trip::query()->where('household_id', $household->id)->where('created_by', $user->id)->with(['bookings', 'packingItems'])->orderBy('starts_on')->get()
+                    ->map(fn (Trip $trip) => $trip->makeHidden(['household_id', 'created_by'])->toArray())
                 : [],
             'home' => $household
                 ? [

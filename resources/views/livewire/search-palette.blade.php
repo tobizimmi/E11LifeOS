@@ -175,6 +175,7 @@ new class extends Component
             ['🚗 '.__('Vehicles'), route('vehicles.index'), 'auto fahrzeug tüv hu inspektion tanken fahrtenbuch reifen kfz'],
             ['🏡 '.__('At home'), route('house.index'), 'zuhause wartung heizung rauchmelder zähler zählerstand strom gas wasser verbrauch abschlag'],
             ['🎉 '.__('Year in review'), route('review.index'), 'jahresrückblick jahr rückblick statistik bilanz review'],
+            ['🛡️ '.__('Provision check'), route('provision.index'), 'versicherung versicherungscheck haftpflicht berufsunfähigkeit rente rentenlücke altersvorsorge fire freiheit'],
         ];
 
         if ($user->canUseAddon(Addons::RECIPES)) {

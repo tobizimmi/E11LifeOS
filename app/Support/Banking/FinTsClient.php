@@ -21,7 +21,8 @@ use Throwable;
  * Talks FinTS with the bank (nemiah/php-fints): login with strong customer authentication
  * (TAN or confirmation in the banking app), securities account holdings and account bookings.
  *
- * Results: ['status' => 'done', 'holdings' => [...], 'accounts' => [iban => bookings]] or
+ * Operations: "depot" (holdings), "statement" (bookings), "accounts" (only the account list) and "test".
+ * Results: ['status' => 'done', 'holdings' => [...], 'accounts' => [iban => bookings], 'bank_accounts' => [...]] or
  * ['status' => 'tan_required', 'challenge' => …, 'decoupled' => bool, 'state' => [...]].
  */
 class FinTsClient
@@ -44,7 +45,7 @@ class FinTsClient
             return $this->tanRequired($fints, $login, $operation);
         }
 
-        return $this->run($fints, $operation);
+        return $this->run($fints, $operation, $connection->skippedAccounts($operation));
     }
 
     /**
@@ -64,7 +65,7 @@ class FinTsClient
             throw new RuntimeException(__('The bank rejected the TAN: :message', ['message' => implode('; ', $exception->getErrors())]));
         }
 
-        return $this->run($fints, $state['operation']);
+        return $this->run($fints, $state['operation'], $connection->skippedAccounts($state['operation']));
     }
 
     /**
@@ -86,7 +87,7 @@ class FinTsClient
             throw new RuntimeException($this->explain($exception));
         }
 
-        return $this->run($fints, $state['operation']);
+        return $this->run($fints, $state['operation'], $connection->skippedAccounts($state['operation']));
     }
 
     private function client(BankConnection $connection, string $pin, ?string $persisted = null): FinTs
@@ -152,11 +153,12 @@ class FinTsClient
     }
 
     /**
+     * @param  list<string>  $skipped  account numbers the user switched off for this operation
      * @return array<string, mixed>
      */
-    private function run(FinTs $fints, string $operation): array
+    private function run(FinTs $fints, string $operation, array $skipped = []): array
     {
-        $result = ['status' => 'done', 'holdings' => [], 'accounts' => [], 'errors' => []];
+        $result = ['status' => 'done', 'holdings' => [], 'accounts' => [], 'bank_accounts' => [], 'errors' => []];
 
         if ($operation !== 'test') {
             try {
@@ -168,11 +170,15 @@ class FinTsClient
                 $result['errors'][] = __('The account list could not be read: :message', ['message' => $exception->getMessage()]);
             }
 
+            $result['bank_accounts'] = $this->bankAccounts($fints, $accounts);
+
             if ($operation === 'depot') {
                 // Depots are usually not SEPA accounts: take them from the bank's account data (UPD) first.
                 $depots = $this->depotAccounts($fints);
                 $accounts = [...$depots, ...array_filter($accounts, fn (SEPAAccount $account) => ! collect($depots)->contains(fn (SEPAAccount $depot) => $depot->getAccountNumber() === $account->getAccountNumber()))];
             }
+
+            $accounts = $operation === 'accounts' ? [] : array_filter($accounts, fn (SEPAAccount $account) => ! in_array((string) $account->getAccountNumber(), $skipped, true));
 
             foreach ($accounts as $account) {
                 try {
@@ -194,6 +200,71 @@ class FinTsClient
         }
 
         return $result;
+    }
+
+    /**
+     * All accounts of the login: the bank's account data (UPD) with account type and allowed
+     * transactions, plus SEPA accounts the UPD does not list.
+     *
+     * @param  list<SEPAAccount>  $sepaAccounts
+     * @return list<array{number: string, iban: ?string, type: string, product: ?string, owner: ?string, currency: ?string, bookings: bool, holdings: bool}>
+     */
+    private function bankAccounts(FinTs $fints, array $sepaAccounts): array
+    {
+        // php-fints keeps the UPD private; it is read, not changed.
+        $upd = (fn () => $this->upd ?? null)->call($fints);
+        $list = [];
+
+        foreach (is_array($upd->hiupd ?? null) ? $upd->hiupd : [] as $hiupd) {
+            $number = $hiupd->kontoverbindung?->kontonummer ?? null;
+
+            if (! $number) {
+                continue;
+            }
+
+            $transactions = collect($hiupd->getErlaubteGeschaeftsvorfaelle())->map(fn ($transaction) => $transaction->getGeschaeftsvorfall());
+            $type = self::accountType($hiupd->kontoart ?? null, $transactions->contains('HKWPD'));
+            $iban = $hiupd->iban ?? null;
+            $list[(string) $number] = [
+                'number' => (string) $number,
+                'iban' => $iban,
+                'type' => $type,
+                'product' => $hiupd->kontoproduktbezeichnung ?? null,
+                'owner' => trim(($hiupd->name1 ?? '').' '.($hiupd->name2 ?? '')) ?: null,
+                'currency' => $hiupd->kontowaehrung ?? null,
+                'bookings' => (bool) $iban && ($transactions->isEmpty() ? $type !== 'depot' : $transactions->intersect(['HKKAZ', 'HKCAZ'])->isNotEmpty()),
+                'holdings' => $type === 'depot' || $transactions->contains('HKWPD'),
+            ];
+        }
+
+        foreach ($sepaAccounts as $account) {
+            $number = (string) $account->getAccountNumber();
+            $list[$number] ??= [
+                'number' => $number, 'iban' => $account->getIban(), 'type' => 'other', 'product' => null, 'owner' => null, 'currency' => null,
+                'bookings' => (bool) $account->getIban(), 'holdings' => false,
+            ];
+        }
+
+        return array_values($list);
+    }
+
+    /**
+     * Account type from the FinTS "Kontoart" (1–9 current account, 10–29 savings/fixed deposit,
+     * 30–39 and 60–69 depot, 40–49 loan, 50–59 credit card, 70–79 building savings, 80–89 insurance).
+     */
+    public static function accountType(?int $kontoart, bool $allowsHoldings = false): string
+    {
+        return match (true) {
+            $kontoart === null => $allowsHoldings ? 'depot' : 'other',
+            $kontoart >= 1 && $kontoart <= 9 => 'giro',
+            $kontoart >= 10 && $kontoart <= 29 => 'savings',
+            ($kontoart >= 30 && $kontoart <= 39) || ($kontoart >= 60 && $kontoart <= 69) => 'depot',
+            $kontoart >= 40 && $kontoart <= 49 => 'loan',
+            $kontoart >= 50 && $kontoart <= 59 => 'credit_card',
+            $kontoart >= 70 && $kontoart <= 79 => 'building_savings',
+            $kontoart >= 80 && $kontoart <= 89 => 'insurance',
+            default => 'other',
+        };
     }
 
     /**

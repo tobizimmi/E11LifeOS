@@ -15,6 +15,7 @@ use App\Models\FinanceRule;
 use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
+use App\Models\KnowledgeFavorite;
 use App\Models\MealPlan;
 use App\Models\NetWorthItem;
 use App\Models\NetWorthSnapshot;
@@ -105,6 +106,7 @@ class DataExportController extends Controller
                     'chosen' => $comparison->chosenQuote?->vendor,
                 ]),
             ],
+            'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household
                 ? RealEstate::query()->visibleTo($user, $household->id)->with(['budgetItems', 'invoices', 'loans', 'subsidies', 'tenants.payments', 'utilityStatements', 'valuations', 'applicants', 'handovers'])->orderBy('id')->get()

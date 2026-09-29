@@ -201,6 +201,10 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-end">
+                <a href="{{ route('cashflow.index') }}" wire:navigate class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">🧭 {{ __('Cashflow analysis') }}</a>
+            </div>
+
             {{-- Headline figures --}}
             <section class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-2xl bg-white p-5 shadow-sm sm:col-span-1 dark:bg-gray-800">

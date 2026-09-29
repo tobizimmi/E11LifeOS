@@ -408,9 +408,9 @@ new class extends Component
                             @endif
                         </div>
                         @if ($viewable)
-                            <button type="button" wire:click="editDocument({{ $document->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Title, tag or note in paperless') }}" aria-label="{{ __('Edit in paperless') }}">✎</button>
+                            <button type="button" wire:click="editDocument({{ $document->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Title, tag or note in paperless') }}" aria-label="{{ __('Edit in paperless') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         @endif
-                        <button type="button" wire:click="unlink({{ $document->id }})" wire:confirm="{{ __('Remove this link? The document itself stays where it is.') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove link') }}">✕</button>
+                        <button type="button" wire:click="unlink({{ $document->id }})" wire:confirm="{{ __('Remove this link? The document itself stays where it is.') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove link') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </div>
 
                     @if ($editingDocumentId === $document->id)

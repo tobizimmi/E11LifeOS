@@ -405,7 +405,7 @@ new #[Layout('layouts.app')] class extends Component
                                             </td>
                                             <td class="px-3 py-2.5 text-end tabular-nums text-gray-500 dark:text-gray-400">{{ number_format($row['weight'], 1, ',', '.') }} %</td>
                                             <td class="pe-2">
-                                                <button type="button" wire:click="editPosition({{ $position->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Edit') }}">✎</button>
+                                                <button type="button" wire:click="editPosition({{ $position->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -474,7 +474,7 @@ new #[Layout('layouts.app')] class extends Component
                     <div>
                         <x-input-label for="position-search" :value="__('Security')" />
                         @if ($positionForm['symbol'])
-                            <p class="mt-1 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40"><strong>{{ $positionForm['symbol'] }}</strong> <span class="truncate text-gray-600 dark:text-gray-300">{{ $positionForm['name'] }}</span> <button type="button" wire:click="$set('positionForm.symbol', '')" class="ms-auto text-gray-400 hover:text-gray-700" aria-label="{{ __('Change') }}">✕</button></p>
+                            <p class="mt-1 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40"><strong>{{ $positionForm['symbol'] }}</strong> <span class="truncate text-gray-600 dark:text-gray-300">{{ $positionForm['name'] }}</span> <button type="button" wire:click="$set('positionForm.symbol', '')" class="ms-auto text-gray-400 hover:text-gray-700" aria-label="{{ __('Change') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button></p>
                         @else
                             <div class="mt-1">@include('portfolio.partials.security-picker', ['id' => 'position-search', 'model' => 'positionForm.symbol', 'nameModel' => 'positionForm.name'])</div>
                         @endif

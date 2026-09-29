@@ -104,7 +104,7 @@
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-2 text-end">
                                     <button type="button" wire:click="createTask('item', {{ $row['item']->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Create task') }}" aria-label="{{ __('Create task') }}">✅</button>
-                                    <button type="button" wire:click="editItem({{ $row['item']->id }})" class="ms-1 text-gray-400 hover:text-indigo-600" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}">✎</button>
+                                    <button type="button" wire:click="editItem({{ $row['item']->id }})" class="ms-1 text-gray-400 hover:text-indigo-600" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                 </td>
                             </tr>
                         @endforeach

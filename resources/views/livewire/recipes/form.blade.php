@@ -466,7 +466,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @else
                                     <div class="flex h-20 w-20 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 text-xs text-gray-500">{{ __('Photo') }}</div>
                                 @endif
-                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ __('Remove photo') }}">✕</button>
+                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ __('Remove photo') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         @endforeach
                     </div>
@@ -494,7 +494,7 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="flex shrink-0 items-center text-gray-400">
                                 <button type="button" wire:click="moveIngredient({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
                                 <button type="button" wire:click="moveIngredient({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
-                                <button type="button" wire:click="removeIngredient({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                                <button type="button" wire:click="removeIngredient({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         </div>
                     @endforeach
@@ -516,7 +516,7 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="mt-2 flex shrink-0 flex-col text-gray-400">
                                 <button type="button" wire:click="moveStep({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
                                 <button type="button" wire:click="moveStep({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
-                                <button type="button" wire:click="removeStep({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                                <button type="button" wire:click="removeStep({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         </div>
                     @endforeach

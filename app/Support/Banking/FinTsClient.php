@@ -168,12 +168,22 @@ class FinTsClient
                 $result['errors'][] = __('The account list could not be read: :message', ['message' => $exception->getMessage()]);
             }
 
+            if ($operation === 'depot') {
+                // Depots are usually not SEPA accounts: take them from the bank's account data (UPD) first.
+                $depots = $this->depotAccounts($fints);
+                $accounts = [...$depots, ...array_filter($accounts, fn (SEPAAccount $account) => ! collect($depots)->contains(fn (SEPAAccount $depot) => $depot->getAccountNumber() === $account->getAccountNumber()))];
+            }
+
             foreach ($accounts as $account) {
                 try {
                     $operation === 'depot' ? $this->readDepot($fints, $account, $result) : $this->readBookings($fints, $account, $result);
                 } catch (Throwable) {
                     // Current accounts have no securities and vice versa – skip what the bank refuses.
                 }
+            }
+
+            if ($operation === 'depot' && $result['holdings'] === [] && ($depots ?? []) === []) {
+                $result['errors'][] = __('The bank did not report a securities account for this login. If your depot has its own login, add it as a separate connection.');
             }
         }
 
@@ -184,6 +194,45 @@ class FinTsClient
         }
 
         return $result;
+    }
+
+    /**
+     * Securities accounts from the bank's account data (UPD): account type 30–39 or accounts that
+     * allow the holdings request (HKWPD). They share the login with the current account.
+     *
+     * @return list<SEPAAccount>
+     */
+    private function depotAccounts(FinTs $fints): array
+    {
+        // php-fints keeps the UPD private; it is read, not changed.
+        $upd = (fn () => $this->upd ?? null)->call($fints);
+
+        if (! $upd || ! is_array($upd->hiupd ?? null)) {
+            return [];
+        }
+
+        $depots = [];
+
+        foreach ($upd->hiupd as $hiupd) {
+            $allowsHoldings = collect($hiupd->getErlaubteGeschaeftsvorfaelle())->contains(fn ($transaction) => $transaction->getGeschaeftsvorfall() === 'HKWPD');
+            $type = $hiupd->kontoart ?? null;
+            $isDepot = $type !== null && $type >= 30 && $type <= 39;
+            $connection = $hiupd->kontoverbindung ?? null;
+            $number = $connection?->kontonummer;
+
+            if ((! $isDepot && ! $allowsHoldings) || ! $number) {
+                continue;
+            }
+
+            $account = new SEPAAccount;
+            $account->setAccountNumber($number);
+            $account->setSubAccount($connection->unterkontomerkmal);
+            $account->setBlz($connection->kik?->kreditinstitutscode);
+            $account->setIban($hiupd->iban ?? null);
+            $depots[] = $account;
+        }
+
+        return $depots;
     }
 
     /**

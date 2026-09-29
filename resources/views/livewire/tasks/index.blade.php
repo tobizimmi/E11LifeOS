@@ -1115,7 +1115,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </span>
                             </button>
                             @if ($template['own'])
-                                <button type="button" wire:click="deleteTemplate({{ (int) substr($key, 4) }})" wire:confirm="{{ __('Delete this template?') }}" class="rounded-lg p-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">🗑</button>
+                                <button type="button" wire:click="deleteTemplate({{ (int) substr($key, 4) }})" wire:confirm="{{ __('Delete this template?') }}" class="rounded-lg p-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="trash" class="h-5 w-5" /></button>
                             @endif
                         </li>
                     @endforeach

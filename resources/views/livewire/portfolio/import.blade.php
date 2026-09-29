@@ -220,7 +220,7 @@ new #[Layout('layouts.app')] class extends Component
                                             <td class="px-3 py-2 text-end tabular-nums">{{ $quantity($row['quantity']) }}</td>
                                             <td class="px-3 py-2 text-end tabular-nums">{{ number_format($row['price'], 2, ',', '.') }} {{ $row['currency'] }}</td>
                                             <td class="px-3 py-2 text-end tabular-nums">{{ number_format($row['fees'], 2, ',', '.') }}</td>
-                                            <td class="pe-2"><button type="button" wire:click="removeRow({{ $index }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}">✕</button></td>
+                                            <td class="pe-2"><button type="button" wire:click="removeRow({{ $index }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button></td>
                                         </tr>
                                     @endforeach
                                 </tbody>

@@ -30,7 +30,7 @@
             <div class="flex justify-center pt-2 sm:hidden" aria-hidden="true"><span class="h-1.5 w-10 rounded-full bg-gray-300 dark:bg-gray-600"></span></div>
             <header class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 dark:border-gray-700">
                 <div class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-500 dark:text-gray-400">{{ $header ?? '' }}</div>
-                <button type="button" x-on:click="close()" class="-me-2 rounded-full p-2 text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200" aria-label="{{ __('Close') }}">×</button>
+                <button type="button" x-on:click="close()" class="-me-2 rounded-full p-2 text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-5 w-5" stroke-width="2" /></button>
             </header>
         </div>
 

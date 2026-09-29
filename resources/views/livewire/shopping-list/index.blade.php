@@ -507,7 +507,7 @@ new #[Layout('layouts.app')] class extends Component
                         </select>
                         @unless ($shoppingMode)
                         <button type="button" wire:click="$set('storesOpen', true)" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Stores & walking route') }}" aria-label="{{ __('Stores & walking route') }}">⚙︎</button>
-                        <button type="button" wire:click="editList" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Edit list') }}" aria-label="{{ __('Edit list') }}">✎</button>
+                        <button type="button" wire:click="editList" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Edit list') }}" aria-label="{{ __('Edit list') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         <button type="button" wire:click="{{ $shareUrl ? '$toggle(\'sharing\')' : 'createShareLink' }}" class="rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Share') }}" aria-label="{{ __('Share') }}">🔗</button>
                         @endunless
                     </div>
@@ -566,7 +566,7 @@ new #[Layout('layouts.app')] class extends Component
                 >
                     <div class="flex items-center justify-between px-4 py-3">
                         <p class="font-medium">{{ __('Scan barcode') }}</p>
-                        <button type="button" x-on:click="close()" class="text-2xl" aria-label="{{ __('Close') }}">✕</button>
+                        <button type="button" x-on:click="close()" class="text-2xl" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </div>
                     <div class="relative flex-1 overflow-hidden">
                         <video x-ref="video" x-show="supported && ! failed" playsinline muted class="h-full w-full object-cover"></video>
@@ -644,7 +644,7 @@ new #[Layout('layouts.app')] class extends Component
                                             @if ($entry->quantity)
                                                 <span @class(['shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 dark:bg-gray-700 dark:text-gray-200', 'text-xs' => ! $shoppingMode, 'text-sm' => $shoppingMode])>{{ $entry->quantity }}</span>
                                             @endif
-                                            <button type="button" wire:click="delete({{ $entry->id }})" class="hidden shrink-0 rounded-lg p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 sm:inline dark:text-gray-600 dark:hover:bg-red-900/30" aria-label="{{ __('Delete :item', ['item' => $entry->label]) }}">✕</button>
+                                            <button type="button" wire:click="delete({{ $entry->id }})" class="hidden shrink-0 rounded-lg p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 sm:inline dark:text-gray-600 dark:hover:bg-red-900/30" aria-label="{{ __('Delete :item', ['item' => $entry->label]) }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                         </div>
                                     </li>
                                 @endforeach
@@ -676,7 +676,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <input type="checkbox" x-on:click="E11Haptic()" wire:click="toggle({{ $entry->id }})" checked class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Not bought yet: :item', ['item' => $entry->label]) }}" />
                                     <span class="flex-1 text-gray-400 line-through">{{ $entry->label }}</span>
                                     @if ($entry->quantity)<span class="text-xs text-gray-400">{{ $entry->quantity }}</span>@endif
-                                    <button type="button" wire:click="delete({{ $entry->id }})" class="text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete :item', ['item' => $entry->label]) }}">✕</button>
+                                    <button type="button" wire:click="delete({{ $entry->id }})" class="text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete :item', ['item' => $entry->label]) }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                 </li>
                             @endforeach
                         </ul>

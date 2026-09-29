@@ -422,7 +422,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <div class="flex">
                                         <button type="button" wire:click="moveItem({{ $index }}, -1)" @disabled($index === 0) class="rounded p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move up') }}">↑</button>
                                         <button type="button" wire:click="moveItem({{ $index }}, 1)" @disabled($index === count($items) - 1) class="rounded p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move down') }}">↓</button>
-                                        <button type="button" wire:click="removeItem({{ $index }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}">✕</button>
+                                        <button type="button" wire:click="removeItem({{ $index }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </div>
                                 </div>
                             </div>

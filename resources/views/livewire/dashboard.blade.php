@@ -230,7 +230,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <div class="h-full rounded-full bg-indigo-600 dark:bg-indigo-400" style="width: {{ round($onboardingDone / max(1, $onboardingTotal) * 100) }}%"></div>
                                 </div>
                             </div>
-                            <button type="button" wire:click="dismissOnboarding" class="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400" title="{{ __('Hide') }}" aria-label="{{ __('Hide first steps') }}">✕</button>
+                            <button type="button" wire:click="dismissOnboarding" class="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400" title="{{ __('Hide') }}" aria-label="{{ __('Hide first steps') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </div>
                         <ol class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach (collect($onboarding)->sortBy('done') as $step)
@@ -425,7 +425,7 @@ new #[Layout('layouts.app')] class extends Component
                             @else
                                 <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
                                     {{ __('Set your place in the profile to see the weather here.') }}
-                                    <a href="{{ route('profile') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('Set place') }}</a>
+                                    <a href="{{ route('profile') }}#briefing-place" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Set place') }}</a>
                                 </p>
                             @endif
                         </section>

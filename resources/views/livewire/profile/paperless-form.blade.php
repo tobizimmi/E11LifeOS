@@ -147,8 +147,8 @@ new class extends Component
                             <button type="button" wire:click="toggleShared({{ $instance->id }})" @disabled(! $instance->shared) aria-pressed="{{ $instance->shared ? 'false' : 'true' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => ! $instance->shared, 'text-gray-600 dark:text-gray-400' => $instance->shared])>🔒 {{ __('Only me') }}</button>
                             <button type="button" wire:click="toggleShared({{ $instance->id }})" @disabled($instance->shared) aria-pressed="{{ $instance->shared ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => $instance->shared, 'text-gray-600 dark:text-gray-400' => ! $instance->shared])>👥 {{ __('Household') }}</button>
                         </div>
-                        <button type="button" wire:click="edit({{ $instance->id }})" class="text-gray-400 hover:text-indigo-600" aria-label="{{ __('Edit') }}">✎</button>
-                        <button type="button" wire:click="remove({{ $instance->id }})" wire:confirm="{{ __('Remove this paperless connection? Links to its documents are kept, but cannot be previewed any more.') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                        <button type="button" wire:click="edit({{ $instance->id }})" class="text-gray-400 hover:text-indigo-600" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                        <button type="button" wire:click="remove({{ $instance->id }})" wire:confirm="{{ __('Remove this paperless connection? Links to its documents are kept, but cannot be previewed any more.') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     @else
                         <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">👥 {{ __('Household') }}</span>
                     @endif

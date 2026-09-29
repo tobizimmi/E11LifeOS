@@ -124,8 +124,8 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="block text-xs tabular-nums {{ ($change ?? 0) > 0 ? 'text-emerald-700 dark:text-emerald-400' : (($change ?? 0) < 0 ? 'text-orange-700 dark:text-orange-400' : 'text-gray-500') }}">{{ $change !== null ? ($change > 0 ? '+' : ($change < 0 ? '−' : '±')).number_format(abs($change), 2, ',', '.').' %' : '' }}</span>
                             </span>
                             <span class="flex shrink-0 gap-1">
-                                <button type="button" wire:click="editNotes({{ $item->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Notes') }}">✎</button>
-                                <button type="button" wire:click="remove({{ $item->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}">✕</button>
+                                <button type="button" wire:click="editNotes({{ $item->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Notes') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                                <button type="button" wire:click="remove({{ $item->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </span>
                             @if ($editingId === $item->id)
                                 <form wire:submit="saveNotes" class="flex w-full gap-2">

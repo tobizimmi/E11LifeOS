@@ -11,6 +11,14 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Banking\FinTsClient;
 use Fhp\CurlException;
+use Fhp\FinTs;
+use Fhp\Options\Credentials;
+use Fhp\Options\FinTsOptions;
+use Fhp\Protocol\UPD;
+use Fhp\Segment\Common\Kik;
+use Fhp\Segment\Common\KtvV3;
+use Fhp\Segment\HIUPD\ErlaubteGeschaeftsvorfaelleV2;
+use Fhp\Segment\HIUPD\HIUPDv6;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -190,5 +198,39 @@ class BankSyncTest extends TestCase
         $message = $connection->fresh()->sync_message;
         $this->assertStringContainsString('Die Adresse https://banking.dkb.de/ führt zur Webseite der Bank, nicht zu ihrer FinTS-Schnittstelle.', $message);
         $this->assertStringContainsString('Die bekannte FinTS-Adresse dieser Bank ist https://fints.dkb.de/fints.', $message);
+    }
+
+    public function test_securities_accounts_are_taken_from_the_account_data_of_the_bank(): void
+    {
+        $options = new FinTsOptions;
+        $options->url = 'https://fints.dkb.de/fints';
+        $options->bankCode = '12030000';
+        $options->productName = 'TEST';
+        $options->productVersion = '1.0';
+        $fints = FinTs::new($options, Credentials::create('tobi', '1111'));
+
+        $segment = function (string $number, int $type, array $transactions): HIUPDv6 {
+            $hiupd = new HIUPDv6;
+            $hiupd->kontoverbindung = KtvV3::create($number, null, Kik::create('12030000'));
+            $hiupd->kontoart = $type;
+            $hiupd->erlaubteGeschaeftsvorfaelle = array_map(function (string $code) {
+                $transaction = new ErlaubteGeschaeftsvorfaelleV2;
+                $transaction->geschaeftsvorfall = $code;
+                $transaction->anzahlBenoetigterSignaturen = 1;
+
+                return $transaction;
+            }, $transactions);
+
+            return $hiupd;
+        };
+
+        $upd = new UPD;
+        $upd->hiupd = [$segment('1001', 1, ['HKKAZ']), $segment('5005', 30, ['HKWPD']), $segment('7007', 1, ['HKWPD'])];
+        (fn () => $this->upd = $upd)->call($fints);
+
+        $depots = (fn () => $this->depotAccounts($fints))->call(new FinTsClient);
+
+        $this->assertSame(['5005', '7007'], array_map(fn ($account) => $account->getAccountNumber(), $depots));
+        $this->assertSame('12030000', $depots[0]->getBlz());
     }
 }

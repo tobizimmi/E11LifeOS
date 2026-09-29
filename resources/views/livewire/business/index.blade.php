@@ -532,7 +532,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="w-20 tabular-nums text-gray-500 dark:text-gray-400">{{ $paymentRow->paid_on->format('d.m.Y') }}</span>
                                         <span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-300">{{ $methodLabels[$paymentRow->method] ?? '' }}{{ $paymentRow->note ? ' · '.$paymentRow->note : '' }}</span>
                                         <span class="tabular-nums font-medium text-gray-900 dark:text-gray-100">{{ $euro($paymentRow->amount) }}</span>
-                                        <button type="button" wire:click="deletePayment({{ $paymentRow->id }})" wire:confirm="{{ __('Delete this payment?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                                        <button type="button" wire:click="deletePayment({{ $paymentRow->id }})" wire:confirm="{{ __('Delete this payment?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </li>
                                 @endforeach
                             </ul>
@@ -672,7 +672,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
                 <button type="button" wire:click="duplicate({{ $openDocument->id }})" class="ms-auto rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">⧉ {{ __('Duplicate') }}</button>
                 @if ($openDocument->isDraft())
-                    <button type="button" wire:click="deleteDraft({{ $openDocument->id }})" wire:confirm="{{ __('Delete this draft?') }}" class="rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">🗑</button>
+                    <button type="button" wire:click="deleteDraft({{ $openDocument->id }})" wire:confirm="{{ __('Delete this draft?') }}" class="rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700"><x-icon name="trash" class="h-5 w-5" /></button>
                 @endif
             </x-slot:footer>
         </x-sheet>

@@ -105,8 +105,8 @@
                                 <input type="text" x-model="name" maxlength="100" aria-label="{{ __('Account name') }}" class="min-w-0 flex-1 rounded-lg border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
                                 <button type="submit" class="text-sm text-indigo-600 dark:text-indigo-300">{{ __('Save') }}</button>
                             </form>
-                            <button type="button" x-show="! editing" x-on:click="editing = true" class="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Rename') }}">✎</button>
-                            <button type="button" x-show="! editing" wire:click="deleteAccount({{ $account->id }})" wire:confirm="{{ __('Delete this account with all its bookings?') }}" class="rounded p-1 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}">🗑</button>
+                            <button type="button" x-show="! editing" x-on:click="editing = true" class="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Rename') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                            <button type="button" x-show="! editing" wire:click="deleteAccount({{ $account->id }})" wire:confirm="{{ __('Delete this account with all its bookings?') }}" class="rounded p-1 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="trash" class="h-5 w-5" /></button>
                         </li>
                     @endforeach
                 </ul>

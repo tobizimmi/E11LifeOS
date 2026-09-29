@@ -24,7 +24,7 @@
                                 @endforeach
                             </select>
                             <button type="button" wire:click="createTask('subsidy', {{ $row->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Create task') }}" aria-label="{{ __('Create task') }}">✅</button>
-                            <button type="button" wire:click="editSubsidy({{ $row->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}">✎</button>
+                            <button type="button" wire:click="editSubsidy({{ $row->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         </li>
                     @endforeach
                 </ul>

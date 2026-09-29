@@ -109,7 +109,7 @@
                             @if ($row->receipt_path)
                                 <a href="{{ route('real-estate.receipt', $row) }}" target="_blank" class="text-gray-400 hover:text-indigo-600" title="{{ __('Open receipt') }}" aria-label="{{ __('Open receipt') }}">📎</a>
                             @endif
-                            <button type="button" wire:click="editInvoice({{ $row->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}">✎</button>
+                            <button type="button" wire:click="editInvoice({{ $row->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         </div>
                     </li>
                 @endforeach

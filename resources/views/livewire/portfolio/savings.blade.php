@@ -188,7 +188,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="sm:col-span-2">
                     <x-input-label for="plan-search" :value="__('Security')" />
                     @if ($form['symbol'])
-                        <p class="mt-1 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40"><strong>{{ $form['symbol'] }}</strong> <span class="truncate text-gray-600 dark:text-gray-300">{{ $form['name'] }}</span> <button type="button" wire:click="$set('form.symbol', '')" class="ms-auto text-gray-400 hover:text-gray-700" aria-label="{{ __('Change') }}">✕</button></p>
+                        <p class="mt-1 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40"><strong>{{ $form['symbol'] }}</strong> <span class="truncate text-gray-600 dark:text-gray-300">{{ $form['name'] }}</span> <button type="button" wire:click="$set('form.symbol', '')" class="ms-auto text-gray-400 hover:text-gray-700" aria-label="{{ __('Change') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button></p>
                     @else
                         <div class="mt-1">@include('portfolio.partials.security-picker', ['id' => 'plan-search', 'model' => 'form.symbol', 'nameModel' => 'form.name'])</div>
                     @endif

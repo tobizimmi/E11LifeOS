@@ -86,7 +86,7 @@
                     @if ($node = $nodes[$key] ?? null)
                         <span class="inline-flex max-w-full items-center gap-1 rounded bg-indigo-50 dark:bg-indigo-900/40 px-1.5 py-0.5 text-xs text-indigo-800 dark:text-indigo-100" wire:key="rel-{{ $item->id }}-{{ $key }}">
                             <a href="{{ $node['url'] }}" class="truncate hover:underline">{{ $node['icon'] }} {{ $node['title'] }}</a>
-                            <button type="button" x-on:click="remove(@js($key))" class="text-indigo-400 hover:text-red-600" aria-label="{{ __('Remove link') }}">✕</button>
+                            <button type="button" x-on:click="remove(@js($key))" class="text-indigo-400 hover:text-red-600" aria-label="{{ __('Remove link') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </span>
                     @endif
                 @endforeach

@@ -95,7 +95,7 @@ new #[Layout('layouts.app')] class extends Component
                 <form wire:submit="saveAlert" class="mt-4 grid gap-3 sm:grid-cols-4 sm:items-start">
                     <div class="sm:col-span-2">
                         @if ($form['symbol'])
-                            <p class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40"><strong>{{ $form['symbol'] }}</strong> <span class="truncate text-gray-600 dark:text-gray-300">{{ $form['name'] }}</span> <button type="button" wire:click="$set('form.symbol', '')" class="ms-auto text-gray-400 hover:text-gray-700" aria-label="{{ __('Change') }}">✕</button></p>
+                            <p class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40"><strong>{{ $form['symbol'] }}</strong> <span class="truncate text-gray-600 dark:text-gray-300">{{ $form['name'] }}</span> <button type="button" wire:click="$set('form.symbol', '')" class="ms-auto text-gray-400 hover:text-gray-700" aria-label="{{ __('Change') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button></p>
                         @else
                             @include('portfolio.partials.security-picker', ['id' => 'alert-search', 'model' => 'form.symbol', 'nameModel' => 'form.name'])
                         @endif
@@ -133,7 +133,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @else
                                     <span class="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">{{ __('active') }}</span>
                                 @endif
-                                <button type="button" wire:click="deleteAlert({{ $alert->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}">✕</button>
+                                <button type="button" wire:click="deleteAlert({{ $alert->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </li>
                         @endforeach
                     </ul>

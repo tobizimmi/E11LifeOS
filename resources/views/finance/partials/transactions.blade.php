@@ -39,7 +39,7 @@
         <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="manual-heading">
             <div class="flex items-center justify-between gap-2">
                 <h3 id="manual-heading" class="font-semibold text-gray-900 dark:text-gray-100">🧾 {{ __('Add receipt or cash expense') }}</h3>
-                <button type="button" wire:click="closeManual" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="{{ __('Close') }}">✕</button>
+                <button type="button" wire:click="closeManual" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
             </div>
 
             @if ($aiAvailable)
@@ -206,7 +206,7 @@
                 @foreach ($rules as $rule)
                     <li wire:key="rule-{{ $rule->id }}" class="flex items-center gap-1.5 rounded-full bg-gray-100 py-1 pe-1 ps-3 text-xs text-gray-800 dark:bg-gray-700 dark:text-gray-200">
                         „{{ $rule->pattern }}“ → {{ \App\Support\Finance\FinanceCategories::icon($rule->category) }} {{ \App\Support\Finance\FinanceCategories::label($rule->category) }}
-                        <button type="button" wire:click="deleteRule({{ $rule->id }})" class="rounded-full px-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600" aria-label="{{ __('Delete') }}">✕</button>
+                        <button type="button" wire:click="deleteRule({{ $rule->id }})" class="rounded-full px-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </li>
                 @endforeach
             </ul>

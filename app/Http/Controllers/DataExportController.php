@@ -10,6 +10,7 @@ use App\Models\CalendarSubscription;
 use App\Models\CashflowEntry;
 use App\Models\Collection;
 use App\Models\Comment;
+use App\Models\Contact;
 use App\Models\Customer;
 use App\Models\EmergencyEntry;
 use App\Models\ExternalLink;
@@ -131,6 +132,10 @@ class DataExportController extends Controller
             'cashflow_entries' => CashflowEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['kind', 'category', 'label', 'amount', 'value', 'productive']),
             'health' => HealthProfile::where('user_id', $user->id)->with('entries')->get()
                 ->map(fn (HealthProfile $profile) => $profile->only(['name', 'birth_date', 'sex', 'blood_type', 'allergies', 'conditions', 'insurance', 'emergency_contact', 'doctors']) + ['entries' => $profile->entries->map->only(['kind', 'title', 'done_on', 'next_due_on', 'interval_months', 'time_of_day', 'times', 'dosage', 'active', 'notes'])->all()]),
+            'people' => $household
+                ? Contact::where('household_id', $household->id)->where('created_by', $user->id)->with('giftIdeas')->orderBy('name')->get()
+                    ->map(fn (Contact $contact) => $contact->only(['name', 'relation', 'birthday', 'birth_year_known', 'anniversary', 'anniversary_label', 'phone', 'email', 'address', 'notes', 'visibility']) + ['gift_ideas' => $contact->giftIdeas->map->only(['title', 'url', 'price', 'status', 'occasion', 'given_on'])->all()])
+                : [],
             'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household

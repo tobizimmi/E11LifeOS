@@ -57,6 +57,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('review', 'review.index')->name('review.index');
     Volt::route('provision', 'provision.index')->name('provision.index');
     Volt::route('health', 'health.index')->name('health.index');
+    Volt::route('people', 'people.index')->name('people.index');
     Volt::route('vehicles/{vehicle}', 'vehicles.show')->whereNumber('vehicle')->name('vehicles.show');
     Route::get('emergency/pdf', [EmergencyFolderController::class, 'pdf'])->name('emergency.pdf');
     Volt::route('quotes', 'quotes.index')->name('quotes.index');

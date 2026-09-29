@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CalendarSubscription;
 use App\Models\Collection;
 use App\Models\Invoice;
 use App\Models\Item;
@@ -14,7 +15,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Everything with a date across the modules, for the calendar page: tasks, collection dates with a
- * reminder, meals, property dates, rent due days, business invoices and portfolio dates.
+ * reminder, meals, property dates, rent due days, business invoices, portfolio dates and
+ * subscribed external calendars (ICS).
  */
 class CalendarEvents
 {
@@ -30,6 +32,8 @@ class CalendarEvents
 
     public const PORTFOLIO = 'portfolio';
 
+    public const EXTERNAL = 'external';
+
     /**
      * @return array<string, array{label: string, icon: string, color: string}>
      */
@@ -42,6 +46,7 @@ class CalendarEvents
             self::REAL_ESTATE => $user->canUseAddon(Addons::REAL_ESTATE) ? ['label' => __('Real estate'), 'icon' => '🏠', 'color' => 'sky'] : null,
             self::BUSINESS => $user->canUseAddon(Addons::BUSINESS) ? ['label' => __('Small business'), 'icon' => '💼', 'color' => 'violet'] : null,
             self::PORTFOLIO => $user->canUseAddon(Addons::PORTFOLIO) ? ['label' => __('Portfolio'), 'icon' => '📈', 'color' => 'rose'] : null,
+            self::EXTERNAL => CalendarSubscription::where('user_id', $user->id)->exists() ? ['label' => __('Other calendars'), 'icon' => '🗓️', 'color' => 'slate'] : null,
         ]);
     }
 
@@ -81,6 +86,14 @@ class CalendarEvents
             foreach (PortfolioLink::events($user, $from, $until) as $event) {
                 $amount = $event['amount'] !== null ? ' ('.number_format($event['amount'], 2, ',', '.').' €)' : '';
                 $events[] = self::event($event['date'], self::PORTFOLIO, ($event['kind'] === 'dividend' ? '💰 ' : '📈 ').$event['title'].$amount, route('portfolio.security', ['symbol' => $event['symbol']]));
+            }
+        }
+
+        if (in_array(self::EXTERNAL, $allowed, true)) {
+            foreach (CalendarSubscription::where('user_id', $user->id)->get() as $subscription) {
+                foreach (IcsCalendar::eventsBetween($subscription, $from, $until) as $event) {
+                    $events[] = self::event($event['date'], self::EXTERNAL, $event['title'].' · '.$subscription->name, route('calendar.index', ['date' => $event['date'], 'day' => $event['date']]), time: $event['time']);
+                }
             }
         }
 

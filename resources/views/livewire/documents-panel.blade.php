@@ -310,7 +310,7 @@ new class extends Component
                 <button type="button" wire:click="open('paperless')" class="text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('From paperless') }}</button>
             @endif
             <button type="button" wire:click="open('mail')" class="text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('Mail link') }}</button>
-            <button type="button" wire:click="open('upload')" class="text-indigo-600 hover:underline dark:text-indigo-400">+ {{ $hasPaperless ? __('Upload to paperless') : __('Mail as PDF/.eml') }}</button>
+            <button type="button" wire:click="open('upload')" class="text-indigo-600 hover:underline dark:text-indigo-400">+ {{ $hasPaperless ? __('Upload to paperless') : __('Upload file') }}</button>
         </div>
     </div>
 

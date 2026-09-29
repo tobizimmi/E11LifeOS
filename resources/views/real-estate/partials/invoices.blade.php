@@ -49,6 +49,9 @@
         </label>
         <label class="text-sm text-gray-700 lg:col-span-2 dark:text-gray-300">{{ __('Notes') }}<input type="text" wire:model="invoice.notes" class="{{ $input }}"></label>
         <p class="text-xs text-gray-500 sm:col-span-2 lg:col-span-4 dark:text-gray-400">{{ __('Pay craftsman invoices by bank transfer – cash payments are not recognised for § 35a and § 35c.') }}</p>
+        @unless ($editingInvoiceId)
+            <p class="text-xs text-gray-500 sm:col-span-2 lg:col-span-4 dark:text-gray-400">📄 {{ __('After saving you can attach any number of further documents, e.g. instalment invoices, quotes or the final invoice.') }}</p>
+        @endunless
         <div class="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
             <x-primary-button>{{ $editingInvoiceId ? __('Save') : '+ '.__('Add invoice') }}</x-primary-button>
             @if ($editingInvoiceId)
@@ -100,6 +103,9 @@
                             @endif
                         </div>
                         <div class="flex items-center gap-2">
+                            @if (($invoiceDocumentCounts[$row->id] ?? 0) > 0)
+                                <button type="button" wire:click="editInvoice({{ $row->id }})" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 dark:bg-gray-700 dark:text-gray-300" title="{{ __('Show documents') }}">📄 {{ $invoiceDocumentCounts[$row->id] }}</button>
+                            @endif
                             @if ($row->receipt_path)
                                 <a href="{{ route('real-estate.receipt', $row) }}" target="_blank" class="text-gray-400 hover:text-indigo-600" title="{{ __('Open receipt') }}" aria-label="{{ __('Open receipt') }}">📎</a>
                             @endif

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BankAccount;
+use App\Models\ExternalLink;
 use App\Models\HouseholdMember;
 use App\Models\Item;
 use App\Models\RealEstate;
@@ -252,5 +253,28 @@ class RealEstateTest extends TestCase
         }
 
         $this->assertSame('2026-10-01', $foreign->fresh()->start_on->toDateString());
+    }
+
+    public function test_a_new_invoice_stays_open_for_further_documents(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id]);
+
+        $component = Volt::test('real-estate.show', ['realEstate' => $realEstate->id])
+            ->set('tab', 'invoices')
+            ->assertSee('Nach dem Speichern kannst du beliebig viele weitere Dokumente anhängen')
+            ->set('invoice.vendor', 'Dachdecker Kurz')->set('invoice.invoice_date', '2026-09-01')->set('invoice.amount', '5000')
+            ->call('saveInvoice')
+            ->assertHasNoErrors();
+
+        $invoice = $realEstate->invoices()->sole();
+        $component->assertSet('editingInvoiceId', $invoice->id)->assertSeeLivewire('documents-panel');
+
+        foreach (['Abschlagsrechnung 1', 'Abschlagsrechnung 2'] as $title) {
+            ExternalLink::create(['kind' => ExternalLink::MAIL, 'household_id' => $household->id, 'linkable_type' => 'real_estate_invoice', 'linkable_id' => $invoice->id, 'title' => $title, 'url' => 'https://example.com/'.urlencode($title), 'created_by' => $user->id]);
+        }
+
+        Volt::test('real-estate.show', ['realEstate' => $realEstate->id])->set('tab', 'invoices')->assertSee('📄 2');
     }
 }

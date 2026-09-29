@@ -3218,5 +3218,9 @@
     "Quoted price": "Preis",
     "Property (real estate)": "Immobilie",
     "The known FinTS address of this bank is :url.": "Die bekannte FinTS-Adresse dieser Bank ist :url.",
-    "The address :url leads to the bank's website, not to its FinTS interface. Enter the FinTS address in the connection settings.": "Die Adresse :url führt zur Webseite der Bank, nicht zu ihrer FinTS-Schnittstelle. Trage in den Verbindungseinstellungen die FinTS-Adresse ein."
+    "The address :url leads to the bank's website, not to its FinTS interface. Enter the FinTS address in the connection settings.": "Die Adresse :url führt zur Webseite der Bank, nicht zu ihrer FinTS-Schnittstelle. Trage in den Verbindungseinstellungen die FinTS-Adresse ein.",
+    "Hide completed": "Erledigte ausblenden",
+    ":count completed step|:count completed steps": ":count erledigter Schritt|:count erledigte Schritte",
+    "Everyday": "Alltag",
+    "Money & home": "Geld & Zuhause"
 }

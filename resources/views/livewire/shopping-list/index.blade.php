@@ -616,24 +616,24 @@ new #[Layout('layouts.app')] class extends Component
                                     <li
                                         wire:key="entry-{{ $entry->id }}"
                                         x-sort:item="{{ $entry->id }}"
-                                        x-data="{
-                                            dragX: 0, startX: 0, dragging: false,
-                                            start(e) { this.startX = e.touches[0].clientX; this.dragging = true },
-                                            move(e) { if (! this.dragging) return; this.dragX = Math.min(0, Math.max(-96, e.touches[0].clientX - this.startX)) },
-                                            end() { this.dragging = false; if (this.dragX < -64) { $wire.delete({{ $entry->id }}) } this.dragX = 0 },
-                                        }"
+                                        x-data="e11Swipe({ onRight: () => $wire.toggle({{ $entry->id }}), leaveOnRight: true, onLeft: () => $wire.delete({{ $entry->id }}), leaveOnLeft: true })"
                                         class="relative overflow-hidden rounded-xl"
                                     >
-                                        <div x-show="dragX < 0" x-cloak class="absolute inset-y-0 right-0 flex w-24 items-center justify-center bg-red-600 text-sm text-white">{{ __('Delete') }}</div>
+                                        <div class="absolute inset-0 flex items-center justify-between rounded-xl px-4 text-sm font-medium text-white" aria-hidden="true" :class="dx > 0 ? 'bg-emerald-600' : (dx < 0 ? 'bg-red-600' : '')">
+                                            <span x-show="dx > 0" x-cloak>✓ {{ __('Bought') }}</span>
+                                            <span x-show="dx < 0" x-cloak class="ml-auto">{{ __('Delete') }}</span>
+                                        </div>
                                         <div
-                                            @touchstart="start($event)" @touchmove="move($event)" @touchend="end()"
-                                            :style="`transform: translateX(${dragX}px)`"
-                                            @class(['relative flex items-center gap-3 rounded-xl border border-gray-200 bg-white transition-transform dark:border-gray-700 dark:bg-gray-800', 'px-3 py-2.5' => ! $shoppingMode, 'px-4 py-4' => $shoppingMode])
+                                            x-ref="content"
+                                            style="touch-action: pan-y"
+                                            x-on:pointerdown="start($event)" x-on:pointermove="move($event)" x-on:pointerup="end()" x-on:pointercancel="end()"
+                                            :class="{ 'opacity-40': leaving }"
+                                            @class(['relative flex items-center gap-3 rounded-xl border border-gray-200 bg-white transition-opacity dark:border-gray-700 dark:bg-gray-800', 'px-3 py-2.5' => ! $shoppingMode, 'px-4 py-4' => $shoppingMode])
                                         >
                                             @if ($group['key'])
                                                 <span class="drag-handle hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-600" aria-hidden="true" title="{{ __('Drag to sort') }}">⋮⋮</span>
                                             @endif
-                                            <input type="checkbox" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) aria-label="{{ __('Bought: :item', ['item' => $entry->label]) }}"
+                                            <input type="checkbox" x-on:click="E11Haptic()" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) aria-label="{{ __('Bought: :item', ['item' => $entry->label]) }}"
                                                 @class(['rounded-full border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600', 'h-5 w-5' => ! $shoppingMode, 'h-7 w-7' => $shoppingMode]) />
                                             <button type="button" wire:click="startEdit({{ $entry->id }})" class="min-w-0 flex-1 text-start">
                                                 <span @class(['block truncate text-gray-900 dark:text-gray-100', 'text-lg font-medium' => $shoppingMode])>{{ $entry->label }}</span>
@@ -673,7 +673,7 @@ new #[Layout('layouts.app')] class extends Component
                         <ul class="mt-2 space-y-1">
                             @foreach ($done as $entry)
                                 <li wire:key="done-{{ $entry->id }}" class="flex items-center gap-3 rounded-lg px-2 py-1.5">
-                                    <input type="checkbox" wire:click="toggle({{ $entry->id }})" checked class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Not bought yet: :item', ['item' => $entry->label]) }}" />
+                                    <input type="checkbox" x-on:click="E11Haptic()" wire:click="toggle({{ $entry->id }})" checked class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Not bought yet: :item', ['item' => $entry->label]) }}" />
                                     <span class="flex-1 text-gray-400 line-through">{{ $entry->label }}</span>
                                     @if ($entry->quantity)<span class="text-xs text-gray-400">{{ $entry->quantity }}</span>@endif
                                     <button type="button" wire:click="delete({{ $entry->id }})" class="text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete :item', ['item' => $entry->label]) }}">✕</button>

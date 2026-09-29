@@ -980,3 +980,154 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/** A short tap of the vibration motor where the device supports it (Android; ignored elsewhere). */
+window.E11Haptic = (duration = 8) => {
+    try {
+        navigator.vibrate?.(duration);
+    } catch {
+        // Not allowed here – feedback stays visual.
+    }
+};
+
+document.addEventListener('alpine:init', () => {
+    /**
+     * Swipe actions on list rows (touch): the row follows the finger 1:1; on release the
+     * projected momentum decides between running the action (the row flies out) and springing
+     * back. Crossing the threshold gives a short haptic tick.
+     *
+     * x-data="e11Swipe({ onRight: () => …, onLeft: () => …, leaveOnRight: true })", the moving
+     * part has x-ref="content"; the template can show the actions behind it with `dx`.
+     */
+    window.Alpine.data('e11Swipe', ({ onRight = null, onLeft = null, leaveOnRight = false, leaveOnLeft = false, enterFromOpposite = false } = {}) => ({
+        dx: 0,
+        swiping: false,
+        leaving: false,
+        gesture: null,
+        animation: null,
+
+        width() {
+            return this.$el.offsetWidth || 320;
+        },
+
+        render(value) {
+            this.dx = value;
+            this.$refs.content.style.transform = value === 0 ? '' : `translate3d(${value}px, 0, 0)`;
+        },
+
+        start(event) {
+            if (event.pointerType === 'mouse' || event.target.closest('.drag-handle, .task-handle, input, textarea, select, [x-sort\\:item]:not([x-data])')) {
+                return;
+            }
+
+            this.animation?.stop();
+            this.gesture = { x: event.clientX - this.dx, y: event.clientY, active: false, samples: [], armed: false, id: event.pointerId };
+        },
+
+        move(event) {
+            const gesture = this.gesture;
+
+            if (!gesture) {
+                return;
+            }
+
+            const dx = event.clientX - gesture.x;
+            const dy = event.clientY - gesture.y;
+
+            if (!gesture.active) {
+                if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy)) {
+                    if (Math.abs(dy) > 10) {
+                        this.gesture = null;
+                    }
+
+                    return;
+                }
+
+                gesture.active = true;
+                this.swiping = true;
+                try { this.$el.setPointerCapture(gesture.id); } catch { /* synthetic or already released pointer */ }
+            }
+
+            // Directions without an action resist instead of moving freely.
+            const allowed = (dx > 0 && onRight) || (dx < 0 && onLeft);
+            const value = allowed ? dx : E11Motion.rubberband(dx, this.width(), 0.15);
+            gesture.samples.push({ t: performance.now(), v: dx });
+            gesture.samples = gesture.samples.slice(-8);
+            this.render(value);
+
+            const armed = allowed && Math.abs(value) > this.width() * 0.35;
+
+            if (armed !== gesture.armed) {
+                gesture.armed = armed;
+                armed && E11Haptic();
+            }
+        },
+
+        end() {
+            const gesture = this.gesture;
+            this.gesture = null;
+
+            if (!gesture?.active) {
+                return;
+            }
+
+            this.swiping = false;
+            const velocity = E11Motion.velocity(gesture.samples);
+            const projected = this.dx + E11Motion.project(velocity, 0.99);
+            const limit = this.width() * 0.35;
+
+            if (projected > limit && this.dx > 0 && onRight) {
+                this.commit(1, velocity, onRight, leaveOnRight);
+            } else if (projected < -limit && this.dx < 0 && onLeft) {
+                this.commit(-1, velocity, onLeft, leaveOnLeft);
+            } else {
+                this.springTo(0, velocity, Math.abs(velocity) > 300 ? 0.8 : 1);
+            }
+        },
+
+        springTo(target, velocity = 0, damping = 1, onComplete = null) {
+            this.animation?.stop();
+            this.animation = E11Motion.spring({ from: this.dx, to: target, velocity, damping, response: 0.3, onUpdate: (value) => this.render(value), onComplete });
+        },
+
+        commit(direction, velocity, action, leave) {
+            E11Haptic(12);
+
+            if (leave) {
+                this.leaving = true;
+            }
+
+            // Fly out along the swipe, then act; rows that stay (e.g. moved to another group) come back.
+            this.springTo(direction * this.width() * 1.05, velocity, 1, () => {
+                Promise.resolve(action()).finally(() => {
+                    if (this.$el.isConnected && !leave) {
+                        // Paging (e.g. the next month) slides in from the other side.
+                        if (enterFromOpposite) {
+                            this.render(-direction * this.width() * 0.35);
+                        }
+
+                        this.springTo(0);
+                    }
+                });
+            });
+        },
+
+        /** Completing by tapping the round checkbox: the row slides out, then the server is told. */
+        complete() {
+            if (!onRight) {
+                return;
+            }
+
+            E11Haptic(12);
+
+            if (!leaveOnRight) {
+                onRight();
+
+                return;
+            }
+
+            this.leaving = true;
+            this.springTo(this.width() * 1.05, 0, 1, () => onRight());
+        },
+    }));
+});

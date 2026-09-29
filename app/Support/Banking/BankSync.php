@@ -104,7 +104,7 @@ class BankSync
             $result = $call();
         } catch (Throwable $exception) {
             if ($exception instanceof CurlException) {
-                $exception = new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url), previous: $exception);
+                $exception = new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url, (self::BANKS[$connection->bank]['url'] ?? '') ?: null), previous: $exception);
             }
 
             $connection->update(['sync_status' => 'error', 'sync_message' => mb_substr($exception->getMessage(), 0, 1000), 'pending_state' => null, 'pending_until' => null]);

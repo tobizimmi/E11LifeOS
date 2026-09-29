@@ -167,7 +167,7 @@ class BankSyncTest extends TestCase
         $connection = $this->connection($user, $household, ['pin' => '1111']);
 
         $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()
-            ->andThrow(new CurlException('Bad response with status code 403', '<html><body>Access Denied</body></html>', 403)));
+            ->andThrow(new CurlException('Bad response with status code 403', 'Access Denied', 403)));
 
         Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot');
 
@@ -175,5 +175,20 @@ class BankSyncTest extends TestCase
         $this->assertSame('error', $connection->fresh()->sync_status);
         $this->assertStringContainsString('Der Bankserver fints.dkb.de hat die Anfrage abgelehnt (HTTP 403).', $message);
         $this->assertStringContainsString('Antwort der Bank: „Access Denied“', $message);
+    }
+
+    public function test_a_web_banking_address_instead_of_fints_is_recognised(): void
+    {
+        [$user, $household] = $this->owner();
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'fints_url' => 'https://banking.dkb.de/']);
+
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()
+            ->andThrow(new CurlException('Bad response with status code 403', 'Invalid csrf token', 403)));
+
+        Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot');
+
+        $message = $connection->fresh()->sync_message;
+        $this->assertStringContainsString('Die Adresse https://banking.dkb.de/ führt zur Webseite der Bank, nicht zu ihrer FinTS-Schnittstelle.', $message);
+        $this->assertStringContainsString('Die bekannte FinTS-Adresse dieser Bank ist https://fints.dkb.de/fints.', $message);
     }
 }

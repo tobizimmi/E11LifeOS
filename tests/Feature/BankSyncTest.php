@@ -21,6 +21,7 @@ use Fhp\Segment\Common\KtvV3;
 use Fhp\Segment\HIUPD\ErlaubteGeschaeftsvorfaelleV2;
 use Fhp\Segment\HIUPD\HIUPDv6;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -331,5 +332,36 @@ class BankSyncTest extends TestCase
 
         $this->assertSame(12.0, $main->positions()->sole()->quantity);
         $this->assertSame(3.0, $kids->positions()->sole()->quantity);
+    }
+
+    public function test_a_sync_pushes_salary_large_debits_a_low_balance_and_a_negative_forecast(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-28 10:00'));
+        [$user, $household] = $this->owner();
+        $connection = $this->connection($user, $household, ['pin' => '1111']);
+        $iban = 'DE02120300000000001001';
+        BankAccount::create(['user_id' => $user->id, 'household_id' => $household->id, 'name' => 'DKB Giro', 'iban' => $iban, 'balance' => 900, 'balance_on' => '2026-09-20']);
+
+        $page = Volt::test('portfolio.banking')
+            ->set('alerts.low_balance', '100')->set('alerts.large_debit', '400,50')->call('saveAlerts')->assertHasNoErrors()
+            ->set('alerts.large_debit', 'viel')->call('saveAlerts')->assertHasErrors('alerts.large_debit')
+            ->set('alerts.large_debit', '400,50')->call('saveAlerts')->assertHasNoErrors();
+        $this->assertSame(['salary' => true, 'forecast' => true, 'large_debit' => 400.5, 'low_balance' => 100], $user->fresh()->bank_alerts);
+
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->andReturn([
+            'status' => 'done', 'holdings' => [], 'errors' => [],
+            'accounts' => [$iban => [
+                ['date' => '2026-09-27', 'amount' => 2500.0, 'counterparty' => 'Arbeitgeber GmbH', 'purpose' => 'Gehalt September'],
+                ['date' => '2026-09-28', 'amount' => -450.0, 'counterparty' => 'Möbelhaus', 'purpose' => 'Sofa'],
+                ['date' => '2026-08-01', 'amount' => -900.0, 'counterparty' => 'Autohaus', 'purpose' => 'Reparatur'],
+            ]],
+            'balances' => ['1001' => ['iban' => $iban, 'amount' => 50.0, 'currency' => 'EUR', 'date' => '2026-09-28']],
+        ]));
+
+        $page->call('sync', $connection->id, 'statement')->assertHasNoErrors();
+
+        $titles = $user->notifications()->get()->pluck('data.title')->sort()->values()->all();
+        $this->assertSame(['⚠️ DKB Giro rutscht ins Minus', '💸 Große Abbuchung: -450,00 €', '💼 Gehalt eingegangen: +2.500,00 €', '🔻 Kontostand niedrig: 50,00 €'], $titles);
+        $this->assertSame('2026-09-28', $user->fresh()->bank_alerts['forecast_alerted_on']);
     }
 }

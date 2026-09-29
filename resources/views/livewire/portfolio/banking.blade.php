@@ -3,7 +3,9 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
 use App\Models\BankConnection;
+use App\Support\Banking\BankAlerts;
 use App\Support\Banking\BankSync;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -36,6 +38,46 @@ new #[Layout('layouts.app')] class extends Component
     public bool $decoupled = false;
 
     public string $challenge = '';
+
+    /**
+     * Push settings after a sync (see BankAlerts).
+     *
+     * @var array{salary: bool, large_debit: string, low_balance: string, forecast: bool}
+     */
+    public array $alerts = [];
+
+    public function mount(): void
+    {
+        $this->resolveHousehold();
+        $settings = BankAlerts::settings(Auth::user());
+        $this->alerts = [
+            'salary' => $settings['salary'],
+            'large_debit' => $settings['large_debit'] !== null ? (string) (float) $settings['large_debit'] : '',
+            'low_balance' => $settings['low_balance'] !== null ? (string) (float) $settings['low_balance'] : '',
+            'forecast' => $settings['forecast'],
+        ];
+    }
+
+    public function saveAlerts(): void
+    {
+        $this->alerts['large_debit'] = str_replace(',', '.', trim((string) $this->alerts['large_debit']));
+        $this->alerts['low_balance'] = str_replace(',', '.', trim((string) $this->alerts['low_balance']));
+        $data = $this->validate([
+            'alerts.salary' => ['boolean'],
+            'alerts.forecast' => ['boolean'],
+            'alerts.large_debit' => ['nullable', 'numeric', 'min:1', 'max:1000000'],
+            'alerts.low_balance' => ['nullable', 'numeric', 'min:-1000000', 'max:1000000'],
+        ], attributes: ['alerts.large_debit' => __('Large debit from'), 'alerts.low_balance' => __('Balance below')])['alerts'];
+
+        $user = Auth::user();
+        $user->update(['bank_alerts' => [
+            'salary' => (bool) $data['salary'],
+            'forecast' => (bool) $data['forecast'],
+            'large_debit' => $data['large_debit'] !== '' && $data['large_debit'] !== null ? (float) $data['large_debit'] : null,
+            'low_balance' => $data['low_balance'] !== '' && $data['low_balance'] !== null ? (float) $data['low_balance'] : null,
+        ] + array_diff_key($user->bank_alerts ?? [], BankAlerts::DEFAULTS)]);
+        $this->dispatch('toast', message: __('Saved.'));
+    }
 
     private function connections()
     {
@@ -364,12 +406,12 @@ new #[Layout('layouts.app')] class extends Component
                                 @foreach ($connection->accounts as $account)
                                     @php($type = $accountTypes[$account['type']] ?? $accountTypes['other'])
                                     <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2" wire:key="account-{{ $connection->id }}-{{ $account['number'] }}">
-                                        <div class="min-w-0 flex-1">
+                                        <div class="min-w-0 basis-full sm:basis-0 sm:flex-1">
                                             <p class="text-sm text-gray-900 dark:text-gray-100"><span aria-hidden="true">{{ $type[0] }}</span> {{ $account['product'] ?: $type[1] }} <span class="ms-1 rounded bg-white px-1.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $type[1] }}</span></p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $maskedIban($account['iban']) ?? __('Account no. :number', ['number' => $account['number']]) }}@if ($account['owner']) · {{ $account['owner'] }}@endif</p>
                                         </div>
                                         @if (($account['balance'] ?? null) !== null)
-                                            <p class="text-end text-sm font-medium tabular-nums {{ $account['balance'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">{{ number_format($account['balance'], 2, ',', '.') }} {{ $account['currency'] ?? 'EUR' }}<span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('as of :date', ['date' => \Illuminate\Support\Carbon::parse($account['balance_on'])->format('d.m.Y')]) }}</span></p>
+                                            <p class="me-auto text-sm font-medium tabular-nums sm:me-0 sm:text-end {{ $account['balance'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">{{ number_format($account['balance'], 2, ',', '.') }} {{ $account['currency'] ?? 'EUR' }}<span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('as of :date', ['date' => \Illuminate\Support\Carbon::parse($account['balance_on'])->format('d.m.Y')]) }}</span></p>
                                         @endif
                                         @if ($account['bookings'])
                                             <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_bookings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_bookings')"> 💶 {{ __('Fetch bookings') }}</label>
@@ -378,8 +420,8 @@ new #[Layout('layouts.app')] class extends Component
                                             <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_holdings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_holdings')"> 📈 {{ __('Fetch holdings') }}</label>
                                         @endif
                                         @if ($account['holdings'] && $portfolioList->isNotEmpty())
-                                            <label class="flex w-full items-center gap-2 text-xs text-gray-600 dark:text-gray-400 sm:w-auto">{{ __('Compare with') }}
-                                                <select wire:change="setAccountPortfolio({{ $connection->id }}, '{{ $account['number'] }}', $event.target.value)" class="rounded-lg border-gray-300 py-1 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                            <label class="flex w-full min-w-0 items-center gap-2 text-xs text-gray-600 dark:text-gray-400 sm:w-auto">{{ __('Compare with') }}
+                                                <select wire:change="setAccountPortfolio({{ $connection->id }}, '{{ $account['number'] }}', $event.target.value)" class="min-w-0 flex-1 rounded-lg border-gray-300 py-1 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:flex-none">
                                                     <option value="">{{ $connection->portfolio ? __('Connection default (:name)', ['name' => $connection->portfolio->name]) : __('No portfolio') }}</option>
                                                     @foreach ($portfolioList as $portfolio)
                                                         <option value="{{ $portfolio->id }}" @selected(($account['portfolio_id'] ?? null) === $portfolio->id)>{{ $portfolio->name }}</option>
@@ -431,6 +473,26 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
             @endforeach
+
+            @if ($connections->isNotEmpty())
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔔 {{ __('Notifications after the bank sync') }}</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('As push message and in the bell – for bookings of the last three days, e.g. with the daily automatic sync.') }}</p>
+                    <form wire:submit="saveAlerts" class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="alerts.salary" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"> 💼 {{ __('Salary received') }}</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="alerts.forecast" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"> ⚠️ {{ __('Forecast goes below zero (30 days)') }}</label>
+                        <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">💸 {{ __('Large debit from') }}
+                            <input type="text" inputmode="decimal" wire:model="alerts.large_debit" placeholder="{{ __('off') }}" class="w-24 rounded-md border-gray-300 py-1 text-end text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"> €
+                            <x-input-error :messages="$errors->get('alerts.large_debit')" class="w-full" />
+                        </label>
+                        <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">🔻 {{ __('Balance below') }}
+                            <input type="text" inputmode="decimal" wire:model="alerts.low_balance" placeholder="{{ __('off') }}" class="w-24 rounded-md border-gray-300 py-1 text-end text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"> €
+                            <x-input-error :messages="$errors->get('alerts.low_balance')" class="w-full" />
+                        </label>
+                        <div class="sm:col-span-2"><x-primary-button>{{ __('Save') }}</x-primary-button></div>
+                    </form>
+                </section>
+            @endif
         </div>
     </div>
 

@@ -14,6 +14,7 @@ use App\Models\Customer;
 use App\Models\EmergencyEntry;
 use App\Models\ExternalLink;
 use App\Models\FinanceRule;
+use App\Models\HealthProfile;
 use App\Models\HomeTask;
 use App\Models\Household;
 use App\Models\Invoice;
@@ -128,6 +129,8 @@ class DataExportController extends Controller
                 ]
                 : [],
             'cashflow_entries' => CashflowEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['kind', 'category', 'label', 'amount', 'value', 'productive']),
+            'health' => HealthProfile::where('user_id', $user->id)->with('entries')->get()
+                ->map(fn (HealthProfile $profile) => $profile->only(['name', 'birth_date', 'sex', 'blood_type', 'allergies', 'conditions', 'insurance', 'emergency_contact', 'doctors']) + ['entries' => $profile->entries->map->only(['kind', 'title', 'done_on', 'next_due_on', 'interval_months', 'time_of_day', 'times', 'dosage', 'active', 'notes'])->all()]),
             'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household

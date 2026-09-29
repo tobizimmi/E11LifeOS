@@ -4,6 +4,8 @@ namespace App\Support\Life;
 
 use App\Models\BankAccount;
 use App\Models\EmergencyEntry;
+use App\Models\HealthEntry;
+use App\Models\HealthProfile;
 use App\Models\NetWorthItem;
 use App\Models\Portfolio;
 use App\Models\RealEstate;
@@ -138,6 +140,13 @@ class EmergencyFolder
                 ->map(fn (array $contract) => ['label' => $contract['item']->title, 'detail' => implode(' · ', array_filter([$contract['provider'], $contract['customer_number'] ? __('No. :number', ['number' => $contract['customer_number']]) : null]))])->all());
         }
 
+        $groups[] = self::group('health', __('Health'), '❤️', HealthProfile::where('user_id', $user->id)->with(['entries' => fn ($query) => $query->where('kind', HealthEntry::MEDICATION)->where('active', true)])->orderBy('name')->get()
+            ->map(fn (HealthProfile $profile) => ['label' => $profile->name, 'detail' => implode(' · ', array_filter([
+                $profile->blood_type ? __('Blood type :type', ['type' => $profile->blood_type]) : null,
+                $profile->allergies ? __('Allergies: :list', ['list' => $profile->allergies]) : null,
+                $profile->conditions ? __('Conditions: :list', ['list' => $profile->conditions]) : null,
+                $profile->entries->isNotEmpty() ? __('Medication: :list', ['list' => $profile->entries->map(fn (HealthEntry $entry) => trim($entry->title.' '.$entry->dosage))->implode(', ')]) : null,
+            ])) ?: null])->all());
         $groups[] = self::group('other', __('Other assets and debts'), '💎', NetWorthItem::where('user_id', $user->id)->orderBy('position')->get()
             ->map(fn (NetWorthItem $item) => ['label' => $item->name, 'detail' => ($item->isLiability() ? __('Debt') : __('Asset')).' · '.number_format((float) $item->value, 2, ',', '.').' €'])->all());
 

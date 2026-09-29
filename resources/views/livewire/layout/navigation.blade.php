@@ -221,6 +221,7 @@ new class extends Component
                     <x-sidebar-link icon="scale" :href="route('provision.index')" :active="request()->routeIs('provision.*')" wire:navigate>{{ __('Provision check') }}</x-sidebar-link>
                     <x-sidebar-link icon="truck" :href="route('vehicles.index')" :active="request()->routeIs('vehicles.*')" wire:navigate>{{ __('Vehicles') }}</x-sidebar-link>
                     <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>
+                    <x-sidebar-link icon="heart" :href="route('health.index')" :active="request()->routeIs('health.*')" wire:navigate>{{ __('Health') }}</x-sidebar-link>
                     <x-sidebar-link icon="sparkles" :href="route('review.index')" :active="request()->routeIs('review.*')" wire:navigate>{{ __('Year in review') }}</x-sidebar-link>
                 </div>
                 <div class="space-y-0.5">

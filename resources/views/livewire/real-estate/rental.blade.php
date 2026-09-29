@@ -65,6 +65,11 @@ new class extends Component
 
     public ?int $openApplicantId = null;
 
+    /**
+     * 'list' or 'board' (one column per status, drag cards between them).
+     */
+    public string $applicantView = 'list';
+
     public string $applicantIntro = '';
 
     public string $applicantRent = '';
@@ -567,6 +572,16 @@ new class extends Component
         $this->findApplicant($id)->update(['status' => $status]);
     }
 
+    /**
+     * Opens an applicant from the board in the detailed list.
+     */
+    public function openApplicant(int $id): void
+    {
+        $this->openApplicantId = $this->findApplicant($id)->id;
+        $this->applicantStatus = '';
+        $this->applicantView = 'list';
+    }
+
     public function rateApplicant(int $id, int $rating): void
     {
         abort_unless($rating >= 0 && $rating <= 5, 422);
@@ -614,7 +629,7 @@ new class extends Component
         $tenants = $realEstate->tenants()->get();
         $statementModel = $this->section === 'utilities' ? $realEstate->utilityStatements()->where('year', $this->year)->first() : null;
         $applicants = $this->section === 'applicants'
-            ? $realEstate->applicants()->when($this->applicantStatus !== '', fn ($query) => $query->where('status', $this->applicantStatus))->get()
+            ? $realEstate->applicants()->when($this->applicantStatus !== '' && $this->applicantView === 'list', fn ($query) => $query->where('status', $this->applicantStatus))->get()
             : collect();
         $monthlyTotal = (float) $tenants->filter(fn (RealEstateTenant $tenant) => $tenant->isActiveOn(today()))->sum(fn (RealEstateTenant $tenant) => $tenant->monthlyTotal());
 
@@ -1241,7 +1256,12 @@ new class extends Component
         <section class="{{ $card }}" aria-labelledby="applicants-heading">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h3 id="applicants-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Applicants') }}</h3>
-                <select wire:model.live="applicantStatus" aria-label="{{ __('Status') }}" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                <div class="ms-auto inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="group" aria-label="{{ __('View') }}">
+                    @foreach (['list' => '☰ '.__('List'), 'board' => '▦ '.__('Board')] as $view => $viewLabel)
+                        <button type="button" wire:click="$set('applicantView', '{{ $view }}')" aria-pressed="{{ $applicantView === $view ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => $applicantView === $view, 'text-gray-600 dark:text-gray-400' => $applicantView !== $view])>{{ $viewLabel }}</button>
+                    @endforeach
+                </div>
+                <select @if ($applicantView === 'board') hidden @endif wire:model.live="applicantStatus" aria-label="{{ __('Status') }}" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                     <option value="">{{ __('All (:count)', ['count' => $applicantCounts->sum()]) }}</option>
                     @foreach ($statusLabels as $key => $label)
                         <option value="{{ $key }}">{{ $label }} ({{ $applicantCounts[$key] ?? 0 }})</option>
@@ -1250,6 +1270,29 @@ new class extends Component
             </div>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Rejected applicants are deleted automatically after six months (data protection).') }}</p>
 
+            @if ($applicantView === 'board')
+                <div class="mt-3 flex gap-3 overflow-x-auto pb-2">
+                    @foreach ($statusLabels as $status => $label)
+                        <div wire:key="applicant-column-{{ $status }}" class="flex w-56 shrink-0 flex-col rounded-xl bg-gray-50 p-2 dark:bg-gray-900/50">
+                            <h4 class="flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }} <span>{{ $applicants->where('status', $status)->count() }}</span></h4>
+                            <ul class="mt-2 flex min-h-[4rem] flex-1 flex-col gap-2" x-data x-sort="$wire.setApplicantStatus($item, @js($status))" x-sort:group="applicants" x-sort:config="{ animation: 150, ghostClass: 'opacity-40' }" aria-label="{{ $label }}">
+                                @foreach ($applicants->where('status', $status) as $applicant)
+                                    <li wire:key="applicant-card-{{ $applicant->id }}" x-sort:item="{{ $applicant->id }}" class="cursor-grab rounded-lg bg-white p-2 text-sm shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                        <button type="button" wire:click="openApplicant({{ $applicant->id }})" class="block w-full text-start">
+                                            <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $applicant->name }}</span>
+                                            <span class="block text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count person|:count persons', $applicant->persons) }}@if ($applicant->net_income) · {{ __(':amount net', ['amount' => $euro($applicant->net_income, 0)]) }}@endif</span>
+                                            @if ($applicant->rating)
+                                                <span class="block text-xs text-amber-400" aria-label="{{ trans_choice(':count star|:count stars', $applicant->rating) }}">{{ str_repeat('★', $applicant->rating) }}</span>
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endforeach
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Drag the cards to change the status; click a card for the details.') }}</p>
+            @else
             <ul class="mt-3 space-y-3">
                 @forelse ($applicants as $applicant)
                     @php
@@ -1323,6 +1366,7 @@ new class extends Component
                     <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('No applications yet.') }}</li>
                 @endforelse
             </ul>
+            @endif
         </section>
     @endif
 </div>

@@ -115,6 +115,18 @@ new class extends Component
         ];
     }
 
+    /**
+     * A document dropped onto one of the targets: opens the filing form with that target.
+     */
+    public function assignTo(int $documentId, string $target): void
+    {
+        $this->assign($documentId);
+
+        if ($this->assigningId === $documentId && in_array($target, PaperlessInbox::targetsFor($this->currentUser()), true)) {
+            $this->form['target'] = $target;
+        }
+    }
+
     public function cancel(): void
     {
         $this->reset('assigningId', 'assigningTitle', 'form');
@@ -368,12 +380,29 @@ new class extends Component
         <p class="text-sm text-red-600 dark:text-red-400">{{ $error }}</p>
     @endif
 
+    @if ($documents !== [])
+        {{-- Drag a document onto a target to file it there (desktop); the buttons below do the same. --}}
+        <div class="hidden flex-wrap gap-2 sm:flex" aria-hidden="true">
+            @foreach ($targets as $target)
+                <div
+                    x-data="{ over: false }"
+                    x-on:dragover="if ([...$event.dataTransfer.types].includes('application/x-paperless-document')) { $event.preventDefault(); over = true }"
+                    x-on:dragleave="over = false"
+                    x-on:drop="over = false; const id = $event.dataTransfer.getData('application/x-paperless-document'); if (id) { $event.preventDefault(); $wire.assignTo(parseInt(id), @js($target)) }"
+                    :class="over ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200' : 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300'"
+                    class="flex-1 rounded-lg border-2 border-dashed px-3 py-2 text-center text-sm"
+                >{{ $targetLabels[$target] }}</div>
+            @endforeach
+        </div>
+        <p class="hidden text-xs text-gray-500 sm:block dark:text-gray-400">{{ __('Tip: drag a document onto one of the fields above.') }}</p>
+    @endif
+
     <ul class="space-y-3">
         @forelse ($documents as $paperlessDocument)
-            <li wire:key="paperless-inbox-{{ $paperlessDocument['id'] }}" class="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+            <li wire:key="paperless-inbox-{{ $paperlessDocument['id'] }}" draggable="true" x-data x-on:dragstart="$event.dataTransfer.setData('application/x-paperless-document', '{{ $paperlessDocument['id'] }}'); $event.dataTransfer.effectAllowed = 'move'" class="rounded-md border border-gray-200 dark:border-gray-700 p-3">
                 <div class="flex gap-3">
-                    <a href="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'preview']) }}" target="_blank" rel="noopener" class="shrink-0">
-                        <img src="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'thumb']) }}" alt="" loading="lazy" class="h-20 w-16 rounded border border-gray-200 dark:border-gray-700 object-cover bg-gray-50">
+                    <a href="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'preview']) }}" target="_blank" rel="noopener" draggable="false" class="shrink-0">
+                        <img draggable="false" src="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'thumb']) }}" alt="" loading="lazy" class="h-20 w-16 rounded border border-gray-200 dark:border-gray-700 object-cover bg-gray-50">
                     </a>
                     <div class="min-w-0 flex-1">
                         <p class="font-medium text-gray-900 dark:text-gray-100 break-words">{{ $paperlessDocument['title'] }}</p>

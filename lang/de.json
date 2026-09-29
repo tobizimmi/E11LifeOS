@@ -3134,5 +3134,9 @@
     "[new street and number]": "[neue Straße und Hausnummer]",
     "[postcode and town]": "[PLZ und Ort]",
     "Please send all future mail to this address.": "Bitte senden Sie künftige Post an diese Adresse.",
-    "Letter": "Brief"
+    "Letter": "Brief",
+    "Drag the cards to change the status; click a card for the details.": "Karten ziehen, um den Status zu ändern; Karte anklicken für die Details.",
+    "Tip: drag a document onto one of the fields above.": "Tipp: Ein Dokument auf eines der Felder oben ziehen.",
+    "Sort bookings by drag & drop": "Buchungen per Drag & Drop einsortieren",
+    "Drag a bar to move the trade, drag its right edge to change the end.": "Balken ziehen verschiebt das Gewerk, am rechten Rand ziehen ändert das Ende."
 }

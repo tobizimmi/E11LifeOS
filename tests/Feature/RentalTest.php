@@ -249,4 +249,27 @@ class RentalTest extends TestCase
 
         $this->assertSame(330000.0, $realEstate->valuations()->sole()->value);
     }
+
+    public function test_applicants_are_moved_between_status_columns_on_the_board(): void
+    {
+        [$user, , $realEstate] = $this->rental();
+        $applicant = RealEstateApplicant::factory()->create(['real_estate_id' => $realEstate->id, 'name' => 'Erika Muster']);
+        $foreign = RealEstateApplicant::factory()->create(['name' => 'Fremd']);
+        $this->actingAs($user);
+
+        Volt::test('real-estate.rental', ['realEstateId' => $realEstate->id])
+            ->set('section', 'applicants')
+            ->set('applicantView', 'board')
+            ->assertSee('Erika Muster')
+            ->assertSee('Karten ziehen, um den Status zu ändern')
+            ->call('setApplicantStatus', $applicant->id, 'viewing')
+            ->call('openApplicant', $applicant->id)
+            ->assertSet('applicantView', 'list')
+            ->assertSet('openApplicantId', $applicant->id)
+            ->call('setApplicantStatus', $foreign->id, 'viewing')
+            ->assertNotFound();
+
+        $this->assertSame('viewing', $applicant->fresh()->status);
+        $this->assertSame('new', $foreign->fresh()->status);
+    }
 }

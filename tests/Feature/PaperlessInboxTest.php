@@ -147,4 +147,20 @@ class PaperlessInboxTest extends TestCase
         [$stranger] = $this->memberWithHousehold();
         $this->actingAs($stranger)->get(route('inbox.index'))->assertOk()->assertDontSeeLivewire('paperless-inbox');
     }
+
+    public function test_a_document_dropped_on_a_target_opens_the_form_for_that_target(): void
+    {
+        $this->fakePaperless();
+        [$user, $household] = $this->memberWithHousehold();
+        $this->paperlessInstance($user->id, $household->id);
+        $this->actingAs($user);
+
+        Volt::test('paperless-inbox')
+            ->assertSee('Tipp: Ein Dokument auf eines der Felder oben ziehen.')
+            ->call('assignTo', 42, 'task')
+            ->assertSet('assigningId', 42)
+            ->assertSet('form.target', 'task')
+            ->call('assignTo', 42, 'nonsense')
+            ->assertSet('form.target', 'finance');
+    }
 }

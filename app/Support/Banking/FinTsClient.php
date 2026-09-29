@@ -3,6 +3,7 @@
 namespace App\Support\Banking;
 
 use App\Models\BankConnection;
+use Fhp\Action\GetBalance;
 use Fhp\Action\GetDepotAufstellung;
 use Fhp\Action\GetSEPAAccounts;
 use Fhp\Action\GetStatementOfAccount;
@@ -22,7 +23,8 @@ use Throwable;
  * (TAN or confirmation in the banking app), securities account holdings and account bookings.
  *
  * Operations: "depot" (holdings), "statement" (bookings), "accounts" (only the account list) and "test".
- * Results: ['status' => 'done', 'holdings' => [...], 'accounts' => [iban => bookings], 'bank_accounts' => [...]] or
+ * Results: ['status' => 'done', 'holdings' => [...], 'accounts' => [iban => bookings], 'bank_accounts' => [...],
+ * 'balances' => [account number => balance]] or
  * ['status' => 'tan_required', 'challenge' => …, 'decoupled' => bool, 'state' => [...]].
  */
 class FinTsClient
@@ -158,7 +160,7 @@ class FinTsClient
      */
     private function run(FinTs $fints, string $operation, array $skipped = []): array
     {
-        $result = ['status' => 'done', 'holdings' => [], 'accounts' => [], 'bank_accounts' => [], 'errors' => []];
+        $result = ['status' => 'done', 'holdings' => [], 'accounts' => [], 'bank_accounts' => [], 'balances' => [], 'errors' => []];
 
         if ($operation !== 'test') {
             try {
@@ -178,6 +180,7 @@ class FinTsClient
                 $accounts = [...$depots, ...array_filter($accounts, fn (SEPAAccount $account) => ! collect($depots)->contains(fn (SEPAAccount $depot) => $depot->getAccountNumber() === $account->getAccountNumber()))];
             }
 
+            $sepaAccounts = $accounts;
             $accounts = $operation === 'accounts' ? [] : array_filter($accounts, fn (SEPAAccount $account) => ! in_array((string) $account->getAccountNumber(), $skipped, true));
 
             foreach ($accounts as $account) {
@@ -185,6 +188,16 @@ class FinTsClient
                     $operation === 'depot' ? $this->readDepot($fints, $account, $result) : $this->readBookings($fints, $account, $result);
                 } catch (Throwable) {
                     // Current accounts have no securities and vice versa – skip what the bank refuses.
+                }
+            }
+
+            if ($operation !== 'depot') {
+                foreach ($operation === 'accounts' ? $sepaAccounts : $accounts as $account) {
+                    try {
+                        $this->readBalance($fints, $account, $result);
+                    } catch (Throwable) {
+                        // Not every account (or bank) reports a balance.
+                    }
                 }
             }
 
@@ -329,6 +342,36 @@ class FinTsClient
                 'value' => $holding->getValue(),
                 'currency' => $holding->getCurrency() ?: 'EUR',
                 'price_date' => $holding->getDate()?->format('Y-m-d'),
+                'account_number' => (string) $account->getAccountNumber() ?: null,
+            ];
+        }
+    }
+
+    /**
+     * Booked balance of an account (HKSAL).
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private function readBalance(FinTs $fints, SEPAAccount $account, array &$result): void
+    {
+        if (! $account->getIban()) {
+            return;
+        }
+
+        $action = GetBalance::create($account);
+        $fints->execute($action);
+
+        if ($action->needsTan()) {
+            return;
+        }
+
+        foreach ($action->getBalances() as $balance) {
+            $booked = $balance->getGebuchterSaldo();
+            $result['balances'][(string) $account->getAccountNumber()] = [
+                'iban' => $account->getIban(),
+                'amount' => round($booked->getAmount(), 2),
+                'currency' => $booked->getCurrency(),
+                'date' => $booked->getTimestamp()->format('Y-m-d'),
             ];
         }
     }

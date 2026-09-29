@@ -3845,5 +3845,10 @@
     "Fetch accounts": "Konten abrufen",
     "Account no. :number": "Konto-Nr. :number",
     "Fetch the accounts once to see whether the bank reports a current account, a securities account or more for this login – and choose which ones are fetched.": "Rufe die Konten einmal ab, um zu sehen, ob die Bank für diesen Zugang ein Girokonto, ein Depot oder weitere Konten meldet – und wähle, welche davon abgerufen werden.",
-    ":count account found.|:count accounts found.": ":count Konto gefunden.|:count Konten gefunden."
+    ":count account found.|:count accounts found.": ":count Konto gefunden.|:count Konten gefunden.",
+    "as of :date": "Stand :date",
+    "Compare with": "Abgleich mit",
+    "Connection default (:name)": "Wie Verbindung (:name)",
+    "No portfolio": "Kein Depot",
+    "Adopt the bank's quantities in the linked portfolios": "Stückzahlen der Bank in den verknüpften Depots übernehmen"
 }

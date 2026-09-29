@@ -157,6 +157,20 @@ new #[Layout('layouts.app')] class extends Component
         $connection->update(['accounts' => $accounts]);
     }
 
+    /**
+     * Links a depot account to its own portfolio; empty uses the connection's portfolio.
+     */
+    public function setAccountPortfolio(int $connectionId, string $number, string $portfolioId): void
+    {
+        $connection = $this->findConnection($connectionId);
+        $accounts = $connection->accounts ?? [];
+        $index = collect($accounts)->search(fn (array $account) => (string) $account['number'] === $number);
+        abort_if($index === false, 404);
+
+        $accounts[$index]['portfolio_id'] = $portfolioId !== '' && $this->portfolios()->whereKey($portfolioId)->exists() ? (int) $portfolioId : null;
+        $connection->update(['accounts' => $accounts]);
+    }
+
     public function submitPin(BankSync $sync): void
     {
         $this->validate(['pin' => ['required', 'string', 'max:64']], attributes: ['pin' => __('PIN')]);
@@ -354,11 +368,24 @@ new #[Layout('layouts.app')] class extends Component
                                             <p class="text-sm text-gray-900 dark:text-gray-100"><span aria-hidden="true">{{ $type[0] }}</span> {{ $account['product'] ?: $type[1] }} <span class="ms-1 rounded bg-white px-1.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $type[1] }}</span></p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $maskedIban($account['iban']) ?? __('Account no. :number', ['number' => $account['number']]) }}@if ($account['owner']) · {{ $account['owner'] }}@endif</p>
                                         </div>
+                                        @if (($account['balance'] ?? null) !== null)
+                                            <p class="text-end text-sm font-medium tabular-nums {{ $account['balance'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">{{ number_format($account['balance'], 2, ',', '.') }} {{ $account['currency'] ?? 'EUR' }}<span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('as of :date', ['date' => \Illuminate\Support\Carbon::parse($account['balance_on'])->format('d.m.Y')]) }}</span></p>
+                                        @endif
                                         @if ($account['bookings'])
                                             <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_bookings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_bookings')"> 💶 {{ __('Fetch bookings') }}</label>
                                         @endif
                                         @if ($account['holdings'])
                                             <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_holdings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_holdings')"> 📈 {{ __('Fetch holdings') }}</label>
+                                        @endif
+                                        @if ($account['holdings'] && $portfolioList->isNotEmpty())
+                                            <label class="flex w-full items-center gap-2 text-xs text-gray-600 dark:text-gray-400 sm:w-auto">{{ __('Compare with') }}
+                                                <select wire:change="setAccountPortfolio({{ $connection->id }}, '{{ $account['number'] }}', $event.target.value)" class="rounded-lg border-gray-300 py-1 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                                    <option value="">{{ $connection->portfolio ? __('Connection default (:name)', ['name' => $connection->portfolio->name]) : __('No portfolio') }}</option>
+                                                    @foreach ($portfolioList as $portfolio)
+                                                        <option value="{{ $portfolio->id }}" @selected(($account['portfolio_id'] ?? null) === $portfolio->id)>{{ $portfolio->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
                                         @endif
                                     </li>
                                 @endforeach
@@ -380,19 +407,26 @@ new #[Layout('layouts.app')] class extends Component
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    @php($depotAccounts = collect($comparisons[$connection->id])->pluck('position.account_number')->unique())
                                     @foreach ($comparisons[$connection->id] as $row)
+                                        @if ($depotAccounts->count() > 1 && ($loop->first || $comparisons[$connection->id][$loop->index - 1]['position']->account_number !== $row['position']->account_number))
+                                            @php($depotAccount = collect($connection->accounts ?? [])->firstWhere('number', $row['position']->account_number))
+                                            <tr><td colspan="4" class="pt-3 pb-1 text-xs font-medium text-gray-600 dark:text-gray-300">📈 {{ ($depotAccount['product'] ?? null) ?: __('Securities account') }} · {{ __('Account no. :number', ['number' => $row['position']->account_number ?? '—']) }}{{ $row['portfolio_id'] && $portfolioList->firstWhere('id', $row['portfolio_id']) ? ' → '.$portfolioList->firstWhere('id', $row['portfolio_id'])->name : '' }}</td></tr>
+                                        @endif
                                         <tr>
                                             <td class="max-w-[16rem] py-1.5 pe-3"><span class="block truncate text-gray-900 dark:text-gray-100">{{ $row['position']->name }}</span><span class="text-xs text-gray-500">{{ $row['position']->isin }}{{ $row['symbol'] ? ' · '.$row['symbol'] : '' }}</span></td>
                                             <td class="py-1.5 pe-3 text-end tabular-nums">{{ $quantity($row['position']->quantity) }}</td>
-                                            <td class="py-1.5 pe-3 text-end tabular-nums {{ abs($row['difference']) > 0.000001 ? 'text-amber-700 dark:text-amber-400' : 'text-gray-600 dark:text-gray-300' }}">{{ $connection->portfolio ? $quantity($row['portfolio_quantity']) : '—' }}</td>
+                                            <td class="py-1.5 pe-3 text-end tabular-nums {{ abs($row['difference']) > 0.000001 ? 'text-amber-700 dark:text-amber-400' : 'text-gray-600 dark:text-gray-300' }}">{{ $row['portfolio_id'] ? $quantity($row['portfolio_quantity']) : '—' }}</td>
                                             <td class="py-1.5 text-end tabular-nums">{{ $row['position']->value !== null ? number_format($row['position']->value, 2, ',', '.').' '.$row['position']->currency : '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
-                        @if ($connection->portfolio && collect($comparisons[$connection->id])->contains(fn ($row) => abs($row['difference']) > 0.000001 && $row['symbol']))
-                            <button type="button" wire:click="applyToPortfolio({{ $connection->id }})" wire:confirm="{{ __('Book transfers so that the portfolio matches the bank?') }}" class="mt-3 rounded-lg px-3 py-1.5 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-gray-700">⇄ {{ __('Adopt the bank\'s quantities in :portfolio', ['portfolio' => $connection->portfolio->name]) }}</button>
+                        @php($differing = collect($comparisons[$connection->id])->filter(fn ($row) => $row['portfolio_id'] && abs($row['difference']) > 0.000001 && $row['symbol']))
+                        @if ($differing->isNotEmpty())
+                            @php($targets = $differing->pluck('portfolio_id')->unique())
+                            <button type="button" wire:click="applyToPortfolio({{ $connection->id }})" wire:confirm="{{ __('Book transfers so that the portfolio matches the bank?') }}" class="mt-3 rounded-lg px-3 py-1.5 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-gray-700">⇄ {{ $targets->count() === 1 ? __('Adopt the bank\'s quantities in :portfolio', ['portfolio' => $portfolioList->firstWhere('id', $targets->first())?->name]) : __('Adopt the bank\'s quantities in the linked portfolios') }}</button>
                         @endif
                     @endif
                 </section>

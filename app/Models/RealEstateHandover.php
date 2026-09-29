@@ -18,7 +18,7 @@ class RealEstateHandover extends Model
     /**
      * Where the photos are kept (private disk).
      */
-    public const DISK = 'local';
+    public const DISK = 'secure';
 
     protected function casts(): array
     {

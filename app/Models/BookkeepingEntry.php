@@ -27,7 +27,7 @@ class BookkeepingEntry extends Model
 
     public const INCOME = 'income';
 
-    public const RECEIPT_DISK = 'local';
+    public const RECEIPT_DISK = 'secure';
 
     protected function casts(): array
     {

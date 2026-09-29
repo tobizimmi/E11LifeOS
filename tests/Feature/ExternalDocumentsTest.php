@@ -89,6 +89,7 @@ class ExternalDocumentsTest extends TestCase
 
     public function test_documents_are_searched_linked_previewed_edited_and_uploaded(): void
     {
+        Storage::fake('secure');
         $this->fakePaperless();
         [$user, $household] = $this->memberWithHousehold();
         $instance = $this->paperlessInstance($user->id, $household->id);
@@ -117,7 +118,7 @@ class ExternalDocumentsTest extends TestCase
 
         $panel->call('open', 'upload')->set('upload', UploadedFile::fake()->create('angebot.pdf', 50, 'application/pdf'))->set('uploadTitle', 'Angebot Dach')->call('uploadDocument')->assertHasNoErrors();
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/post_document/') && $request->isMultipart());
-        Storage::disk('local')->assertMissing('external/'.$household->id);
+        Storage::disk('secure')->assertMissing('external/'.$household->id);
 
         // As soon as paperless has processed the upload (task SUCCESS), the document id is filled in.
         $uploaded = ExternalLink::where('title', 'Angebot Dach')->sole();
@@ -127,6 +128,7 @@ class ExternalDocumentsTest extends TestCase
     public function test_mail_links_and_mail_copies_without_paperless(): void
     {
         Storage::fake('local');
+        Storage::fake('secure');
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
         $entry = $this->entry(Collection::tasksFor($household->id), $user->id);
@@ -139,23 +141,24 @@ class ExternalDocumentsTest extends TestCase
             ->assertSee('E-Mail (Apple Mail)')->assertSee('Angebot Versicherung')->assertSee('Gmail')->assertSee('rueckfrage.eml');
 
         $file = ExternalLink::where('kind', ExternalLink::FILE)->sole();
-        Storage::disk('local')->assertExists($file->path);
+        Storage::disk('secure')->assertExists($file->path);
         $this->get(route('external-links.file', $file))->assertOk();
 
         $entry->delete();
         $this->assertSame(0, ExternalLink::count());
-        Storage::disk('local')->assertMissing($file->path);
+        Storage::disk('secure')->assertMissing($file->path);
     }
 
     public function test_links_follow_the_visibility_of_what_they_belong_to(): void
     {
         Storage::fake('local');
+        Storage::fake('secure');
         [$user, $household] = $this->memberWithHousehold();
         $partner = $this->addMemberTo($household);
         $private = RealEstate::factory()->for($household)->create(['created_by' => $user->id, 'visibility' => Item::VISIBILITY_PRIVATE]);
         $invoice = RealEstateInvoice::factory()->create(['real_estate_id' => $private->id]);
         $link = ExternalLink::create(['household_id' => $household->id, 'created_by' => $user->id, 'linkable_type' => 'real_estate_invoice', 'linkable_id' => $invoice->id, 'kind' => 'file', 'title' => 'x.pdf', 'path' => 'external/x.pdf']);
-        Storage::disk('local')->put('external/x.pdf', 'x');
+        Storage::disk('secure')->put('external/x.pdf', 'x');
 
         $this->actingAs($partner);
         $this->get(route('external-links.file', $link))->assertNotFound();

@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        // Same folder as "local", but every file is encrypted with the application key.
+        'secure' => [
+            'driver' => 'encrypted',
+            'root' => storage_path('app/private'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

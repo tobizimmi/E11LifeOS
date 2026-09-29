@@ -36,6 +36,8 @@ class HealthEntry extends Model
             'interval_months' => 'integer',
             'times' => 'array',
             'active' => 'boolean',
+            'title' => 'encrypted',
+            'dosage' => 'encrypted',
             'notes' => 'encrypted',
         ];
     }

@@ -30,6 +30,7 @@ class SmallBusinessTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
+        Storage::fake('secure');
         $this->travelTo(Carbon::parse('2026-09-25 10:00'));
     }
 
@@ -296,7 +297,7 @@ class SmallBusinessTest extends TestCase
         $partner = $this->addMemberTo($household);
         $foreign = Invoice::factory()->for($partner)->for($household)->create(['recipient' => 'Geheimkunde', 'status' => Invoice::OPEN, 'number' => 'RE-2026-001']);
         $foreignEntry = BookkeepingEntry::factory()->for($partner)->for($household)->create(['description' => 'Geheime Ausgabe', 'receipt_path' => 'business-receipts/x.pdf', 'receipt_name' => 'x.pdf']);
-        Storage::disk('local')->put('business-receipts/x.pdf', 'pdf');
+        Storage::disk('secure')->put('business-receipts/x.pdf', 'pdf');
 
         Volt::test('business.index')->assertDontSee('Geheimkunde');
         Volt::test('business.index')->call('openDocument', $foreign->id)->assertNotFound();
@@ -329,11 +330,11 @@ class SmallBusinessTest extends TestCase
 
         $entry = BookkeepingEntry::where('user_id', $user->id)->sole();
         $this->assertSame(['goods', 23.8, 0.0, '2026-09-12'], [$entry->category, $entry->amount, $entry->vat_amount, $entry->booked_on->toDateString()]);
-        Storage::disk('local')->assertExists($entry->receipt_path);
+        Storage::disk('secure')->assertExists($entry->receipt_path);
         $this->get(route('business.receipts.show', $entry))->assertOk();
 
         Volt::test('business.bookings')->call('deleteEntry', $entry->id);
-        Storage::disk('local')->assertMissing($entry->receipt_path);
+        Storage::disk('secure')->assertMissing($entry->receipt_path);
     }
 
     public function test_the_annual_statement_of_a_small_business_follows_the_anlage_euer(): void
@@ -407,7 +408,7 @@ class SmallBusinessTest extends TestCase
     public function test_deleting_the_account_removes_business_data_and_receipt_files(): void
     {
         [$user, $household] = $this->businessOwner();
-        Storage::disk('local')->put('business-receipts/'.$user->id.'/bon.jpg', 'jpg');
+        Storage::disk('secure')->put('business-receipts/'.$user->id.'/bon.jpg', 'jpg');
         $entry = BookkeepingEntry::factory()->for($user)->for($household)->create(['receipt_path' => 'business-receipts/'.$user->id.'/bon.jpg']);
         $invoice = Invoice::factory()->for($user)->for($household)->create();
 
@@ -415,6 +416,6 @@ class SmallBusinessTest extends TestCase
 
         $this->assertModelMissing($entry);
         $this->assertModelMissing($invoice);
-        Storage::disk('local')->assertMissing('business-receipts/'.$user->id.'/bon.jpg');
+        Storage::disk('secure')->assertMissing('business-receipts/'.$user->id.'/bon.jpg');
     }
 }

@@ -20,7 +20,7 @@ class ExternalLink extends Model
 
     public const FILE = 'file';
 
-    public const DISK = 'local';
+    public const DISK = 'secure';
 
     protected static function booted(): void
     {

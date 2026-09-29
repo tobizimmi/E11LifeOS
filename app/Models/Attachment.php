@@ -18,7 +18,7 @@ class Attachment extends Model
     /** @use HasFactory<AttachmentFactory> */
     use HasFactory;
 
-    public const DISK = 'local';
+    public const DISK = 'secure';
 
     /**
      * Upload limit in kilobytes (validation rule "max").

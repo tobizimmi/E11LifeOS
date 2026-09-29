@@ -224,6 +224,7 @@ new class extends Component
                     <x-sidebar-link icon="heart" :href="route('health.index')" :active="request()->routeIs('health.*')" wire:navigate>{{ __('Health') }}</x-sidebar-link>
                     <x-sidebar-link icon="cake" :href="route('people.index')" :active="request()->routeIs('people.*')" wire:navigate>{{ __('People & occasions') }}</x-sidebar-link>
                     <x-sidebar-link icon="paper-airplane" :href="route('trips.index')" :active="request()->routeIs('trips.*')" wire:navigate>{{ __('Trips') }}</x-sidebar-link>
+                    <x-sidebar-link icon="star" :href="route('kids.index')" :active="request()->routeIs('kids.*')" wire:navigate>{{ __('Kids & pocket money') }}</x-sidebar-link>
                     <x-sidebar-link icon="sparkles" :href="route('review.index')" :active="request()->routeIs('review.*')" wire:navigate>{{ __('Year in review') }}</x-sidebar-link>
                 </div>
                 <div class="space-y-0.5">

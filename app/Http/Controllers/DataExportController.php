@@ -20,6 +20,7 @@ use App\Models\HomeTask;
 use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
+use App\Models\Kid;
 use App\Models\KnowledgeFavorite;
 use App\Models\MealPlan;
 use App\Models\Meter;
@@ -122,6 +123,10 @@ class DataExportController extends Controller
             'vehicles' => $household
                 ? Vehicle::query()->where('household_id', $household->id)->where('created_by', $user->id)->with('logs')->orderBy('id')->get()
                     ->map(fn (Vehicle $vehicle) => $vehicle->makeHidden(['household_id', 'created_by'])->toArray())
+                : [],
+            'kids' => $household
+                ? Kid::where('household_id', $household->id)->with(['transactions'])->orderBy('id')->get()
+                    ->map(fn (Kid $kid) => $kid->makeHidden(['household_id'])->toArray())
                 : [],
             'trips' => $household
                 ? Trip::query()->where('household_id', $household->id)->where('created_by', $user->id)->with(['bookings', 'packingItems'])->orderBy('starts_on')->get()

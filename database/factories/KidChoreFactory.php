@@ -1,0 +1,28 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Household;
+use App\Models\KidChore;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<KidChore>
+ */
+class KidChoreFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'household_id' => Household::factory(),
+            'title' => fake()->randomElement(['Zimmer aufräumen', 'Spülmaschine ausräumen', 'Müll rausbringen']),
+            'reward' => 1,
+            'frequency' => 'weekly',
+        ];
+    }
+}

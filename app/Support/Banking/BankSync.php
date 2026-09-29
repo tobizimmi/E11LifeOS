@@ -38,7 +38,7 @@ class BankSync
     public function __construct(private FinTsClient $client, private MarketData $market) {}
 
     /**
-     * Starts "depot", "statement" or "test". Returns the result or the TAN request.
+     * Starts "depot", "statement", "accounts" or "test". Returns the result or the TAN request.
      *
      * @return array<string, mixed>
      */
@@ -148,6 +148,14 @@ class BankSync
     {
         $errors = implode(' ', $result['errors'] ?? []);
 
+        if (($result['bank_accounts'] ?? []) !== []) {
+            $connection->rememberAccounts($result['bank_accounts']);
+        }
+
+        if ($operation === 'accounts') {
+            return ['message' => trim(trans_choice(':count account found.|:count accounts found.', count($result['bank_accounts'] ?? [])).' '.$errors)];
+        }
+
         if ($operation === 'depot') {
             $connection->depotPositions()->delete();
 
@@ -162,11 +170,12 @@ class BankSync
             $importer = app(BankCsvImporter::class);
             $categorizer = new Categorizer($connection->user_id);
             $imported = 0;
+            $products = collect($connection->accounts ?? [])->pluck('product', 'iban');
 
             foreach ($result['accounts'] as $iban => $bookings) {
                 $account = BankAccount::firstOrCreate(
                     ['user_id' => $connection->user_id, 'iban' => $iban],
-                    ['household_id' => $connection->household_id, 'name' => $connection->bank_name.' '.substr((string) $iban, -4)],
+                    ['household_id' => $connection->household_id, 'name' => trim($connection->bank_name.' '.($products[$iban] ?? '')).' '.substr((string) $iban, -4)],
                 );
                 $imported += $importer->importBookings($account, $bookings, $categorizer)['imported'];
             }

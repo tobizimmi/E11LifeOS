@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\Banking\FinTsClient;
 use Fhp\CurlException;
 use Fhp\FinTs;
+use Fhp\Model\SEPAAccount;
 use Fhp\Options\Credentials;
 use Fhp\Options\FinTsOptions;
 use Fhp\Protocol\UPD;
@@ -200,7 +201,12 @@ class BankSyncTest extends TestCase
         $this->assertStringContainsString('Die bekannte FinTS-Adresse dieser Bank ist https://fints.dkb.de/fints.', $message);
     }
 
-    public function test_securities_accounts_are_taken_from_the_account_data_of_the_bank(): void
+    /**
+     * A FinTS client whose account data (UPD) lists the given accounts.
+     *
+     * @param  list<array{0: string, 1: ?int, 2: list<string>, 3?: ?string, 4?: ?string}>  $accounts  number, account type, transactions, IBAN, product
+     */
+    private function fintsWithAccounts(array $accounts): FinTs
     {
         $options = new FinTsOptions;
         $options->url = 'https://fints.dkb.de/fints';
@@ -209,28 +215,86 @@ class BankSyncTest extends TestCase
         $options->productVersion = '1.0';
         $fints = FinTs::new($options, Credentials::create('tobi', '1111'));
 
-        $segment = function (string $number, int $type, array $transactions): HIUPDv6 {
+        $upd = new UPD;
+        $upd->hiupd = array_map(function (array $account): HIUPDv6 {
             $hiupd = new HIUPDv6;
-            $hiupd->kontoverbindung = KtvV3::create($number, null, Kik::create('12030000'));
-            $hiupd->kontoart = $type;
+            $hiupd->kontoverbindung = KtvV3::create($account[0], null, Kik::create('12030000'));
+            $hiupd->kontoart = $account[1];
+            $hiupd->iban = $account[3] ?? null;
+            $hiupd->kontoproduktbezeichnung = $account[4] ?? null;
+            $hiupd->name1 = 'Tobi Zimmi';
             $hiupd->erlaubteGeschaeftsvorfaelle = array_map(function (string $code) {
                 $transaction = new ErlaubteGeschaeftsvorfaelleV2;
                 $transaction->geschaeftsvorfall = $code;
                 $transaction->anzahlBenoetigterSignaturen = 1;
 
                 return $transaction;
-            }, $transactions);
+            }, $account[2]);
 
             return $hiupd;
-        };
-
-        $upd = new UPD;
-        $upd->hiupd = [$segment('1001', 1, ['HKKAZ']), $segment('5005', 30, ['HKWPD']), $segment('7007', 1, ['HKWPD'])];
+        }, $accounts);
         (fn () => $this->upd = $upd)->call($fints);
+
+        return $fints;
+    }
+
+    public function test_securities_accounts_are_taken_from_the_account_data_of_the_bank(): void
+    {
+        $fints = $this->fintsWithAccounts([['1001', 1, ['HKKAZ']], ['5005', 30, ['HKWPD']], ['7007', 1, ['HKWPD']]]);
 
         $depots = (fn () => $this->depotAccounts($fints))->call(new FinTsClient);
 
         $this->assertSame(['5005', '7007'], array_map(fn ($account) => $account->getAccountNumber(), $depots));
         $this->assertSame('12030000', $depots[0]->getBlz());
+    }
+
+    public function test_the_accounts_of_a_login_are_listed_with_their_type(): void
+    {
+        $fints = $this->fintsWithAccounts([
+            ['1001', 1, ['HKKAZ', 'HKCCS'], 'DE02120300000000001001', 'Girokonto'],
+            ['5005', 30, ['HKWPD'], null, 'Depot'],
+            ['8008', 50, [], 'DE02120300000000008008'],
+        ]);
+        $sepa = (new SEPAAccount)->setAccountNumber('9009')->setIban('DE02120300000000009009');
+
+        $accounts = (fn () => $this->bankAccounts($fints, [$sepa]))->call(new FinTsClient);
+
+        $this->assertSame(['1001', '5005', '8008', '9009'], array_column($accounts, 'number'));
+        $this->assertSame(['giro', 'depot', 'credit_card', 'other'], array_column($accounts, 'type'));
+        $this->assertSame([true, false, true, true], array_column($accounts, 'bookings'));
+        $this->assertSame([false, true, false, false], array_column($accounts, 'holdings'));
+        $this->assertSame(['Girokonto', 'Tobi Zimmi'], [$accounts[0]['product'], $accounts[0]['owner']]);
+    }
+
+    public function test_the_reported_accounts_are_shown_and_can_be_switched_off(): void
+    {
+        [$user, $household] = $this->owner();
+        $connection = $this->connection($user, $household, ['pin' => '1111']);
+        $reported = [
+            ['number' => '1001', 'iban' => 'DE02120300000000001001', 'type' => 'giro', 'product' => 'Girokonto', 'owner' => 'Tobi Zimmi', 'currency' => 'EUR', 'bookings' => true, 'holdings' => false],
+            ['number' => '5005', 'iban' => null, 'type' => 'depot', 'product' => null, 'owner' => 'Tobi Zimmi', 'currency' => 'EUR', 'bookings' => false, 'holdings' => true],
+        ];
+
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->withArgs(fn ($c, $pin, $operation) => $operation === 'accounts')->andReturn([
+            'status' => 'done', 'holdings' => [], 'accounts' => [], 'errors' => [], 'bank_accounts' => $reported,
+        ]));
+
+        Volt::test('portfolio.banking')
+            ->assertSee('Konten abrufen')
+            ->call('sync', $connection->id, 'accounts')
+            ->assertHasNoErrors()
+            ->assertSee('Girokonto')
+            ->assertSee('DE02 •••• 1001')
+            ->assertSee('Wertpapierdepot')
+            ->call('toggleAccount', $connection->id, '1001', 'use_bookings');
+
+        $connection->refresh();
+        $this->assertSame('2 Konten gefunden.', $connection->sync_message);
+        $this->assertSame(['1001'], $connection->skippedAccounts('statement'));
+        $this->assertSame([], $connection->skippedAccounts('depot'));
+        $this->assertStringNotContainsString('DE02120300000000001001', (string) DB::table('bank_connections')->value('accounts'));
+
+        $connection->rememberAccounts($reported);
+        $this->assertSame(['1001'], $connection->fresh()->skippedAccounts('statement'));
     }
 }

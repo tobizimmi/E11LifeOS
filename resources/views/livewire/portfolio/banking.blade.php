@@ -123,11 +123,11 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * "depot", "statement" or "test"; asks for the PIN when it is not saved.
+     * "depot", "statement", "accounts" or "test"; asks for the PIN when it is not saved.
      */
     public function sync(int $connectionId, string $operation, BankSync $sync): void
     {
-        abort_unless(in_array($operation, ['depot', 'statement', 'test'], true), 422);
+        abort_unless(in_array($operation, ['depot', 'statement', 'accounts', 'test'], true), 422);
         $connection = $this->findConnection($connectionId);
 
         if (! $connection->pin && $this->pinFor !== $connection->id) {
@@ -140,6 +140,21 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->handle($connection, fn () => $sync->run($connection, $operation, $this->pin ?: null));
         $this->reset('pinFor', 'pinOperation', 'pin');
+    }
+
+    /**
+     * Switches fetching bookings ("use_bookings") or holdings ("use_holdings") of one account on or off.
+     */
+    public function toggleAccount(int $connectionId, string $number, string $field): void
+    {
+        abort_unless(in_array($field, ['use_bookings', 'use_holdings'], true), 422);
+        $connection = $this->findConnection($connectionId);
+        $accounts = $connection->accounts ?? [];
+        $index = collect($accounts)->search(fn (array $account) => (string) $account['number'] === $number);
+        abort_if($index === false, 404);
+
+        $accounts[$index][$field] = ! ($accounts[$index][$field] ?? true);
+        $connection->update(['accounts' => $accounts]);
     }
 
     public function submitPin(BankSync $sync): void
@@ -230,6 +245,8 @@ new #[Layout('layouts.app')] class extends Component
 
 @php
     $quantity = fn ($value) => rtrim(rtrim(number_format((float) $value, 6, ',', '.'), '0'), ',');
+    $accountTypes = ['giro' => ['💳', __('Current account')], 'savings' => ['🐷', __('Savings account')], 'depot' => ['📈', __('Securities account')], 'loan' => ['🏠', __('Loan')], 'credit_card' => ['💳', __('Credit card')], 'building_savings' => ['🧱', __('Building savings')], 'insurance' => ['🛡️', __('Insurance')], 'other' => ['🏦', __('Account')]];
+    $maskedIban = fn (?string $iban) => $iban ? substr($iban, 0, 4).' •••• '.substr($iban, -4) : null;
     $statusClasses = ['success' => 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200', 'error' => 'bg-red-50 text-red-800 dark:bg-red-900/40 dark:text-red-200', 'tan_required' => 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'];
 @endphp
 
@@ -322,6 +339,34 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     </div>
                     <p wire:loading wire:target="sync" class="mt-2 text-xs text-gray-500">{{ __('Connecting to the bank …') }}</p>
+
+                    <div class="mt-4 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/40">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ __('Accounts at this bank') }}</h4>
+                            <button type="button" wire:click="sync({{ $connection->id }}, 'accounts')" wire:loading.attr="disabled" class="rounded-lg px-2.5 py-1 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">🔎 {{ $connection->accounts ? __('Refresh accounts') : __('Fetch accounts') }}</button>
+                        </div>
+                        @if ($connection->accounts)
+                            <ul class="mt-2 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach ($connection->accounts as $account)
+                                    @php($type = $accountTypes[$account['type']] ?? $accountTypes['other'])
+                                    <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2" wire:key="account-{{ $connection->id }}-{{ $account['number'] }}">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm text-gray-900 dark:text-gray-100"><span aria-hidden="true">{{ $type[0] }}</span> {{ $account['product'] ?: $type[1] }} <span class="ms-1 rounded bg-white px-1.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $type[1] }}</span></p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $maskedIban($account['iban']) ?? __('Account no. :number', ['number' => $account['number']]) }}@if ($account['owner']) · {{ $account['owner'] }}@endif</p>
+                                        </div>
+                                        @if ($account['bookings'])
+                                            <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_bookings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_bookings')"> 💶 {{ __('Fetch bookings') }}</label>
+                                        @endif
+                                        @if ($account['holdings'])
+                                            <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_holdings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_holdings')"> 📈 {{ __('Fetch holdings') }}</label>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Fetch the accounts once to see whether the bank reports a current account, a securities account or more for this login – and choose which ones are fetched.') }}</p>
+                        @endif
+                    </div>
 
                     @if (isset($comparisons[$connection->id]))
                         <div class="mt-4 overflow-x-auto">

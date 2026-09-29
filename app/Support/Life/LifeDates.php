@@ -3,6 +3,8 @@
 namespace App\Support\Life;
 
 use App\Models\EmergencyEntry;
+use App\Models\HomeTask;
+use App\Models\Meter;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Support\Carbon;
@@ -39,6 +41,7 @@ class LifeDates
         }
 
         array_push($events, ...self::vehicleEvents($user, $from, $until));
+        array_push($events, ...self::homeEvents($user, $from, $until));
 
         usort($events, fn (array $a, array $b) => [$a['date'], $a['title']] <=> [$b['date'], $b['title']]);
 
@@ -90,6 +93,40 @@ class LifeDates
             if ($vehicle->tyre_reminders) {
                 foreach (VehicleStats::tyreChangesBetween($from, $until) as $change) {
                     $events[] = ['date' => $change['date']->toDateString(), 'title' => '🛞 '.$change['label'].' · '.$vehicle->name, 'url' => $url, 'kind' => 'vehicle', 'remind_days' => 14, 'remind' => $remind];
+                }
+            }
+        }
+
+        return $events;
+    }
+
+    /**
+     * Maintenance jobs at home and the yearly meter reading on 31 December.
+     *
+     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int, remind: bool}>
+     */
+    private static function homeEvents(User $user, Carbon $from, Carbon $until): array
+    {
+        $household = $user->currentHousehold();
+
+        if (! $household) {
+            return [];
+        }
+
+        $events = [];
+
+        foreach (HomeTask::where('household_id', $household->id)->whereBetween('next_due_on', [$from->toDateString(), $until->toDateString()])->get() as $task) {
+            $events[] = ['date' => $task->next_due_on->toDateString(), 'title' => trim(($task->icon ?: '🔧').' '.$task->title), 'url' => route('house.index'), 'kind' => 'home', 'remind_days' => $task->remind_days, 'remind' => $task->created_by === $user->id];
+        }
+
+        $meterOwners = Meter::where('household_id', $household->id)->pluck('created_by');
+
+        if ($meterOwners->isNotEmpty()) {
+            for ($year = $from->year; $year <= $until->year; $year++) {
+                $date = Carbon::create($year, 12, 31);
+
+                if ($date->between($from, $until)) {
+                    $events[] = ['date' => $date->toDateString(), 'title' => '🔢 '.__('Read the meters'), 'url' => route('house.index', ['tab' => 'meters']), 'kind' => 'home', 'remind_days' => 0, 'remind' => $meterOwners->contains($user->id)];
                 }
             }
         }

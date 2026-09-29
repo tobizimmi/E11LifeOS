@@ -114,6 +114,79 @@ class CashflowStatement
     }
 
     /**
+     * Month by month for the last months: income, expenses, income from assets (dividends, net cold
+     * rent of the tenants living there, business profit), cash flow and the freedom share in percent.
+     * Months without bank transactions are left out.
+     *
+     * @return list<array{month: string, label: string, income: float, expenses: float, asset_income: float, cashflow: float, freedom: float}>
+     */
+    public static function history(User $user, int $months = self::MONTHS): array
+    {
+        $household = $user->currentHousehold();
+
+        if (! $household || ! $user->canUseAddon(Addons::FINANCE)) {
+            return [];
+        }
+
+        $to = today();
+        $from = $to->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
+        $transactions = Transaction::where('user_id', $user->id)->where('household_id', $household->id)->whereBetween('booked_on', [$from, $to])
+            ->where('category', '!=', FinanceCategories::TRANSFER)->get();
+
+        if ($transactions->isEmpty()) {
+            return [];
+        }
+
+        $tenants = RealEstateLink::properties($user, $household->id)->load('tenants')
+            ->flatMap(fn (RealEstate $realEstate) => $realEstate->isLet() ? $realEstate->tenants : []);
+        $references = $tenants->map(fn (RealEstateTenant $tenant) => mb_strtolower($tenant->reference()))->filter(fn (string $reference) => mb_strlen($reference) >= 3);
+        $isRent = fn (Transaction $transaction) => $references->contains(fn (string $reference) => str_contains(mb_strtolower($transaction->counterparty.' '.$transaction->purpose), $reference));
+
+        $dividends = $user->canUseAddon(Addons::PORTFOLIO)
+            ? PortfolioTransaction::whereIn('portfolio_id', Portfolio::where('user_id', $user->id)->select('id'))->where('type', 'dividend')->whereBetween('executed_on', [$from, $to])->get()
+            : new Collection;
+
+        $business = [];
+
+        if (Addons::allowed($user, Addons::BUSINESS) && ($profile = BusinessProfile::where('user_id', $user->id)->first())) {
+            for ($year = $from->year; $year <= $to->year; $year++) {
+                foreach (EuerReport::build($user, $household->id, $year, $profile)['monthly'] as $index => $month) {
+                    $business[sprintf('%04d-%02d', $year, $index + 1)] = $month['income'] - $month['expenses'];
+                }
+            }
+        }
+
+        $rows = [];
+
+        for ($month = $from->copy(); $month->lte($to); $month->addMonth()) {
+            $key = $month->format('Y-m');
+            $inMonth = $transactions->filter(fn (Transaction $transaction) => $transaction->booked_on->format('Y-m') === $key);
+
+            if ($inMonth->isEmpty()) {
+                continue;
+            }
+
+            $income = (float) $inMonth->filter(fn (Transaction $transaction) => $transaction->amount > 0 && $transaction->category !== 'refunds' && ! $isRent($transaction))->sum('amount');
+            $expenses = max(0.0, (float) -$inMonth->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $transaction->category !== 'savings')->sum('amount') - (float) $inMonth->where('category', 'refunds')->sum('amount'));
+            $assetIncome = (float) $dividends->filter(fn (PortfolioTransaction $transaction) => $transaction->executed_on->format('Y-m') === $key)->sum(fn (PortfolioTransaction $transaction) => $transaction->cashFlow())
+                + (float) $tenants->filter(fn (RealEstateTenant $tenant) => $tenant->livesInMonth($month))->sum('cold_rent')
+                + (float) ($business[$key] ?? 0);
+
+            $rows[] = [
+                'month' => $key,
+                'label' => $month->translatedFormat('M y'),
+                'income' => round($income + $assetIncome, 2),
+                'expenses' => round($expenses, 2),
+                'asset_income' => round($assetIncome, 2),
+                'cashflow' => round($income + $assetIncome - $expenses, 2),
+                'freedom' => $expenses > 0 ? round($assetIncome / $expenses * 100, 1) : 0.0,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * Cash-flow pattern after Kiyosaki: rich = asset income covers the expenses, middle class =
      * liabilities outweigh the assets, poor = no asset income and nothing left over, otherwise on the way.
      */

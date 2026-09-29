@@ -20,7 +20,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        return ['statement' => CashflowStatement::for(Auth::user())];
+        return ['statement' => CashflowStatement::for(Auth::user()), 'history' => CashflowStatement::history(Auth::user())];
     }
 }; ?>
 
@@ -96,6 +96,22 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ __('Still missing: :gap asset income per month.', ['gap' => $round($statement['gap'])]) }}</p>
                 @endif
             </section>
+
+            @if (count($history) >= 2)
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Development') }}</h3>
+                    <div class="mt-3 grid gap-5 md:grid-cols-2">
+                        <div>
+                            <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Financial freedom per month') }}</p>
+                            <x-line-chart :points="collect($history)->map(fn ($row) => ['label' => $row['label'], 'value' => $row['freedom']])->all()" :currency="false" suffix=" %" :value-label="__('Financial freedom')" height="170" />
+                        </div>
+                        <div>
+                            <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Cashflow per month') }}</p>
+                            <x-line-chart :points="collect($history)->map(fn ($row) => ['label' => $row['label'], 'value' => $row['cashflow']])->all()" :value-label="__('Cashflow')" height="170" />
+                        </div>
+                    </div>
+                </section>
+            @endif
 
             {{-- Pattern --}}
             <section class="rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-100 dark:bg-indigo-900/20 dark:ring-indigo-800">

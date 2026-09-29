@@ -36,7 +36,7 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Cards that need slow queries or outside services are filled in after the page is shown.
      */
-    public const LAZY_WIDGETS = ['weather', 'deadlines', 'portfolio', 'real_estate', 'tax', 'costs'];
+    public const LAZY_WIDGETS = ['weather', 'deadlines', 'portfolio', 'real_estate', 'tax', 'costs', 'life', 'freedom'];
 
     public bool $widgetsLoaded = false;
 
@@ -97,7 +97,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function widgetAvailable(string $key): bool
     {
-        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE];
+        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE];
 
         return ! isset($modules[$key]) || $this->currentUser()->canUseAddon($modules[$key]);
     }
@@ -178,6 +178,8 @@ new #[Layout('layouts.app')] class extends Component
             'taxYear' => $shows('tax') ? \App\Support\Finance\TaxYear::build($this->currentUser(), $this->householdId, (int) now()->year) : null,
             'deadlines' => $shows('deadlines') ? DashboardWidgets::deadlines($this->currentUser(), $this->householdId) : [],
             'monthlyCosts' => $shows('costs') ? DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId) : ['total' => 0, 'collections' => []],
+            'lifeDates' => $shows('life') ? array_slice(\App\Support\Life\LifeDates::between($this->currentUser(), today(), today()->addDays(60)), 0, 6) : [],
+            'freedom' => $shows('freedom') ? \App\Support\Finance\CashflowStatement::for($this->currentUser()) : null,
         ];
     }
 
@@ -543,6 +545,36 @@ new #[Layout('layouts.app')] class extends Component
                                     </li>
                                 @endforeach
                             </ul>
+                        @endif
+                    </section>
+                                @break
+                            @case('life')
+                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <x-dashboard-card-header :title="__('Life & provisions: next dates')" :href="route('emergency.index')" />
+                        @if ($lifeDates === [])
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No dates in the next 60 days – documents, vehicles and maintenance are all fine.') }}</p>
+                        @else
+                            <ul class="mt-3 space-y-1.5 text-sm">
+                                @foreach ($lifeDates as $event)
+                                    <li class="flex items-center justify-between gap-2">
+                                        <a href="{{ $event['url'] }}" wire:navigate class="truncate text-gray-700 hover:underline dark:text-gray-300">{{ $event['title'] }}</a>
+                                        <span class="shrink-0 tabular-nums text-gray-500 dark:text-gray-400">{{ \Illuminate\Support\Carbon::parse($event['date'])->format('d.m.') }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </section>
+                                @break
+                            @case('freedom')
+                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <x-dashboard-card-header :title="__('Financial freedom')" :href="route('cashflow.index')" />
+                        @if ($freedom && $freedom['has_data'])
+                            @php($freedomPercent = (int) round(min(1, $freedom['freedom']) * 100))
+                            <p class="mt-2 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $freedomPercent }} %</p>
+                            <div class="mt-2 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700"><div class="h-full rounded-full bg-emerald-600 dark:bg-emerald-500" style="width: {{ $freedomPercent }}%"></div></div>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ __('Monthly cashflow') }}: <span @class(['font-medium tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $freedom['cashflow'] >= 0, 'text-rose-700 dark:text-rose-400' => $freedom['cashflow'] < 0])>{{ number_format($freedom['cashflow'], 0, ',', '.') }} €</span></p>
+                        @else
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Import bank transactions in Finances, add your portfolio or properties – the analysis builds itself from them.') }}</p>
                         @endif
                     </section>
                                 @break

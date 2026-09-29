@@ -77,6 +77,7 @@ new #[Layout('layouts.app')] class extends Component
             'invites' => $household->invites()->latest()->get(),
             'addons' => Addons::all(),
             'isOwner' => (bool) $household->members()->where('user_id', Auth::id())->first()?->isOwner(),
+            'load' => \App\Support\Life\HouseholdLoad::for($household),
         ];
     }
 }; ?>
@@ -195,6 +196,27 @@ new #[Layout('layouts.app')] class extends Component
                     @endforeach
                 </ul>
             </div>
+
+            @if (count($load['members']) > 1)
+                <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">⚖️ {{ __('Who does what?') }}</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Last :days days: completed tasks and entries, what was thought of and planned (tasks, shopping entries, meals) and open tasks assigned.', ['days' => $load['days']]) }}</p>
+                    <ul class="mt-4 space-y-3">
+                        @foreach ($load['members'] as $row)
+                            <li wire:key="load-{{ $row['user_id'] }}">
+                                <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $row['name'] }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400">{{ __(':completed done · :planned planned · :open open', ['completed' => $row['completed'], 'planned' => $row['planned'], 'open' => $row['open']]) }} · <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $row['share'] }} %</span></span>
+                                </div>
+                                <div class="mt-1 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700"><div class="h-full rounded-full bg-indigo-500" style="width: {{ $row['share'] }}%"></div></div>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($load['lopsided'])
+                        <p class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">💡 {{ __(':name currently carries most of it. Assign tasks, share the cleaning plan with rotation or take turns planning meals and shopping.', ['name' => $load['lopsided']]) }}</p>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 </div>

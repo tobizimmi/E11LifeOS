@@ -3,6 +3,7 @@
 namespace App\Support\Life;
 
 use App\Models\EmergencyEntry;
+use App\Models\HealthEntry;
 use App\Models\HomeTask;
 use App\Models\Meter;
 use App\Models\User;
@@ -42,6 +43,12 @@ class LifeDates
 
         array_push($events, ...self::vehicleEvents($user, $from, $until));
         array_push($events, ...self::homeEvents($user, $from, $until));
+
+        HealthEntry::query()->whereHas('profile', fn ($query) => $query->where('user_id', $user->id))->with('profile')
+            ->where('kind', '!=', HealthEntry::MEDICATION)->whereBetween('next_due_on', [$from->toDateString(), $until->toDateString()])->get()
+            ->each(function (HealthEntry $entry) use (&$events) {
+                $events[] = ['date' => $entry->next_due_on->toDateString(), 'title' => ($entry->kind === HealthEntry::VACCINATION ? '💉 ' : '🩺 ').$entry->title.' · '.$entry->profile->name, 'url' => route('health.index', ['profile' => $entry->health_profile_id, 'tab' => $entry->kind === HealthEntry::APPOINTMENT ? 'appointments' : 'prevention']), 'kind' => 'health', 'remind_days' => $entry->kind === HealthEntry::APPOINTMENT ? 1 : 14, 'remind' => true];
+            });
 
         usort($events, fn (array $a, array $b) => [$a['date'], $a['title']] <=> [$b['date'], $b['title']]);
 

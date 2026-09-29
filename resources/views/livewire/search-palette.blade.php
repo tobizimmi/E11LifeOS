@@ -176,6 +176,7 @@ new class extends Component
             ['🏡 '.__('At home'), route('house.index'), 'zuhause wartung heizung rauchmelder zähler zählerstand strom gas wasser verbrauch abschlag'],
             ['🎉 '.__('Year in review'), route('review.index'), 'jahresrückblick jahr rückblick statistik bilanz review'],
             ['🛡️ '.__('Provision check'), route('provision.index'), 'versicherung versicherungscheck haftpflicht berufsunfähigkeit rente rentenlücke altersvorsorge fire freiheit'],
+            ['❤️ '.__('Health'), route('health.index'), 'gesundheit arzt vorsorge impfung medikamente notfallkarte blutgruppe allergie u-untersuchung'],
         ];
 
         if ($user->canUseAddon(Addons::RECIPES)) {

@@ -258,3 +258,76 @@ button:not(:disabled):active {
         transform: rotate(360deg);
     }
 }
+
+/*
+ * Typography: tighter tracking and leading as text grows, figures of equal width for amounts.
+ */
+h1, h2, h3,
+.text-2xl, .text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.015em;
+}
+
+.text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.022em;
+    line-height: 1.1;
+}
+
+.text-2xl, .text-3xl, .text-4xl {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Phones: 16px text in fields, so iOS Safari doesn't zoom in when a field gets focus. */
+@media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Touch screens: icon buttons get a hit area of about 44px without changing the layout. */
+@media (pointer: coarse) {
+    :is(button, a)[aria-label]:not(.absolute):not(.fixed):not(.sticky) {
+        position: relative;
+    }
+
+    :is(button, a)[aria-label]::before {
+        content: '';
+        inset: -10px;
+        position: absolute;
+    }
+}
+
+/*
+ * Floating chrome (top bar, sidebar, tab bar): a translucent material that turns solid when the
+ * system asks for less transparency or more contrast.
+ */
+@media (prefers-reduced-transparency: reduce) {
+    .e11-material {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: rgb(255 255 255) !important;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) and (prefers-color-scheme: dark) {
+    .e11-material {
+        background-color: rgb(17 24 39) !important;
+    }
+}
+
+@media (prefers-contrast: more) {
+    .e11-material {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: rgb(255 255 255) !important;
+        border-color: rgb(17 24 39) !important;
+    }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+    .e11-material {
+        background-color: rgb(3 7 18) !important;
+        border-color: rgb(229 231 235) !important;
+    }
+}

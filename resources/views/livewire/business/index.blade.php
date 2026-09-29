@@ -380,7 +380,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="text-4xl" aria-hidden="true">💼</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Invoices and bookkeeping for your small business') }}</h3>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Write invoices with consecutive numbers as PDF, collect receipts and get the annual profit calculation (EÜR) for your tax return at the end of the year.') }}</p>
-                    <a href="{{ route('business.settings') }}" wire:navigate class="mt-4 inline-flex items-center rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 dark:bg-gray-200 dark:text-gray-800">{{ __('Enter business details') }}</a>
+                    <a href="{{ route('business.settings') }}" wire:navigate class="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 dark:bg-indigo-500">{{ __('Enter business details') }}</a>
                 </div>
             @else
                 {{-- Key figures of the year --}}
@@ -410,7 +410,7 @@ new #[Layout('layouts.app')] class extends Component
                 {{-- Document types --}}
                 <div class="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-2 dark:border-gray-700" role="tablist">
                     @foreach (['invoice' => '🧾 '.__('Invoices'), 'quote' => '📝 '.__('Quotes'), 'credit_note' => '↩ '.__('Credit notes')] as $key => $label)
-                        <button type="button" role="tab" aria-selected="{{ $type === $key ? 'true' : 'false' }}" wire:click="$set('type', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $type === $key, 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $type !== $key])>
+                        <button type="button" role="tab" aria-selected="{{ $type === $key ? 'true' : 'false' }}" wire:click="$set('type', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $type === $key, 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $type !== $key])>
                             {{ $label }} <span class="text-xs opacity-70">{{ $typeCounts[$key] ?? 0 }}</span>
                         </button>
                     @endforeach
@@ -433,7 +433,7 @@ new #[Layout('layouts.app')] class extends Component
                             <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach
                     </select>
-                    <a href="{{ route('business.invoices.create', ['type' => $type]) }}" wire:navigate class="inline-flex items-center rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-white">＋ {{ match ($type) { 'quote' => __('New quote'), 'credit_note' => __('New credit note'), default => __('New invoice') } }}</a>
+                    <a href="{{ route('business.invoices.create', ['type' => $type]) }}" wire:navigate class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-white">＋ {{ match ($type) { 'quote' => __('New quote'), 'credit_note' => __('New credit note'), default => __('New invoice') } }}</a>
                 </div>
 
                 @if ($documents->isEmpty())
@@ -654,7 +654,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <x-slot:footer>
                 @if ($openDocument->isDraft())
-                    <a href="{{ route('business.invoices.edit', $openDocument) }}" wire:navigate class="inline-flex items-center rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 dark:bg-gray-200 dark:text-gray-800">✎ {{ __('Edit') }}</a>
+                    <a href="{{ route('business.invoices.edit', $openDocument) }}" wire:navigate class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 dark:bg-indigo-500">✎ {{ __('Edit') }}</a>
                 @endif
                 <a href="{{ route('business.invoices.pdf', $openDocument) }}" target="_blank" class="rounded-lg px-3 py-2 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700">📄 PDF</a>
                 @if ($openDocument->isQuote() && in_array($openDocument->status, ['open', 'accepted'], true))

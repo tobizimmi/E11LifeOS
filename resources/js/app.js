@@ -650,3 +650,333 @@ document.addEventListener('livewire:init', () => {
         fail(() => LivewireFeedback.done());
     });
 });
+
+/*
+ * Physical motion (Apple "Designing Fluid Interfaces"): springs described by damping ratio and
+ * response, interruptible (they start from the current value and velocity), plus momentum
+ * projection and rubber-banding for gestures.
+ */
+const Motion = {
+    reduced: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+
+    /**
+     * Animates a number with a spring; returns a handle whose stop() freezes it where it is.
+     */
+    spring({ from, to, velocity = 0, damping = 1, response = 0.35, onUpdate, onComplete }) {
+        const stiffness = (2 * Math.PI / response) ** 2;
+        const friction = (4 * Math.PI * damping) / response;
+        let value = from;
+        let speed = velocity;
+        let last = performance.now();
+        let frame = null;
+
+        const step = (now) => {
+            const elapsed = Math.min(0.064, (now - last) / 1000);
+            last = now;
+            const substeps = Math.max(1, Math.ceil(elapsed / 0.004));
+            const dt = elapsed / substeps;
+
+            for (let i = 0; i < substeps; i++) {
+                speed += (-stiffness * (value - to) - friction * speed) * dt;
+                value += speed * dt;
+            }
+
+            if (Math.abs(value - to) < 0.5 && Math.abs(speed) < 10) {
+                onUpdate(to, 0);
+                onComplete?.();
+
+                return;
+            }
+
+            onUpdate(value, speed);
+            frame = requestAnimationFrame(step);
+        };
+
+        frame = requestAnimationFrame(step);
+
+        return {
+            stop: () => cancelAnimationFrame(frame),
+            get value() { return value; },
+            get velocity() { return speed; },
+        };
+    },
+
+    /** Where a flick would come to rest (Apple's projection, like scroll deceleration). */
+    project(velocity, decelerationRate = 0.998) {
+        return ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
+    },
+
+    /** Progressive resistance past a boundary. */
+    rubberband(overshoot, dimension, constant = 0.55) {
+        return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+    },
+
+    /** Velocity in px/s from the pointer samples of the last 100 ms. */
+    velocity(samples) {
+        const now = performance.now();
+        const recent = samples.filter((sample) => now - sample.t < 100);
+
+        if (recent.length < 2) {
+            return 0;
+        }
+
+        const first = recent[0];
+        const last = recent[recent.length - 1];
+
+        return ((last.v - first.v) / Math.max(1, last.t - first.t)) * 1000;
+    },
+};
+
+window.E11Motion = Motion;
+
+document.addEventListener('alpine:init', () => {
+    /**
+     * Sheet (components/sheet): springs in from the bottom on phones, scales in on larger
+     * screens, closes at once on tap (the server follows), and can be dragged down by its
+     * grabber or header; a flick is projected to decide between closing and snapping back.
+     */
+    window.Alpine.data('e11Sheet', (closeMethod) => ({
+        offset: 0,
+        height: 0,
+        animation: null,
+        closing: false,
+        drag: null,
+
+        isPhone() {
+            return window.matchMedia('(max-width: 639px)').matches;
+        },
+
+        init() {
+            // Start position before the first paint, so the sheet never flashes in its final place.
+            if (Motion.reduced()) {
+                this.$refs.panel.style.opacity = '0';
+                this.$refs.backdrop.style.opacity = '0';
+            } else if (this.isPhone()) {
+                this.render(window.innerHeight);
+            } else {
+                this.render(0, 'scale');
+            }
+
+            this.$nextTick(() => {
+                this.height = this.$refs.panel.offsetHeight || window.innerHeight;
+
+                if (Motion.reduced()) {
+                    this.fade(0, 1);
+                } else if (this.isPhone()) {
+                    this.animateTo(0, 0, { from: this.height, damping: 1, response: 0.35 });
+                } else {
+                    this.animateTo(1, 0, { from: 0, damping: 1, response: 0.3, property: 'scale' });
+                }
+            });
+        },
+
+        render(value, property = 'offset') {
+            const panel = this.$refs.panel;
+            const backdrop = this.$refs.backdrop;
+
+            if (property === 'scale') {
+                panel.style.transform = `scale(${0.96 + 0.04 * value})`;
+                panel.style.opacity = String(Math.max(0, Math.min(1, value)));
+                backdrop.style.opacity = String(Math.max(0, Math.min(1, value)));
+
+                return;
+            }
+
+            this.offset = value;
+            panel.style.transform = `translate3d(0, ${value}px, 0)`;
+            backdrop.style.opacity = String(Math.max(0, Math.min(1, 1 - value / Math.max(1, this.height))));
+        },
+
+        clear() {
+            this.$refs.panel.style.transform = '';
+            this.$refs.panel.style.opacity = '';
+            this.$refs.backdrop.style.opacity = '';
+        },
+
+        animateTo(to, velocity, { from = null, damping = 1, response = 0.35, property = 'offset', onComplete = null } = {}) {
+            const start = from ?? (this.animation ? this.animation.value : this.offset);
+            this.animation?.stop();
+            this.animation = Motion.spring({
+                from: start,
+                to,
+                velocity,
+                damping,
+                response,
+                onUpdate: (value) => this.render(value, property),
+                onComplete: () => {
+                    this.animation = null;
+                    if (onComplete) {
+                        onComplete();
+                    } else if ((property === 'offset' && to === 0) || (property === 'scale' && to === 1)) {
+                        this.clear();
+                    }
+                },
+            });
+        },
+
+        fade(from, to, onComplete = null) {
+            const panel = this.$refs.panel;
+            const backdrop = this.$refs.backdrop;
+            [panel, backdrop].forEach((element) => {
+                element.style.transition = 'none';
+                element.style.opacity = String(from);
+            });
+            requestAnimationFrame(() => {
+                [panel, backdrop].forEach((element) => {
+                    element.style.transition = 'opacity 180ms ease';
+                    element.style.opacity = String(to);
+                });
+                setTimeout(() => onComplete?.(), 180);
+            });
+        },
+
+        close(velocity = 0) {
+            if (this.closing) {
+                return;
+            }
+
+            this.closing = true;
+            this.$root.style.pointerEvents = 'none';
+            const done = () => this.$wire[closeMethod]();
+
+            if (Motion.reduced()) {
+                this.fade(1, 0, done);
+            } else if (this.isPhone()) {
+                this.animateTo(this.height + 40, velocity, { damping: 1, response: 0.3, onComplete: done });
+            } else {
+                this.animateTo(0, 0, { from: 1, damping: 1, response: 0.2, property: 'scale', onComplete: done });
+            }
+        },
+
+        dragStart(event) {
+            if (!this.isPhone() || this.closing || event.button > 0 || event.target.closest('button, a, input, select, textarea, [contenteditable]')) {
+                return;
+            }
+
+            this.animation?.stop();
+            this.animation = null;
+            this.drag = { startY: event.clientY - this.offset, samples: [{ t: performance.now(), v: this.offset }] };
+            event.currentTarget.setPointerCapture(event.pointerId);
+        },
+
+        dragMove(event) {
+            if (!this.drag) {
+                return;
+            }
+
+            const raw = event.clientY - this.drag.startY;
+            // Down follows the finger 1:1; up resists like a real sheet at its top.
+            const value = raw < 0 ? -Motion.rubberband(-raw, this.height) : raw;
+            this.drag.samples.push({ t: performance.now(), v: raw });
+            this.drag.samples = this.drag.samples.slice(-8);
+            this.render(value);
+        },
+
+        dragEnd() {
+            if (!this.drag) {
+                return;
+            }
+
+            const velocity = Motion.velocity(this.drag.samples);
+            this.drag = null;
+            const projected = this.offset + Motion.project(velocity);
+
+            if (projected > this.height * 0.4 || velocity > 900) {
+                this.close(velocity);
+            } else {
+                // Back to the top; a little bounce only because a gesture carried momentum.
+                this.animateTo(0, velocity, { damping: 0.8, response: 0.3 });
+            }
+        },
+    }));
+
+    /**
+     * Mobile sidebar: follows the finger when swiped to the left and decides by projected
+     * momentum whether to close or to spring back.
+     */
+    window.Alpine.data('e11Drawer', () => ({
+        drawerDrag: null,
+
+        backdrop() {
+            return document.getElementById('e11-drawer-backdrop') ?? document.createElement('div');
+        },
+
+        drawerStart(event) {
+            if (window.matchMedia('(min-width: 1024px)').matches || !this.sidebarOpen || event.button > 0) {
+                return;
+            }
+
+            this.drawerDrag = { x: event.clientX, y: event.clientY, active: false, samples: [], width: this.$el.offsetWidth };
+        },
+
+        drawerMove(event) {
+            const drag = this.drawerDrag;
+
+            if (!drag) {
+                return;
+            }
+
+            const dx = event.clientX - drag.x;
+            const dy = event.clientY - drag.y;
+
+            if (!drag.active) {
+                // Commit to a horizontal swipe only after ~10px, so scrolling and taps still work.
+                if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy)) {
+                    if (Math.abs(dy) > 10) {
+                        this.drawerDrag = null;
+                    }
+
+                    return;
+                }
+
+                drag.active = true;
+                this.$el.setPointerCapture(event.pointerId);
+                this.$el.style.transition = 'none';
+            }
+
+            const offset = dx > 0 ? Motion.rubberband(dx, drag.width) : dx;
+            drag.offset = offset;
+            drag.samples.push({ t: performance.now(), v: dx });
+            drag.samples = drag.samples.slice(-8);
+            this.$el.style.transform = `translate3d(${offset}px, 0, 0)`;
+            this.backdrop().style.opacity = String(Math.max(0, 1 + Math.min(0, offset) / drag.width));
+        },
+
+        drawerEnd() {
+            const drag = this.drawerDrag;
+            this.drawerDrag = null;
+
+            if (!drag?.active) {
+                return;
+            }
+
+            const velocity = Motion.velocity(drag.samples);
+            const shouldClose = (drag.offset ?? 0) + Motion.project(velocity) < -drag.width / 2;
+            const drawer = this.$el;
+            const backdrop = this.backdrop();
+
+            Motion.spring({
+                from: drag.offset ?? 0,
+                to: shouldClose ? -drag.width : 0,
+                velocity,
+                damping: 1,
+                response: 0.3,
+                onUpdate: (value) => {
+                    drawer.style.transform = `translate3d(${value}px, 0, 0)`;
+                    backdrop.style.opacity = String(Math.max(0, 1 + Math.min(0, value) / drag.width));
+                },
+                onComplete: () => {
+                    if (shouldClose) {
+                        this.sidebarOpen = false;
+                    }
+
+                    requestAnimationFrame(() => {
+                        drawer.style.transform = '';
+                        drawer.style.transition = '';
+                        backdrop.style.opacity = '';
+                    });
+                },
+            });
+        },
+    }));
+});

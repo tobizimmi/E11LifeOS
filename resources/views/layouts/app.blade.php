@@ -76,7 +76,7 @@
             </div>
 
             {{-- Tab bar on phones: the most used places and "create" in thumb reach --}}
-            <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/70 bg-white/90 backdrop-blur lg:hidden dark:border-gray-800 dark:bg-gray-900/90" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="{{ __('Quick navigation') }}">
+            <nav class="e11-material fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/70 bg-white/90 backdrop-blur lg:hidden dark:border-gray-800 dark:bg-gray-900/90" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="{{ __('Quick navigation') }}">
                 <ul class="mx-auto grid max-w-md grid-cols-5 text-[11px]">
                     @foreach ([['dashboard', '🏠', __('Start')], ['tasks.index', '✅', __('Tasks')], [null, '＋', __('Create')], ['shopping-list.index', '🛒', __('Shopping trip')]] as [$tabRoute, $tabIcon, $tabLabel])
                         <li>

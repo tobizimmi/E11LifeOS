@@ -120,9 +120,9 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">{{ __('Fetching needs an Apify token (APIFY_API_KEY). Videos can also be pushed from another machine to /api/instagram/push.') }}</p>
                 @endunless
                 <div class="mt-4 flex flex-wrap items-center gap-1.5">
-                    <button type="button" wire:click="$set('sentiment', '')" @class(['rounded-full px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $sentiment === '', 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $sentiment !== ''])>{{ __('All') }} ({{ $total }})</button>
+                    <button type="button" wire:click="$set('sentiment', '')" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $sentiment === '', 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $sentiment !== ''])>{{ __('All') }} ({{ $total }})</button>
                     @foreach ($sentiments as $key => [$label, $classes])
-                        <button type="button" wire:click="$set('sentiment', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $sentiment === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $sentiment !== $key])>{{ $label }} ({{ $counts[$key] ?? 0 }})</button>
+                        <button type="button" wire:click="$set('sentiment', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $sentiment === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $sentiment !== $key])>{{ $label }} ({{ $counts[$key] ?? 0 }})</button>
                     @endforeach
                     <label class="ms-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="ideasOnly" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only posts with entry price') }}</label>
                 </div>

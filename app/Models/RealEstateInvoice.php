@@ -19,7 +19,7 @@ class RealEstateInvoice extends Model
     /** @use HasFactory<RealEstateInvoiceFactory> */
     use HasFactory;
 
-    public const RECEIPT_DISK = 'local';
+    public const RECEIPT_DISK = 'secure';
 
     /**
      * auto: derived from the budget line and the usage of the property.

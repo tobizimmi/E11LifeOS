@@ -186,6 +186,7 @@ class RealEstateTest extends TestCase
     public function test_invoices_with_receipts_and_bank_bookings(): void
     {
         Storage::fake('local');
+        Storage::fake('secure');
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
         $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id]);
@@ -202,11 +203,11 @@ class RealEstateTest extends TestCase
 
         $invoice = RealEstateInvoice::sole();
         $this->assertSame([$booking->id, '2026-09-20'], [$invoice->transaction_id, $invoice->paid_on->toDateString()]);
-        Storage::disk('local')->assertExists($invoice->receipt_path);
+        Storage::disk('secure')->assertExists($invoice->receipt_path);
         $this->get(route('real-estate.receipt', $invoice))->assertOk();
 
         $invoice->delete();
-        Storage::disk('local')->assertMissing($invoice->receipt_path);
+        Storage::disk('secure')->assertMissing($invoice->receipt_path);
     }
 
     public function test_private_properties_other_households_and_the_addon_switch(): void

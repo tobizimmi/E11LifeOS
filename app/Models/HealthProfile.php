@@ -25,6 +25,7 @@ class HealthProfile extends Model
     {
         return [
             'birth_date' => 'date',
+            'blood_type' => 'encrypted',
             'allergies' => 'encrypted',
             'conditions' => 'encrypted',
             'insurance' => 'encrypted',

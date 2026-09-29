@@ -54,7 +54,8 @@ class EmergencyFolderTest extends TestCase
             ->assertSee('Girokonto')
             ->assertSee('DE02120300000000202051');
 
-        $this->get(route('emergency.pdf'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->get(route('emergency.pdf'))->assertRedirect(route('password.confirm'));
+        $this->withSession(['auth.password_confirmed_at' => time()])->get(route('emergency.pdf'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->actingAs($this->addMemberTo($household));
         Volt::test('emergency.index')->call('edit', $entry->id)->assertNotFound();
     }

@@ -6,10 +6,17 @@ use App\Http\Middleware\EnsureAddonEnabled;
 use App\Models\User;
 use App\Support\AppSettings;
 use App\Support\PrefixAwareSignedUploadUrl;
+use App\Support\Security\EncryptedFilesystemAdapter;
 use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
+use League\Flysystem\Filesystem;
+use League\Flysystem\Local\LocalFilesystemAdapter;
 use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +38,18 @@ class AppServiceProvider extends ServiceProvider
         AppSettings::apply();
 
         Gate::define('admin', fn (User $user) => $user->isAdmin());
+
+        // Documents, ID scans and receipts are stored encrypted (disk "secure").
+        Storage::extend('encrypted', function (Application $app, array $config) {
+            $adapter = new EncryptedFilesystemAdapter(new LocalFilesystemAdapter($config['root']), $app['encrypter']);
+
+            return new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
+        });
+
+        // Long passwords; in production also checked against known data leaks (haveibeenpwned, k-anonymity).
+        Password::defaults(fn () => $this->app->isProduction()
+            ? Password::min(12)->letters()->numbers()->uncompromised()
+            : Password::min(12)->letters()->numbers());
 
         // Addon checks also apply to the Livewire requests of pages behind "addon:…".
         Livewire::addPersistentMiddleware([EnsureAddonEnabled::class]);

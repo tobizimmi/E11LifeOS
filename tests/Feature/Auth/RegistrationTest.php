@@ -34,8 +34,8 @@ class RegistrationTest extends TestCase
             ->set('household_name', 'Familie Test')
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 
@@ -63,8 +63,8 @@ class RegistrationTest extends TestCase
             ->set('invite_code', $invite->code)
             ->set('name', 'Partner User')
             ->set('email', 'partner@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 
@@ -82,8 +82,8 @@ class RegistrationTest extends TestCase
             ->set('invite_code', 'DOES-NOT-EXIST')
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 
@@ -105,8 +105,8 @@ class RegistrationTest extends TestCase
             ->set('household_name', 'Zweiter Versuch')
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 

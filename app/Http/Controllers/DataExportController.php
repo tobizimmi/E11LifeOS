@@ -23,6 +23,7 @@ use App\Models\Portfolio;
 use App\Models\PortfolioSetting;
 use App\Models\PriceAlert;
 use App\Models\Product;
+use App\Models\QuoteComparison;
 use App\Models\RealEstate;
 use App\Models\Recipe;
 use App\Models\RecurringInvoice;
@@ -99,6 +100,10 @@ class DataExportController extends Controller
                 'items' => NetWorthItem::where('user_id', $user->id)->orderBy('position')->get()->map->only(['name', 'kind', 'value']),
                 'history' => NetWorthSnapshot::where('user_id', $user->id)->orderBy('taken_on')->get()->map->only(['taken_on', 'assets', 'liabilities', 'breakdown']),
                 'savings_goals' => SavingsGoal::where('user_id', $user->id)->orderBy('position')->get()->map->only(['name', 'icon', 'target_amount', 'saved_amount', 'target_date']),
+                'quote_comparisons' => QuoteComparison::where('created_by', $user->id)->with('quotes')->orderBy('id')->get()->map(fn (QuoteComparison $comparison) => $comparison->only(['title', 'icon', 'notes', 'decide_by', 'visibility']) + [
+                    'quotes' => $comparison->quotes->map->only(['vendor', 'amount', 'quoted_on', 'valid_until', 'delivery', 'rating', 'pros', 'cons', 'notes', 'url'])->all(),
+                    'chosen' => $comparison->chosenQuote?->vendor,
+                ]),
             ],
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household

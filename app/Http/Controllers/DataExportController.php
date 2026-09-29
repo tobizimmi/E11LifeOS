@@ -10,6 +10,7 @@ use App\Models\CalendarSubscription;
 use App\Models\Collection;
 use App\Models\Comment;
 use App\Models\Customer;
+use App\Models\EmergencyEntry;
 use App\Models\ExternalLink;
 use App\Models\FinanceRule;
 use App\Models\Household;
@@ -32,6 +33,7 @@ use App\Models\SavingsGoal;
 use App\Models\ShoppingListEntry;
 use App\Models\TargetAllocation;
 use App\Models\TimeEntry;
+use App\Models\TrustedPerson;
 use App\Models\User;
 use App\Models\WatchlistItem;
 use Illuminate\Http\JsonResponse;
@@ -105,6 +107,10 @@ class DataExportController extends Controller
                     'quotes' => $comparison->quotes->map->only(['vendor', 'amount', 'quoted_on', 'valid_until', 'delivery', 'rating', 'pros', 'cons', 'notes', 'url'])->all(),
                     'chosen' => $comparison->chosenQuote?->vendor,
                 ]),
+            ],
+            'emergency_folder' => [
+                'entries' => EmergencyEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['section', 'kind', 'title', 'details', 'location', 'expires_on', 'remind_days']),
+                'trusted_people' => TrustedPerson::where('user_id', $user->id)->orderBy('name')->get()->map->only(['name', 'email', 'wait_days', 'requested_at', 'granted_at']),
             ],
             'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),

@@ -78,7 +78,8 @@ class MorningBriefingTest extends TestCase
         $this->assertStringContainsString('Oma – Fällig (Geburtstage)', $text);
         $this->assertStringContainsString('Kürbissuppe', $text);
 
-        $this->get(route('dashboard'))->assertSee('Wetter heute')->assertSee('9–18 °C');
+        $this->get(route('dashboard'))->assertSee('Wetter heute');
+        Volt::test('dashboard')->call('loadWidgets')->assertSee('9–18 °C');
     }
 
     public function test_it_is_sent_once_at_the_chosen_hour(): void

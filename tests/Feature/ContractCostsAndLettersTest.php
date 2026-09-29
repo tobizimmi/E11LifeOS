@@ -106,7 +106,7 @@ class ContractCostsAndLettersTest extends TestCase
 
         Livewire::withQueryParams(['template' => LetterTemplates::OBJECTION, 'entry' => $foreign->id])->test('letters.index')
             ->assertSet('recipient', '')
-            ->assertSet('subject', 'Widerspruch: meinen Vertrag')
+            ->assertSet('subject', 'Widerspruch')
             ->call('download')
             ->assertHasErrors('recipient');
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecommendationController;
@@ -17,6 +18,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware(['auth.token', 'throttle:120,1'])->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('logout');
+
+        Route::get('tasks', [LifeController::class, 'tasks'])->name('tasks.index');
+        Route::post('tasks', [LifeController::class, 'storeTask'])->name('tasks.store');
+        Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
+        Route::get('calendar', [LifeController::class, 'calendar'])->name('calendar');
+        Route::get('notifications', [LifeController::class, 'notifications'])->name('notifications.index');
+        Route::post('notifications/read', [LifeController::class, 'readNotifications'])->name('notifications.read');
+        Route::get('shopping', [LifeController::class, 'shopping'])->name('shopping.index');
+        Route::post('shopping', [LifeController::class, 'storeShopping'])->name('shopping.store');
+        Route::post('shopping/{entry}/toggle', [LifeController::class, 'toggleShopping'])->whereNumber('entry')->name('shopping.toggle');
+        Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
 
         Route::middleware('addon:portfolio')->group(function () {
             Route::get('portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');

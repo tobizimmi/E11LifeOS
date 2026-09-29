@@ -197,3 +197,15 @@
         @apply inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded border border-gray-200 dark:border-gray-600 px-1 text-xs text-gray-500 dark:text-gray-400;
     }
 }
+
+/* Respect the system setting for reduced motion (spinners, pulses, drag animations). */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

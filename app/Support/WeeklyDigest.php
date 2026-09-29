@@ -34,6 +34,7 @@ class WeeklyDigest
             return ['week' => self::weekLabel(), 'sections' => []];
         }
 
+        $sections[] = ['icon' => '💡', 'title' => __('Insights'), 'lines' => WeeklyInsights::for($user, $household->id), 'url' => route('dashboard')];
         $sections[] = self::tasks($user, $household->id);
         $sections[] = self::deadlines($user, $household->id);
 

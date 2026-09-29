@@ -11,6 +11,7 @@ use App\Models\RealEstate;
 use App\Models\RealEstateInvoice;
 use App\Models\Transaction;
 use App\Support\Finance\FinanceReceiptAi;
+use App\Support\Paperless\PaperlessClassifierAi;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -162,5 +163,31 @@ class PaperlessInboxTest extends TestCase
             ->assertSet('form.target', 'task')
             ->call('assignTo', 42, 'nonsense')
             ->assertSet('form.target', 'finance');
+    }
+
+    public function test_the_ai_sorts_the_inbox_and_its_suggestion_is_used_for_filing(): void
+    {
+        $this->fakePaperless();
+        [$user, $household] = $this->memberWithHousehold();
+        $this->paperlessInstance($user->id, $household->id);
+        $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id, 'name' => 'Birkenweg']);
+        $this->actingAs($user);
+        config(['services.anthropic.key' => 'test']);
+        $this->partialMock(PaperlessClassifierAi::class, fn (MockInterface $ai) => $ai->shouldAllowMockingProtectedMethods()->shouldReceive('ask')->once()->andReturn(['documents' => [
+            ['id' => 41, 'target' => 'task', 'real_estate_id' => 0],
+            ['id' => 42, 'target' => 'real_estate', 'real_estate_id' => $realEstate->id],
+            ['id' => 99, 'target' => 'finance', 'real_estate_id' => 0],
+        ]]));
+
+        Volt::test('paperless-inbox')
+            ->assertSee('Mit KI einordnen')
+            ->call('classifyWithAi')
+            ->assertSee('2 Dokumente von der KI eingeordnet')
+            ->assertSee('Ablegen · ✨ Aufgabe')
+            ->assertSee('Ablegen · ✨ Immobilien-Rechnung')
+            ->assertDontSee('Mit KI einordnen')
+            ->call('assign', 42)
+            ->assertSet('form.target', 'real_estate')
+            ->assertSet('form.real_estate_id', $realEstate->id);
     }
 }

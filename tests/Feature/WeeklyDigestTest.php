@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\WeeklyDigestNotification;
 use App\Support\WeeklyDigest;
+use App\Support\WeeklyInsights;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -94,5 +95,33 @@ class WeeklyDigestTest extends TestCase
         Notification::assertSentToTimes($user, WeeklyDigestNotification::class, 2);
 
         Volt::test('profile.weekly-digest-form')->set('channel', 'weekly')->call('save')->assertHasErrors('channel');
+    }
+
+    public function test_insights_compare_the_week_with_the_time_before(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $tasks = Collection::tasksFor($household->id);
+
+        foreach ([1, 2, 3] as $day) {
+            $this->task($tasks, 'Neu '.$day, null, ['created_by' => $user->id, 'done' => true, 'completed_at' => now()->subDays($day)]);
+        }
+
+        $old = $this->task($tasks, 'Alt', null, ['created_by' => $user->id, 'done' => true]);
+        Item::whereKey($old->id)->update(['completed_at' => now()->subDays(10)]);
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+
+        foreach ([10, 17, 24, 31] as $daysAgo) {
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => now()->subDays($daysAgo), 'amount' => -100, 'category' => 'groceries']);
+        }
+
+        Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => now()->subDays(2), 'amount' => -100, 'category' => 'groceries']);
+        Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => now()->subDays(1), 'amount' => -150, 'category' => 'restaurants']);
+
+        $insights = implode("\n", WeeklyInsights::for($user, $household->id));
+
+        $this->assertStringContainsString('3 Aufgaben erledigt – 2 mehr als in der Woche davor.', $insights);
+        $this->assertStringContainsString('250,00 € in den letzten 7 Tagen ausgegeben – 150 % mehr als in einer durchschnittlichen Woche.', $insights);
+        $this->assertStringContainsString('diese Woche 150,00 € mehr als üblich.', $insights);
+        $this->assertSame('Einsichten', WeeklyDigest::for($user)['sections'][0]['title']);
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Models\Recipe;
+use App\Models\ShoppingListEntry;
 use App\Support\AiException;
 use App\Support\BrainAi;
 use App\Support\BrainSearch;
@@ -125,5 +126,44 @@ class SecondBrainAiTest extends TestCase
             ->call('addEntryTag', $entry->id, 'wochenende');
 
         $this->assertSame(['garten', 'wochenende'], $entry->fresh()->tags->pluck('name')->sort()->values()->all());
+    }
+
+    public function test_proposed_actions_are_only_carried_out_after_confirmation(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        Item::factory()->note()->for($household)->create(['title' => 'Zahnarzt Dr. Weiß']);
+
+        $this->mock(BrainAi::class, fn (MockInterface $ai) => $ai->shouldReceive('answer')->once()->andReturn([
+            'answer' => 'Ich habe die Aufgabe und die Einkäufe vorbereitet.',
+            'sources' => [],
+            'actions' => BrainAi::cleanActions([
+                ['type' => 'create_task', 'title' => 'Zahnarzt anrufen', 'due' => '2026-10-02', 'items' => []],
+                ['type' => 'add_to_shopping_list', 'title' => '', 'due' => '', 'items' => ['Milch', ' ', 'Brot']],
+                ['type' => 'delete_everything', 'title' => 'x', 'due' => '', 'items' => []],
+            ]),
+        ]));
+
+        $component = Volt::test('brain.ask')
+            ->set('question', 'Erinnere mich Freitag an den Zahnarzt und setz Milch und Brot auf die Liste')
+            ->call('ask')
+            ->assertSee('Zahnarzt anrufen')
+            ->assertSee('fällig 02.10.2026')
+            ->assertSee('Milch, Brot')
+            ->assertDontSee('delete_everything');
+
+        $this->assertSame(0, Item::where('title', 'Zahnarzt anrufen')->count());
+        $this->assertSame(0, ShoppingListEntry::count());
+
+        $component->call('runAction', 0, 0)->call('runAction', 0, 1);
+
+        $task = Item::where('title', 'Zahnarzt anrufen')->sole();
+        $this->assertSame(Item::TYPE_TODO, $task->type);
+        $this->assertSame('2026-10-02', $task->propertyValue(Collection::tasksFor($household->id)->systemProperty('due')));
+        $this->assertSame(['Milch', 'Brot'], ShoppingListEntry::orderBy('id')->pluck('label')->all());
+
+        // A confirmed action cannot be run twice.
+        $component->call('runAction', 0, 0)->assertNotFound();
+        $this->assertSame(1, Item::where('title', 'Zahnarzt anrufen')->count());
     }
 }

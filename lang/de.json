@@ -3138,5 +3138,20 @@
     "Drag the cards to change the status; click a card for the details.": "Karten ziehen, um den Status zu ändern; Karte anklicken für die Details.",
     "Tip: drag a document onto one of the fields above.": "Tipp: Ein Dokument auf eines der Felder oben ziehen.",
     "Sort bookings by drag & drop": "Buchungen per Drag & Drop einsortieren",
-    "Drag a bar to move the trade, drag its right edge to change the end.": "Balken ziehen verschiebt das Gewerk, am rechten Rand ziehen ändert das Ende."
+    "Drag a bar to move the trade, drag its right edge to change the end.": "Balken ziehen verschiebt das Gewerk, am rechten Rand ziehen ändert das Ende.",
+    "Done.": "Erledigt.",
+    "Suggested actions": "Vorgeschlagene Aktionen",
+    ":count document sorted by the AI – check the suggestion on the button.|:count documents sorted by the AI – check the suggestion on the button.": ":count Dokument von der KI eingeordnet – prüfe den Vorschlag auf dem Knopf.|:count Dokumente von der KI eingeordnet – prüfe den Vorschlag auf dem Knopf.",
+    "Sort with AI": "Mit KI einordnen",
+    "The AI reads the documents …": "Die KI liest die Dokumente …",
+    ":this tasks done – :more more than the week before.": ":this Aufgaben erledigt – :more mehr als in der Woche davor.",
+    ":this tasks done – the week before it were :last.": ":this Aufgaben erledigt – in der Woche davor waren es :last.",
+    ":this tasks done, as many as the week before.": ":this Aufgaben erledigt, genauso viele wie in der Woche davor.",
+    ":category: :amount more than usual this week.": ":category: diese Woche :amount mehr als üblich.",
+    "Net worth :change this week.": "Nettovermögen diese Woche :change.",
+    ":count contract can be cancelled within 30 days: :names.|:count contracts can be cancelled within 30 days: :names.": ":count Vertrag kann in den nächsten 30 Tagen gekündigt werden: :names.|:count Verträge können in den nächsten 30 Tagen gekündigt werden: :names.",
+    ":count inbox entry has been waiting for over a week.|:count inbox entries have been waiting for over a week.": ":count Eintrag wartet seit über einer Woche im Eingang.|:count Einträge warten seit über einer Woche im Eingang.",
+    "Insights": "Einsichten",
+    "Spent :spent in the last 7 days – :percent % more than an average week.": ":spent in den letzten 7 Tagen ausgegeben – :percent % mehr als in einer durchschnittlichen Woche.",
+    "Spent :spent in the last 7 days – :percent % less than an average week.": ":spent in den letzten 7 Tagen ausgegeben – :percent % weniger als in einer durchschnittlichen Woche."
 }

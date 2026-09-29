@@ -14,11 +14,13 @@ use App\Support\Business\BookkeepingCategories;
 use App\Support\Business\ReceiptAi;
 use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\FinanceReceiptAi;
+use App\Support\Paperless\PaperlessClassifierAi;
 use App\Support\Paperless\PaperlessClient;
 use App\Support\Paperless\PaperlessException;
 use App\Support\Paperless\PaperlessInbox;
 use App\Support\QuickCapture;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
@@ -96,7 +98,7 @@ new class extends Component
         }
 
         $targets = PaperlessInbox::targetsFor($user);
-        $suggestion = PaperlessInbox::suggest($document['title'], $tagNames, $this->realEstates(), $targets);
+        $suggestion = $this->rememberedSuggestion($documentId, $targets) ?? PaperlessInbox::suggest($document['title'], $tagNames, $this->realEstates(), $targets);
 
         $this->assigningId = $documentId;
         $this->assigningTitle = $document['title'];
@@ -113,6 +115,58 @@ new class extends Component
             'account' => 'cash',
             'remove_from_inbox' => true,
         ];
+    }
+
+    /**
+     * The AI's earlier suggestion for a document, if it still fits what the member may use.
+     *
+     * @param  list<string>  $targets
+     * @return array{target: string, real_estate_id: ?int}|null
+     */
+    private function rememberedSuggestion(int $documentId, array $targets): ?array
+    {
+        $suggestion = $this->instanceId ? PaperlessClassifierAi::remembered($this->instanceId, $documentId) : null;
+
+        if (! $suggestion || ! in_array($suggestion['target'], $targets, true)) {
+            return null;
+        }
+
+        if ($suggestion['target'] === 'real_estate' && ! $this->realEstates()->contains('id', $suggestion['real_estate_id'])) {
+            return null;
+        }
+
+        return $suggestion;
+    }
+
+    /**
+     * Lets the AI sort all documents of the inbox at once.
+     */
+    public function classifyWithAi(PaperlessClassifierAi $ai): void
+    {
+        $this->message = null;
+        $limiterKey = 'paperless-classify:'.$this->currentUser()->id;
+
+        if (RateLimiter::tooManyAttempts($limiterKey, 20)) {
+            $this->message = __('Too many requests in a short time. Please try again in a few minutes.');
+
+            return;
+        }
+
+        RateLimiter::hit($limiterKey, 3600);
+
+        try {
+            $client = $this->client();
+            $documents = $client->inbox();
+            $tagNames = $documents === [] ? [] : $client->tags();
+            $documents = array_map(fn (array $document) => $document + ['tag_names' => array_values(array_intersect_key($tagNames, array_flip($document['tags'])))], $documents);
+            $suggestions = $ai->classify((int) $this->instanceId, $documents, PaperlessInbox::targetsFor($this->currentUser()), $this->realEstates()->mapWithKeys(fn (RealEstate $realEstate) => [$realEstate->id => trim($realEstate->name.' '.$realEstate->street.' '.$realEstate->city)])->all());
+        } catch (PaperlessException|AiException $exception) {
+            $this->message = $exception->getMessage();
+
+            return;
+        }
+
+        $this->message = trans_choice(':count document sorted by the AI – check the suggestion on the button.|:count documents sorted by the AI – check the suggestion on the button.', count($suggestions));
     }
 
     /**
@@ -345,10 +399,12 @@ new class extends Component
             'instances' => $instances,
             'documents' => collect($documents)->map(fn (array $document) => $document + [
                 'tag_names' => array_values(array_intersect_key($tagNames, array_flip($document['tags']))),
-                'suggestion' => PaperlessInbox::suggest($document['title'], array_values(array_intersect_key($tagNames, array_flip($document['tags']))), $realEstates, $targets)['target'],
+                'suggestion' => ($this->rememberedSuggestion($document['id'], $targets) ?? PaperlessInbox::suggest($document['title'], array_values(array_intersect_key($tagNames, array_flip($document['tags']))), $realEstates, $targets))['target'],
+                'ai' => $this->rememberedSuggestion($document['id'], $targets) !== null,
                 'linked' => in_array($document['id'], $linked, true),
             ])->all(),
             'error' => $error,
+            'aiAvailable' => PaperlessClassifierAi::isConfigured(),
             'targets' => $targets,
             'realEstates' => $realEstates,
             'accounts' => in_array('finance', $targets, true) ? BankAccount::where('user_id', $user->id)->where('household_id', $this->householdId)->orderBy('name')->get() : collect(),
@@ -395,6 +451,10 @@ new class extends Component
             @endforeach
         </div>
         <p class="hidden text-xs text-gray-500 sm:block dark:text-gray-400">{{ __('Tip: drag a document onto one of the fields above.') }}</p>
+        @if ($aiAvailable && collect($documents)->contains('ai', false))
+            <x-secondary-button type="button" wire:click="classifyWithAi" wire:loading.attr="disabled" wire:target="classifyWithAi">✨ {{ __('Sort with AI') }}</x-secondary-button>
+            <p wire:loading wire:target="classifyWithAi" class="text-xs text-gray-500 dark:text-gray-400">{{ __('The AI reads the documents …') }}</p>
+        @endif
     @endif
 
     <ul class="space-y-3">
@@ -423,7 +483,7 @@ new class extends Component
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{{ $paperlessDocument['content'] }}</p>
                         @endif
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                            <x-secondary-button type="button" wire:click="assign({{ $paperlessDocument['id'] }})">{{ __('File away') }} · {{ $targetLabels[$paperlessDocument['suggestion']] }}</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="assign({{ $paperlessDocument['id'] }})">{{ __('File away') }} · {{ $paperlessDocument['ai'] ? '✨ ' : '' }}{{ $targetLabels[$paperlessDocument['suggestion']] }}</x-secondary-button>
                             <button type="button" wire:click="dismiss({{ $paperlessDocument['id'] }})" class="text-xs text-gray-500 underline">{{ __('Remove from inbox') }}</button>
                         </div>
                     </div>

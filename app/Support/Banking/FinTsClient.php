@@ -249,16 +249,23 @@ class FinTsClient
     /**
      * A readable explanation when the bank's server answers with an HTTP error or cannot be reached.
      */
-    public static function describeConnectionError(CurlException $exception, string $url): string
+    public static function describeConnectionError(CurlException $exception, string $url, ?string $knownUrl = null): string
     {
         $host = (string) (parse_url($url, PHP_URL_HOST) ?: $url);
         $status = (int) $exception->getCode();
-        $detail = trim(preg_replace('/\s+/', ' ', strip_tags((string) $exception->getResponse())));
+        $response = (string) $exception->getResponse();
+        $detail = trim(preg_replace('/\s+/', ' ', strip_tags($response)));
         $detail = $detail !== '' ? ' '.__('Answer of the bank: “:detail”', ['detail' => mb_strimwidth($detail, 0, 160, '…')]) : '';
+        $suggestion = $knownUrl && rtrim($knownUrl, '/') !== rtrim($url, '/') ? ' '.__('The known FinTS address of this bank is :url.', ['url' => $knownUrl]) : '';
+
+        // A web page (HTML, CSRF protection, login form) answered instead of the FinTS interface.
+        if ($status >= 300 && (stripos($response, 'csrf') !== false || stripos($response, '<html') !== false)) {
+            return __('The address :url leads to the bank\'s website, not to its FinTS interface. Enter the FinTS address in the connection settings.', ['url' => $url]).$suggestion.$detail;
+        }
 
         return match (true) {
-            in_array($status, [401, 403], true) => __('The bank server :host refused the request (HTTP :status). Usually the FinTS address is out of date, the FinTS product ID is not (yet) activated for this bank, or the bank blocks requests from this server. Check the FinTS address in the connection settings.', ['host' => $host, 'status' => $status]).$detail,
-            $status === 404 => __('The bank server :host does not know this FinTS address (HTTP 404). Check the FinTS address in the connection settings.', ['host' => $host]).$detail,
+            in_array($status, [401, 403], true) => __('The bank server :host refused the request (HTTP :status). Usually the FinTS address is out of date, the FinTS product ID is not (yet) activated for this bank, or the bank blocks requests from this server. Check the FinTS address in the connection settings.', ['host' => $host, 'status' => $status]).$suggestion.$detail,
+            $status === 404 => __('The bank server :host does not know this FinTS address (HTTP 404). Check the FinTS address in the connection settings.', ['host' => $host]).$suggestion.$detail,
             $status >= 500 => __('The bank server :host has a problem right now (HTTP :status). Please try again later.', ['host' => $host, 'status' => $status]),
             $status >= 300 => __('The bank server :host answered with HTTP :status.', ['host' => $host, 'status' => $status]).$detail,
             default => __('The bank server :host cannot be reached: :message', ['host' => $host, 'message' => (string) ($exception->getCurlMessage() ?: $exception->getMessage())]),

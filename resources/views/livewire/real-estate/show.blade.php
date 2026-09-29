@@ -627,6 +627,9 @@ new #[Layout('layouts.app')] class extends Component
             'programs' => SubsidyPrograms::all(),
             'schedule' => $this->scheduleLoanId && ($scheduleLoan = $model->loans->firstWhere('id', $this->scheduleLoanId)) ? RealEstatePlan::schedule($scheduleLoan) : [],
             'transactionMatches' => $this->tab === 'invoices' ? $this->transactionMatches($model->invoices) : [],
+            'quoteComparisons' => $this->tab === 'budget'
+                ? \App\Models\QuoteComparison::query()->visibleTo(Auth::user(), $model->household_id)->whereIn('budget_item_id', $model->budgetItems->pluck('id'))->withCount('quotes')->get()->keyBy('budget_item_id')
+                : collect(),
             'invoiceDocumentCounts' => $this->tab === 'invoices'
                 ? \App\Models\ExternalLink::where('linkable_type', 'real_estate_invoice')->whereIn('linkable_id', $model->invoices->pluck('id'))->selectRaw('linkable_id, count(*) as total')->groupBy('linkable_id')->pluck('total', 'linkable_id')
                 : collect(),

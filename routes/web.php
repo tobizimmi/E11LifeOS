@@ -48,6 +48,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('calendar', 'calendar.index')->name('calendar.index');
     Volt::route('net-worth', 'net-worth.index')->name('net-worth.index');
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
+    Volt::route('quotes', 'quotes.index')->name('quotes.index');
+    Volt::route('quotes/{comparison}', 'quotes.show')->whereNumber('comparison')->name('quotes.show');
     Volt::route('letters', 'letters.index')->name('letters.index');
     Volt::route('ask', 'brain.ask')->name('brain.ask');
     Volt::route('pages/{item?}', 'pages.index')->whereNumber('item')->name('pages.index');

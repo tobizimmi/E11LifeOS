@@ -160,6 +160,7 @@ new class extends Component
             ['🔔 '.__('Notifications'), route('notifications.index'), 'benachrichtigungen glocke notifications'],
             ['💎 '.__('Net worth'), route('net-worth.index'), 'vermögen nettovermögen net worth schulden'],
             ['📑 '.__('Contract costs'), route('contracts.index'), 'verträge kosten kündigung fristen contracts'],
+            ['⚖️ '.__('Quote comparisons'), route('quotes.index'), 'angebote vergleich angebotsvergleich quotes kaufen anschaffung handwerker'],
             ['✉️ '.__('Letters'), route('letters.index'), 'brief kündigung widerspruch adresse letter vorlage'],
             ['🛒 '.__('Shopping List'), route('shopping-list.index'), 'einkauf shopping liste'],
             ['🏷️ '.__('Offers'), route('shopping-list.offers'), 'angebote prospekt offers'],

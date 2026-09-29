@@ -86,6 +86,10 @@
                                     @if ($meta !== [])
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $meta) }}</p>
                                     @endif
+                                    @php
+                                        $tradeComparison = $quoteComparisons[$row['item']->id] ?? null;
+                                    @endphp
+                                    <a href="{{ $tradeComparison ? route('quotes.show', $tradeComparison) : route('quotes.index', ['budget_item' => $row['item']->id]) }}" wire:navigate class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">⚖️ {{ $tradeComparison ? trans_choice('Compare :count quote|Compare :count quotes', $tradeComparison->quotes_count).($tradeComparison->chosen_quote_id ? ' ✓' : '') : __('Compare quotes') }}</a>
                                 </td>
                                 <td class="px-3 py-2 text-end text-gray-700 dark:text-gray-300">{{ $euro($row['planned']) }}</td>
                                 <td @class(['px-3 py-2 text-end', 'font-medium text-red-700 dark:text-red-400' => $row['over'], 'text-gray-700 dark:text-gray-300' => ! $row['over']])>{{ $row['over'] ? '⚠ ' : '' }}{{ $euro($row['invoiced']) }}</td>

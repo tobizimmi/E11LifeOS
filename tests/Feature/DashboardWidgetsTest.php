@@ -42,6 +42,7 @@ class DashboardWidgetsTest extends TestCase
         $this->assertSame(100.0, DashboardWidgets::monthlyCosts($user, $household->id)['total']);
 
         Volt::test('dashboard')
+            ->call('loadWidgets')
             ->assertSee('Fristen (nächste 30 Tage)')
             ->assertSee('Handy')
             ->assertSee('in 15 Tagen')

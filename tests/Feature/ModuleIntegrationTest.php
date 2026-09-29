@@ -74,7 +74,7 @@ class ModuleIntegrationTest extends TestCase
         $this->assertStringContainsString('Förderung KfW 458', $document['text']);
         $this->assertNull(collect(BrainSearch::documents('Welche Rezepte mögen wir?', $user, $household->id))->firstWhere('key', 'real-estate:overview'));
 
-        Volt::test('dashboard')->assertSee('Lindenhaus')->assertSee('Steuer 2026');
+        Volt::test('dashboard')->call('loadWidgets')->assertSee('Lindenhaus')->assertSee('Steuer 2026');
 
         // Without the module nothing shows up.
         $household->setAddon('real_estate', false);

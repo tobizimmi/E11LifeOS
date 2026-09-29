@@ -3153,5 +3153,9 @@
     ":count inbox entry has been waiting for over a week.|:count inbox entries have been waiting for over a week.": ":count Eintrag wartet seit über einer Woche im Eingang.|:count Einträge warten seit über einer Woche im Eingang.",
     "Insights": "Einsichten",
     "Spent :spent in the last 7 days – :percent % more than an average week.": ":spent in den letzten 7 Tagen ausgegeben – :percent % mehr als in einer durchschnittlichen Woche.",
-    "Spent :spent in the last 7 days – :percent % less than an average week.": ":spent in den letzten 7 Tagen ausgegeben – :percent % weniger als in einer durchschnittlichen Woche."
+    "Spent :spent in the last 7 days – :percent % less than an average week.": ":spent in den letzten 7 Tagen ausgegeben – :percent % weniger als in einer durchschnittlichen Woche.",
+    "Please choose at most two months.": "Bitte höchstens zwei Monate wählen.",
+    "You are not a member of a household yet.": "Du bist noch in keinem Haushalt.",
+    "Loading …": "Wird geladen …",
+    "Skip to content": "Zum Inhalt springen"
 }

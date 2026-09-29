@@ -33,6 +33,18 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $customizing = false;
 
+    /**
+     * Cards that need slow queries or outside services are filled in after the page is shown.
+     */
+    public const LAZY_WIDGETS = ['weather', 'deadlines', 'portfolio', 'real_estate', 'tax', 'costs'];
+
+    public bool $widgetsLoaded = false;
+
+    public function loadWidgets(): void
+    {
+        $this->widgetsLoaded = true;
+    }
+
     public function toggleWidget(string $key): void
     {
         abort_unless(array_key_exists($key, DashboardWidgets::all()), 404);
@@ -135,6 +147,7 @@ new #[Layout('layouts.app')] class extends Component
         $openShopping = ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false);
         $hasRecipes = $this->currentUser()->canUseAddon(Addons::RECIPES);
         $widgets = $this->visibleWidgets();
+        $shows = fn (string $widget) => $this->widgetsLoaded && in_array($widget, $widgets, true);
 
         return $data + [
             'onboarding' => \App\Support\Onboarding::isVisible($this->currentUser()) ? \App\Support\Onboarding::steps($this->currentUser()) : null,
@@ -153,18 +166,18 @@ new #[Layout('layouts.app')] class extends Component
             'todaysMeals' => $hasRecipes ? $this->todaysMeals() : collect(),
             'widgets' => $widgets,
             'allWidgets' => array_filter(DashboardWidgets::all(), fn (string $key) => $this->widgetAvailable($key), ARRAY_FILTER_USE_KEY),
-            'portfolio' => in_array('portfolio', $widgets, true) ? PortfolioLink::summary($this->currentUser()) : null,
-            'portfolioEvents' => in_array('portfolio', $widgets, true) ? array_slice(PortfolioLink::events($this->currentUser(), today(), today()->addDays(30)), 0, 3) : [],
-            'weather' => in_array('weather', $widgets, true) && $this->currentUser()->weather_latitude !== null
+            'portfolio' => $shows('portfolio') ? PortfolioLink::summary($this->currentUser()) : null,
+            'portfolioEvents' => $shows('portfolio') ? array_slice(PortfolioLink::events($this->currentUser(), today(), today()->addDays(30)), 0, 3) : [],
+            'weather' => $shows('weather') && $this->currentUser()->weather_latitude !== null
                 ? \App\Support\Weather::today($this->currentUser()->weather_latitude, $this->currentUser()->weather_longitude)
                 : null,
-            'realEstates' => in_array('real_estate', $widgets, true)
+            'realEstates' => $shows('real_estate')
                 ? \App\Support\RealEstate\RealEstateLink::properties($this->currentUser(), $this->householdId)->map(fn ($realEstate) => ['model' => $realEstate, 'summary' => \App\Support\RealEstate\RealEstatePlan::summary($realEstate)])
                 : collect(),
-            'realEstateEvents' => in_array('real_estate', $widgets, true) ? array_slice(\App\Support\RealEstate\RealEstateLink::events($this->currentUser(), $this->householdId, today()->subDays(30), today()->addDays(30)), 0, 3) : [],
-            'taxYear' => in_array('tax', $widgets, true) ? \App\Support\Finance\TaxYear::build($this->currentUser(), $this->householdId, (int) now()->year) : null,
-            'deadlines' => DashboardWidgets::deadlines($this->currentUser(), $this->householdId),
-            'monthlyCosts' => DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId),
+            'realEstateEvents' => $shows('real_estate') ? array_slice(\App\Support\RealEstate\RealEstateLink::events($this->currentUser(), $this->householdId, today()->subDays(30), today()->addDays(30)), 0, 3) : [],
+            'taxYear' => $shows('tax') ? \App\Support\Finance\TaxYear::build($this->currentUser(), $this->householdId, (int) now()->year) : null,
+            'deadlines' => $shows('deadlines') ? DashboardWidgets::deadlines($this->currentUser(), $this->householdId) : [],
+            'monthlyCosts' => $shows('costs') ? DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId) : ['total' => 0, 'collections' => []],
         ];
     }
 
@@ -267,10 +280,17 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
+                <div @if (! $widgetsLoaded) wire:init="loadWidgets" @endif class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
                     @foreach ($widgets as $widget)
                         <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" class="group/widget relative">
                             <button type="button" class="widget-handle absolute right-2 top-2 z-10 cursor-grab opacity-70 sm:opacity-0 focus:opacity-100 rounded-md bg-white/80 px-1.5 py-0.5 text-xs text-gray-400 shadow-sm ring-1 ring-gray-200 sm:group-hover/widget:opacity-100 hover:text-gray-700 dark:bg-gray-900/80 dark:ring-gray-700" title="{{ __('Drag to move the card') }}" aria-label="{{ __('Drag to move the card') }}">⋮⋮</button>
+                        @if (! $widgetsLoaded && in_array($widget, $this::LAZY_WIDGETS, true))
+                            <section class="animate-pulse rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800" aria-busy="true" aria-label="{{ $allWidgets[$widget]['label'] ?? __('Loading …') }}">
+                                <div class="h-4 w-1/3 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="mt-4 h-8 w-1/2 rounded bg-gray-100 dark:bg-gray-700/60"></div>
+                                <div class="mt-3 h-3 w-2/3 rounded bg-gray-100 dark:bg-gray-700/60"></div>
+                            </section>
+                        @else
                         @switch($widget)
                             @case('tasks')
                     <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
@@ -517,6 +537,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                         @endswitch
+                        @endif
                         </div>
                     @endforeach
                 </div>

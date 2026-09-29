@@ -52,7 +52,8 @@ class PortfolioIntegrationTest extends TestCase
 
     public function test_the_dashboard_and_calendar_show_value_movers_savings_plans_and_expected_dividends(): void
     {
-        $this->get(route('dashboard'))->assertOk()
+        $this->get(route('dashboard'))->assertOk();
+        Volt::test('dashboard')->call('loadWidgets')
             ->assertSee('1.200,00 €')
             ->assertSee('+50,00 €')
             ->assertSee('+4,35 %')

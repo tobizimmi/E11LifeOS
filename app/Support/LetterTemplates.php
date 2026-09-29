@@ -43,14 +43,15 @@ class LetterTemplates
      */
     public static function fill(string $template, array $contract = []): array
     {
-        $name = trim((string) ($contract['contract'] ?? '')) ?: __('my contract');
+        $title = trim((string) ($contract['contract'] ?? ''));
+        $name = $title ?: __('my contract');
         $number = trim((string) ($contract['customer_number'] ?? ''));
         $reference = $number !== '' ? ' '.__('(customer number :number)', ['number' => $number]) : '';
         $endsOn = ! empty($contract['ends_on']) ? __('on :date', ['date' => Carbon::parse($contract['ends_on'])->format('d.m.Y')]) : __('at the next possible date');
 
         return match ($template) {
             self::CANCELLATION => [
-                'subject' => __('Cancellation: :contract', ['contract' => $name]).($number !== '' ? ' – '.__('Customer number').' '.$number : ''),
+                'subject' => ($title !== '' ? __('Cancellation: :contract', ['contract' => $title]) : __('Cancellation')).($number !== '' ? ' – '.__('Customer number').' '.$number : ''),
                 'body' => self::paragraphs([
                     __('I hereby cancel :contract:reference :ends_on.', ['contract' => $name, 'reference' => $reference, 'ends_on' => $endsOn]),
                     __('Please confirm the cancellation and the date on which the contract ends in writing. I do not consent to being contacted for the purpose of winning me back.'),
@@ -58,7 +59,7 @@ class LetterTemplates
                 ]),
             ],
             self::OBJECTION => [
-                'subject' => __('Objection: :contract', ['contract' => $name]).($number !== '' ? ' – '.__('Customer number').' '.$number : ''),
+                'subject' => ($title !== '' ? __('Objection: :contract', ['contract' => $title]) : __('Objection')).($number !== '' ? ' – '.__('Customer number').' '.$number : ''),
                 'body' => self::paragraphs([
                     __('I hereby object to your letter dated [date] regarding :contract:reference.', ['contract' => $name, 'reference' => $reference]),
                     __('Reason: [please describe]'),

@@ -3866,5 +3866,16 @@
     "Below zero from :date": "Ab :date unter null",
     "Lowest :amount on :date": "Tiefster Stand :amount am :date",
     "Accounts without a balance are left out. The balance is updated with every bank sync.": "Konten ohne Kontostand bleiben außen vor. Der Stand wird bei jedem Banksync aktualisiert.",
-    "Forecast": "Prognose"
+    "Forecast": "Prognose",
+    "\":name\" added to your contracts.": "„:name“ zu deinen Verträgen hinzugefügt.",
+    "Compared with your bank bookings": "Mit deinen Kontobewegungen abgeglichen",
+    "Recurring payments of the last months next to your contracts – so no subscription is forgotten.": "Wiederkehrende Zahlungen der letzten Monate neben deinen Verträgen – damit kein Abo vergessen wird.",
+    "Amount differs": "Betrag weicht ab",
+    "Contract :contract, debited :debited per month": "Vertrag :contract, abgebucht :debited pro Monat",
+    "Take over amount": "Betrag übernehmen",
+    "Payments without a contract": "Zahlungen ohne Vertrag",
+    "Add as contract": "Als Vertrag anlegen",
+    "Not a contract": "Kein Vertrag",
+    "Contracts without a matching payment": "Verträge ohne passende Abbuchung",
+    "Already cancelled, paid from another account or named differently at the bank?": "Schon gekündigt, über ein anderes Konto bezahlt oder bei der Bank anders benannt?"
 }

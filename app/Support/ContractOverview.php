@@ -82,7 +82,7 @@ class ContractOverview
         return (int) today()->diffInDays(Carbon::parse($date), false);
     }
 
-    private static function isCost(string $name): bool
+    public static function isCost(string $name): bool
     {
         return (bool) preg_match('/kosten|cost|beitrag|gebühr|fee|preis|price/i', $name) && ! preg_match('/kaufpreis|purchase/i', $name);
     }
@@ -92,7 +92,7 @@ class ContractOverview
      *
      * @param  list<string>  $names
      */
-    private static function property(Collection $collection, array $names): ?CollectionProperty
+    public static function property(Collection $collection, array $names): ?CollectionProperty
     {
         $candidates = array_map('mb_strtolower', [...$names, ...array_map(fn (string $name) => __($name), $names)]);
 

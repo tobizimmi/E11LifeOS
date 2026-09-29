@@ -7,6 +7,7 @@ use App\Models\BankConnection;
 use App\Models\BankDepotPosition;
 use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
+use App\Models\Transaction;
 use App\Support\Finance\BankCsvImporter;
 use App\Support\Finance\Categorizer;
 use App\Support\Portfolio\MarketData;
@@ -153,12 +154,16 @@ class BankSync
             $connection->rememberAccounts($result['bank_accounts']);
         }
 
+        $balanceChanges = [];
+
         if (($result['balances'] ?? []) !== []) {
             $connection->rememberBalances($result['balances']);
-            $this->storeBalances($connection, $result['balances'], create: $operation === 'statement');
+            $balanceChanges = $this->storeBalances($connection, $result['balances'], create: $operation === 'statement');
         }
 
         if ($operation === 'accounts') {
+            $this->alert($connection, [], $balanceChanges);
+
             return ['message' => trim(trans_choice(':count account found.|:count accounts found.', count($result['bank_accounts'] ?? [])).' '.$errors)];
         }
 
@@ -176,6 +181,7 @@ class BankSync
             $importer = app(BankCsvImporter::class);
             $categorizer = new Categorizer($connection->user_id);
             $imported = 0;
+            $newTransactions = [];
             $products = collect($connection->accounts ?? [])->pluck('product', 'iban');
 
             foreach ($result['accounts'] as $iban => $bookings) {
@@ -183,8 +189,12 @@ class BankSync
                     ['user_id' => $connection->user_id, 'iban' => $iban],
                     ['household_id' => $connection->household_id, 'name' => trim($connection->bank_name.' '.($products[$iban] ?? '')).' '.substr((string) $iban, -4)],
                 );
-                $imported += $importer->importBookings($account, $bookings, $categorizer)['imported'];
+                $import = $importer->importBookings($account, $bookings, $categorizer);
+                $imported += $import['imported'];
+                $newTransactions = [...$newTransactions, ...$import['transactions']];
             }
+
+            $this->alert($connection, $newTransactions, $balanceChanges);
 
             return ['message' => trim(trans_choice(':count new booking imported into Finances.|:count new bookings imported into Finances.', $imported).' '.$errors), 'imported' => $imported];
         }
@@ -196,10 +206,12 @@ class BankSync
      * Balances go to the matching finance account (by IBAN), so the net worth uses the bank's figure.
      *
      * @param  array<string, array{iban: ?string, amount: float, date: string}>  $balances
+     * @return list<array{account: BankAccount, before: ?float, after: float}>
      */
-    private function storeBalances(BankConnection $connection, array $balances, bool $create): void
+    private function storeBalances(BankConnection $connection, array $balances, bool $create): array
     {
         $products = collect($connection->accounts ?? [])->pluck('product', 'number');
+        $changes = [];
 
         foreach ($balances as $number => $balance) {
             if (! $balance['iban']) {
@@ -215,7 +227,30 @@ class BankSync
                 ]);
             }
 
-            $account?->update(['balance' => $balance['amount'], 'balance_on' => $balance['date']]);
+            if ($account) {
+                $before = $account->currentBalance();
+                $account->update(['balance' => $balance['amount'], 'balance_on' => $balance['date']]);
+                $changes[] = ['account' => $account, 'before' => $before, 'after' => (float) $balance['amount']];
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Push messages for the user of the connection; a failing push never breaks the sync.
+     *
+     * @param  list<Transaction>  $transactions
+     * @param  list<array{account: BankAccount, before: ?float, after: float}>  $balances
+     */
+    private function alert(BankConnection $connection, array $transactions, array $balances): void
+    {
+        try {
+            if ($connection->user) {
+                BankAlerts::afterSync($connection->user, $connection->household_id, $transactions, $balances);
+            }
+        } catch (Throwable $exception) {
+            report($exception);
         }
     }
 

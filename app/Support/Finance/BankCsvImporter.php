@@ -151,11 +151,11 @@ class BankCsvImporter
      * Bookings from another source (e.g. FinTS) with the same duplicate check as the CSV import.
      *
      * @param  list<array{date: string, amount: float, counterparty: ?string, purpose: ?string}>  $bookings
-     * @return array{imported: int, skipped: int, errors: int}
+     * @return array{imported: int, skipped: int, errors: int, transactions: list<Transaction>}
      */
     public function importBookings(BankAccount $account, array $bookings, Categorizer $categorizer): array
     {
-        $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0];
+        $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0, 'transactions' => []];
 
         foreach ($bookings as $booking) {
             $hash = sha1(implode('|', [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')]));
@@ -178,6 +178,7 @@ class BankCsvImporter
             ])->save();
 
             $result['imported']++;
+            $result['transactions'][] = $transaction;
         }
 
         return $result;

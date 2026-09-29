@@ -3877,5 +3877,17 @@
     "Add as contract": "Als Vertrag anlegen",
     "Not a contract": "Kein Vertrag",
     "Contracts without a matching payment": "Verträge ohne passende Abbuchung",
-    "Already cancelled, paid from another account or named differently at the bank?": "Schon gekündigt, über ein anderes Konto bezahlt oder bei der Bank anders benannt?"
+    "Already cancelled, paid from another account or named differently at the bank?": "Schon gekündigt, über ein anderes Konto bezahlt oder bei der Bank anders benannt?",
+    "Large debit from": "Große Abbuchung ab",
+    "Balance below": "Kontostand unter",
+    "Notifications after the bank sync": "Benachrichtigungen nach dem Banksync",
+    "As push message and in the bell – for bookings of the last three days, e.g. with the daily automatic sync.": "Als Push-Nachricht und in der Glocke – für Buchungen der letzten drei Tage, z. B. beim täglichen automatischen Abruf.",
+    "Salary received": "Gehaltseingang",
+    "Forecast goes below zero (30 days)": "Prognose rutscht ins Minus (30 Tage)",
+    "off": "aus",
+    "Salary received: :amount": "Gehalt eingegangen: :amount",
+    "Large debit: :amount": "Große Abbuchung: :amount",
+    "Low balance: :amount": "Kontostand niedrig: :amount",
+    ":account goes below zero": ":account rutscht ins Minus",
+    "Expected on :date according to the balance forecast.": "Laut Kontostand-Prognose voraussichtlich am :date."
 }

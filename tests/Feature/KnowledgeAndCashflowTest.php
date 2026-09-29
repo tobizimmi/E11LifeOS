@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BankAccount;
+use App\Models\CashflowEntry;
 use App\Models\KnowledgeFavorite;
 use App\Models\Portfolio;
 use App\Models\PortfolioTransaction;
@@ -115,11 +116,45 @@ class KnowledgeAndCashflowTest extends TestCase
 
         $this->actingAs($user);
         Volt::test('cashflow.index')
-            ->assertSee('Finanzielle Freiheit')->assertSee('07/2026 bis 09/2026')
+            ->assertSee('Raus aus dem Hamsterrad')
             ->assertSee('41 %')
             ->assertSee('Auf dem Weg')
             ->assertSee('Eigenheim (selbst bewohnt)')
-            ->assertSee('+1.810,00 €');
+            ->assertSee('1.810,00 €')
+            ->assertSee('gute Schulden');
+    }
+
+    public function test_own_entries_complete_or_replace_the_statement(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Volt::test('cashflow.index')
+            ->call('add', 'income')->set('entry.label', 'Gehalt Max')->set('entry.amount', '2.000')->call('save')->assertHasNoErrors()
+            ->call('add', 'income')->set('entry.category', 'passive')->set('entry.label', 'Lizenz')->set('entry.amount', '50')->call('save')
+            ->call('add', 'asset')->set('entry.label', 'ETF-Depot')->set('entry.value', '550.000')->set('entry.amount', '300')->call('save')->assertHasNoErrors()
+            ->call('add', 'asset')->set('entry.category', 'other')->set('entry.label', 'Eigenes Auto')->set('entry.value', '20000')->set('entry.productive', false)->call('save')
+            ->call('add', 'liability')->set('entry.category', 'car')->set('entry.label', 'Autokredit')->set('entry.value', '8000')->set('entry.amount', '250')->call('save')
+            ->call('add', 'expense')->set('entry.label', 'Miete')->set('entry.amount', '1000')->call('save')
+            ->call('add', 'expense')->set('entry.label', 'Leer')->call('save')->assertHasErrors('entry.amount');
+
+        $statement = CashflowStatement::for($user);
+        $this->assertSame([2000.0, 300.0, 50.0], [$statement['income']['earned'], $statement['income']['portfolio'], $statement['income']['passive']]);
+        $this->assertSame(1250.0, $statement['expenses']['total']);
+        $this->assertSame(250.0, $statement['payments']);
+        $this->assertSame(1100.0, $statement['cashflow']);
+        $this->assertSame(['rich_dad' => 542000.0, 'classic' => 562000.0], $statement['net_worth']);
+        $this->assertSame(8.4, $statement['wealth_days']);
+        $this->assertSame(['E' => 85, 'S' => 0, 'B' => 0, 'I' => 15], array_map(fn (array $quadrant) => $quadrant['share'], $statement['quadrant']));
+
+        $page->assertSee('Ertrag aus ETF-Depot')->assertSee('Rate: Autokredit')->assertSee('schlechte Schulden')->assertSee('Eigenes Auto');
+
+        $rent = CashflowEntry::where('label', 'Miete')->sole();
+        $page->call('edit', $rent->id)->set('entry.amount', '1200')->call('save');
+        $this->assertSame(1200.0, $rent->fresh()->amount);
+
+        $this->actingAs($this->addMemberTo($user->currentHousehold()));
+        Volt::test('cashflow.index')->call('edit', $rent->id)->assertNotFound();
     }
 
     public function test_cashflow_patterns(): void

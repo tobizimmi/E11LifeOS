@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
 use App\Models\CalendarSubscription;
+use App\Models\CashflowEntry;
 use App\Models\Collection;
 use App\Models\Comment;
 use App\Models\Customer;
@@ -126,6 +127,7 @@ class DataExportController extends Controller
                         ->map(fn (Meter $meter) => $meter->only(['name', 'kind', 'number', 'price_per_unit', 'base_fee_monthly', 'monthly_advance']) + ['readings' => $meter->readings->map->only(['read_on', 'value'])->all()]),
                 ]
                 : [],
+            'cashflow_entries' => CashflowEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['kind', 'category', 'label', 'amount', 'value', 'productive']),
             'knowledge_favorites' => KnowledgeFavorite::where('user_id', $user->id)->orderBy('id')->get()->map->only(['kind', 'key', 'title', 'url', 'summary', 'source', 'category', 'published_at', 'created_at']),
             'finance_rules' => FinanceRule::where('user_id', $user->id)->orderBy('pattern')->get()->map->only(['pattern', 'category']),
             'real_estate' => $household

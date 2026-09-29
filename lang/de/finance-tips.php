@@ -12,6 +12,7 @@ return [
         'stocks' => ['label' => 'Börse & Geldanlage', 'icon' => '📈'],
         'taxes' => ['label' => 'Steuern', 'icon' => '🧾'],
         'wealth' => ['label' => 'Vermögen & Cashflow', 'icon' => '💡'],
+        'richdad' => ['label' => 'Aus den Rich-Dad-Büchern', 'icon' => '📚'],
     ],
 
     'items' => [
@@ -262,6 +263,97 @@ return [
                 'Lege einen Teil jeder Gehaltserhöhung sofort zusätzlich in deinen Sparplan. So wächst dein Vermögen schneller, ohne dass du Verzicht spürst.',
             ],
         ],
+        // ── From Robert Kiyosaki's other books ─────────────────────
+        'cashflow-quadrant' => [
+            'category' => 'richdad',
+            'title' => 'Der Cashflow-Quadrant: E, S, B und I',
+            'summary' => 'Angestellte (E) und Selbstständige (S) tauschen Zeit gegen Geld – Unternehmer (B) und Investoren (I) lassen Systeme und Kapital arbeiten.',
+            'body' => [
+                'In „Rich Dad’s Cashflow Quadrant“ teilt Kiyosaki Einkommen danach ein, woher es kommt: E = Employee (Gehalt), S = Self-employed (du bist das Geschäft), B = Business Owner (ein System läuft auch ohne dich), I = Investor (dein Geld arbeitet).',
+                'Finanzielle Freiheit entsteht fast immer auf der rechten Seite. Der Weg führt meist über ein Standbein im I-Quadranten – etwa ein Depot oder eine vermietete Wohnung – neben dem Job.',
+                'Die Cashflow-Analyse zeigt dir, wie sich dein Einkommen heute auf die vier Quadranten verteilt.',
+            ],
+        ],
+        'five-financial-iqs' => [
+            'category' => 'richdad',
+            'title' => 'Die fünf Finanz-IQs',
+            'summary' => 'Mehr verdienen, Geld schützen, gut budgetieren, Geld hebeln und dein Finanzwissen verbessern.',
+            'body' => [
+                'Aus „Increase Your Financial IQ“: 1. Mehr Geld verdienen. 2. Dein Geld schützen – vor allem vor unnötigen Steuern und Risiken. 3. Budgetieren – gut leben und trotzdem investieren. 4. Hebeln – wie viel Rendite dein Überschuss erwirtschaftet. 5. Finanzinformation verbessern – verstehen, worin du investierst.',
+                'Prüfe dich jedes Jahr: In welchem der fünf Bereiche hast du den größten Hebel?',
+            ],
+        ],
+        'wealth-in-days' => [
+            'category' => 'richdad',
+            'title' => 'Wohlstand misst man in Tagen',
+            'summary' => 'Wie viele Tage könntest du leben, ohne zu arbeiten? Diese Zahl ist dein Wohlstand.',
+            'body' => [
+                'Kiyosaki definiert Wohlstand nicht in Euro, sondern in Zeit: Einkommen aus Vermögenswerten geteilt durch die monatlichen Ausgaben. Deckt es die Ausgaben vollständig, bist du frei – egal wie hoch das Vermögen auf dem Papier ist.',
+                'Die Kachel „Wohlstand pro Monat“ zeigt, wie viele Tage im Monat dein Vermögensertrag schon abdeckt.',
+            ],
+        ],
+        'good-vs-bad-debt' => [
+            'category' => 'richdad',
+            'title' => 'Gute Schulden, schlechte Schulden',
+            'summary' => 'Gute Schulden bezahlt jemand anderes – etwa der Mieter. Schlechte Schulden zahlst du selbst.',
+            'body' => [
+                'Ein Kredit für eine vermietete Wohnung, deren Miete Zins und Tilgung trägt, ist nach Kiyosaki gute Schuld. Ratenkredite für Auto, Urlaub oder Konsum sind schlechte Schulden – sie nehmen Geld aus deiner Tasche.',
+                'Auch gute Schulden sind ein Risiko: Leerstand oder steigende Zinsen können sie schnell zu schlechten machen. Plane immer eine Reserve ein.',
+            ],
+        ],
+        'doodads' => [
+            'category' => 'richdad',
+            'title' => 'Doodads – Scheinvermögen',
+            'summary' => 'Dinge, die sich wie Vermögen anfühlen, aber jeden Monat Geld kosten: großes Auto, Boot, Luxusartikel.',
+            'body' => [
+                'Kiyosaki nennt sie „Doodads“. Sie stehen oft auf der Vermögensseite der klassischen Bilanz, bringen aber kein Geld ein. Die reichen Leute kaufen sie erst, wenn ihre Vermögenswerte sie bezahlen.',
+                'Im Tool werden solche Werte getrennt ausgewiesen – dein „Nettovermögen nach Rich Dad“ zählt sie nicht mit.',
+            ],
+        ],
+        'mind-your-own-business' => [
+            'category' => 'richdad',
+            'title' => 'Kümmere dich um dein eigenes Geschäft',
+            'summary' => 'Dein Geschäft ist deine Vermögensspalte – nicht dein Arbeitgeber.',
+            'body' => [
+                'Behalte den Job, aber baue nebenbei Vermögenswerte auf, die dir gehören: Depot, Immobilien, ein kleines Business, Lizenzen. Jeder Euro Überschuss sollte dort landen, bevor er in Verbindlichkeiten fließt.',
+            ],
+        ],
+        'rat-race' => [
+            'category' => 'richdad',
+            'title' => 'Raus aus dem Hamsterrad',
+            'summary' => 'Mehr Gehalt allein befreit nicht – wenn die Ausgaben mitwachsen, dreht sich das Rad nur schneller.',
+            'body' => [
+                'Im „Rat Race“ steckt, wer jede Gehaltserhöhung in höhere Ausgaben und Kredite steckt. Ausweg: Überschüsse konsequent in Vermögenswerte lenken, bis deren Einkommen die Ausgaben übersteigt.',
+                'Der Balken „Raus aus dem Hamsterrad“ zeigt deinen Fortschritt.',
+            ],
+        ],
+        'unfair-advantage' => [
+            'category' => 'richdad',
+            'title' => 'Die fünf unfairen Vorteile',
+            'summary' => 'Wissen, Steuern, Schulden, Risiko und Vergütung – wer sie versteht, hat einen Vorsprung.',
+            'body' => [
+                'In „Unfair Advantage“ beschreibt Kiyosaki fünf Vorteile finanzieller Bildung: Wissen, legale Steuergestaltung (etwa Abschreibungen bei Immobilien), kluger Einsatz von Schulden, Risiko durch Wissen senken statt meiden, und Einkommen aus Vermögenswerten statt nur aus Arbeit.',
+                'Für Deutschland heißt das zum Beispiel: AfA und Werbungskosten bei Vermietung kennen, Verlustverrechnung nutzen und Kredite nur für Vermögenswerte aufnehmen.',
+            ],
+        ],
+        'investor-levels' => [
+            'category' => 'richdad',
+            'title' => 'Die 90/10-Regel und Anlegertypen',
+            'summary' => 'Laut „Rich Dad’s Guide to Investing“ besitzen 10 % der Menschen 90 % des Geldes – der Unterschied liegt vor allem in Wissen und Plan.',
+            'body' => [
+                'Kiyosaki beschreibt Anleger in Stufen – vom „Ich habe kein Geld zum Anlegen“ über Sparer und „Ich überlasse das anderen“ bis zum informierten Investor, der sein Vermögen selbst plant.',
+                'Der erste Schritt ist ein schriftlicher Finanzplan: Wie viel passives Einkommen brauchst du, bis wann, und mit welchen Vermögenswerten willst du dorthin?',
+            ],
+        ],
+        'financial-education-kids' => [
+            'category' => 'richdad',
+            'title' => 'Finanzbildung für Kinder',
+            'summary' => 'Kinder lernen den Umgang mit Geld am besten zu Hause – mit Taschengeld, eigenen Zielen und Gesprächen.',
+            'body' => [
+                'In „Rich Kid Smart Kid“ empfiehlt Kiyosaki, Kinder früh mit Geld spielen zu lassen: Taschengeld aufteilen (ausgeben, sparen, spenden), ein erstes Sparziel verfolgen, das Brettspiel „Cashflow“ spielen und Fragen stellen wie „Ist das ein Vermögenswert oder eine Verbindlichkeit?“.',
+            ],
+        ],
+
     ],
 
     'disclaimer' => 'Allgemeine Informationen, keine Steuer-, Rechts- oder Anlageberatung. Beträge und Grenzen ändern sich – im Zweifel aktuelle Regeln prüfen oder Beratung einholen.',

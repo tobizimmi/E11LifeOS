@@ -1,11 +1,14 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\ShoppingList;
 use App\Support\AiException;
 use App\Support\BrainAi;
 use App\Support\BrainSearch;
 use App\Support\Links;
 use App\Support\NoteMarkdown;
+use App\Support\QuickCapture;
+use App\Support\ShoppingLists;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -25,7 +28,7 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Questions and answers of this visit, newest first.
      *
-     * @var array<int, array{question: string, answer: string, sources: array<int, string>}>
+     * @var array<int, array{question: string, answer: string, sources: array<int, string>, actions?: list<array{type: string, title: string, due: ?string, items: list<string>, done?: bool}>}>
      */
     public array $conversation = [];
 
@@ -65,9 +68,33 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        array_unshift($this->conversation, ['question' => $question, 'answer' => $result['answer'], 'sources' => $result['sources']]);
+        array_unshift($this->conversation, ['question' => $question, 'answer' => $result['answer'], 'sources' => $result['sources'], 'actions' => $result['actions'] ?? []]);
         $this->conversation = array_slice($this->conversation, 0, self::KEPT_ANSWERS);
         $this->reset('question');
+    }
+
+    /**
+     * Carries out an action the AI proposed, once the member confirms it.
+     */
+    public function runAction(int $turn, int $index): void
+    {
+        $action = $this->conversation[$turn]['actions'][$index] ?? null;
+        abort_if(! is_array($action) || ! empty($action['done']), 404);
+
+        // Re-check what comes back from the browser, as the conversation is client state.
+        $action = BrainAi::cleanActions([$action])[0] ?? null;
+        abort_if($action === null, 422);
+        $user = $this->currentUser();
+        $householdId = (int) $this->householdId;
+
+        match ($action['type']) {
+            BrainAi::ACTION_TASK => QuickCapture::task($user, $householdId, $action['title'], $action['due']),
+            BrainAi::ACTION_INBOX => QuickCapture::inbox($user, $householdId, $action['title']),
+            BrainAi::ACTION_SHOPPING => collect($action['items'])->each(fn (string $item) => ShoppingLists::add(ShoppingList::defaultFor($householdId), $item, null, $user->id)),
+        };
+
+        $this->conversation[$turn]['actions'][$index]['done'] = true;
+        $this->dispatch('toast', message: __('Done.'));
     }
 
     public function with(): array
@@ -79,6 +106,7 @@ new #[Layout('layouts.app')] class extends Component
             'answers' => collect($this->conversation)->map(fn (array $turn) => [
                 'question' => (string) ($turn['question'] ?? ''),
                 'html' => NoteMarkdown::plainToHtml((string) ($turn['answer'] ?? '')),
+                'actions' => (array) ($turn['actions'] ?? []),
                 'sources' => array_values(Links::nodes(
                     collect((array) ($turn['sources'] ?? []))->map(fn ($key) => Links::parseKey($key))->filter()->all(),
                     $user,
@@ -122,6 +150,31 @@ new #[Layout('layouts.app')] class extends Component
                     <article wire:key="brain-answer-{{ count($answers) - $index }}" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">„{{ $turn['question'] }}“</p>
                         <div class="note-content">{!! $turn['html'] !!}</div>
+                        @if ($turn['actions'] !== [])
+                            <ul class="space-y-2 rounded-md bg-indigo-50 p-3 dark:bg-indigo-900/30" aria-label="{{ __('Suggested actions') }}">
+                                @foreach ($turn['actions'] as $actionIndex => $action)
+                                    <li wire:key="brain-action-{{ count($answers) - $index }}-{{ $actionIndex }}" class="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                        <span class="text-gray-800 dark:text-gray-100">
+                                            @switch($action['type'])
+                                                @case(\App\Support\BrainAi::ACTION_TASK)
+                                                    ✅ {{ __('Task') }}: <strong>{{ $action['title'] }}</strong>@if ($action['due']) · {{ __('due :date', ['date' => \Illuminate\Support\Carbon::parse($action['due'])->format('d.m.Y')]) }}@endif
+                                                    @break
+                                                @case(\App\Support\BrainAi::ACTION_SHOPPING)
+                                                    🛒 {{ __('Shopping list') }}: <strong>{{ implode(', ', $action['items']) }}</strong>
+                                                    @break
+                                                @default
+                                                    📥 {{ __('Inbox') }}: <strong>{{ $action['title'] }}</strong>
+                                            @endswitch
+                                        </span>
+                                        @if (! empty($action['done']))
+                                            <span class="text-green-700 dark:text-green-400">✓ {{ __('Done') }}</span>
+                                        @else
+                                            <x-primary-button type="button" wire:click="runAction({{ $index }}, {{ $actionIndex }})">{{ __('Confirm') }}</x-primary-button>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                         @if ($turn['sources'] !== [])
                             <div class="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
                                 <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Sources') }}:</span>

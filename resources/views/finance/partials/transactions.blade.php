@@ -127,9 +127,26 @@
         @if ($transactions->isEmpty())
             <p class="p-6 text-sm text-gray-600 dark:text-gray-300">{{ __('No bookings found.') }}</p>
         @else
+            {{-- Drag bookings onto a category (desktop); the select in each row does the same. --}}
+            <div x-data="{ open: false }" class="hidden border-b border-gray-100 px-4 py-2 sm:block dark:border-gray-700">
+                <button type="button" x-on:click="open = ! open" :aria-expanded="open" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">🎯 {{ __('Sort bookings by drag & drop') }}</button>
+                <div x-show="open" x-cloak class="mt-2 flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
+                    @foreach ($groupedCategories as $group => $items)
+                        @foreach ($items as $key => $category)
+                            <span wire:key="drop-category-{{ $key }}"
+                                  x-data="{ over: false }"
+                                  x-on:dragover="if ([...$event.dataTransfer.types].includes('application/x-transaction')) { $event.preventDefault(); over = true }"
+                                  x-on:dragleave="over = false"
+                                  x-on:drop="over = false; const id = $event.dataTransfer.getData('application/x-transaction'); if (id) { $event.preventDefault(); $wire.setCategory(parseInt(id), @js($key), false) }"
+                                  :class="over ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200' : 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300'"
+                                  class="rounded-full border border-dashed px-2 py-0.5 text-xs">{{ $category['icon'] }} {{ $category['label'] }}</span>
+                        @endforeach
+                    @endforeach
+                </div>
+            </div>
             <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                 @foreach ($transactions as $transaction)
-                    <li wire:key="tx-{{ $transaction->id }}" @class(["flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3", "sm:flex-nowrap" => $documentsFor !== $transaction->id]) x-data="{ remember: false }">
+                    <li wire:key="tx-{{ $transaction->id }}" draggable="true" x-on:dragstart="if ($event.target.closest('select, input, button, a, textarea')) { return } $event.dataTransfer.setData('application/x-transaction', '{{ $transaction->id }}')" @class(["flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3", "sm:flex-nowrap" => $documentsFor !== $transaction->id]) x-data="{ remember: false }">
                         <div class="w-16 shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ $transaction->booked_on->format('d.m.y') }}</div>
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ $transaction->counterparty ?: '—' }}</p>

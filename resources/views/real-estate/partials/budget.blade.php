@@ -114,7 +114,8 @@
         <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="schedule-heading">
             <h3 id="schedule-heading" class="font-semibold text-gray-900 dark:text-gray-100">🗓 {{ __('Schedule') }}</h3>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $timelineStart->translatedFormat('j. M Y') }} – {{ $timelineEnd->translatedFormat('j. M Y') }}</p>
-            <ul class="mt-3 space-y-1.5">
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Drag a bar to move the trade, drag its right edge to change the end.') }}</p>
+            <ul class="mt-4 space-y-2.5">
                 @foreach ($dated->sortBy(fn ($row) => $row['item']->start_on) as $row)
                     @php
                         $offset = $timelineStart->diffInDays($row['item']->start_on) / $timelineDays * 100;
@@ -122,8 +123,21 @@
                     @endphp
                     <li class="flex items-center gap-3 text-sm" wire:key="gantt-{{ $row['item']->id }}">
                         <span class="w-40 shrink-0 truncate text-gray-700 dark:text-gray-300">{{ $row['item']->title }}</span>
-                        <span class="relative h-4 flex-1 rounded bg-gray-50 dark:bg-gray-900">
-                            <span @class(['absolute inset-y-0 rounded', 'opacity-50' => $row['item']->status === 'done']) style="left: {{ $offset }}%; width: {{ min($width, 100 - $offset) }}%; background: #2a78d6" title="{{ $row['item']->title }}: {{ $row['item']->start_on->translatedFormat('j. M') }}{{ $row['item']->end_on ? ' – '.$row['item']->end_on->translatedFormat('j. M') : '' }} · {{ \App\Models\RealEstateBudgetItem::statusLabels()[$row['item']->status] }}"></span>
+                        <span class="relative h-5 flex-1 rounded bg-gray-50 dark:bg-gray-900"
+                              x-data="{
+                                  mode: null, startX: 0, days: 0,
+                                  begin(event, mode) { this.mode = mode; this.startX = event.clientX; this.days = 0; event.target.setPointerCapture(event.pointerId) },
+                                  move(event) { if (! this.mode) return; this.days = Math.round((event.clientX - this.startX) / this.$el.clientWidth * {{ $timelineDays }}) },
+                                  end() { if (! this.mode) return; const mode = this.mode; this.mode = null; if (this.days !== 0) { $wire.shiftItem({{ $row['item']->id }}, this.days, mode === 'end') } },
+                              }">
+                            <span @class(['absolute inset-y-0 cursor-grab touch-none rounded active:cursor-grabbing', 'opacity-50' => $row['item']->status === 'done'])
+                                  style="left: {{ $offset }}%; width: {{ min($width, 100 - $offset) }}%; background: #2a78d6"
+                                  :style="mode ? (mode === 'move' ? { transform: 'translateX(' + (days / {{ $timelineDays }} * $el.parentElement.clientWidth) + 'px)' } : { width: 'calc({{ min($width, 100 - $offset) }}% + ' + (days / {{ $timelineDays }} * $el.parentElement.clientWidth) + 'px)' }) : {}"
+                                  x-on:pointerdown="begin($event, 'move')" x-on:pointermove="move($event)" x-on:pointerup="end()" x-on:pointercancel="mode = null"
+                                  title="{{ $row['item']->title }}: {{ $row['item']->start_on->translatedFormat('j. M') }}{{ $row['item']->end_on ? ' – '.$row['item']->end_on->translatedFormat('j. M') : '' }} · {{ \App\Models\RealEstateBudgetItem::statusLabels()[$row['item']->status] }}">
+                                <span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r bg-white/40" x-on:pointerdown.stop="begin($event, 'end')" x-on:pointermove="move($event)" x-on:pointerup.stop="end()" aria-hidden="true"></span>
+                            </span>
+                            <span x-show="mode && days !== 0" x-cloak class="absolute -top-5 left-0 rounded bg-gray-900 px-1.5 text-xs text-white" x-text="(days > 0 ? '+' : '') + days + ' {{ __('days') }}'"></span>
                         </span>
                         <span class="w-20 shrink-0 text-end text-xs text-gray-500 dark:text-gray-400">{{ $row['item']->status === 'done' ? '✓ ' : '' }}{{ \App\Models\RealEstateBudgetItem::statusLabels()[$row['item']->status] }}</span>
                     </li>

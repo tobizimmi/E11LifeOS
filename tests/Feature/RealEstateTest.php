@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Support\RealEstate\RealEstatePlan;
 use App\Support\RealEstate\RealEstateTax;
 use App\Support\RealEstate\SubsidyPrograms;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -226,5 +227,30 @@ class RealEstateTest extends TestCase
 
         $household->setAddon('real_estate', false);
         $this->actingAs($user)->get(route('real-estate.index'))->assertNotFound();
+    }
+
+    public function test_trades_are_moved_and_stretched_in_the_schedule(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id]);
+        $roof = $realEstate->budgetItems()->create(['trade' => 'roof', 'title' => 'Dach', 'start_on' => '2026-10-01', 'end_on' => '2026-10-10']);
+        $foreign = RealEstate::factory()->create()->budgetItems()->create(['trade' => 'roof', 'title' => 'Fremd', 'start_on' => '2026-10-01']);
+
+        $component = Volt::test('real-estate.show', ['realEstate' => $realEstate->id])
+            ->set('tab', 'budget')
+            ->assertSee('Balken ziehen verschiebt das Gewerk')
+            ->call('shiftItem', $roof->id, 7);
+        $this->assertSame(['2026-10-08', '2026-10-17'], [$roof->fresh()->start_on->toDateString(), $roof->fresh()->end_on->toDateString()]);
+
+        $component->call('shiftItem', $roof->id, -30, true);
+        $this->assertSame(['2026-10-08', '2026-10-08'], [$roof->fresh()->start_on->toDateString(), $roof->fresh()->end_on->toDateString()]);
+
+        try {
+            $component->call('shiftItem', $foreign->id, 3);
+        } catch (ModelNotFoundException) {
+        }
+
+        $this->assertSame('2026-10-01', $foreign->fresh()->start_on->toDateString());
     }
 }

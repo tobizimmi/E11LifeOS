@@ -254,6 +254,31 @@ new #[Layout('layouts.app')] class extends Component
         $this->findRealEstate()->budgetItems()->findOrFail($id)->update(['status' => $status]);
     }
 
+    /**
+     * Moves a trade in the schedule by some days, or with $endOnly only changes its end.
+     */
+    public function shiftItem(int $id, int $days, bool $endOnly = false): void
+    {
+        $item = $this->findRealEstate()->budgetItems()->findOrFail($id);
+        $days = max(-3650, min(3650, $days));
+
+        if (! $item->start_on || $days === 0) {
+            return;
+        }
+
+        if ($endOnly) {
+            $end = ($item->end_on ?? $item->start_on)->copy()->addDays($days);
+            $item->update(['end_on' => $end->lt($item->start_on) ? $item->start_on : $end]);
+
+            return;
+        }
+
+        $item->update([
+            'start_on' => $item->start_on->copy()->addDays($days),
+            'end_on' => $item->end_on?->copy()->addDays($days),
+        ]);
+    }
+
     public function deleteItem(int $id): void
     {
         $this->findRealEstate()->budgetItems()->findOrFail($id)->delete();

@@ -178,6 +178,7 @@ new class extends Component
             ['🛡️ '.__('Provision check'), route('provision.index'), 'versicherung versicherungscheck haftpflicht berufsunfähigkeit rente rentenlücke altersvorsorge fire freiheit'],
             ['❤️ '.__('Health'), route('health.index'), 'gesundheit arzt vorsorge impfung medikamente notfallkarte blutgruppe allergie u-untersuchung'],
             ['🎂 '.__('People & occasions'), route('people.index'), 'geburtstag geburtstage jahrestag kontakte personen geschenk geschenkideen freunde familie'],
+            ['✈️ '.__('Trips'), route('trips.index'), 'reise reisen urlaub packliste flug hotel buchung koffer ferien'],
         ];
 
         if ($user->canUseAddon(Addons::RECIPES)) {

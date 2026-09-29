@@ -7,12 +7,14 @@ use App\Models\EmergencyEntry;
 use App\Models\HealthEntry;
 use App\Models\HomeTask;
 use App\Models\Meter;
+use App\Models\Trip;
+use App\Models\TripBooking;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Support\Carbon;
 
 /**
- * Dates of the life areas (expiring documents and later vehicles, maintenance, health, people)
+ * Dates of the life areas (expiring documents and later vehicles, maintenance, health, people, trips)
  * for the calendar and the daily reminders.
  */
 class LifeDates
@@ -45,6 +47,7 @@ class LifeDates
         array_push($events, ...self::vehicleEvents($user, $from, $until));
         array_push($events, ...self::homeEvents($user, $from, $until));
         array_push($events, ...self::peopleEvents($user, $from, $until));
+        array_push($events, ...self::tripEvents($user, $from, $until));
 
         HealthEntry::query()->whereHas('profile', fn ($query) => $query->where('user_id', $user->id))->with('profile')
             ->where('kind', '!=', HealthEntry::MEDICATION)->whereBetween('next_due_on', [$from->toDateString(), $until->toDateString()])->get()
@@ -72,6 +75,53 @@ class LifeDates
 
             return $event['remind'] && in_array($daysLeft, [...self::REMIND_BEFORE, $event['remind_days']], true);
         }));
+    }
+
+    /**
+     * Start and end of the trips the member can see and their flights, trains and check-ins.
+     *
+     * @return list<array{date: string, title: string, url: string, kind: string, remind_days: int, remind: bool}>
+     */
+    private static function tripEvents(User $user, Carbon $from, Carbon $until): array
+    {
+        $household = $user->currentHousehold();
+
+        if (! $household) {
+            return [];
+        }
+
+        $events = [];
+        $trips = Trip::query()->visibleTo($user, $household->id)
+            ->where('starts_on', '<=', $until->toDateString())->where('ends_on', '>=', $from->toDateString())
+            ->with(['bookings' => fn ($query) => $query->whereBetween('starts_at', [$from->copy()->startOfDay(), $until->copy()->endOfDay()])])->get();
+        $kinds = TripBooking::kinds();
+
+        foreach ($trips as $trip) {
+            $url = route('trips.show', $trip);
+            $remind = $trip->created_by === $user->id;
+            $name = $trip->destination ?: $trip->title;
+
+            if ($trip->starts_on->between($from, $until)) {
+                $events[] = ['date' => $trip->starts_on->toDateString(), 'title' => '✈️ '.__('Trip to :destination starts', ['destination' => $name]), 'url' => $url, 'kind' => 'trip', 'remind_days' => 7, 'remind' => $remind];
+            }
+
+            if ($trip->ends_on->between($from, $until) && ! $trip->ends_on->isSameDay($trip->starts_on)) {
+                $events[] = ['date' => $trip->ends_on->toDateString(), 'title' => '🏠 '.__('Return from :destination', ['destination' => $name]), 'url' => $url, 'kind' => 'trip', 'remind_days' => 0, 'remind' => false];
+            }
+
+            foreach ($trip->bookings as $booking) {
+                $events[] = [
+                    'date' => $booking->starts_at->toDateString(),
+                    'title' => ($kinds[$booking->kind]['icon'] ?? '📌').' '.$booking->starts_at->format('H:i').' '.$booking->title,
+                    'url' => $url.'?tab=bookings',
+                    'kind' => 'trip',
+                    'remind_days' => in_array($booking->kind, ['flight', 'train', 'bus'], true) ? 1 : 0,
+                    'remind' => $remind,
+                ];
+            }
+        }
+
+        return $events;
     }
 
     /**

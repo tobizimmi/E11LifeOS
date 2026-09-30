@@ -6,6 +6,7 @@ use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\EmergencyFolderController;
+use App\Http\Controllers\ExpenseGroupController;
 use App\Http\Controllers\ExternalDocumentController;
 use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
@@ -65,6 +66,9 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('people', 'people.index')->name('people.index');
     Volt::route('trips', 'trips.index')->name('trips.index');
     Volt::route('kids', 'kids.index')->name('kids.index');
+    Volt::route('splits', 'splits.index')->name('splits.index');
+    Volt::route('splits/{group}', 'splits.show')->whereNumber('group')->name('splits.show');
+    Route::get('splits/{group}/export/{format}', [ExpenseGroupController::class, 'export'])->whereNumber('group')->whereIn('format', ['csv', 'pdf'])->name('splits.export');
     Volt::route('trips/{trip}', 'trips.show')->whereNumber('trip')->name('trips.show');
     Volt::route('vehicles/{vehicle}', 'vehicles.show')->whereNumber('vehicle')->name('vehicles.show');
     Route::get('emergency/pdf', [EmergencyFolderController::class, 'pdf'])->middleware([Security::SENSITIVE, 'sensitive.log:emergency'])->name('emergency.pdf');
@@ -177,6 +181,7 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('r/{token}', [PublicRecipeController::class, 'show'])->name('recipes.public');
     Volt::route('apply/{token}', 'rental.apply')->where('token', '[A-Za-z0-9]+')->name('rental.apply');
     Volt::route('s/{token}', 'shopping-list.shared')->where('token', '[A-Za-z0-9]+')->name('shopping-list.shared');
+    Route::get('k/{token}', [ExpenseGroupController::class, 'shared'])->where('token', '[A-Za-z0-9]+')->name('splits.public');
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
     Volt::route('emergency/access/{token}', 'emergency.access')->where('token', '[A-Za-z0-9]+')->name('emergency.access');

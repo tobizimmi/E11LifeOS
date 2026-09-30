@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\ExpenseGroup;
 use App\Models\Item;
 use App\Models\Trip;
 use App\Models\TripBooking;
@@ -220,6 +221,7 @@ new #[Layout('layouts.app')] class extends Component
             'categories' => TripPlanner::categories(),
             'templates' => TripPlanner::templates(),
             'people' => $trip->packingItems->pluck('person')->filter()->unique()->values(),
+            'expenseGroups' => ExpenseGroup::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->get(),
         ];
     }
 }; ?>
@@ -247,6 +249,15 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($tab === 'overview')
+                <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <span class="text-2xl" aria-hidden="true">🧾</span>
+                    <p class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Share costs on the trip: who paid what and who owes whom.') }}</p>
+                    @forelse ($expenseGroups as $expenseGroup)
+                        <a href="{{ route('splits.show', $expenseGroup) }}" wire:navigate class="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200">{{ $expenseGroup->icon }} {{ $expenseGroup->title }}</a>
+                    @empty
+                        <a href="{{ route('splits.index', ['trip' => $trip->id]) }}" wire:navigate class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">+ {{ __('Split costs') }}</a>
+                    @endforelse
+                </section>
                 <section class="grid gap-3 sm:grid-cols-3">
                     <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ $trip->isPast() ? __('Travelled') : ($trip->isOngoing() ? __('On the road') : __('Departure')) }}</p>

@@ -2,6 +2,8 @@ import sort from '@alpinejs/sort';
 import { browserSupportsWebAuthn, startAuthentication, startRegistration } from '@simplewebauthn/browser';
 
 import './echo';
+import 'leaflet/dist/leaflet.css';
+import tripMap from './trip-map';
 
 const isAuthenticated = !!document.querySelector('meta[name="e11-authenticated"]');
 const baseUrl = () => document.querySelector('meta[name="app-base-url"]')?.content?.replace(/\/$/, '') ?? '';
@@ -100,6 +102,9 @@ if ('serviceWorker' in navigator) {
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.plugin(sort);
+
+    // Trip map with pins per day (Leaflet is loaded only there, see trip-map.js).
+    window.Alpine.data('tripMap', tripMap);
 
     /**
      * Page editor (Tiptap) bound to the Livewire "body" property as Markdown.

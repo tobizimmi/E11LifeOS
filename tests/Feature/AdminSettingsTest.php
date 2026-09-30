@@ -110,6 +110,17 @@ class AdminSettingsTest extends TestCase
         Volt::test('admin.settings')->set('form.session_driver', 'redis')->set('form.log_days', '5')->call('save')->assertHasErrors(['form.session_driver', 'form.log_days']);
     }
 
+    public function test_a_map_service_can_be_entered_for_the_trip_map(): void
+    {
+        $this->admin();
+
+        Volt::test('admin.settings')->assertSee('Reisekarte')
+            ->set('form.maps_tile_url', 'http://tiles.example.com/map.png')->call('save')->assertHasErrors('form.maps_tile_url')
+            ->set('form.maps_tile_url', 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=abc')->call('save')->assertHasNoErrors();
+
+        $this->assertSame('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=abc', config('services.maps.tile_url'));
+    }
+
     public function test_push_keys_are_created_once_and_a_test_mail_is_sent(): void
     {
         $user = $this->admin();

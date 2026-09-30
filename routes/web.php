@@ -66,6 +66,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('people', 'people.index')->name('people.index');
     Volt::route('trips', 'trips.index')->name('trips.index');
     Volt::route('kids', 'kids.index')->name('kids.index');
+    Volt::route('spaces', 'spaces.index')->name('spaces.index');
+    Volt::route('spaces/{space}', 'spaces.show')->whereNumber('space')->name('spaces.show');
     Volt::route('splits', 'splits.index')->name('splits.index');
     Volt::route('splits/{group}', 'splits.show')->whereNumber('group')->name('splits.show');
     Route::get('splits/{group}/export/{format}', [ExpenseGroupController::class, 'export'])->whereNumber('group')->whereIn('format', ['csv', 'pdf'])->name('splits.export');

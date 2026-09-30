@@ -39,6 +39,8 @@ class TaskLists
 
     public readonly ?CollectionProperty $repeatProperty;
 
+    public readonly ?CollectionProperty $categoryProperty;
+
     private readonly string $today;
 
     /**
@@ -52,6 +54,7 @@ class TaskLists
         $this->assigneeProperty = $collection->systemProperty('assignee');
         $this->priorityProperty = $collection->systemProperty('priority');
         $this->repeatProperty = $collection->systemProperty('repeat');
+        $this->categoryProperty = $collection->systemProperty('category');
         $this->today = ($today ?? now())->toDateString();
     }
 
@@ -97,13 +100,15 @@ class TaskLists
     /**
      * @return array<int, array{key: string, label: string, tone: string, tasks: array<int, Item>}>
      */
-    public function groups(string $list, string $tag = '', string $search = ''): array
+    public function groups(string $list, string $tag = '', string $search = '', string $category = '', string $space = ''): array
     {
         $tasks = $list === self::DONE ? $this->doneTasks() : $this->openTasks();
         $term = mb_strtolower(trim($search));
 
         $tasks = $tasks
             ->when($tag !== '', fn ($tasks) => $tasks->filter(fn (Item $task) => $task->tags->contains('name', $tag)))
+            ->when($category !== '', fn ($tasks) => $tasks->filter(fn (Item $task) => $this->category($task) === $category))
+            ->when($space !== '', fn ($tasks) => $tasks->filter(fn (Item $task) => (string) $task->space_id === $space))
             ->when($term !== '', fn ($tasks) => $tasks->filter(fn (Item $task) => str_contains(mb_strtolower($task->title.' '.$task->body()), $term)))
             ->filter(fn (Item $task) => match ($list) {
                 self::TODAY => $this->isDueTodayOrOverdue($task),
@@ -163,6 +168,42 @@ class TaskLists
         $value = $this->priorityProperty ? $task->propertyValue($this->priorityProperty) : null;
 
         return isset(self::PRIORITY_ORDER[$value]) ? $value : null;
+    }
+
+    /**
+     * The id of the task's category option, or null.
+     */
+    public function category(Item $task): ?string
+    {
+        $value = $this->categoryProperty ? $task->propertyValue($this->categoryProperty) : null;
+
+        return $value !== null && $value !== '' ? (string) $value : null;
+    }
+
+    /**
+     * @return array<string, array{id: string, name: string, color: string}>
+     */
+    public function categories(): array
+    {
+        /** @var list<array{id: string, name: string, color?: string}> $options */
+        $options = $this->categoryProperty === null ? [] : ($this->categoryProperty->options ?? []);
+        $categories = [];
+
+        foreach ($options as $option) {
+            $categories[$option['id']] = ['id' => $option['id'], 'name' => $option['name'], 'color' => $option['color'] ?? 'gray'];
+        }
+
+        return $categories;
+    }
+
+    /**
+     * Open tasks per category id (for the filter chips).
+     *
+     * @return array<string, int>
+     */
+    public function categoryCounts(): array
+    {
+        return $this->openTasks()->map(fn (Item $task) => $this->category($task))->filter()->countBy()->all();
     }
 
     public function repeat(Item $task): ?string

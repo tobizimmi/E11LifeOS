@@ -6,11 +6,13 @@ use App\Livewire\Concerns\StoresAttachments;
 use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
 use App\Models\Item;
+use App\Models\Space;
 use App\Models\Tag;
 use App\Support\BrainAi;
 use App\Support\NoteMarkdown;
 use App\Support\PageMover;
 use App\Support\PageTree;
+use App\Support\TaskPages;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -31,6 +33,10 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(except: '')]
     public string $tag = '';
+
+    /** Overview filter: only pages of this space. */
+    #[Url(except: '')]
+    public string $space = '';
 
     /**
      * The open page (/pages/{item}); null shows the overview of all pages.
@@ -54,6 +60,11 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $isPrivate = false;
 
+    public ?int $spaceId = null;
+
+    /** Quick add on the open page: a new task linked to it. */
+    public string $newTask = '';
+
     /**
      * AI tag suggestions for the open form, added with one click.
      *
@@ -76,6 +87,10 @@ new #[Layout('layouts.app')] class extends Component
 
         if ($item !== null) {
             $this->selectedId = $this->findVisibleItem(Item::TYPE_NOTE, $item)->id;
+
+            if (request()->query('edit') === '1') {
+                $this->edit($this->selectedId);
+            }
         }
 
         $newTitle = request()->query('new');
@@ -89,6 +104,8 @@ new #[Layout('layouts.app')] class extends Component
             } else {
                 $this->create();
                 $this->isPrivate = request()->query('private') === '1';
+                $space = request()->query('space');
+                $this->spaceId = is_string($space) && ctype_digit($space) ? $this->findSpace((int) $space)?->id : null;
             }
 
             $this->title = mb_substr($newTitle, 0, 255);
@@ -111,6 +128,12 @@ new #[Layout('layouts.app')] class extends Component
         $this->create();
         $this->parentId = $parent->id;
         $this->isPrivate = $parent->isPrivate();
+        $this->spaceId = $parent->space_id;
+    }
+
+    private function findSpace(?int $id): ?Space
+    {
+        return $id ? Space::query()->visibleTo(Auth::user(), (int) $this->householdId)->find($id) : null;
     }
 
     public function save(): void
@@ -121,6 +144,7 @@ new #[Layout('layouts.app')] class extends Component
             'parentId' => ['nullable', 'integer'],
             'body' => ['nullable', 'string', 'max:100000'],
             'tagsInput' => ['nullable', 'string', 'max:1000'],
+            'spaceId' => ['nullable', 'integer'],
         ]);
 
         if (! $this->parentIsAllowed($validated['parentId'] ?? null)) {
@@ -134,6 +158,7 @@ new #[Layout('layouts.app')] class extends Component
             'icon' => trim((string) ($validated['icon'] ?? '')) ?: null,
             'parent_id' => $validated['parentId'] ?? null,
             'content' => ['body' => $validated['body'] ?? ''],
+            'space_id' => $this->findSpace($validated['spaceId'] ?? null)?->id,
         ];
         $visibility = $this->isPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED;
 
@@ -193,6 +218,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->body = $page->body();
         $this->tagsInput = $page->tags->sortBy('name')->pluck('name')->implode(', ');
         $this->isPrivate = $page->isPrivate();
+        $this->spaceId = $page->space_id;
         $this->showForm = true;
     }
 
@@ -221,6 +247,34 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * Creates a task right on the open page; it is linked to the page and lands in its space.
+     */
+    public function addPageTask(): void
+    {
+        $this->validate(['newTask' => ['required', 'string', 'max:500']]);
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+
+        TaskPages::createOnPage($page, Auth::user(), $this->newTask);
+        $this->reset('newTask');
+    }
+
+    /**
+     * Ticks a task linked to the open page.
+     */
+    public function togglePageTask(int $taskId): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+        $task = TaskPages::tasksOf($page, Auth::user())->firstWhere('id', $taskId);
+
+        $task?->update(['done' => ! $task->done]);
+    }
+
+    public function filterBySpace(string $id): void
+    {
+        $this->space = $this->space === $id ? '' : $id;
+    }
+
     public function cancelEdit(): void
     {
         $this->resetForm();
@@ -246,7 +300,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['title', 'icon', 'parentId', 'body', 'tagsInput', 'isPrivate', 'editingId', 'showForm', 'tagSuggestions']);
+        $this->reset(['title', 'icon', 'parentId', 'body', 'tagsInput', 'isPrivate', 'spaceId', 'editingId', 'showForm', 'tagSuggestions']);
         $this->resetValidation();
     }
 
@@ -262,6 +316,7 @@ new #[Layout('layouts.app')] class extends Component
             'pageTitles' => [],
             'canChangeVisibility' => true,
             'aiAvailable' => BrainAi::isConfigured(),
+            'spaces' => Space::query()->visibleTo(Auth::user(), (int) $this->householdId)->get()->keyBy('id'),
         ];
 
         if ($this->showForm) {
@@ -290,6 +345,7 @@ new #[Layout('layouts.app')] class extends Component
                 'breadcrumbs' => $page ? $tree->ancestors($page->id) : [],
                 'subpages' => $page ? $tree->children($page->id) : [],
                 'pageHtml' => $page ? NoteMarkdown::toHtml($page, Auth::user(), interactiveTasks: true) : null,
+                'pageTasks' => $page ? TaskPages::tasksOf($page, Auth::user()) : collect(),
             ] + $data;
         }
 
@@ -298,6 +354,7 @@ new #[Layout('layouts.app')] class extends Component
                 ->with('tags')
                 ->when($this->search !== '', fn ($query) => $query->matching($this->search))
                 ->when($this->tag !== '', fn ($query) => $query->whereHas('tags', fn ($tags) => $tags->where('name', $this->tag)))
+                ->when($this->space !== '', fn ($query) => $query->where('space_id', (int) $this->space))
                 ->latest('updated_at')
                 ->get(),
             'tags' => Tag::usedOnItemsVisibleTo(Auth::user(), $this->householdId, Item::TYPE_NOTE)
@@ -351,6 +408,18 @@ new #[Layout('layouts.app')] class extends Component
                             </select>
                             <x-input-error :messages="$errors->get('parentId')" class="mt-2" />
                         </div>
+
+                        @if ($spaces->isNotEmpty())
+                            <div>
+                                <x-input-label for="spaceId" :value="__('Space')" />
+                                <select wire:model="spaceId" id="spaceId" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm">
+                                    <option value="">{{ __('— No space —') }}</option>
+                                    @foreach ($spaces as $spaceOption)
+                                        <option value="{{ $spaceOption->id }}" wire:key="space-option-{{ $spaceOption->id }}">{{ $spaceOption->icon }} {{ $spaceOption->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
 
                         <div
                             x-data="pageEditor(@js([
@@ -458,6 +527,9 @@ new #[Layout('layouts.app')] class extends Component
                                     @endif
                                 </h1>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                    @if ($pageSpace = $spaces->get($selectedPage->space_id))
+                                        <a href="{{ route('spaces.show', $pageSpace) }}" wire:navigate class="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 hover:underline dark:bg-gray-700 dark:text-gray-200">{{ $pageSpace->icon }} {{ $pageSpace->name }}</a> ·
+                                    @endif
                                     {{ __('Updated :time', ['time' => $selectedPage->updated_at->diffForHumans()]) }}
                                     @if ($selectedPage->creator)
                                         · {{ __('by :name', ['name' => $selectedPage->creator->name]) }}
@@ -483,6 +555,30 @@ new #[Layout('layouts.app')] class extends Component
                         @else
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('This page has no content yet.') }}</p>
                         @endif
+
+                        <section class="border-t border-gray-100 dark:border-gray-700 pt-4" aria-labelledby="page-tasks-heading">
+                            <div class="flex items-center justify-between gap-3">
+                                <h2 id="page-tasks-heading" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Tasks') }}</h2>
+                                @if ($pageTasks->isNotEmpty())
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ __(':done of :total done', ['done' => $pageTasks->where('done', true)->count(), 'total' => $pageTasks->count()]) }}</span>
+                                @endif
+                            </div>
+                            @if ($pageTasks->isNotEmpty())
+                                <ul class="mt-2 space-y-1">
+                                    @foreach ($pageTasks as $pageTask)
+                                        <li wire:key="page-task-{{ $pageTask->id }}" class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                            <input type="checkbox" wire:click="togglePageTask({{ $pageTask->id }})" @checked($pageTask->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $pageTask->title }}">
+                                            <a href="{{ route('tasks.index', ['task' => $pageTask->id]) }}" wire:navigate @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $pageTask->done, 'text-gray-400 line-through' => $pageTask->done])>{{ $pageTask->title }}</a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            <form wire:submit="addPageTask" class="mt-2 flex gap-2">
+                                <x-text-input wire:model="newTask" class="block w-full text-sm" type="text" placeholder="{{ __('New task for this page, e.g. Call the plumber tomorrow') }}" aria-label="{{ __('New task') }}" />
+                                <x-secondary-button type="submit" class="shrink-0">+ {{ __('Task') }}</x-secondary-button>
+                            </form>
+                            <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
+                        </section>
 
                         <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
                             <div class="flex items-center justify-between gap-3">
@@ -527,6 +623,15 @@ new #[Layout('layouts.app')] class extends Component
                         <x-primary-button type="button" wire:click="create" class="shrink-0">{{ __('New page') }}</x-primary-button>
                     </div>
 
+                    @if ($spaces->isNotEmpty())
+                        <div class="flex flex-wrap gap-1" role="group" aria-label="{{ __('Spaces') }}">
+                            @foreach ($spaces as $spaceOption)
+                                <button type="button" wire:click="filterBySpace('{{ $spaceOption->id }}')" wire:key="space-filter-{{ $spaceOption->id }}" aria-pressed="{{ $space === (string) $spaceOption->id ? 'true' : 'false' }}"
+                                    @class(['text-xs rounded-full px-2 py-0.5', 'bg-indigo-600 text-white' => $space === (string) $spaceOption->id, 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600' => $space !== (string) $spaceOption->id])>{{ $spaceOption->icon }} {{ $spaceOption->name }}</button>
+                            @endforeach
+                        </div>
+                    @endif
+
                     @if ($tags->isNotEmpty())
                         <div class="flex flex-wrap gap-1">
                             @foreach ($tags as $tagName)
@@ -558,6 +663,9 @@ new #[Layout('layouts.app')] class extends Component
                                 <div class="flex items-center gap-2">
                                     <span aria-hidden="true">{{ $page->displayIcon() }}</span>
                                     <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $page->title }}</h4>
+                                    @if ($pageSpace = $spaces->get($page->space_id))
+                                        <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ $pageSpace->icon }} {{ $pageSpace->name }}</span>
+                                    @endif
                                     @if ($page->isPrivate())
                                         <x-private-badge />
                                     @endif
@@ -576,7 +684,7 @@ new #[Layout('layouts.app')] class extends Component
                         </li>
                     @empty
                         <li class="p-4 text-gray-500 dark:text-gray-400 text-sm">
-                            {{ $search !== '' || $tag !== '' ? __('No pages match your filter.') : __('No pages yet.') }}
+                            {{ $search !== '' || $tag !== '' || $space !== '' ? __('No pages match your filter.') : __('No pages yet.') }}
                         </li>
                     @endforelse
                 </ul>

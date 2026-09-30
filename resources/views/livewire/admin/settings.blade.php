@@ -113,6 +113,13 @@ new #[Layout('layouts.app')] class extends Component
             'form.backup_remote_url' => ['nullable', 'url:https'],
             'form.require_two_factor' => ['nullable', 'in:0,1'],
             'form.error_report_email' => ['nullable', 'email'],
+            'form.idle_minutes' => ['nullable', 'integer', 'between:0,1440'],
+            'form.session_lifetime' => ['nullable', 'integer', 'between:5,43200'],
+            'form.api_token_idle_days' => ['nullable', 'integer', 'between:0,3650'],
+            'form.log_days' => ['nullable', 'integer', 'between:30,3650'],
+            'form.session_driver' => ['nullable', 'in:database,file'],
+            'form.session_encrypt' => ['nullable', 'in:0,1'],
+            'form.backup_remote_keep' => ['nullable', 'integer', 'between:1,365'],
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'aiFeatures.*' => ['in:'.implode(',', array_keys(AiFeatures::all()))],
@@ -345,7 +352,8 @@ new #[Layout('layouts.app')] class extends Component
         'backup' => ['title' => __('Backups'), 'text' => __('Nightly ZIP backup of the database and uploaded files. With a WebDAV folder and a password, each backup is also encrypted (XChaCha20-Poly1305, key derived from the password) and copied off the server – keep the password safe, without it the backup cannot be opened.')],
         'realtime' => ['title' => __('Live updates (Reverb)'), 'text' => __('Open pages update themselves when someone else changes something. The server sends these updates to the Reverb process; behind the path-based proxy it has to reach it directly. Enter the port Reverb was started with (PM2 process “reverb”, e.g. 3021 for staging and 3011 for live).')],
         'vpn' => ['title' => __('VPN (WireGuard)'), 'text' => __('Connects the server with a private network, e.g. your home network, so paperless or a NAS there can be reached. Create a WireGuard connection in your router (FritzBox: Internet → Permit Access → VPN (WireGuard) → “Connect a single device”) and paste the configuration file here. Only addresses in the listed networks go through the VPN. Staging and live need a connection and a port of their own.')],
-        'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).')],
+        'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).').' '.__('Sign-out after inactivity, session length and storage, expiry of app sign-ins and how long the security log is kept.')],
+        'shopping' => ['title' => __('Shopping list'), 'text' => __('Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
     ];
@@ -377,8 +385,17 @@ new #[Layout('layouts.app')] class extends Component
         'backup_remote_username' => [__('WebDAV user name'), 'u12345'],
         'backup_remote_password' => [__('WebDAV password'), ''],
         'backup_encryption_password' => [__('Encryption password for the copies'), ''],
+        'backup_remote_keep' => [__('Keep copies off the server'), '30'],
+        'offers_api_key' => [__('marktguru API key (optional)'), ''],
+        'offers_client_key' => [__('marktguru client key (optional)'), ''],
         'require_two_factor' => [__('Two-factor authentication required'), ''],
         'error_report_email' => [__('Send error reports to'), 'admin@example.com'],
+        'idle_minutes' => [__('Sign out after inactivity (minutes, 0 = never)'), '30'],
+        'session_lifetime' => [__('Maximum session length (minutes)'), '120'],
+        'api_token_idle_days' => [__('App sign-ins expire after unused days (0 = never)'), '90'],
+        'log_days' => [__('Keep security log (days)'), '365'],
+        'session_driver' => [__('Where sessions are stored'), ''],
+        'session_encrypt' => [__('Encrypt session data'), ''],
         'reverb_publish_port' => [__('Port of the local Reverb process'), '3021'],
         'vpn_enabled' => [__('VPN switched on'), ''],
         'vpn_socks_port' => [__('Local port (optional)'), '25344'],
@@ -398,6 +415,12 @@ new #[Layout('layouts.app')] class extends Component
         'rezepteapp_uploads_url' => [__('Photo address (if the folder is not readable)'), 'https://zimmimail.de/RezepteApp2/uploads'],
     ];
     $importNames = ['import_portfolio' => 'portfolio', 'import_recipes' => 'recipes'];
+    $selectOptions = [
+        'mail_scheme' => ['' => __('STARTTLS (port 587)'), 'smtps' => __('SSL/TLS (port 465)')],
+        'session_driver' => ['' => isset($stored['session_driver']) ? __('Default (.env)') : __('Default (:value)', ['value' => ['database' => __('Database'), 'file' => __('Files')][AppSettings::current('session_driver')] ?? (string) AppSettings::current('session_driver')]), 'database' => __('Database (sessions visible in the profile)'), 'file' => __('Files')],
+    ];
+    // What "Default" means for yes/no fields: the value in effect while nothing is saved here.
+    $yesnoDefaults = collect(AppSettings::FIELDS)->filter(fn (array $field) => $field['type'] === 'yesno')->map(fn (array $field, string $key) => isset($stored[$key]) ? null : (bool) AppSettings::current($key))->all();
     $importStatus = ['queued' => __('waiting for the scheduler'), 'running' => __('running'), 'done' => __('finished'), 'failed' => __('failed')];
 @endphp
 
@@ -464,13 +487,15 @@ new #[Layout('layouts.app')] class extends Component
                                     <x-input-label :for="'setting-'.$key" :value="$labels[$key][0]" />
                                     @if ($field['type'] === 'select')
                                         <select id="setting-{{ $key }}" wire:model="form.{{ $key }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
-                                            <option value="">{{ __('STARTTLS (port 587)') }}</option>
-                                            <option value="smtps">{{ __('SSL/TLS (port 465)') }}</option>
+                                            @foreach ($selectOptions[$key] as $value => $optionLabel)
+                                                <option value="{{ $value }}">{{ $optionLabel }}</option>
+                                            @endforeach
                                         </select>
                                     @elseif ($field['type'] === 'yesno')
                                         <select id="setting-{{ $key }}" wire:model="form.{{ $key }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
-                                            <option value="">{{ __('No') }}</option>
+                                            <option value="">{{ $yesnoDefaults[$key] === null ? __('Default (.env)') : __('Default (:value)', ['value' => $yesnoDefaults[$key] ? __('Yes') : __('No')]) }}</option>
                                             <option value="1">{{ __('Yes') }}</option>
+                                            <option value="0">{{ __('No') }}</option>
                                         </select>
                                     @elseif ($field['type'] === 'features')
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Only ticked functions send data to the AI service; everything else keeps working without AI.') }}</p>

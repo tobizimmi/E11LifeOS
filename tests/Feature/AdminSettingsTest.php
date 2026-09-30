@@ -94,6 +94,22 @@ class AdminSettingsTest extends TestCase
         $this->assertSame('none', AppSetting::where('key', 'ai_disabled_features')->value('value'));
     }
 
+    public function test_security_and_session_settings_replace_the_env_values(): void
+    {
+        $this->admin();
+
+        Volt::test('admin.settings')->assertSee('Abmelden nach Inaktivität')->assertSee('Sitzungsdaten verschlüsseln')
+            ->set('form.idle_minutes', '0')->set('form.api_token_idle_days', '30')->set('form.session_encrypt', '0')->set('form.session_driver', 'file')
+            ->call('save')->assertHasNoErrors();
+
+        $this->assertSame(0, config('security.idle_minutes'));
+        $this->assertSame(30, config('security.api_token_idle_days'));
+        $this->assertFalse(config('session.encrypt'));
+        $this->assertSame('file', config('session.driver'));
+
+        Volt::test('admin.settings')->set('form.session_driver', 'redis')->set('form.log_days', '5')->call('save')->assertHasErrors(['form.session_driver', 'form.log_days']);
+    }
+
     public function test_push_keys_are_created_once_and_a_test_mail_is_sent(): void
     {
         $user = $this->admin();

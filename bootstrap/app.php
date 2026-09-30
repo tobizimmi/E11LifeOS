@@ -33,13 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Uploads are checked for viruses after the session started, so errors reach the form.
-        $middleware->web(append: [RequireTwoFactor::class, ScanUploads::class]);
+        $middleware->web(append: [RequireTwoFactor::class, ScanUploads::class, ApplyUrlPrefix::class]);
         $middleware->api(append: [ScanUploads::class]);
         $middleware->append(SecurityHeaders::class);
-
-        // Only X-Forwarded-Prefix/-Proto, which ApplyUrlPrefix sets itself from APP_URL (client values are dropped).
-        $middleware->prepend(ApplyUrlPrefix::class);
-        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_PREFIX | Request::HEADER_X_FORWARDED_PROTO);
 
         // Sign in before route model binding, so unknown tokens get 401 instead of 404.
         $middleware->prependToPriorityList(SubstituteBindings::class, AuthenticateApiToken::class);

@@ -7,33 +7,63 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Behind the reverse proxy the app lives under a URL path (APP_URL, e.g. /E11LifeOS-staging) while
- * PHP sees unprefixed paths. URLs built from the request itself — the page to return to after
- * signing in or confirming the password, "back" after a form error — would then drop that path.
- * The prefix and scheme from APP_URL are passed as X-Forwarded-Prefix/-Proto (the only proxy headers
- * trusted, client values are dropped), so Symfony adds them to the request's URL; routing still uses
- * the unprefixed path.
+ * Behind the Apache reverse proxy PHP sees neither the public host nor the URL path of the app
+ * (requests arrive as http://127.0.0.1:3020/finance, APP_URL is https://zimmimail.de/E11LifeOS-staging).
+ * Links built with route()/url() use APP_URL, but the page to return to after signing in or
+ * confirming the password (url.intended) and "back" after a form error (_previous.url) are taken
+ * from the request itself. Apache only fixes such URLs in Location headers, not in Livewire
+ * responses – so these stored URLs are rewritten onto APP_URL before and after every request.
  */
 class ApplyUrlPrefix
 {
+    private const SESSION_KEYS = ['url.intended', '_previous.url'];
+
     public function handle(Request $request, Closure $next): Response
     {
-        $request->headers->remove('X-Forwarded-Prefix');
-        $request->headers->remove('X-Forwarded-Proto');
-
-        if (! app()->environment(['production', 'staging'])) {
+        if (! app()->environment(['production', 'staging']) || ! $request->hasSession()) {
             return $next($request);
         }
 
-        $prefix = rtrim((string) parse_url((string) config('app.url'), PHP_URL_PATH), '/');
+        $this->normalizeSession($request);
+        $response = $next($request);
+        $this->normalizeSession($request);
 
-        if ($prefix !== '' && ! str_starts_with($request->getRequestUri(), $prefix.'/')) {
-            $request->headers->set('X-Forwarded-Prefix', $prefix);
+        return $response;
+    }
+
+    /**
+     * Rewrites a URL of this app onto the public root, e.g. http://127.0.0.1:3020/finance?tab=1
+     * becomes https://zimmimail.de/E11LifeOS-staging/finance?tab=1.
+     */
+    public static function publicUrl(string $url): string
+    {
+        $root = rtrim((string) config('app.url'), '/');
+
+        if ($url === '' || $url === $root || str_starts_with($url, $root.'/') || str_starts_with($url, $root.'?')) {
+            return $url;
         }
 
-        // TLS ends at the proxy; the scheme of APP_URL is the one visitors use.
-        $request->headers->set('X-Forwarded-Proto', (string) parse_url((string) config('app.url'), PHP_URL_SCHEME) ?: 'https');
+        $prefix = rtrim((string) parse_url($root, PHP_URL_PATH), '/');
+        $path = (string) (parse_url($url, PHP_URL_PATH) ?? '/');
+        $query = parse_url($url, PHP_URL_QUERY);
 
-        return $next($request);
+        if ($prefix !== '' && ($path === $prefix || str_starts_with($path, $prefix.'/'))) {
+            $path = substr($path, strlen($prefix));
+        }
+
+        return $root.'/'.ltrim($path, '/').($query ? '?'.$query : '');
+    }
+
+    private function normalizeSession(Request $request): void
+    {
+        $session = $request->session();
+
+        foreach (self::SESSION_KEYS as $key) {
+            $url = $session->get($key);
+
+            if (is_string($url) && ($public = self::publicUrl($url)) !== $url) {
+                $session->put($key, $public);
+            }
+        }
     }
 }

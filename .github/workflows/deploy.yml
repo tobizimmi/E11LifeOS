@@ -13,9 +13,10 @@ on:
         options:
           - deploy
           - server-einrichten
+          - status
         default: deploy
       environment:
-        description: 'Nur für server-einrichten: welcher Server?'
+        description: 'Nur für server-einrichten / status: welcher Server?'
         type: choice
         options:
           - staging
@@ -28,7 +29,7 @@ on:
 
 jobs:
   tests:
-    if: inputs.action != 'server-einrichten'
+    if: inputs.action != 'server-einrichten' && inputs.action != 'status'
     uses: ./.github/workflows/tests.yml
 
   server-setup:
@@ -37,6 +38,13 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       overwrite: ${{ inputs.overwrite }}
+    secrets: inherit
+
+  server-status:
+    if: inputs.action == 'status'
+    uses: ./.github/workflows/server-status.yml
+    with:
+      environment: ${{ inputs.environment }}
     secrets: inherit
 
   deploy:
@@ -50,9 +58,10 @@ jobs:
       # PM2 process names per environment (app = php built-in server, reverb = websocket server)
       PM2_APP_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-app' || 'e11lifeos-app-staging' }}
       PM2_REVERB_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-reverb' || 'e11lifeos-reverb-staging' }}
-      # Internal ports behind the Apache proxy (docs/deployment.md): Live 3010/3011, Staging 3020/3021.
-      APP_PORT: ${{ github.ref == 'refs/heads/main' && '3010' || '3020' }}
-      REVERB_PORT: ${{ github.ref == 'refs/heads/main' && '3011' || '3021' }}
+      # Internal ports behind the Apache proxy (Plesk): Live 3012/3013, Staging 3020/3021.
+      # (3010 belongs to another app on the server.)
+      APP_PORT: ${{ github.ref == 'refs/heads/main' && '3012' || '3020' }}
+      REVERB_PORT: ${{ github.ref == 'refs/heads/main' && '3013' || '3021' }}
       # Scheduler (schedule:work) and queue worker run as PM2 processes of the same user as the
       # app, so they can write to storage/ (a Plesk cron job runs as another user). Created on demand.
       PM2_SCHEDULER_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-scheduler' || 'e11lifeos-scheduler-staging' }}
@@ -184,13 +193,14 @@ jobs:
             php artisan cache:clear
 
             # App, Reverb, scheduler, queue worker and VPN: restart (new code) or start once.
-            # A process still running in another folder (app folder moved) is started anew here.
+            # A process running in another folder (app folder moved) or with other arguments (port) is started anew.
             PHP_BIN=/opt/plesk/php/8.4/bin/php
             ensure_process() {
               name="$1"; shift
               current_cwd=$(pm2 jlist 2>/dev/null | php -r '$n=$argv[1];foreach(json_decode(stream_get_contents(STDIN),true)?:[] as $p){if(($p["name"]??"")===$n){echo $p["pm2_env"]["pm_cwd"]??"";}}' "$name")
-              if [ -n "$current_cwd" ] && [ "$(realpath "$current_cwd" 2>/dev/null)" != "$(realpath "$APP_PATH")" ]; then
-                echo "PM2 process $name ran in another folder – starting it in the app folder."
+              current_args=$(pm2 jlist 2>/dev/null | php -r '$n=$argv[1];foreach(json_decode(stream_get_contents(STDIN),true)?:[] as $p){if(($p["name"]??"")===$n){echo implode(" ",(array)($p["pm2_env"]["args"]??[]));}}' "$name")
+              if [ -n "$current_cwd" ] && { [ "$(realpath "$current_cwd" 2>/dev/null)" != "$(realpath "$APP_PATH")" ] || [ "$current_args" != "$*" ]; }; then
+                echo "PM2 process $name ran in another folder or with other arguments – starting it anew."
                 pm2 delete "$name"
               fi
               if pm2 describe "$name" > /dev/null 2>&1; then

@@ -77,9 +77,9 @@ REVERB_APP_SECRET=<eigenes-secret-live>
 REVERB_HOST=zimmimail.de
 REVERB_PORT=443
 REVERB_SCHEME=https
-# Live-Updates vom Server direkt an den lokalen Reverb-Prozess (Staging: 3021)
+# Live-Updates vom Server direkt an den lokalen Reverb-Prozess (Staging: 3021; 3010 gehört EKats)
 REVERB_PUBLISH_HOST=127.0.0.1
-REVERB_PUBLISH_PORT=3011
+REVERB_PUBLISH_PORT=3013
 REVERB_PUBLISH_SCHEME=http
 
 VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
@@ -102,9 +102,9 @@ Pfad (`/opt/plesk/php/8.4/bin/php`) verwenden, nicht das bloße `php` — das
 zeigt auf die alte System-PHP 8.2, mit der die App nicht läuft.
 
 ```bash
-# Live: App-Port 3010, Reverb-Port 3011
-pm2 start /opt/plesk/php/8.4/bin/php --name e11lifeos-app --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live -- -S 127.0.0.1:3010 -t public/
-pm2 start "/opt/plesk/php/8.4/bin/php artisan reverb:start --port=3011" --name e11lifeos-reverb --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live
+# Live: App-Port 3012, Reverb-Port 3013
+pm2 start /opt/plesk/php/8.4/bin/php --name e11lifeos-app --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live -- -S 127.0.0.1:3012 -t public/
+pm2 start "/opt/plesk/php/8.4/bin/php artisan reverb:start --port=3013" --name e11lifeos-reverb --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-live
 
 # Staging: App-Port 3020, Reverb-Port 3021
 pm2 start /opt/plesk/php/8.4/bin/php --name e11lifeos-app-staging --cwd /var/www/vhosts/zimmimail.de/httpdocs/E11LifeOS-staging -- -S 127.0.0.1:3020 -t public/
@@ -133,10 +133,10 @@ ProxyPass /E11LifeOS-staging http://127.0.0.1:3020
 ProxyPassReverse /E11LifeOS-staging http://127.0.0.1:3020
 
 # Live danach
-ProxyPass /E11LifeOS/app ws://127.0.0.1:3011/app
-ProxyPassReverse /E11LifeOS/app ws://127.0.0.1:3011/app
-ProxyPass /E11LifeOS http://127.0.0.1:3010
-ProxyPassReverse /E11LifeOS http://127.0.0.1:3010
+ProxyPass /E11LifeOS/app ws://127.0.0.1:3013/app
+ProxyPassReverse /E11LifeOS/app ws://127.0.0.1:3013/app
+ProxyPass /E11LifeOS http://127.0.0.1:3012
+ProxyPassReverse /E11LifeOS http://127.0.0.1:3012
 ```
 
 ## 6. GitHub Actions Deploy-Key

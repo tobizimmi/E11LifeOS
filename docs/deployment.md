@@ -1,5 +1,10 @@
 # Deployment auf den Strato VPS (217.72.202.93)
 
+> **Neu einrichten ohne SSH:** [live-einrichten.md](live-einrichten.md) – `.env` aus dem GitHub-Secret
+> `ENV_FILE_LIVE`/`ENV_FILE_STAGING` per Actions → „Deploy E11LifeOS“ → `server-einrichten`; der Deploy
+> startet fehlende PM2-Prozesse selbst und führt `php artisan app:install` aus. Die Abschnitte 3 und 4
+> unten beschreiben den manuellen Weg.
+
 Beide Umgebungen laufen **ohne eigene Subdomain** als Pfad unter der
 bestehenden `zimmimail.de`-Domain (wie z.B. auch `zimmimail.de/RoboDoc/`):
 

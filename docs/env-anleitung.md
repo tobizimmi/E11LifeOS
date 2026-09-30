@@ -1,8 +1,9 @@
 # `.env` einrichten – Anleitung
 
-Die `.env` enthält alle Zugangsdaten und Schlüssel der App. Sie liegt **nur auf dem
-Server** und nie in GitHub. Der Deploy-Workflow fasst sie nicht an: Er bricht ab,
-wenn sie fehlt, und überschreibt sie nie.
+Die `.env` enthält alle Zugangsdaten und Schlüssel der App. Sie liegt auf dem Server und nie
+im Code. Der Deploy-Workflow fasst sie nicht an: Er bricht ab, wenn sie fehlt, und überschreibt
+sie nie. Ohne SSH geht es über das GitHub-Secret `ENV_FILE_LIVE` und den Ablauf
+„server-einrichten“, siehe [live-einrichten.md](live-einrichten.md).
 
 Vorlage zum Ausfüllen: [`docs/env.production.example`](env.production.example)
 

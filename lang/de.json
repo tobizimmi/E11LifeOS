@@ -4813,5 +4813,21 @@
     "Everyone in your household becomes a member – also everyone who joins it later. Your household contents still stay private until someone shares them.|All :count people in your household become members – also everyone who joins it later. Your household contents still stay private until someone shares them.": "Alle in deinem Haushalt werden Mitglied – auch alle, die später dazukommen. Eure Haushaltsinhalte bleiben trotzdem privat, bis jemand sie teilt.|Alle :count Personen deines Haushalts werden Mitglied – auch alle, die später dazukommen. Eure Haushaltsinhalte bleiben trotzdem privat, bis jemand sie teilt.",
     "Sort into": "Einsortieren",
     "Open inbox": "Inbox öffnen",
-    "On the shopping list: :title": "Auf der Einkaufsliste: :title"
+    "On the shopping list: :title": "Auf der Einkaufsliste: :title",
+    "APP_KEY is missing in .env. Add it once and never change it afterwards.": "APP_KEY fehlt in der .env. Einmal eintragen und danach nie mehr ändern.",
+    "The database is not reachable: :message": "Die Datenbank ist nicht erreichbar: :message",
+    "Push keys created and saved in the server settings.": "Push-Schlüssel erzeugt und in den Servereinstellungen gespeichert.",
+    "No administrator yet: php artisan user:admin your@email": "Noch kein Administrator: php artisan user:admin deine@email",
+    "First account: register within :days days at": "Erstes Konto: innerhalb von :days Tagen registrieren unter",
+    "Invite code: :code": "Einladungscode: :code",
+    "This first account automatically becomes administrator.": "Dieses erste Konto wird automatisch Administrator.",
+    "Debug mode off": "Debug-Modus aus",
+    "Address uses https": "Adresse nutzt https",
+    "E-mail sending": "E-Mail-Versand",
+    "Backup password (for the copy off site)": "Backup-Passwort (für die Kopie außer Haus)",
+    "Backup copy off site": "Backup-Kopie außer Haus",
+    "AI key (optional)": "KI-Schlüssel (optional)",
+    "Check": "Prüfung",
+    "Open points can be entered in the app under Server settings (profile menu).": "Offene Punkte kannst du in der App unter Servereinstellungen (Profil-Menü) eintragen.",
+    "Keep APP_KEY and the backup password in your password manager – without them encrypted data and backups cannot be read.": "APP_KEY und Backup-Passwort im Passwort-Manager aufbewahren – ohne sie lassen sich verschlüsselte Daten und Backups nicht lesen."
 }

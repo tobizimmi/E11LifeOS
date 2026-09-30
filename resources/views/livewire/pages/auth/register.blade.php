@@ -60,11 +60,18 @@ new #[Layout('layouts.guest')] class extends Component
         }
 
         $user = DB::transaction(function () use ($validated, $invite) {
+            // On a fresh installation the first account becomes the administrator.
+            $isFirstAccount = ! User::query()->exists();
+
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
             ]);
+
+            if ($isFirstAccount) {
+                $user->forceFill(['is_admin' => true])->save();
+            }
 
             if ($invite->isForNewHousehold()) {
                 $household = Household::create(['name' => $this->household_name]);

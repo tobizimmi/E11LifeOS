@@ -183,40 +183,32 @@ jobs:
             php artisan view:clear
             php artisan cache:clear
 
-            # App, Reverb, scheduler and queue worker: restart (new code) or start once.
+            # App, Reverb, scheduler, queue worker and VPN: restart (new code) or start once.
+            # A process still running in another folder (app folder moved) is started anew here.
             PHP_BIN=/opt/plesk/php/8.4/bin/php
-            if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
-              pm2 restart "$PM2_APP_NAME" --update-env
-            else
-              pm2 start "$PHP_BIN" --name "$PM2_APP_NAME" --cwd "$APP_PATH" -- -S "127.0.0.1:$APP_PORT" -t public/
-            fi
+            ensure_process() {
+              name="$1"; shift
+              current_cwd=$(pm2 jlist 2>/dev/null | php -r '$n=$argv[1];foreach(json_decode(stream_get_contents(STDIN),true)?:[] as $p){if(($p["name"]??"")===$n){echo $p["pm2_env"]["pm_cwd"]??"";}}' "$name")
+              if [ -n "$current_cwd" ] && [ "$(realpath "$current_cwd" 2>/dev/null)" != "$(realpath "$APP_PATH")" ]; then
+                echo "PM2 process $name ran in another folder – starting it in the app folder."
+                pm2 delete "$name"
+              fi
+              if pm2 describe "$name" > /dev/null 2>&1; then
+                pm2 restart "$name" --update-env
+              else
+                pm2 start "$PHP_BIN" --name "$name" --cwd "$APP_PATH" -- "$@"
+              fi
+            }
 
-            if pm2 describe "$PM2_REVERB_NAME" > /dev/null 2>&1; then
-              pm2 restart "$PM2_REVERB_NAME" --update-env
-            else
-              pm2 start "$PHP_BIN" --name "$PM2_REVERB_NAME" --cwd "$APP_PATH" -- artisan reverb:start "--port=$REVERB_PORT"
-            fi
-
-            if pm2 describe "$PM2_SCHEDULER_NAME" > /dev/null 2>&1; then
-              pm2 restart "$PM2_SCHEDULER_NAME" --update-env
-            else
-              pm2 start "$PHP_BIN" --name "$PM2_SCHEDULER_NAME" --cwd "$APP_PATH" -- artisan schedule:work
-            fi
-
-            if pm2 describe "$PM2_QUEUE_NAME" > /dev/null 2>&1; then
-              pm2 restart "$PM2_QUEUE_NAME" --update-env
-            else
-              pm2 start "$PHP_BIN" --name "$PM2_QUEUE_NAME" --cwd "$APP_PATH" -- artisan queue:work --queue=admin,default --tries=1 --sleep=3
-            fi
+            ensure_process "$PM2_APP_NAME" -S "127.0.0.1:$APP_PORT" -t public/
+            ensure_process "$PM2_REVERB_NAME" artisan reverb:start "--port=$REVERB_PORT"
+            ensure_process "$PM2_SCHEDULER_NAME" artisan schedule:work
+            ensure_process "$PM2_QUEUE_NAME" artisan queue:work --queue=admin,default --tries=1 --sleep=3
 
             # VPN: wireproxy is downloaded once (a failed download must not stop the deploy);
             # the process idles until a WireGuard configuration is saved on the admin page.
             php artisan vpn:install --if-missing || echo "wireproxy could not be installed – VPN stays off."
-            if pm2 describe "$PM2_VPN_NAME" > /dev/null 2>&1; then
-              pm2 restart "$PM2_VPN_NAME" --update-env
-            else
-              pm2 start "$PHP_BIN" --name "$PM2_VPN_NAME" --cwd "$APP_PATH" -- artisan vpn:run
-            fi
+            ensure_process "$PM2_VPN_NAME" artisan vpn:run
 
             pm2 save
 

@@ -4628,5 +4628,20 @@
     "My theses": "Meine Thesen",
     "Your investment theses – why you own a security and when you would sell. Write them on the page of each security.": "Deine Anlage-Thesen – warum du ein Wertpapier besitzt und wann du verkaufen würdest. Du schreibst sie auf der Seite des jeweiligen Wertpapiers.",
     "Review due": "Überprüfung fällig",
-    "No theses yet. Open a security in the portfolio and write down why you own it.": "Noch keine Thesen. Öffne ein Wertpapier im Portfolio und schreib auf, warum du es besitzt."
+    "No theses yet. Open a security in the portfolio and write down why you own it.": "Noch keine Thesen. Öffne ein Wertpapier im Portfolio und schreib auf, warum du es besitzt.",
+    "Build an emergency fund": "Notgroschen aufbauen",
+    "Your available money covers :months months of expenses. Three to six months (:target) on a call money account protect you from having to sell investments or take out loans.": "Dein verfügbares Geld deckt :months Monate Ausgaben. Drei bis sechs Monate (:target) auf dem Tagesgeld schützen dich davor, Anlagen verkaufen oder Kredite aufnehmen zu müssen.",
+    "Raise your savings rate": "Sparquote erhöhen",
+    "You keep :rate % of your income. Aim for at least 10–20 %: a standing order right after payday of :amount per month is a good start.": "Du behältst :rate % deines Einkommens. Ziel sind mindestens 10–20 %: Ein Dauerauftrag direkt nach dem Gehaltseingang über :amount pro Monat ist ein guter Anfang.",
+    "Your personal savings tips": "Deine persönlichen Spartipps",
+    "Potential: about :amount per year": "Potenzial: etwa :amount pro Jahr",
+    "No tips right now – sync your bank or import statements so the app can look for savings.": "Gerade keine Tipps – synchronisiere dein Konto oder importiere Umsätze, damit die App nach Sparmöglichkeiten suchen kann.",
+    "All tips done or hidden – well done!": "Alle Tipps erledigt oder ausgeblendet – gut gemacht!",
+    ":amount / year": ":amount / Jahr",
+    "Not relevant": "Nicht relevant",
+    ":count tip done or hidden|:count tips done or hidden": ":count Tipp erledigt oder ausgeblendet|:count Tipps erledigt oder ausgeblendet",
+    "Show again": "Wieder anzeigen",
+    "If you invest your surplus of :amount per month": "Wenn du deinen Überschuss von :amount pro Monat anlegst",
+    ":years years: :amount": ":years Jahre: :amount",
+    "At an assumed 6 % return per year, before tax and inflation – for orientation only.": "Bei angenommenen 6 % Rendite pro Jahr, vor Steuern und Inflation – nur zur Orientierung."
 }

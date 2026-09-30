@@ -2,7 +2,9 @@
 
 use App\Models\CashflowEntry;
 use App\Support\Addons;
+use App\Models\SavingTipState;
 use App\Support\Finance\CashflowStatement;
+use App\Support\Finance\SavingTips;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -120,9 +122,27 @@ new #[Layout('layouts.app')] class extends Component
         return CashflowEntry::where('user_id', Auth::id())->find($id) ?? abort(404);
     }
 
+    /**
+     * Marks a savings tip as done or hides it; an empty status brings it back.
+     */
+    public function setTipStatus(string $key, string $status = ''): void
+    {
+        abort_unless(in_array($status, ['', SavingTipState::DONE, SavingTipState::HIDDEN], true) && mb_strlen($key) <= 64, 422);
+
+        if ($status === '') {
+            SavingTipState::where('user_id', Auth::id())->where('key', $key)->delete();
+
+            return;
+        }
+
+        SavingTipState::updateOrCreate(['user_id' => Auth::id(), 'key' => $key], ['status' => $status]);
+    }
+
     public function with(): array
     {
-        return ['statement' => CashflowStatement::for(Auth::user()), 'history' => CashflowStatement::history(Auth::user()), 'categories' => CashflowEntry::categories()];
+        $statement = CashflowStatement::for(Auth::user());
+
+        return ['statement' => $statement, 'history' => CashflowStatement::history(Auth::user()), 'categories' => CashflowEntry::categories(), 'tips' => SavingTips::for(Auth::user(), $statement)];
     }
 }; ?>
 
@@ -457,6 +477,73 @@ new #[Layout('layouts.app')] class extends Component
                     </ul>
                 </section>
             @endif
+
+            @php
+                $openTips = collect($tips)->whereNull('status');
+                $closedTips = collect($tips)->whereNotNull('status');
+                $potential = $openTips->sum('yearly');
+            @endphp
+            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="saving-tips">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 id="saving-tips" class="font-semibold text-gray-900 dark:text-gray-100">💶 {{ __('Your personal savings tips') }}</h3>
+                    @if ($potential > 0)
+                        <p class="text-sm text-emerald-700 dark:text-emerald-300">{{ __('Potential: about :amount per year', ['amount' => $round($potential)]) }}</p>
+                    @endif
+                </div>
+                @if ($openTips->isEmpty())
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ $tips === [] ? __('No tips right now – sync your bank or import statements so the app can look for savings.') : __('All tips done or hidden – well done!') }}</p>
+                @else
+                    <ul class="mt-3 space-y-3">
+                        @foreach ($openTips as $tip)
+                            <li wire:key="tip-{{ $tip['key'] }}" class="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-900/40">
+                                <div class="flex flex-wrap items-start gap-3">
+                                    <span class="text-lg" aria-hidden="true">{{ $tip['icon'] }}</span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-medium text-gray-900 dark:text-gray-100">{{ $tip['title'] }}</p>
+                                        <p class="mt-0.5 text-gray-700 dark:text-gray-300">{{ $tip['text'] }}</p>
+                                    </div>
+                                    @if ($tip['yearly'] > 0)
+                                        <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ __(':amount / year', ['amount' => $round($tip['yearly'])]) }}</span>
+                                    @endif
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-3 ps-8 text-xs">
+                                    <button type="button" wire:click="setTipStatus(@js($tip['key']), 'done')" class="font-medium text-emerald-700 underline dark:text-emerald-300">✓ {{ __('Done') }}</button>
+                                    <button type="button" wire:click="setTipStatus(@js($tip['key']), 'hidden')" class="text-gray-500 underline dark:text-gray-400">{{ __('Not relevant') }}</button>
+                                    @if ($tip['url'])
+                                        <a href="{{ $tip['url'] }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('More') }} →</a>
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+                @if ($closedTips->isNotEmpty())
+                    <details class="mt-3 text-sm">
+                        <summary class="cursor-pointer text-gray-500 dark:text-gray-400">{{ trans_choice(':count tip done or hidden|:count tips done or hidden', $closedTips->count()) }}</summary>
+                        <ul class="mt-2 space-y-1">
+                            @foreach ($closedTips as $tip)
+                                <li wire:key="closed-tip-{{ $tip['key'] }}" class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                    <span>{{ $tip['status'] === 'done' ? '✅' : '🙈' }}</span>
+                                    <span class="min-w-0 flex-1 truncate">{{ $tip['title'] }}</span>
+                                    <button type="button" wire:click="setTipStatus(@js($tip['key']))" class="text-xs underline">{{ __('Show again') }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </details>
+                @endif
+
+                @if ($statement['cashflow'] > 0)
+                    <div class="mt-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-100">
+                        <p class="font-medium">📈 {{ __('If you invest your surplus of :amount per month', ['amount' => $round($statement['cashflow'])]) }}</p>
+                        <p class="mt-1">
+                            @foreach ([10, 20, 30] as $years)
+                                <span class="me-3 whitespace-nowrap">{{ __(':years years: :amount', ['years' => $years, 'amount' => $round(\App\Support\Finance\SavingTips::compound($statement['cashflow'], $years))]) }}</span>
+                            @endforeach
+                        </p>
+                        <p class="mt-1 text-xs opacity-80">{{ __('At an assumed 6 % return per year, before tax and inflation – for orientation only.') }}</p>
+                    </div>
+                @endif
+            </section>
 
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Rent counts as net cold rent of the current tenants, dividends as monthly average, business profit as self-employed income; rent payments on the bank account are not counted twice. Transfers between own accounts and saving/investing are not expenses. Your own entries are added on top.') }}</p>
         </div>

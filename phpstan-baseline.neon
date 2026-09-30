@@ -1,0 +1,3091 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/CheckPriceAlerts.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/CheckPriceAlerts.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\Portfolio\\Notifier\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/CheckPriceAlerts.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ExecuteSavingsPlans.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/ExecuteSavingsPlans.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/GrantEmergencyAccess.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\WebPush\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/GrantEmergencyAccess.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\ConnectionInterface\:\:getSchemaBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Console/Commands/ImportLegacyPortfolio.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Console/Commands/ImportRezepteApp.php
+
+		-
+			message: '#^Parameter \#2 \$rows of method App\\Console\\Commands\\ImportRezepteApp\:\:repairPhotos\(\) expects Illuminate\\Support\\Collection\<int, object\>, Illuminate\\Support\\Collection\<int, stdClass\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ImportRezepteApp.php
+
+		-
+			message: '#^Property App\\Models\\Recipe\:\:\$additional_images \(string\|null\) does not accept array\<int, string\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Console/Commands/ImportRezepteApp.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/ImportRezepteApp.php
+
+		-
+			message: '#^Cannot access property \$timestamp on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Console/Commands/RunMarketScan.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/RunMarketScan.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>timestamp" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/RunMarketScan.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Console/Commands/RunRecurringInvoices.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/RunRecurringInvoices.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\WebPush\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RunRecurringInvoices.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SendMedicationReminders.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SendMedicationReminders.php
+
+		-
+			message: '#^Cannot call method isToday\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/SendMorningBriefings.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/SendOverdueInvoiceNotices.php
+
+		-
+			message: '#^Cannot call method isSameDay\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/SendOverdueInvoiceNotices.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\WebPush\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/SendOverdueInvoiceNotices.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SendTaskReminders.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:remindDays\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Console/Commands/SendTaskReminders.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/SendTaskReminders.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:systemProperty\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/SendTimedTaskReminders.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/SendWeeklyDigests.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\Portfolio\\Notifier\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Console/Commands/SyncBankConnections.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/V1/MarketController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Security\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/MarketController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/V1/PortfolioController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/V1/PortfolioController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int\<0, max\>, symbol\: string, name\: string, type\: string, quantity\: float, price\: float, currency\: string, fees\: float, transaction_date\: mixed\}, Closure\(App\\Models\\PortfolioTransaction\)\: array\{id\: int\<0, max\>, symbol\: string, name\: string, type\: string, quantity\: float, price\: float, currency\: string, fees\: float, transaction_date\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/PortfolioController.php
+
+		-
+			message: '#^Parameter \#1 \$positions of method App\\Support\\Portfolio\\Valuation\:\:rows\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\PortfolioPosition\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/PortfolioController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/PortfolioController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/V1/RecommendationController.php
+
+		-
+			message: '#^Offset ''sector'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/V1/RecommendationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\PortfolioRecommendation\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/V1/RecommendationController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/RecommendationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/WatchlistController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/WatchlistController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/WatchlistController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:changePercent\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/WatchlistController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\WatchlistItem\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/V1/WatchlistController.php
+
+		-
+			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/VerifyEmailController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Household\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/BusinessReportController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/CalendarFeedController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$vendor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/DataExportController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DataExportController\:\:exportItems\(\) never returns Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Http/Controllers/DataExportController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DataExportController\:\:exportItems\(\) should return array\{\}\|Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, non\-empty\-array\<string, mixed\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/DataExportController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\QuoteComparison\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/DataExportController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Recipe\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/DataExportController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{positions\: array\<array\<string, mixed\>\>, transactions\: array\<array\<string, mixed\>\>, savings_plans\: array\<array\<string, mixed\>\>, name\: string, description\: string\|null, broker\: string\|null, color\: string\}, Closure\(App\\Models\\Portfolio\)\: array\{positions\: array\<array\<string, mixed\>\>, transactions\: array\<array\<string, mixed\>\>, savings_plans\: array\<array\<string, mixed\>\>, name\: string, description\: string\|null, broker\: string\|null, color\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/DataExportController.php
+
+		-
+			message: '#^Parameter \#1 \$owner of method App\\Http\\Controllers\\EmergencyFolderController\:\:render\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/EmergencyFolderController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Household\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/FinanceReportPdfController.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/FinanceTaxExportController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\StatefulGuard\:\:logoutCurrentDevice\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/IdleLogoutController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Item\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ItemLinkController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Household\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/OfflineCaptureController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<int\<0, max\>, array\{text\: string, hint\: string\|null, tone\: string, options\: array\<int, array\<string, mixed\>\>, url\: string\|null, nodes\: array\<int, array\<string, mixed\>\>\}\|null\>, Closure\(App\\Models\\CollectionProperty\)\: non\-empty\-array\<int\<0, max\>, array\{text\: string, hint\: string\|null, tone\: string, options\: array\<int, array\<string, mixed\>\>, url\: string\|null, nodes\: array\<int, array\<string, mixed\>\>\}\|null\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PublicCollectionController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:reject\(\) expects bool\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PublicCollectionController.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\WebPush\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PublicDocumentController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:hasAddon\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/PublicRecipeController.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/RentalDocumentController.php
+
+		-
+			message: '#^Parameter \#1 \$realEstate of static method App\\Support\\RealEstate\\RentalPdf\:\:selfDisclosure\(\) expects App\\Models\\RealEstate, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/RentalDocumentController.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Middleware/AuthenticateApiToken.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method Illuminate\\Support\\Facades\\Auth\:\:setUser\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Middleware/AuthenticateApiToken.php
+
+		-
+			message: '#^Trait App\\Livewire\\Concerns\\InteractsWithBusiness is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Livewire/Concerns/InteractsWithBusiness.php
+
+		-
+			message: '#^Trait App\\Livewire\\Concerns\\InteractsWithHousehold is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Livewire/Concerns/InteractsWithHousehold.php
+
+		-
+			message: '#^Trait App\\Livewire\\Concerns\\InteractsWithPortfolio is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Livewire/Concerns/InteractsWithPortfolio.php
+
+		-
+			message: '#^Trait App\\Livewire\\Concerns\\ProvidesLinkTargets is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Livewire/Concerns/ProvidesLinkTargets.php
+
+		-
+			message: '#^Trait App\\Livewire\\Concerns\\StoresAttachments is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Livewire/Concerns/StoresAttachments.php
+
+		-
+			message: '#^Trait App\\Livewire\\Concerns\\SuggestsTags is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Livewire/Concerns/SuggestsTags.php
+
+		-
+			message: '#^Method App\\Models\\ApiToken\:\:expiresAt\(\) should return Illuminate\\Support\\Carbon\|null but returns Carbon\\Carbon\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/ApiToken.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/BankAccount.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Offset ''balance'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Offset ''balance_on'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Offset ''portfolio_id'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Offset ''use_bookings'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Offset ''use_holdings'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:filter\(\) expects \(callable\(string, 0\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:map\(\) expects callable\(string, 0\)\: array, Closure\(array\)\: array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Property App\\Models\\BankConnection\:\:\$accounts \(string\|null\) does not accept array\<int, array\<string, mixed\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Property App\\Models\\BankConnection\:\:\$accounts \(string\|null\) does not accept array\<int, array\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Models/BankConnection.php
+
+		-
+			message: '#^Method App\\Models\\Collection\:\:systemProperty\(\) should return App\\Models\\CollectionProperty\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Collection.php
+
+		-
+			message: '#^Call to function is_int\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Call to function is_string\(\) with non\-empty\-string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Offset ''create_task'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Offset ''remind_days'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between false and true will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-string and array\{\} will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/CollectionProperty.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''default_value'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''default_view'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''help'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''options'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''properties'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''required'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Offset ''type'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{name\: string, type\: string, options\: string\|null, required\: bool, default_value\: string\|null, help\: string\|null\}, Closure\(App\\Models\\CollectionProperty\)\: array\{name\: string, type\: string, options\: string\|null, required\: bool, default_value\: string\|null, help\: string\|null\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:reject\(\) expects bool\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/CollectionTemplate.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Models/Concerns/HasShareTokens.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Models/Contact.php
+
+		-
+			message: '#^Parameter \#1 \$date of static method App\\Models\\Contact\:\:nextOccurrence\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Contact.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/EmergencyEntry.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/EmergencyEntry.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/HealthEntry.php
+
+		-
+			message: '#^Cannot call method diffInMonths\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/HealthProfile.php
+
+		-
+			message: '#^Cannot call method diffInYears\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/HealthProfile.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/HomeTask.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/HomeTask.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/HouseholdInvite.php
+
+		-
+			message: '#^Offset string on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/HouseholdMember.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Models/HouseholdMember.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between true and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Models/HouseholdMember.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$paid_on\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$vat_rate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:lineTotal\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Method App\\Models\\Invoice\:\:recordPayment\(\) should return App\\Models\\InvoicePayment but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: float\)\|string\|null, Closure\(App\\Models\\InvoiceItem\)\: float given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Parameter \#1 \$groupBy of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:groupBy\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(numeric\-string&uppercase\-string\)\)\|list\<Closure\|string\>\|string, Closure\(App\\Models\\InvoiceItem\)\: \(numeric\-string&uppercase\-string\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:systemProperty\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: app/Models/Item.php
+
+		-
+			message: '#^Call to function is_array\(\) with \*NEVER\* will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Cannot unset offset ''rotation'' on array\{\}\|string\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Offset ''body'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Offset ''id'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Offset ''rotation'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Offset ''subtasks'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Offset ''text'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 2
+			path: app/Models/Item.php
+
+		-
+			message: '#^Property App\\Models\\Item\:\:\$content \(string\|null\) does not accept array\<string, list\<array\<string, bool\|string\>\>\>\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Property App\\Models\\Item\:\:\$properties \(string\|null\) does not accept array\<int\|string\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Models/Item.php
+
+		-
+			message: '#^Cannot access property \$age on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Models/Kid.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Quote.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/QuoteComparison.php
+
+		-
+			message: '#^Method App\\Models\\QuoteComparison\:\:cheapestQuote\(\) should return App\\Models\\Quote\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/QuoteComparison.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\Quote\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/QuoteComparison.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/RealEstateInvoice.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$purchase_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/RealEstateLoan.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/RealEstateTenant.php
+
+		-
+			message: '#^Cannot call method gte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/RealEstateTenant.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/RealEstateTenant.php
+
+		-
+			message: '#^Cannot call method max\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/RealEstateTenant.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:sum\(\) expects \(callable\(string, 0\)\: float\)\|string\|null, Closure\(array\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/RealEstateUtilityStatement.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Call to function is_numeric\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Method App\\Models\\Recipe\:\:rateBy\(\) should return App\\Models\\RecipeRating but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Offset ''amount'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Offset ''name'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Offset ''text'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Offset ''unit'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Offset string on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Property App\\Models\\Recipe\:\:\$additional_images \(string\|null\) does not accept list\<string\>\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Models/Recipe.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:addressBlock\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Offset ''discount_percent'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Offset ''unit'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Offset ''vat_rate'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Parameter \#1 \$array \(string\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_values expects array\<T\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{description\: string, quantity\: float, unit\: string\|null, unit_price\: float, discount_percent\: float, vat_rate\: float\}, Closure\(App\\Models\\InvoiceItem\)\: array\{description\: string, quantity\: float, unit\: string\|null, unit_price\: float, discount_percent\: float, vat_rate\: float\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:sum\(\) expects \(callable\(string, 0\)\: float\)\|string\|null, Closure\(array\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/RecurringInvoice.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:currentBalance\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/SavingsGoal.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:ofType\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Tag.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:forHousehold\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Tag.php
+
+		-
+			message: '#^Cannot call method diffInMinutes\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/TimeEntry.php
+
+		-
+			message: '#^Cannot call method diffInDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Trip.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Trip.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Trip.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/TrustedPerson.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:currentHousehold\(\) should return App\\Models\\Household\|null but returns \(Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\)\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Notifications/NewRentalApplicant.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Notifications/NewRentalApplicant.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:systemProperty\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Observers/ItemObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$properties\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Offset ''from'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Offset ''name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Offset ''property'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Offset ''to'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 2
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>properties" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/ActivityLog.php
+
+		-
+			message: '#^Offset string on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Addons.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Banking/BankAlerts.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: app/Support/Banking/BankAlerts.php
+
+		-
+			message: '#^Offset ''forecast_alerted_on'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Banking/BankAlerts.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Support/Banking/BankAlerts.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$account_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$isin\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$wkn\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Method App\\Support\\Banking\\BankSync\:\:pendingState\(\) should return array\<string, mixed\> but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(int\|null\), Closure\(App\\Models\\BankDepotPosition\)\: \(int\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\Banking\\BankAlerts\:\:afterSync\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>quantity" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>symbol" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Banking/BankSync.php
+
+		-
+			message: '#^Call to an undefined method Fhp\\BaseAction\:\:getStatement\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Banking/FinTsClient.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>kontonummer" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Banking/FinTsClient.php
+
+		-
+			message: '#^Variable \$action in PHPDoc tag @var does not match any variable in the foreach loop\: \$holding$#'
+			identifier: varTag.differentVariable
+			count: 1
+			path: app/Support/Banking/FinTsClient.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$properties\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Offset ''amount'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Offset ''isSection'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Offset ''name'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Offset ''unit'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>properties" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/BrainSearch.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gross_total\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$net_total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$recipient\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$small_business\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$subject\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isCreditNote\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Cannot access property \$month on string\.$#'
+			identifier: property.nonObject
+			count: 3
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>small_business" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Business/EuerReport.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Business/MailTemplates.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gross_total\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Business/VatReturn.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:vatBreakdown\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Business/VatReturn.php
+
+		-
+			message: '#^Parameter \#1 \$date of closure expects Illuminate\\Support\\Carbon, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/Business/VatReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$buyer_reference\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$city\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$country\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$issued_on\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$postal_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$street\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$vat_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: float\)\|string\|null, Closure\(App\\Models\\InvoiceItem\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Parameter \#1 \$groupBy of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:groupBy\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: non\-falsy\-string\)\|list\<Closure\|string\>\|string, Closure\(App\\Models\\InvoiceItem\)\: non\-falsy\-string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Parameter \#3 \$date of static method App\\Support\\Business\\XRechnung\:\:date\(\) expects DateTimeInterface, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Parameter \#3 \$item of static method App\\Support\\Business\\XRechnung\:\:line\(\) expects App\\Models\\InvoiceItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Business/XRechnung.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:remindDays\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Offset ''end'' on array\{date\: string, kind\: string, title\: string, url\: string, uid\: string, overdue\: bool\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/CalendarEvents.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/CalendarFeed.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:remindDays\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/CalendarFeed.php
+
+		-
+			message: '#^Offset ''details'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/CalendarFeed.php
+
+		-
+			message: '#^Offset ''sections'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/CalendarFeed.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/CalendarFeed.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:remindDays\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Method App\\Support\\ContractAssistant\:\:property\(\) should return App\\Models\\CollectionProperty\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Offset ''deadline_tasks'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Parameter \#2 \$property of static method App\\Support\\ContractAssistant\:\:createTask\(\) expects App\\Models\\CollectionProperty, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and non\-empty\-string will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Support/ContractAssistant.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/ContractOverview.php
+
+		-
+			message: '#^Method App\\Support\\ContractOverview\:\:property\(\) should return App\\Models\\CollectionProperty\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/ContractOverview.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/ContractOverview.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/ContractOverview.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''freedom''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Method App\\Support\\DashboardWidgets\:\:deadlines\(\) should return array\<int, array\{entry\: App\\Models\\Item, collection\: App\\Models\\Collection, property\: App\\Models\\CollectionProperty, date\: string, days\: int\}\> but returns list\<array\{entry\: App\\Models\\Item, collection\: App\\Models\\Collection, property\: Illuminate\\Database\\Eloquent\\Model, date\: non\-empty\-string, days\: int\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Method App\\Support\\DashboardWidgets\:\:monthlyCosts\(\) should return array\{total\: float, collections\: array\<int, array\{collection\: App\\Models\\Collection, property\: App\\Models\\CollectionProperty, sum\: float, count\: int\}\>\} but returns array\{total\: float, collections\: list\<array\{collection\: App\\Models\\Collection, property\: Illuminate\\Database\\Eloquent\\Model, sum\: float, count\: int\<0, max\>\}\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/DashboardWidgets.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:normalizeValue\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: non\-falsy\-string, Closure\(App\\Models\\CollectionProperty\)\: non\-falsy\-string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:reject\(\) expects bool\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Parameter \#1 \$property of static method App\\Support\\EntryAi\:\:optionId\(\) expects App\\Models\\CollectionProperty, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/EntryAi.php
+
+		-
+			message: '#^Cannot call method gte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/BalanceForecast.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\Transaction\)\: mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/BalanceForecast.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\Transaction\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/BalanceForecast.php
+
+		-
+			message: '#^Parameter \#1 \$expenses of static method App\\Support\\Finance\\FinanceReport\:\:recurring\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Transaction\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/BalanceForecast.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\WebPush\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/Budgets.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\Finance\\Budgets\:\:status\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/Budgets.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$lender\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Cannot call method diffInMonths\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: lowercase\-string, Closure\(App\\Models\\RealEstateTenant\)\: lowercase\-string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateTenant\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: lowercase\-string, Closure\(App\\Models\\RealEstateTenant\)\: lowercase\-string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Parameter \#1 \$loan of static method App\\Support\\Finance\\CashflowStatement\:\:remainingDebt\(\) expects App\\Models\\RealEstateLoan, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Finance/CashflowStatement.php
+
+		-
+			message: '#^Cannot call method diffInDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/FinanceReport.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/FinanceReport.php
+
+		-
+			message: '#^Parameter \#1 \$array of function sort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Finance/FinanceReport.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Support/Finance/InsuranceCheck.php
+
+		-
+			message: '#^Offset string on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Support/Finance/InsuranceCheck.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and ''have'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Support/Finance/InsuranceCheck.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and ''not_needed'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Support/Finance/InsuranceCheck.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$taken_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$valued_on\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Cannot call method diffInMonths\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Portfolio\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\RealEstate\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{label\: string, value\: float, hint\: null, url\: string\}, Closure\(App\\Models\\RealEstateLoan\)\: array\{label\: string, value\: float, hint\: null, url\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Finance/NetWorth.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Support/Finance/RetirementPlan.php
+
+		-
+			message: '#^Offset ''assets''\|''birth_year''\|''desired_income''\|''inflation''\|''monthly_savings''\|''other_pension''\|''retirement_age''\|''return''\|''statutory_pension''\|''withdrawal'' on array\{\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Support/Finance/RetirementPlan.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Support/Finance/RetirementPlan.php
+
+		-
+			message: '#^Method App\\Support\\Finance\\SubscriptionMatcher\:\:costProperty\(\) should return App\\Models\\CollectionProperty\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/Finance/SubscriptionMatcher.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/SubscriptionMatcher.php
+
+		-
+			message: '#^Parameter \#1 \$collection of static method App\\Support\\Finance\\SubscriptionMatcher\:\:costProperty\(\) expects App\\Models\\Collection\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Finance/SubscriptionMatcher.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Import/CollectionImporter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Import/CollectionImporter.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:members\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Import/CollectionImporter.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Import/CollectionImporter.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:setPropertyValue\(\) expects App\\Models\\CollectionProperty, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Import/CollectionImporter.php
+
+		-
+			message: '#^Parameter \#1 \$property of static method App\\Support\\Import\\CollectionImporter\:\:value\(\) expects App\\Models\\CollectionProperty, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Import/CollectionImporter.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\{label\: string, detail\: string\|null\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Support/Life/EmergencyFolder.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{label\: string, detail\: non\-falsy\-string\}, Closure\(App\\Models\\RealEstateLoan\)\: array\{label\: string, detail\: non\-falsy\-string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/EmergencyFolder.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: string, Closure\(App\\Models\\HealthEntry\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/EmergencyFolder.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Life/HealthPlan.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Life/HouseholdLoad.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\HouseholdMember\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Life/HouseholdLoad.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\HouseholdMember\>\:\:filter\(\) expects \(callable\(App\\Models\\HouseholdMember, int\)\: bool\)\|null, Closure\(App\\Models\\HouseholdMember\)\: \(Illuminate\\Database\\Eloquent\\Model\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/HouseholdLoad.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$kind\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$starts_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Cannot call method between\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Cannot call method isSameDay\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 6
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Parameter \#1 \$date of static method App\\Models\\Contact\:\:nextOccurrence\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Life/LifeDates.php
+
+		-
+			message: '#^Cannot call method diffInDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Life/MeterStats.php
+
+		-
+			message: '#^Cannot call method gte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/MeterStats.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Life/MeterStats.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Life/PocketMoney.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/PocketMoney.php
+
+		-
+			message: '#^Method App\\Support\\Life\\PocketMoney\:\:complete\(\) should return App\\Models\\KidChoreCompletion but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/Life/PocketMoney.php
+
+		-
+			message: '#^Parameter \#1 \$completion of static method App\\Support\\Life\\PocketMoney\:\:approve\(\) expects App\\Models\\KidChoreCompletion, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/PocketMoney.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/TripPlanner.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(lowercase\-string&non\-falsy\-string\), Closure\(App\\Models\\TripPackingItem\)\: \(lowercase\-string&non\-falsy\-string\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/TripPlanner.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:contains\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model\|int\|string, Closure\(App\\Models\\TripBooking\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/TripPlanner.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\VehicleLog\)\: \(int\<0, max\>\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\VehicleLog\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\VehicleLog\)\: mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Parameter \#1 \$logs of static method App\\Support\\Life\\VehicleStats\:\:consumption\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\VehicleLog\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/Life/VehicleStats.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Life/YearReview.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Life/YearReview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$properties\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:displayIcon\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Parameter \#3 \$author of static method App\\Support\\Links\:\:refsInText\(\) expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>properties" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Links.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Recipe\:\:\$ratings_avg_rating\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/MealSuggestions.php
+
+		-
+			message: '#^Method App\\Support\\MealSuggestions\:\:property\(\) should return App\\Models\\CollectionProperty\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/MealSuggestions.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/MealSuggestions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/MorningBriefing.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/MorningBriefing.php
+
+		-
+			message: '#^Parameter \#1 \$property of method App\\Models\\Item\:\:propertyValue\(\) expects App\\Models\\CollectionProperty\|int, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/MorningBriefing.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/MorningBriefing.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<App\\Models\\Item\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Support/PageMover.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Cannot call method gte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Cannot call method isSameMonth\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>asset_type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>currency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Portfolio/Analytics.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\ComdirectParser\:\:parseDate\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Portfolio/Import/ComdirectParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\ComdirectParser\:\:parseNumber\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Support/Portfolio/Import/ComdirectParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\ConsorsParser\:\:parseDate\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Portfolio/Import/ConsorsParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\ConsorsParser\:\:parseNumber\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Support/Portfolio/Import/ConsorsParser.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''buy''\|''dividend''\|''sell''\|''transfer_in''\|''transfer_out'' and ''fee'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Support/Portfolio/Import/ConsorsParser.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 9
+			path: app/Support/Portfolio/Import/FinanzguruParser.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int\|string\|false and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Support/Portfolio/Import/FinanzguruParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\FlatexParser\:\:parseDate\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Portfolio/Import/FlatexParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\FlatexParser\:\:parseNumber\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Support/Portfolio/Import/FlatexParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\OnVistaParser\:\:parseDate\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Portfolio/Import/OnVistaParser.php
+
+		-
+			message: '#^Call to an undefined method App\\Support\\Portfolio\\Import\\OnVistaParser\:\:parseNumber\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Support/Portfolio/Import/OnVistaParser.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 8
+			path: app/Support/Portfolio/Import/OutbankParser.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/InstagramAi.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\Portfolio\\Notifier\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/InstagramFeed.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/MarketData.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/MarketData.php
+
+		-
+			message: '#^Method App\\Support\\Portfolio\\MarketData\:\:fundamentals\(\) should return array\<string, mixed\>\|null but returns string\|null\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Support/Portfolio/MarketData.php
+
+		-
+			message: '#^Offset ''exchange'' on array\{symbol\: string, name\: string, exchange\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Portfolio/MarketData.php
+
+		-
+			message: '#^Offset ''name'' on array\{symbol\: string, name\: string, exchange\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Portfolio/MarketData.php
+
+		-
+			message: '#^Property App\\Models\\Security\:\:\$screeners \(string\|null\) does not accept list\<mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Support/Portfolio/MarketData.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\Portfolio\\Notifier\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/NewsFeed.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Portfolio/PortfolioLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_price\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Portfolio/PortfolioLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/PortfolioLink.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/Portfolio/PortfolioLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$fees\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$isin\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$price\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$symbol\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Comparison operation "\<\=" between 0\.0 and 1\.0E\-6 is always true\.$#'
+			identifier: smallerOrEqual.alwaysTrue
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Comparison operation "\>" between 0\.0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:reject\(\) expects bool\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\|string\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model, Closure\(App\\Models\\PortfolioPosition\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Parameter \#1 \$transaction of static method App\\Support\\Portfolio\\Positions\:\:euroRate\(\) expects App\\Models\\PortfolioTransaction, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments null, array\{''strong_buy'', ''buy''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Comparison operation "\>" between \*NEVER\* and 0 results in an error\.$#'
+			identifier: greater.invalid
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Comparison operation "\>" between \*NEVER\* and float results in an error\.$#'
+			identifier: greater.invalid
+			count: 2
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Comparison operation "\>" between 0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Offset ''analyst_target'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Offset ''debt_to_equity'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Offset ''dividend_yield'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Offset ''pe_ratio'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Offset ''recommendation'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Parameter \#2 \$fundamentals of method App\\Support\\Portfolio\\RecommendationEngine\:\:stability\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 3
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and null will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 2
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>strategy" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/Portfolio/RecommendationEngine.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:transactions\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Portfolio/SavingsPlans.php
+
+		-
+			message: '#^Parameter \#1 \$portfolio of static method App\\Support\\Portfolio\\Positions\:\:recalculate\(\) expects App\\Models\\Portfolio, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/SavingsPlans.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Support/Portfolio/TaxReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$taken_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/Valuation.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/Valuation.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/Portfolio/Valuation.php
+
+		-
+			message: '#^Method App\\Support\\Portfolio\\Valuation\:\:snapshot\(\) should return App\\Models\\PortfolioSnapshot\|null but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/Portfolio/Valuation.php
+
+		-
+			message: '#^Parameter \#1 \$positions of method App\\Support\\Portfolio\\Valuation\:\:rows\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\PortfolioPosition\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Portfolio/Valuation.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$deadline_on\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$due_on\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$end_on\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$notes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$start_on\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$vendor\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isOverdue\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Cannot call method between\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateBudgetItem\)\: mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateInvoice\)\: mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateSubsidy\)\: mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:reject\(\) expects bool\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model, Closure\(App\\Models\\RealEstateInvoice\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstateLink.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{item\: App\\Models\\RealEstateBudgetItem, planned\: float, invoiced\: float, paid\: float, expected\: float, over\: bool\}, Closure\(App\\Models\\RealEstateBudgetItem\)\: array\{item\: App\\Models\\RealEstateBudgetItem, planned\: float, invoiced\: float, paid\: float, expected\: float, over\: bool\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstatePlan.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateInvoice\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/RealEstate/RealEstatePlan.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateSubsidy\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstatePlan.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:reject\(\) expects bool\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model, Closure\(App\\Models\\RealEstateInvoice\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstatePlan.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: float\)\|string\|null, Closure\(App\\Models\\RealEstateLoan\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstatePlan.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$budget_item_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$energy_measure\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$phase\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Cannot access property \$month on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 5
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Cannot call method between\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: float\)\|string\|null, Closure\(App\\Models\\RealEstateLoan\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Parameter \#1 \$invoice of static method App\\Support\\RealEstate\\RealEstateTax\:\:treatment\(\) expects App\\Models\\RealEstateInvoice, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RealEstateTax.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$due_day\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$living_area\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:livesInMonth\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:monthlyTotal\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:tenants\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Cannot call method diffInDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Cannot call method isSameMonth\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Method App\\Support\\RealEstate\\RentalAccounting\:\:rentOverview\(\) should return array\{tenants\: list\<array\{tenant\: App\\Models\\RealEstateTenant, months\: array\<int, array\{expected\: float\|null, paid\: float, status\: string\}\>, expected\: float, paid\: float, arrears\: float\}\>, expected\: float, paid\: float, arrears\: float\} but returns array\{tenants\: list\<array\{tenant\: Illuminate\\Database\\Eloquent\\Model, months\: non\-empty\-array\<int\<1, max\>, array\{expected\: mixed, paid\: float, status\: ''future''\|''none''\|''open''\|''paid''\|''partial''\}\>, expected\: float, paid\: float, arrears\: float\}\>, expected\: float, paid\: float, arrears\: float\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\RealEstateTenant\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sortBy\(\) expects array\<array\{string, ''asc''\|''desc''\|SortDirection\}\|\(callable\(Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Model\)\: mixed\)\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed\)\|string\>\|\(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed\)\|int\|string, Closure\(App\\Models\\RealEstateTenant\)\: array\{string, mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:filter\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:map\(\) expects callable\(string, 0\)\: array\{label\: string, key\: ''area''\|''persons''\|''units'', total\: float, share\: float, amount\: float\}, Closure\(array\)\: array\{label\: string, key\: ''area''\|''persons''\|''units'', total\: float, share\: float, amount\: float\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$realEstate of static method App\\Support\\RealEstate\\RentalAccounting\:\:rentOverview\(\) expects App\\Models\\RealEstate, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$start of method App\\Models\\RealEstateTenant\:\:daysIn\(\) expects Carbon\\CarbonInterface, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 7
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#2 \$end of method App\\Models\\RealEstateTenant\:\:daysIn\(\) expects Carbon\\CarbonInterface, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#2 \$start of static method App\\Support\\RealEstate\\RentalAccounting\:\:advancesIn\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Parameter \#3 \$end of static method App\\Support\\RealEstate\\RentalAccounting\:\:advancesIn\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/RealEstate/RentalAccounting.php
+
+		-
+			message: '#^Call to an undefined method DOMNameSpaceNode\|DOMNode\:\:getAttribute\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Support/RecipeImporter.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 1
+			path: app/Support/TwoFactor.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\PushSubscription\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/WebPush.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/WeeklyDigest.php
+
+		-
+			message: '#^Cannot call method gte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/WeeklyDigest.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/WeeklyDigest.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Support/WeeklyDigest.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/WeeklyInsights.php

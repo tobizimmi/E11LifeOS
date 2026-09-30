@@ -4173,5 +4173,20 @@
     "Database (sessions visible in the profile)": "Datenbank (Sitzungen im Profil sichtbar)",
     "Files": "Dateien",
     "Sign-out after inactivity, session length and storage, expiry of app sign-ins and how long the security log is kept.": "Abmeldung nach Inaktivität, Sitzungsdauer und -speicher, Ablauf der App-Anmeldungen und Aufbewahrung des Sicherheitsprotokolls.",
-    "Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.": "Schlüssel für die Supermarkt-Angebote (marktguru). Meist nicht nötig – ohne sie werden die Schlüssel von der marktguru-Webseite gelesen."
+    "Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.": "Schlüssel für die Supermarkt-Angebote (marktguru). Meist nicht nötig – ohne sie werden die Schlüssel von der marktguru-Webseite gelesen.",
+    "No answer from the virus scanner.": "Keine Antwort vom Virenscanner.",
+    "The virus scanner is not reachable (:error).": "Der Virenscanner ist nicht erreichbar (:error).",
+    "\":name\" contains a virus (:signature) and was not uploaded.": "\":name\" enthält einen Virus (:signature) und wurde nicht hochgeladen.",
+    "Uploads are paused because the virus scanner is not reachable. Please try again later.": "Hochladen ist pausiert, weil der Virenscanner nicht erreichbar ist. Bitte später erneut versuchen.",
+    "Upload with a virus blocked": "Upload mit Virus blockiert",
+    "The virus scanner is not reachable at :socket.": "Der Virenscanner ist unter :socket nicht erreichbar.",
+    ":version works – the test file was recognised.": ":version funktioniert – die Testdatei wurde erkannt.",
+    ":version answers, but did not recognise the test file.": ":version antwortet, hat die Testdatei aber nicht erkannt.",
+    "Test virus scanner": "Virenscanner testen",
+    "Virus scan (ClamAV)": "Virenscan (ClamAV)",
+    "Checks every uploaded file with the ClamAV virus scanner on the server before it is stored. The server needs the ClamAV daemon (package “clamav-daemon”); enter its socket, e.g. /var/run/clamav/clamd.ctl or tcp://127.0.0.1:3310.": "Prüft jede hochgeladene Datei mit dem Virenscanner ClamAV auf dem Server, bevor sie gespeichert wird. Auf dem Server muss der ClamAV-Dienst laufen (Paket „clamav-daemon“); trage seinen Socket ein, z. B. /var/run/clamav/clamd.ctl oder tcp://127.0.0.1:3310.",
+    "Scan uploads for viruses": "Uploads auf Viren prüfen",
+    "ClamAV socket": "ClamAV-Socket",
+    "Block uploads while the scanner is unreachable": "Uploads sperren, solange der Scanner nicht erreichbar ist",
+    "Virus scan of uploads": "Virenscan beim Hochladen"
 }

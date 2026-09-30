@@ -26,4 +26,13 @@ return [
     // App tokens (mobile app) unused for this many days stop working and are deleted (0 = never).
     'api_token_idle_days' => (int) env('SECURITY_API_TOKEN_IDLE_DAYS', 90),
 
+    // Virus scan of uploads with the ClamAV daemon: its socket ("/var/run/clamav/clamd.ctl" or
+    // "tcp://127.0.0.1:3310"); fail_closed rejects uploads while the scanner is unreachable.
+    'clamav' => [
+        'enabled' => (bool) env('CLAMAV_ENABLED', false),
+        'socket' => env('CLAMAV_SOCKET', '/var/run/clamav/clamd.ctl'),
+        'fail_closed' => (bool) env('CLAMAV_FAIL_CLOSED', false),
+        'timeout' => (int) env('CLAMAV_TIMEOUT', 30),
+    ],
+
 ];

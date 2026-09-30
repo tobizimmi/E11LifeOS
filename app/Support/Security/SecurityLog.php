@@ -42,6 +42,7 @@ class SecurityLog
             'export' => ['label' => __('Data exported'), 'icon' => '📦', 'level' => 'warning'],
             'sensitive_area' => ['label' => __('Sensitive area opened'), 'icon' => '👁️', 'level' => 'info'],
             'trusted_access' => ['label' => __('Trusted person opened the emergency folder'), 'icon' => '🆘', 'level' => 'critical'],
+            'virus_found' => ['label' => __('Upload with a virus blocked'), 'icon' => '🦠', 'level' => 'critical'],
         ];
     }
 

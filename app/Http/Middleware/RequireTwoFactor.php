@@ -16,7 +16,7 @@ class RequireTwoFactor
     {
         $user = $request->user();
 
-        if (! config('security.require_two_factor') || ! $user || $user->hasTwoFactor() || $request->is('api/*')
+        if (! config('security.require_two_factor') || ! $user || $user->hasSecondFactor() || $request->is('api/*')
             || $request->routeIs('profile', 'logout', 'verification.*', 'password.*', 'two-factor.*') || $request->is('livewire/*', '*/livewire/*')) {
             return $next($request);
         }

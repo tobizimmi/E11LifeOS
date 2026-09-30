@@ -179,6 +179,7 @@ class DataExportController extends Controller
                     ->map(fn (Vehicle $vehicle) => $vehicle->makeHidden(['household_id', 'created_by'])->toArray())
                 : [],
             'security_log' => SecurityEvent::where('user_id', $user->id)->latest('created_at')->get()->map->only(['event', 'ip_address', 'device', 'details', 'created_at']),
+            'passkeys' => $user->passkeys()->get()->map->only(['name', 'created_at', 'last_used_at']),
             'kids' => $household
                 ? Kid::where('household_id', $household->id)->with(['transactions'])->orderBy('id')->get()
                     ->map(fn (Kid $kid) => $kid->makeHidden(['household_id'])->toArray())

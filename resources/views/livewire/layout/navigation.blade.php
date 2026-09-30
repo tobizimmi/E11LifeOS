@@ -226,6 +226,7 @@ new class extends Component
                     <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>
                     <x-sidebar-link icon="heart" :href="route('health.index')" :active="request()->routeIs('health.*')" wire:navigate>{{ __('Health') }}</x-sidebar-link>
                     <x-sidebar-link icon="cake" :href="route('people.index')" :active="request()->routeIs('people.*')" wire:navigate>{{ __('People & occasions') }}</x-sidebar-link>
+                    <x-sidebar-link icon="map-pin" :href="route('places.index')" :active="request()->routeIs('places.*')" wire:navigate>{{ __('Places') }}</x-sidebar-link>
                     <x-sidebar-link icon="paper-airplane" :href="route('trips.index')" :active="request()->routeIs('trips.*')" wire:navigate>{{ __('Trips') }}</x-sidebar-link>
                     <x-sidebar-link icon="calculator" :href="route('splits.index')" :active="request()->routeIs('splits.*')" wire:navigate>{{ __('Split costs') }}</x-sidebar-link>
                     <x-sidebar-link icon="star" :href="route('kids.index')" :active="request()->routeIs('kids.*')" wire:navigate>{{ __('Kids & pocket money') }}</x-sidebar-link>

@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ExpenseGroup;
 use App\Models\Item;
+use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripPackingItem;
@@ -222,6 +223,7 @@ new #[Layout('layouts.app')] class extends Component
             'templates' => TripPlanner::templates(),
             'people' => $trip->packingItems->pluck('person')->filter()->unique()->values(),
             'expenseGroups' => ExpenseGroup::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->get(),
+            'places' => Place::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->orderBy('visited')->orderBy('name')->get(),
         ];
     }
 }; ?>
@@ -258,6 +260,25 @@ new #[Layout('layouts.app')] class extends Component
                         <a href="{{ route('splits.index', ['trip' => $trip->id]) }}" wire:navigate class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">+ {{ __('Split costs') }}</a>
                     @endforelse
                 </section>
+                @if ($places->isNotEmpty())
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" aria-labelledby="trip-places">
+                        <div class="flex items-center justify-between gap-3">
+                            <h3 id="trip-places" class="font-semibold text-gray-900 dark:text-gray-100">📍 {{ __('Places for this trip') }}</h3>
+                            <a href="{{ route('places.index') }}" wire:navigate class="text-sm text-indigo-600 underline dark:text-indigo-400">{{ __('All places') }}</a>
+                        </div>
+                        <ul class="mt-2 grid gap-1 sm:grid-cols-2">
+                            @foreach ($places as $place)
+                                <li wire:key="trip-place-{{ $place->id }}" class="flex items-center gap-2 text-sm">
+                                    <span aria-hidden="true">{{ \App\Models\Place::categories()[$place->category]['icon'] ?? '📍' }}</span>
+                                    <a href="{{ $place->mapsUrl() }}" target="_blank" rel="noopener noreferrer" @class(['min-w-0 flex-1 truncate hover:underline', 'text-gray-900 dark:text-gray-100' => ! $place->visited, 'text-gray-500 dark:text-gray-400' => $place->visited])>{{ $place->name }}</a>
+                                    @if ($place->visited)
+                                        <span class="text-xs text-emerald-600 dark:text-emerald-400">✓</span>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
                 <section class="grid gap-3 sm:grid-cols-3">
                     <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ $trip->isPast() ? __('Travelled') : ($trip->isOngoing() ? __('On the road') : __('Departure')) }}</p>

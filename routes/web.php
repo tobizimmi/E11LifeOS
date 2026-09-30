@@ -65,6 +65,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('provision', 'provision.index')->name('provision.index');
     Volt::route('health', 'health.index')->middleware([Security::SENSITIVE, 'sensitive.log:health'])->name('health.index');
     Volt::route('people', 'people.index')->name('people.index');
+    Volt::route('places', 'places.index')->name('places.index');
     Volt::route('trips', 'trips.index')->name('trips.index');
     Volt::route('kids', 'kids.index')->name('kids.index');
     Volt::route('spaces', 'spaces.index')->name('spaces.index');

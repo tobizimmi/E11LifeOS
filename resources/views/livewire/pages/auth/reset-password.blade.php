@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Security\SecurityLog;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -51,6 +52,7 @@ new #[Layout('layouts.guest')] class extends Component
                 ])->save();
 
                 event(new PasswordReset($user));
+                SecurityLog::record($user, 'password_changed');
             }
         );
 

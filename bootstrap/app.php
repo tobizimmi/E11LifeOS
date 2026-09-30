@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAddonEnabled;
+use App\Http\Middleware\LogSensitiveAccess;
 use App\Http\Middleware\RequireTwoFactor;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\ErrorReporter;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'addon' => EnsureAddonEnabled::class,
             'auth.token' => AuthenticateApiToken::class,
+            'sensitive.log' => LogSensitiveAccess::class,
         ]);
 
         $middleware->web(append: [RequireTwoFactor::class]);

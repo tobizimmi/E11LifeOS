@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Support\TwoFactor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use App\Support\Security\SecurityLog;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -44,6 +45,7 @@ new #[Layout('layouts.guest')] class extends Component
         $key = 'two-factor:'.$user->id.'|'.request()->ip();
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
+            SecurityLog::lockout($user);
             $this->addError('code', trans('auth.throttle', ['seconds' => RateLimiter::availableIn($key), 'minutes' => ceil(RateLimiter::availableIn($key) / 60)]));
 
             return;
@@ -51,6 +53,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         if (! TwoFactor::verify($user, $this->code)) {
             RateLimiter::hit($key);
+            SecurityLog::record($user, 'two_factor_failed');
             $this->addError('code', __('The code is not valid.'));
 
             return;
@@ -60,6 +63,7 @@ new #[Layout('layouts.guest')] class extends Component
         Auth::login($user, (bool) session('login.remember'));
         session()->forget(['login.id', 'login.remember', 'login.expires']);
         Session::regenerate();
+        SecurityLog::login($user);
 
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Security\SecurityLog;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +17,7 @@ Schedule::command('real-estate:purge-applicants')->dailyAt('03:40');
 Schedule::command('net-worth:snapshot')->dailyAt('23:40');
 Schedule::command('reminders:send')->dailyAt('07:00');
 Schedule::command('life:reminders')->dailyAt('07:05');
+Schedule::call(fn () => SecurityLog::prune())->dailyAt('03:40')->name('security-log-prune')->withoutOverlapping();
 Schedule::command('kids:allowance')->dailyAt('06:10')->withoutOverlapping();
 Schedule::command('emergency:grant-access')->everyFifteenMinutes();
 Schedule::command('health:medication-reminders')->everyMinute()->withoutOverlapping();

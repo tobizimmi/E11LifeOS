@@ -20,12 +20,14 @@ use Illuminate\Support\Carbon;
  * @property string $kind
  * @property string $title
  * @property ?string $location
+ * @property ?float $lat
+ * @property ?float $lng
  * @property ?string $notes
  * @property ?float $cost
  * @property bool $done
  * @property int $position
  */
-#[Fillable(['trip_id', 'day', 'time', 'end_time', 'kind', 'title', 'location', 'notes', 'cost', 'done', 'position', 'created_by'])]
+#[Fillable(['trip_id', 'day', 'time', 'end_time', 'kind', 'title', 'location', 'lat', 'lng', 'notes', 'cost', 'done', 'position', 'created_by'])]
 class TripStop extends Model
 {
     /** @use HasFactory<TripStopFactory> */
@@ -39,6 +41,8 @@ class TripStop extends Model
             'day' => 'date',
             'notes' => 'encrypted',
             'cost' => 'float',
+            'lat' => 'float',
+            'lng' => 'float',
             'done' => 'boolean',
             'position' => 'integer',
         ];
@@ -62,9 +66,18 @@ class TripStop extends Model
 
     public function mapsUrl(): ?string
     {
+        if ($this->lat !== null && $this->lng !== null) {
+            return 'https://www.google.com/maps/search/?api=1&query='.$this->lat.','.$this->lng;
+        }
+
         $query = trim((string) ($this->location ?: null));
 
         return $query !== '' ? 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($query) : null;
+    }
+
+    public function hasPosition(): bool
+    {
+        return $this->lat !== null && $this->lng !== null;
     }
 
     /**

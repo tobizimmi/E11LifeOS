@@ -363,7 +363,8 @@ class ImportLegacyPortfolio extends Command
                         'household_id' => $household->id,
                         'bank' => array_key_exists($legacyConnection->bank_id, BankSync::BANKS) ? $legacyConnection->bank_id : 'custom',
                         'bank_name' => $legacyConnection->bank_name,
-                        'fints_url' => $legacyConnection->fints_url,
+                        // Known addresses win over the old app's (they may be outdated).
+                        'fints_url' => collect(BankSync::BANKS)->firstWhere('blz', (string) $legacyConnection->blz)['url'] ?? $legacyConnection->fints_url,
                         'tan_mode' => BankSync::BANKS[$legacyConnection->bank_id]['tan_mode'] ?? null,
                     ],
                 );

@@ -193,6 +193,108 @@
         @apply bg-indigo-50 dark:bg-gray-700;
     }
 
+    /* Page blocks (callouts, toggles, embeds) – read view and editor */
+    .note-content mark {
+        @apply rounded bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40;
+    }
+
+    .note-content .callout {
+        @apply flex gap-3 rounded-lg border-s-4 px-4 py-3;
+    }
+
+    .note-content .callout-icon {
+        @apply shrink-0 select-none leading-7;
+    }
+
+    .note-content .callout-body {
+        @apply min-w-0 flex-1 space-y-2;
+    }
+
+    .note-content .callout-info {
+        @apply border-blue-400 bg-blue-50 dark:bg-blue-900/30;
+    }
+
+    .note-content .callout-tip {
+        @apply border-emerald-400 bg-emerald-50 dark:bg-emerald-900/30;
+    }
+
+    .note-content .callout-warning {
+        @apply border-amber-400 bg-amber-50 dark:bg-amber-900/30;
+    }
+
+    .note-content .callout-danger {
+        @apply border-red-400 bg-red-50 dark:bg-red-900/30;
+    }
+
+    .note-content .page-toggle {
+        @apply rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700;
+    }
+
+    .note-content .page-toggle > summary {
+        @apply cursor-pointer font-medium;
+    }
+
+    .note-content .page-toggle-body {
+        @apply mt-2 space-y-2;
+    }
+
+    .note-content .page-embed {
+        @apply rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40;
+    }
+
+    .note-content .page-embed-title {
+        @apply mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400;
+    }
+
+    .note-content .page-embed ul {
+        @apply list-none ps-0 space-y-1;
+    }
+
+    .note-content .page-embed a {
+        @apply no-underline text-gray-900 hover:underline dark:text-gray-100;
+    }
+
+    .note-content .page-embed a.is-done {
+        @apply text-gray-400 line-through;
+    }
+
+    .note-content .page-embed-tasks input {
+        @apply me-1 rounded border-gray-300 text-indigo-600 dark:border-gray-600;
+    }
+
+    .note-content .page-embed-calendar > li {
+        @apply flex gap-3;
+    }
+
+    .note-content .page-embed-date {
+        @apply w-20 shrink-0 font-medium text-gray-600 dark:text-gray-300;
+    }
+
+    .note-content .page-embed-time,
+    .note-content .page-embed-empty {
+        @apply text-gray-500 dark:text-gray-400;
+    }
+
+    .note-content .page-embed-more a {
+        @apply text-xs text-indigo-600 underline dark:text-indigo-400;
+    }
+
+    .note-editor .callout-icon {
+        @apply cursor-pointer rounded hover:bg-black/5;
+    }
+
+    .note-editor .page-toggle-title {
+        @apply w-full border-0 bg-transparent p-0 font-medium focus:ring-0;
+    }
+
+    .note-editor .editor-embed {
+        @apply rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-300;
+    }
+
+    .note-editor .editor-embed.ProseMirror-selectednode {
+        @apply ring-2 ring-indigo-500;
+    }
+
     .editor-popup-hint {
         @apply inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded border border-gray-200 dark:border-gray-600 px-1 text-xs text-gray-500 dark:text-gray-400;
     }

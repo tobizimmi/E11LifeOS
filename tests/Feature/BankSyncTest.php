@@ -187,6 +187,24 @@ class BankSyncTest extends TestCase
         $this->assertStringContainsString('Antwort der Bank: „Access Denied“', $message);
     }
 
+    public function test_an_outdated_address_whose_host_is_gone_is_replaced_by_the_known_one(): void
+    {
+        [$user, $household] = $this->owner();
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'bank' => 'custom', 'bank_name' => 'Baader Bank', 'blz' => '70033100', 'fints_url' => 'https://banking.dag.de/fints']);
+
+        $this->mock(FinTsClient::class, function (MockInterface $mock) {
+            $mock->shouldReceive('start')->once()->withArgs(fn (BankConnection $c) => $c->fints_url === 'https://banking.dag.de/fints')
+                ->andThrow(new CurlException('Failed sending to https://banking.dag.de/fints: Could not resolve host: banking.dag.de', null, CURLE_COULDNT_RESOLVE_HOST));
+            $mock->shouldReceive('start')->once()->withArgs(fn (BankConnection $c) => $c->fints_url === 'https://fints.baaderbank.de/')
+                ->andReturn(['status' => 'done', 'holdings' => [], 'errors' => [], 'accounts' => []]);
+        });
+
+        Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot');
+
+        $this->assertSame('https://fints.baaderbank.de/', $connection->fresh()->fints_url);
+        $this->assertNotSame('error', $connection->fresh()->sync_status);
+    }
+
     public function test_a_web_banking_address_instead_of_fints_is_recognised(): void
     {
         [$user, $household] = $this->owner();

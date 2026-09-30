@@ -444,6 +444,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" x-on:click="run('toggleBold')" :class="isActive('bold') && 'is-active'" title="{{ __('Bold') }}"><strong>B</strong></button>
                                     <button type="button" x-on:click="run('toggleItalic')" :class="isActive('italic') && 'is-active'" title="{{ __('Italic') }}"><em>I</em></button>
                                     <button type="button" x-on:click="run('toggleStrike')" :class="isActive('strike') && 'is-active'" title="{{ __('Strikethrough') }}"><s>S</s></button>
+                                    <button type="button" x-on:click="run('toggleMark', 'highlight')" :class="isActive('highlight') && 'is-active'" title="{{ __('Highlight') }}"><mark class="rounded bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40">A</mark></button>
                                     <button type="button" x-on:click="run('toggleCode')" :class="isActive('code') && 'is-active'" title="{{ __('Code') }}"><code>&lt;/&gt;</code></button>
                                     <button type="button" x-on:click="setLink()" :class="isActive('link') && 'is-active'" title="{{ __('Link') }}">🔗</button>
                                     <span class="editor-bubble-divider" aria-hidden="true"></span>

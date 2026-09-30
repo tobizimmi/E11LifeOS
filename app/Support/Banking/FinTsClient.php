@@ -224,6 +224,13 @@ class FinTsClient
                 // Depots from the UPD (account type or holdings request allowed); without any, all accounts are tried.
                 $depots = $this->depotAccounts($fints);
                 $accounts = $depots !== [] ? $depots : $accounts;
+
+                // Some banks (e.g. DKB) only offer newer versions of the holdings request than php-fints knows.
+                if (! $this->bankOffersHoldings($fints)) {
+                    $result['errors'][] = __('This bank offers the depot query only in a FinTS version that is not supported yet. Account bookings and balances still work; import the holdings as a CSV file from the bank\'s online depot instead.');
+                    $accounts = [];
+                    $depots = null;
+                }
             }
 
             $allAccounts = $accounts;
@@ -274,7 +281,7 @@ class FinTsClient
                 }
             }
 
-            if ($operation === 'depot' && $result['holdings'] === [] && ($depots ?? []) === []) {
+            if ($operation === 'depot' && $result['holdings'] === [] && ($depots ?? null) === []) {
                 $result['errors'][] = __('The bank did not report a securities account for this login. If your depot has its own login, add it as a separate connection.');
             }
         }
@@ -439,6 +446,18 @@ class FinTsClient
     }
 
     /**
+     * Whether the bank's parameters contain a version of the holdings request (HKWPD) php-fints can send.
+     */
+    private function bankOffersHoldings(FinTs $fints): bool
+    {
+        try {
+            return $fints->getBpd()->getLatestSupportedParameters('HIWPDS') !== null;
+        } catch (Throwable) {
+            return true;
+        }
+    }
+
+    /**
      * Holdings of a depot; returns the request when the bank asks for a TAN for it.
      *
      * @param  array<string, mixed>  $result
@@ -576,7 +595,7 @@ class FinTsClient
             $status === 404 => __('The bank server :host does not know this FinTS address (HTTP 404). Check the FinTS address in the connection settings.', ['host' => $host]).$suggestion.$detail,
             $status >= 500 => __('The bank server :host has a problem right now (HTTP :status). Please try again later.', ['host' => $host, 'status' => $status]),
             $status >= 300 => __('The bank server :host answered with HTTP :status.', ['host' => $host, 'status' => $status]).$detail,
-            default => __('The bank server :host cannot be reached: :message', ['host' => $host, 'message' => (string) ($exception->getCurlMessage() ?: $exception->getMessage())]),
+            default => __('The bank server :host cannot be reached: :message', ['host' => $host, 'message' => (string) ($exception->getCurlMessage() ?: $exception->getMessage())]).$suggestion,
         };
     }
 

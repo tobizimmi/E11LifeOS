@@ -1,4 +1,4 @@
-import { Editor, Extension, InputRule, mergeAttributes, Node } from '@tiptap/core';
+import { createAtomBlockMarkdownSpec, createBlockMarkdownSpec, Editor, Extension, InputRule, Mark, markInputRule, mergeAttributes, Node } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
@@ -138,6 +138,232 @@ const MarkdownImage = Node.create({
     },
 });
 
+const CALLOUT_ICONS = { info: 'ℹ️', tip: '💡', warning: '⚠️', danger: '⛔' };
+const CALLOUT_TYPES = Object.keys(CALLOUT_ICONS);
+
+/**
+ * ==text== as highlighted text (rendered as <mark> on the server).
+ */
+const Highlight = Mark.create({
+    name: 'highlight',
+
+    parseHTML() {
+        return [{ tag: 'mark' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['mark', HTMLAttributes, 0];
+    },
+
+    markdownTokenizer: {
+        name: 'highlight',
+        level: 'inline',
+        start: (src) => src.indexOf('=='),
+        tokenize(src, _tokens, lexer) {
+            const match = /^==(?=\S)([\s\S]*?\S)==/.exec(src);
+
+            if (!match) {
+                return undefined;
+            }
+
+            return { type: 'highlight', raw: match[0], text: match[1], tokens: lexer.inlineTokens(match[1]) };
+        },
+    },
+
+    parseMarkdown: (token, helpers) => helpers.applyMark('highlight', helpers.parseInline(token.tokens || [])),
+
+    renderMarkdown: (node, h) => `==${h.renderChildren(node)}==`,
+
+    addInputRules() {
+        return [markInputRule({ find: /(?:^|\s)(==(?!\s)([^=]+)(?<!\s)==)$/, type: this.type })];
+    },
+
+    addKeyboardShortcuts() {
+        return { 'Mod-Shift-h': () => this.editor.commands.toggleMark(this.name) };
+    },
+});
+
+/**
+ * Coloured box (":::callout {type="tip"}" … ":::"); the symbol switches the colour.
+ */
+const Callout = Node.create({
+    name: 'callout',
+    group: 'block',
+    content: 'block+',
+    defining: true,
+
+    addOptions() {
+        return { translations: {} };
+    },
+
+    addAttributes() {
+        return { type: { default: 'info' } };
+    },
+
+    parseHTML() {
+        return [{ tag: 'div[data-callout]', getAttrs: (element) => ({ type: element.getAttribute('data-callout') || 'info' }) }];
+    },
+
+    renderHTML({ node, HTMLAttributes }) {
+        return ['div', mergeAttributes(HTMLAttributes, { 'data-callout': node.attrs.type, class: `callout callout-${node.attrs.type}` }), 0];
+    },
+
+    ...createBlockMarkdownSpec({ nodeName: 'callout', defaultAttributes: { type: 'info' }, allowedAttributes: ['type'] }),
+
+    addNodeView() {
+        return ({ node, getPos, editor }) => {
+            const dom = document.createElement('div');
+            const icon = document.createElement('button');
+            const content = document.createElement('div');
+            icon.type = 'button';
+            icon.contentEditable = 'false';
+            icon.className = 'callout-icon';
+            icon.title = this.options.translations.calloutTypeHint ?? '';
+            content.className = 'callout-body';
+            dom.append(icon, content);
+
+            const paint = (current) => {
+                dom.className = `callout callout-${current.attrs.type}`;
+                icon.textContent = CALLOUT_ICONS[current.attrs.type] ?? CALLOUT_ICONS.info;
+            };
+
+            icon.addEventListener('mousedown', (event) => event.preventDefault());
+            icon.addEventListener('click', () => {
+                const position = getPos();
+                const current = typeof position === 'number' ? editor.state.doc.nodeAt(position) : null;
+
+                if (current) {
+                    const next = CALLOUT_TYPES[(CALLOUT_TYPES.indexOf(current.attrs.type) + 1) % CALLOUT_TYPES.length];
+                    editor.view.dispatch(editor.state.tr.setNodeMarkup(position, undefined, { ...current.attrs, type: next }));
+                }
+            });
+            paint(node);
+
+            return {
+                dom,
+                contentDOM: content,
+                update: (updated) => {
+                    if (updated.type.name !== 'callout') {
+                        return false;
+                    }
+
+                    paint(updated);
+
+                    return true;
+                },
+                ignoreMutation: (mutation) => !content.contains(mutation.target),
+            };
+        };
+    },
+});
+
+/**
+ * Section that opens on click (":::toggle {title="…"}" … ":::").
+ */
+const Toggle = Node.create({
+    name: 'toggle',
+    group: 'block',
+    content: 'block+',
+    defining: true,
+
+    addOptions() {
+        return { translations: {} };
+    },
+
+    addAttributes() {
+        return { title: { default: '' } };
+    },
+
+    parseHTML() {
+        return [{ tag: 'details', getAttrs: (element) => ({ title: element.querySelector('summary')?.textContent ?? '' }) }];
+    },
+
+    renderHTML({ node }) {
+        return ['details', { class: 'page-toggle', open: 'open' }, ['summary', {}, node.attrs.title], ['div', { class: 'page-toggle-body' }, 0]];
+    },
+
+    ...createBlockMarkdownSpec({ nodeName: 'toggle', allowedAttributes: ['title'] }),
+
+    addNodeView() {
+        return ({ node, getPos, editor }) => {
+            const dom = document.createElement('div');
+            const header = document.createElement('div');
+            const input = document.createElement('input');
+            const content = document.createElement('div');
+            dom.className = 'page-toggle';
+            header.contentEditable = 'false';
+            header.className = 'flex items-center gap-2';
+            header.append(Object.assign(document.createElement('span'), { textContent: '▾', ariaHidden: 'true' }), input);
+            input.className = 'page-toggle-title';
+            input.placeholder = this.options.translations.toggleTitle ?? '';
+            input.setAttribute('aria-label', this.options.translations.toggleTitle ?? '');
+            input.value = node.attrs.title ?? '';
+            content.className = 'page-toggle-body';
+            dom.append(header, content);
+
+            input.addEventListener('change', () => {
+                const position = getPos();
+                const current = typeof position === 'number' ? editor.state.doc.nodeAt(position) : null;
+
+                if (current) {
+                    editor.view.dispatch(editor.state.tr.setNodeMarkup(position, undefined, { ...current.attrs, title: input.value.replace(/"/g, '“') }));
+                }
+            });
+
+            return {
+                dom,
+                contentDOM: content,
+                update: (updated) => {
+                    if (updated.type.name !== 'toggle') {
+                        return false;
+                    }
+
+                    if (document.activeElement !== input) {
+                        input.value = updated.attrs.title ?? '';
+                    }
+
+                    return true;
+                },
+                stopEvent: (event) => event.target === input,
+                ignoreMutation: (mutation) => !content.contains(mutation.target),
+            };
+        };
+    },
+});
+
+/**
+ * Live block (":::embed {type="tasks"} :::"): the server fills in the page's tasks, the next
+ * 14 days of the calendar or the list of subpages; the editor shows a placeholder.
+ */
+const Embed = Node.create({
+    name: 'embed',
+    group: 'block',
+    atom: true,
+    draggable: true,
+    selectable: true,
+
+    addOptions() {
+        return { translations: {} };
+    },
+
+    addAttributes() {
+        return { type: { default: 'tasks' } };
+    },
+
+    parseHTML() {
+        return [{ tag: 'div[data-embed]', getAttrs: (element) => ({ type: element.getAttribute('data-embed') || 'tasks' }) }];
+    },
+
+    renderHTML({ node }) {
+        const t = this.options.translations;
+        const labels = { tasks: `✅ ${t.embedTasks}`, calendar: `📅 ${t.embedCalendar}`, subpages: `📄 ${t.embedSubpages}` };
+
+        return ['div', { 'data-embed': node.attrs.type, class: 'editor-embed' }, `${labels[node.attrs.type] ?? node.attrs.type} – ${t.embedHint}`];
+    },
+
+    ...createAtomBlockMarkdownSpec({ nodeName: 'embed', defaultAttributes: { type: 'tasks' }, allowedAttributes: ['type'] }),
+});
+
 /**
  * Minimal popup list for suggestions (slash menu, [[ autocomplete):
  * positioned under the cursor, arrow keys + Enter, click to pick.
@@ -257,6 +483,15 @@ function slashCommands(t, onPickFile) {
         { title: t.codeBlock, hint: '</>', run: (c) => c.toggleCodeBlock() },
         { title: t.divider, hint: '—', run: (c) => c.setHorizontalRule() },
         { title: t.table, hint: '▦', run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
+        ...['info', 'tip', 'warning', 'danger'].map((type) => ({
+            title: t[`callout${type[0].toUpperCase()}${type.slice(1)}`],
+            hint: CALLOUT_ICONS[type],
+            run: (c) => c.insertContent({ type: 'callout', attrs: { type }, content: [{ type: 'paragraph' }] }),
+        })),
+        { title: t.toggle, hint: '▾', run: (c) => c.insertContent({ type: 'toggle', attrs: { title: '' }, content: [{ type: 'paragraph' }] }) },
+        { title: t.embedTasks, hint: '✅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'tasks' } }) },
+        { title: t.embedCalendar, hint: '📅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'calendar' } }) },
+        { title: t.embedSubpages, hint: '📄', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'subpages' } }) },
         { title: t.pageLink, hint: '[[ ]]', run: (c) => c.insertContent('[[') },
         ...(onPickFile ? [{ title: t.attachment, hint: '📎', run: (c) => { onPickFile(); return c; } }] : []),
     ];
@@ -393,6 +628,10 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             BubbleMenu.configure({ element: bubbleMenu, options: { strategy: 'fixed', placement: 'top' } }),
             WikiLink,
             MarkdownImage,
+            Highlight,
+            Callout.configure({ translations }),
+            Toggle.configure({ translations }),
+            Embed.configure({ translations }),
             SlashMenu.configure({ translations, onPickFile }),
             PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
         ],

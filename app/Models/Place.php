@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SharedWithGroups;
 use Database\Factories\PlaceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,7 +38,7 @@ use Illuminate\Support\Carbon;
 class Place extends Model
 {
     /** @use HasFactory<PlaceFactory> */
-    use HasFactory;
+    use HasFactory, SharedWithGroups;
 
     protected function casts(): array
     {
@@ -69,6 +70,14 @@ class Place extends Model
     }
 
     /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
      * @return BelongsTo<Trip, $this>
      */
     public function trip(): BelongsTo
@@ -96,7 +105,9 @@ class Place extends Model
      */
     public function scopeVisibleTo(Builder $query, User $user, int $householdId): void
     {
-        $query->where('household_id', $householdId)
-            ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id));
+        $query->where(fn (Builder $query) => $query
+            ->where(fn (Builder $query) => $query->where('household_id', $householdId)
+                ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id)))
+            ->orWhereIn($this->getQualifiedKeyName(), static::sharedIdsFor($user)));
     }
 }

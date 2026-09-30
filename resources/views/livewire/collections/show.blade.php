@@ -1396,12 +1396,21 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6 sm:py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
+            @if ($collection->system_key === null)
+                <details class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <summary class="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-100">👥 {{ __('Who sees this collection?') }}</summary>
+                    <div class="mt-3"><livewire:sharing.panel type="collection" :id="$collection->id" :wire:key="'share-collection-'.$collection->id" /></div>
+                </details>
+            @endif
+
             {{-- Title bar --}}
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <span aria-hidden="true">{{ $collection->displayIcon() }}</span>
                     {{ $collection->name }}
-                    @if ($collection->isPrivate())
+                    @if ($collection->system_key === null)
+                        <x-audience-badge :model="$collection->loadMissing('shareGroups')" class="text-sm" />
+                    @elseif ($collection->isPrivate())
                         <x-private-badge />
                     @endif
                 </h1>

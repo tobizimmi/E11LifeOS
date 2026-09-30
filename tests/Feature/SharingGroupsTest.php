@@ -2,9 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Collection;
 use App\Models\ExpenseGroup;
 use App\Models\Item;
+use App\Models\Place;
+use App\Models\Recipe;
 use App\Models\ShareGroup;
+use App\Models\ShoppingList;
+use App\Models\ShoppingListEntry;
 use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -128,5 +133,101 @@ class SharingGroupsTest extends TestCase
         $this->actingAs($me);
         Volt::test('groups.index')->call('leave', $group->id);
         $this->assertTrue($group->fresh()->isOwner($friend));
+    }
+
+    public function test_a_household_owner_brings_the_whole_household_into_a_group(): void
+    {
+        [$me, $myHousehold] = $this->memberWithHousehold();
+        [$friend, $friendHousehold] = $this->memberWithHousehold();
+        $friendPartner = $this->addMemberTo($friendHousehold);
+        $group = ShareGroup::factory()->create(['name' => 'Nachbarn', 'created_by' => $me->id]);
+        $group->update(['invite_token' => str_repeat('a', 40), 'invite_expires_at' => now()->addDay()]);
+        $trip = Trip::factory()->create(['household_id' => $myHousehold->id, 'created_by' => $me->id, 'title' => 'Grillfest']);
+        $trip->shares()->create(['share_group_id' => $group->id, 'shared_by' => $me->id]);
+
+        $this->actingAs($friendPartner);
+        Volt::test('groups.join', ['token' => str_repeat('a', 40)])->assertDontSee('Mit dem ganzen Haushalt')->call('joinWithHousehold')->assertForbidden();
+
+        $this->actingAs($friend);
+        Volt::test('groups.join', ['token' => str_repeat('a', 40)])->assertSee('Mit dem ganzen Haushalt')->call('joinWithHousehold');
+        $this->assertTrue($group->hasMember($friendPartner));
+
+        $newcomer = $this->addMemberTo($friendHousehold);
+        $this->actingAs($newcomer);
+        Volt::test('trips.index')->assertSee('Grillfest');
+        $partnerTrip = Trip::factory()->create(['household_id' => $friendHousehold->id, 'created_by' => $newcomer->id, 'title' => 'Flohmarkt']);
+        $partnerTrip->shares()->create(['share_group_id' => $group->id, 'shared_by' => $newcomer->id]);
+
+        $this->actingAs($me);
+        Volt::test('groups.index')->assertSee('ganzer Haushalt')->call('removeHousehold', $group->id, $friendHousehold->id);
+        $this->assertFalse($group->hasMember($friendPartner));
+        $this->assertFalse($partnerTrip->isSharedWith($me));
+    }
+
+    public function test_shared_recipes_can_be_used_and_copied_but_not_changed(): void
+    {
+        [$me, , $friend, $group, $householdId] = $this->setUpGroup();
+        $recipe = Recipe::factory()->create(['household_id' => $householdId, 'created_by' => $me->id, 'title' => 'Omas Apfelkuchen']);
+        $recipe->shares()->create(['share_group_id' => $group->id, 'shared_by' => $me->id]);
+
+        $this->actingAs($friend);
+        Volt::test('recipes.index')->assertSee('Omas Apfelkuchen')->assertSee('Geteilt von');
+        $page = Volt::test('recipes.show', ['recipe' => $recipe->id])->assertOk()->assertDontSee(route('recipes.edit', $recipe));
+        $page->call('delete')->assertForbidden();
+        $this->get(route('recipes.edit', $recipe))->assertNotFound();
+
+        Volt::test('recipes.show', ['recipe' => $recipe->id])->call('duplicate');
+        $copy = Recipe::where('title', 'like', 'Omas Apfelkuchen%')->whereKeyNot($recipe->id)->sole();
+        $this->assertSame($friend->currentHousehold()->id, $copy->household_id);
+    }
+
+    public function test_group_members_tick_off_and_add_to_a_shared_shopping_list(): void
+    {
+        [$me, , $friend, $group, $householdId] = $this->setUpGroup();
+        $list = ShoppingList::factory()->create(['household_id' => $householdId, 'name' => 'Grillparty']);
+        $entry = ShoppingListEntry::factory()->create(['household_id' => $householdId, 'shopping_list_id' => $list->id, 'label' => 'Kohle']);
+        [$stranger] = $this->memberWithHousehold();
+
+        $this->actingAs($me);
+        Volt::test('sharing.panel', ['type' => 'shopping', 'id' => $list->id])->call('toggle', $group->id);
+
+        $this->actingAs($friend);
+        Volt::test('shopping-list.index')->assertSee('Grillparty');
+        Volt::test('groups.shopping', ['list' => $list])->assertSee('Kohle')
+            ->call('toggle', $entry->id)->set('label', 'Würstchen')->call('add')->assertHasNoErrors();
+        $this->assertTrue($entry->fresh()->checked);
+        $this->assertTrue($list->entries()->where('label', 'Würstchen')->exists());
+
+        $this->actingAs($stranger)->get(route('groups.shopping', $list))->assertNotFound();
+    }
+
+    public function test_a_shared_collection_shows_only_its_shared_entries(): void
+    {
+        [$me, , $friend, $group, $householdId] = $this->setUpGroup();
+        $collection = Collection::factory()->create(['household_id' => $householdId, 'created_by' => $me->id, 'name' => 'Brettspiele']);
+        Item::factory()->create(['household_id' => $householdId, 'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Catan', 'created_by' => $me->id]);
+        Item::factory()->create(['household_id' => $householdId, 'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Geheimes Geschenk', 'visibility' => Item::VISIBILITY_PRIVATE, 'created_by' => $me->id]);
+        $collection->shares()->create(['share_group_id' => $group->id, 'shared_by' => $me->id]);
+
+        $this->actingAs($friend);
+        Volt::test('groups.collection', ['collection' => $collection])->assertSee('Catan')->assertDontSee('Geheimes Geschenk')
+            ->set('title', 'Azul')->call('add')->assertHasNoErrors();
+        $this->assertTrue($collection->items()->where('title', 'Azul')->where('household_id', $householdId)->exists());
+        $this->get(route('collections.show', $collection))->assertNotFound();
+
+        $tasks = Collection::tasksFor($householdId);
+        $this->actingAs($me);
+        Volt::test('sharing.panel', ['type' => 'collection', 'id' => $tasks->id])->assertNotFound();
+    }
+
+    public function test_shared_places_show_up_but_cannot_be_deleted_by_the_group(): void
+    {
+        [$me, , $friend, $group, $householdId] = $this->setUpGroup();
+        $place = Place::factory()->create(['household_id' => $householdId, 'created_by' => $me->id, 'name' => 'Trattoria Luna']);
+        $place->shares()->create(['share_group_id' => $group->id, 'shared_by' => $me->id]);
+
+        $this->actingAs($friend);
+        Volt::test('places.index')->assertSee('Trattoria Luna')->call('delete', $place->id)->assertForbidden();
+        $this->assertModelExists($place);
     }
 }

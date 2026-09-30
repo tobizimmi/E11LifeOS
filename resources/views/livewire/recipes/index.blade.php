@@ -96,7 +96,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $recipes = Recipe::query()
             ->visibleTo($user, $this->householdId)
-            ->with(['categories', 'favoritedBy' => fn ($query) => $query->whereKey($user->id)])
+            ->with(['categories', 'shareGroups', 'creator', 'favoritedBy' => fn ($query) => $query->whereKey($user->id)])
             ->withAvg('ratings', 'rating')
             ->when($this->archived, fn ($query) => $query->whereNotNull('archived_at'), fn ($query) => $query->whereNull('archived_at'))
             ->when($this->search !== '', fn ($query) => $query->matching($this->search))
@@ -228,9 +228,7 @@ new #[Layout('layouts.app')] class extends Component
                                         @if ($recipe->categories->isNotEmpty())<span class="truncate">{{ $recipe->categories->map(fn ($c) => trim($c->icon.' '.$c->name))->implode(' · ') }}</span>@endif
                                     </span>
                                 </span>
-                                @if ($recipe->isPrivate())
-                                    <x-private-badge />
-                                @endif
+                                <x-audience-badge :model="$recipe" quiet />
                             </a>
                             <button type="button" wire:click="toggleFavorite({{ $recipe->id }})" class="shrink-0 px-1 text-lg leading-none" aria-pressed="{{ $recipe->favoritedBy->isNotEmpty() ? 'true' : 'false' }}" aria-label="{{ __('Favorite') }}">{{ $recipe->favoritedBy->isNotEmpty() ? '♥' : '♡' }}</button>
                         </li>
@@ -292,9 +290,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @if ($recipe->servings)
                                         <span>🍽 {{ trans_choice(':count serving|:count servings', $recipe->servings) }}</span>
                                     @endif
-                                    @if ($recipe->isPrivate())
-                                        <x-private-badge />
-                                    @endif
+                                    <x-audience-badge :model="$recipe" quiet />
                                 </p>
                                 @if ($recipe->ratings_avg_rating)
                                     <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">★ {{ number_format((float) $recipe->ratings_avg_rating, 1, ',', '') }}</p>

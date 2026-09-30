@@ -28,7 +28,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function mount(): void
     {
-        if (! in_array($this->tab, ['tips', 'news', 'favorites'], true)) {
+        if (! in_array($this->tab, ['tips', 'news', 'favorites', 'theses'], true)) {
             $this->tab = 'tips';
         }
 
@@ -122,6 +122,8 @@ new #[Layout('layouts.app')] class extends Component
             'topics' => FinanceNews::labels(),
             'favorites' => $favorites,
             'favoriteKeys' => $favorites->map(fn (KnowledgeFavorite $favorite) => $favorite->kind.':'.$favorite->key)->flip()->all(),
+            'theses' => \App\Models\InvestmentThesis::where('user_id', Auth::id())->orderByRaw('review_on IS NULL')->orderBy('review_on')->get(),
+            'securityNames' => \App\Models\Security::whereIn('symbol', \App\Models\InvestmentThesis::where('user_id', Auth::id())->pluck('symbol'))->pluck('name', 'symbol'),
         ];
     }
 }; ?>
@@ -134,10 +136,36 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 text-sm dark:bg-gray-800" aria-label="{{ __('Sections') }}">
-                @foreach (['tips' => '💡 '.__('Tips'), 'news' => '📰 '.__('What\'s new'), 'favorites' => '⭐ '.__('Favourites').' ('.$favorites->count().')'] as $key => $label)
+                @foreach (['tips' => '💡 '.__('Tips'), 'news' => '📰 '.__('What\'s new'), 'theses' => '📝 '.__('My theses').' ('.$theses->count().')', 'favorites' => '⭐ '.__('Favourites').' ('.$favorites->count().')'] as $key => $label)
                     <button type="button" wire:click="$set('tab', '{{ $key }}')" @class(['flex-1 rounded-lg px-3 py-2 font-medium transition pointer-coarse:min-h-11', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </nav>
+
+            @if ($tab === 'theses')
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Your investment theses – why you own a security and when you would sell. Write them on the page of each security.') }}</p>
+                <ul class="space-y-3">
+                    @forelse ($theses as $item)
+                        <li wire:key="thesis-{{ $item->id }}" class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <a href="{{ route('portfolio.security', $item->symbol) }}" wire:navigate class="font-semibold text-gray-900 hover:underline dark:text-gray-100">{{ $securityNames[$item->symbol] ?? $item->symbol }} <span class="text-sm font-normal text-gray-500">{{ $item->symbol }}</span></a>
+                                @if ($item->isDueForReview())
+                                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">⏰ {{ __('Review due') }}</span>
+                                @elseif ($item->review_on)
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Review on :date', ['date' => $item->review_on->format('d.m.Y')]) }}</span>
+                                @endif
+                            </div>
+                            @if ($item->thesis)
+                                <p class="mt-1 line-clamp-3 text-sm text-gray-700 dark:text-gray-300">{{ $item->thesis }}</p>
+                            @endif
+                            @if ($item->sell_if)
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('I sell if …') }} {{ $item->sell_if }}</p>
+                            @endif
+                        </li>
+                    @empty
+                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No theses yet. Open a security in the portfolio and write down why you own it.') }}</li>
+                    @endforelse
+                </ul>
+            @endif
 
             @if ($tab === 'tips')
                 <div class="space-y-3">

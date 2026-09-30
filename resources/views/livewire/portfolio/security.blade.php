@@ -2,9 +2,11 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
+use App\Models\InvestmentThesis;
 use App\Models\PortfolioPosition;
 use App\Models\PortfolioTransaction;
 use App\Models\WatchlistItem;
+use App\Support\Portfolio\KeyFigureCheck;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\PortfolioLink;
 use App\Support\Portfolio\Valuation;
@@ -24,6 +26,13 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(except: '1y')]
     public string $range = '1y';
 
+    public bool $editingThesis = false;
+
+    /**
+     * @var array{stock_type: string, thesis: string, moat: string, risks: string, sell_if: string, buy_below: string, review_on: string}
+     */
+    public array $thesis = ['stock_type' => '', 'thesis' => '', 'moat' => '', 'risks' => '', 'sell_if' => '', 'buy_below' => '', 'review_on' => ''];
+
     public function mount(string $symbol): void
     {
         $this->symbol = strtoupper(mb_substr($symbol, 0, 32));
@@ -39,6 +48,60 @@ new #[Layout('layouts.app')] class extends Component
         } else {
             WatchlistItem::create(['user_id' => $this->currentUser()->id, 'symbol' => $this->symbol, 'name' => (string) \App\Models\Security::where('symbol', $this->symbol)->value('name')]);
         }
+    }
+
+    private function currentThesis(): ?InvestmentThesis
+    {
+        return InvestmentThesis::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->first();
+    }
+
+    public function editThesis(): void
+    {
+        $thesis = $this->currentThesis();
+        $this->thesis = [
+            'stock_type' => (string) $thesis?->stock_type,
+            'thesis' => (string) $thesis?->thesis,
+            'moat' => (string) $thesis?->moat,
+            'risks' => (string) $thesis?->risks,
+            'sell_if' => (string) $thesis?->sell_if,
+            'buy_below' => $thesis?->buy_below !== null ? rtrim(rtrim(number_format($thesis->buy_below, 4, ',', ''), '0'), ',') : '',
+            'review_on' => (string) ($thesis?->review_on?->toDateString() ?? today()->addYear()->toDateString()),
+        ];
+        $this->editingThesis = true;
+    }
+
+    /**
+     * Saves "why I own this" – Peter Lynch's two-minute story – with buy and sell rules.
+     */
+    public function saveThesis(): void
+    {
+        $this->thesis['buy_below'] = str_replace(',', '.', trim($this->thesis['buy_below']));
+        $data = $this->validate([
+            'thesis.stock_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(InvestmentThesis::stockTypes()))],
+            'thesis.thesis' => ['nullable', 'string', 'max:3000'],
+            'thesis.moat' => ['nullable', 'string', 'max:2000'],
+            'thesis.risks' => ['nullable', 'string', 'max:2000'],
+            'thesis.sell_if' => ['nullable', 'string', 'max:2000'],
+            'thesis.buy_below' => ['nullable', 'numeric', 'min:0'],
+            'thesis.review_on' => ['nullable', 'date'],
+        ], attributes: ['thesis.buy_below' => __('Buy below'), 'thesis.review_on' => __('Review on')])['thesis'];
+
+        InvestmentThesis::updateOrCreate(['user_id' => $this->currentUser()->id, 'symbol' => $this->symbol], [
+            'stock_type' => $data['stock_type'] ?: null,
+            'thesis' => trim((string) $data['thesis']) ?: null,
+            'moat' => trim((string) $data['moat']) ?: null,
+            'risks' => trim((string) $data['risks']) ?: null,
+            'sell_if' => trim((string) $data['sell_if']) ?: null,
+            'buy_below' => $data['buy_below'] !== '' && $data['buy_below'] !== null ? (float) $data['buy_below'] : null,
+            'review_on' => $data['review_on'] ?: null,
+        ]);
+        $this->editingThesis = false;
+    }
+
+    public function deleteThesis(): void
+    {
+        $this->currentThesis()?->delete();
+        $this->editingThesis = false;
     }
 
     public function loadFundamentals(MarketData $market): void
@@ -74,6 +137,8 @@ new #[Layout('layouts.app')] class extends Component
             'news' => \App\Models\NewsArticle::where('symbol', $this->symbol)->orderByDesc('published_at')->limit(8)->get(),
             'recommendation' => \App\Models\PortfolioRecommendation::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->first(),
             'mentions' => PortfolioLink::mentions($this->currentUser(), (int) $this->householdId, $this->symbol, $security?->name),
+            'checks' => KeyFigureCheck::assess($security->fundamentals ?? []),
+            'savedThesis' => $this->currentThesis(),
         ];
     }
 }; ?>
@@ -188,11 +253,82 @@ new #[Layout('layouts.app')] class extends Component
                                 <p class="mt-2">{{ $figures['description'] }}</p>
                             </details>
                         @endif
+                        @if ($checks !== [])
+                            @php($score = \App\Support\Portfolio\KeyFigureCheck::score($checks))
+                            <details class="mt-3 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-900/40">
+                                <summary class="cursor-pointer font-medium text-gray-900 dark:text-gray-100">🔎 {{ __('What the key figures say') }} <span class="font-normal text-gray-500 dark:text-gray-400">({{ __(':green of :rated look good', $score) }})</span></summary>
+                                <ul class="mt-2 space-y-1.5">
+                                    @foreach ($checks as $check)
+                                        <li wire:key="check-{{ $check['key'] }}" class="flex gap-2">
+                                            <span aria-hidden="true">{{ ['green' => '🟢', 'yellow' => '🟡', 'red' => '🔴', 'neutral' => '⚪'][$check['level']] }}</span>
+                                            <span><strong>{{ $check['label'] }} {{ $check['value'] }}:</strong> {{ $check['note'] }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Rules of thumb only – compare within the industry. Explanations in the knowledge area under “Understanding key figures”.') }} <a href="{{ route('knowledge.index', ['category' => 'metrics']) }}" wire:navigate class="underline">{{ __('To the explanations') }} →</a></p>
+                            </details>
+                        @endif
                     @else
                         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Key figures are loaded with the daily market scan.') }}</p>
                     @endif
                 </section>
             @endunless
+
+            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="thesis-heading">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 id="thesis-heading" class="font-semibold text-gray-900 dark:text-gray-100">📝 {{ __('My investment thesis') }}</h3>
+                    @unless ($editingThesis)
+                        <button type="button" wire:click="editThesis" class="text-sm text-indigo-600 underline dark:text-indigo-400">{{ $savedThesis ? __('Edit') : '+ '.__('Write down') }}</button>
+                    @endunless
+                </div>
+                @if ($editingThesis)
+                    @php($field = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
+                    <form wire:submit="saveThesis" class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Why do I own it? (in two minutes, as Peter Lynch says)') }}<textarea wire:model="thesis.thesis" rows="3" class="{{ $field }}"></textarea></label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Competitive advantage (moat)') }}<textarea wire:model="thesis.moat" rows="2" class="{{ $field }}" placeholder="{{ __('e.g. brand, network effects, switching costs, cost advantage') }}"></textarea></label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Risks') }}<textarea wire:model="thesis.risks" rows="2" class="{{ $field }}"></textarea></label>
+                        <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('I sell if …') }}<textarea wire:model="thesis.sell_if" rows="2" class="{{ $field }}" placeholder="{{ __('e.g. growth below 5 % for two years, the CEO leaves, the dividend is cut') }}"></textarea></label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Stock type') }}
+                            <select wire:model="thesis.stock_type" class="{{ $field }}">
+                                <option value="">–</option>
+                                @foreach (\App\Models\InvestmentThesis::stockTypes() as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Buy below (price in :currency)', ['currency' => $security->currency ?? 'EUR']) }}<input type="text" inputmode="decimal" wire:model="thesis.buy_below" class="{{ $field }}"><x-input-error :messages="$errors->get('thesis.buy_below')" /></label>
+                        <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Review on') }}<input type="date" wire:model="thesis.review_on" class="{{ $field }}"></label>
+                        <div class="flex flex-wrap gap-2 sm:col-span-2">
+                            <x-primary-button>{{ __('Save') }}</x-primary-button>
+                            <x-secondary-button type="button" wire:click="$set('editingThesis', false)">{{ __('Cancel') }}</x-secondary-button>
+                            @if ($savedThesis)
+                                <button type="button" wire:click="deleteThesis" wire:confirm="{{ __('Delete this thesis?') }}" class="ms-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete') }}</button>
+                            @endif
+                        </div>
+                    </form>
+                @elseif ($savedThesis)
+                    <dl class="mt-3 space-y-2 text-sm">
+                        @if ($savedThesis->isDueForReview())
+                            <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">⏰ {{ __('Time to check your thesis again: does it still hold?') }}</p>
+                        @endif
+                        @if ($savedThesis->buy_below && $security->last_price && $security->last_price <= $savedThesis->buy_below)
+                            <p class="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">🎯 {{ __('The price is below your buy limit of :price.', ['price' => number_format($savedThesis->buy_below, 2, ',', '.')]) }}</p>
+                        @endif
+                        @foreach ([[__('Why I own it'), $savedThesis->thesis], [__('Competitive advantage (moat)'), $savedThesis->moat], [__('Risks'), $savedThesis->risks], [__('I sell if …'), $savedThesis->sell_if]] as [$label, $text])
+                            @if ($text)
+                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ $label }}</dt><dd class="whitespace-pre-line text-gray-800 dark:text-gray-200">{{ $text }}</dd></div>
+                            @endif
+                        @endforeach
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            @if ($savedThesis->stock_type) {{ \App\Models\InvestmentThesis::stockTypes()[$savedThesis->stock_type] ?? '' }} · @endif
+                            @if ($savedThesis->buy_below) {{ __('Buy below :price', ['price' => number_format($savedThesis->buy_below, 2, ',', '.')]) }} · @endif
+                            @if ($savedThesis->review_on) {{ __('Review on :date', ['date' => $savedThesis->review_on->format('d.m.Y')]) }} @endif
+                        </p>
+                    </dl>
+                @else
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Write down why you own this security, what could go wrong and when you would sell – it protects against rash decisions.') }}</p>
+                @endif
+            </section>
 
             @if ($rows !== [])
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">

@@ -34,6 +34,20 @@ class BankSync
         'custom' => ['name' => '', 'blz' => '', 'url' => '', 'tan_mode' => null, 'hint' => 'Enter BLZ and FinTS URL of your bank.'],
     ];
 
+    /**
+     * The FinTS address we know for the connection's bank (by preset, otherwise by bank code).
+     */
+    public static function knownUrl(BankConnection $connection): ?string
+    {
+        $url = self::BANKS[$connection->bank]['url'] ?? '';
+
+        if ($url === '' && $connection->blz) {
+            $url = collect(self::BANKS)->firstWhere('blz', (string) $connection->blz)['url'] ?? '';
+        }
+
+        return $url !== '' ? $url : null;
+    }
+
     /** A dialog waiting for a TAN is kept this long. */
     public const PENDING_MINUTES = 10;
 
@@ -103,10 +117,23 @@ class BankSync
     private function handle(BankConnection $connection, string $operation, string $pin, callable $call): array
     {
         try {
-            $result = $call();
+            try {
+                $result = $call();
+            } catch (CurlException $exception) {
+                // An outdated address (e.g. taken over from an old app) whose host no longer exists:
+                // nothing reached the bank, so switch to the known FinTS address and try once more.
+                $knownUrl = self::knownUrl($connection);
+
+                if ($exception->getCode() !== CURLE_COULDNT_RESOLVE_HOST || ! $knownUrl || rtrim($knownUrl, '/') === rtrim((string) $connection->fints_url, '/')) {
+                    throw $exception;
+                }
+
+                $connection->update(['fints_url' => $knownUrl]);
+                $result = $call();
+            }
         } catch (Throwable $exception) {
             if ($exception instanceof CurlException) {
-                $exception = new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url, (self::BANKS[$connection->bank]['url'] ?? '') ?: null), previous: $exception);
+                $exception = new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url, self::knownUrl($connection)), previous: $exception);
             }
 
             $connection->update(['sync_status' => 'error', 'sync_message' => mb_substr($exception->getMessage(), 0, 1000), 'pending_state' => null, 'pending_until' => null]);

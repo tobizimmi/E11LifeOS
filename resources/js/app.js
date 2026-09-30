@@ -1499,24 +1499,25 @@ if (window.location.pathname === '/login') {
     }
 }
 
-// Task links (data-open-task="id") open the task window in place. If the window does not
-// confirm within two seconds (slow connection, error), the link opens the task list instead.
+// Task and inbox links (data-open-task / data-open-inbox="id") open their window in place. If the
+// window does not confirm within two seconds (slow connection, error), the link is followed instead.
 document.addEventListener('click', (event) => {
-    const link = event.target.closest?.('a[data-open-task]');
+    const link = event.target.closest?.('a[data-open-task], a[data-open-inbox]');
 
     if (! link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;
     }
 
     event.preventDefault();
-    const id = Number(link.dataset.openTask);
+    const kind = link.dataset.openTask !== undefined ? 'task' : 'inbox';
+    const id = Number(kind === 'task' ? link.dataset.openTask : link.dataset.openInbox);
     let shown = false;
     const confirm = (e) => { if (Number(e.detail?.id) === id) { shown = true; } };
-    window.addEventListener('task-sheet-shown', confirm);
-    window.dispatchEvent(new CustomEvent('open-task', { detail: { id } }));
+    window.addEventListener(`${kind}-sheet-shown`, confirm);
+    window.dispatchEvent(new CustomEvent(`open-${kind}`, { detail: { id } }));
 
     setTimeout(() => {
-        window.removeEventListener('task-sheet-shown', confirm);
+        window.removeEventListener(`${kind}-sheet-shown`, confirm);
         if (! shown) {
             window.Livewire?.navigate ? window.Livewire.navigate(link.href) : (window.location.href = link.href);
         }

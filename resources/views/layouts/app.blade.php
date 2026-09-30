@@ -27,8 +27,9 @@
         <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-md focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">{{ __('Skip to content') }}</a>
         <div class="min-h-screen bg-gradient-to-b from-indigo-50/60 via-slate-50 to-slate-50 dark:from-gray-950 dark:via-gray-950 dark:to-gray-950">
             <livewire:layout.navigation />
-            {{-- Tasks open in place from any page: links with data-open-task="id" (app.js) --}}
+            {{-- Tasks and inbox entries open in place from any page: links with data-open-task / data-open-inbox="id" (app.js) --}}
             <livewire:tasks.quick-sheet />
+            <livewire:inbox.quick-sheet />
 
             {{-- Shown while the device is offline (the shopping list stays readable from the cache). --}}
             <div

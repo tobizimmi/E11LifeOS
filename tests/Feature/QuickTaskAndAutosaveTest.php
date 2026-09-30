@@ -49,6 +49,39 @@ class QuickTaskAndAutosaveTest extends TestCase
         Volt::test('tasks.quick-sheet')->dispatch('open-task', id: $task->id)->assertNotFound();
     }
 
+    public function test_an_inbox_entry_opens_in_place_and_can_be_sorted(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $entry = Item::factory()->inbox()->create(['household_id' => $household->id, 'title' => 'Zahnarzt anrufen', 'created_by' => $user->id]);
+        $milk = Item::factory()->inbox()->create(['household_id' => $household->id, 'title' => 'Milch', 'created_by' => $user->id]);
+
+        $this->actingAs($user);
+        $this->get(route('dashboard'))->assertOk()->assertSee('data-open-inbox="'.$entry->id.'"', false);
+
+        Volt::test('inbox.quick-sheet')->dispatch('open-inbox', id: $entry->id)
+            ->assertSee('Zahnarzt anrufen')->assertDispatched('inbox-sheet-shown', id: $entry->id)
+            ->call('updateTitle', 'Zahnarzt Termin')
+            ->call('toTask')->assertSet('entryId', null)->assertDispatched('open-task', id: $entry->id);
+
+        $entry->refresh();
+        $this->assertSame(Item::TYPE_TODO, $entry->type);
+        $this->assertSame('Zahnarzt Termin', $entry->title);
+
+        Volt::test('inbox.quick-sheet')->dispatch('open-inbox', id: $milk->id)->call('toShoppingList');
+        $this->assertModelMissing($milk);
+        $this->assertDatabaseHas('shopping_list_entries', ['household_id' => $household->id, 'label' => 'Milch']);
+    }
+
+    public function test_inbox_entries_of_other_households_do_not_open(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        [, $otherHousehold] = $this->memberWithHousehold();
+        $entry = Item::factory()->inbox()->create(['household_id' => $otherHousehold->id, 'title' => 'Geheim']);
+
+        $this->actingAs($user);
+        Volt::test('inbox.quick-sheet')->dispatch('open-inbox', id: $entry->id)->assertNotFound();
+    }
+
     public function test_an_existing_page_saves_itself_while_typing(): void
     {
         [$user, $household] = $this->memberWithHousehold();

@@ -50,7 +50,7 @@ class CalendarEvents
             self::BUSINESS => $user->canUseAddon(Addons::BUSINESS) ? ['label' => __('Small business'), 'icon' => '💼', 'color' => 'violet'] : null,
             self::PORTFOLIO => $user->canUseAddon(Addons::PORTFOLIO) ? ['label' => __('Portfolio'), 'icon' => '📈', 'color' => 'rose'] : null,
             self::LIFE => ['label' => __('Life & provisions'), 'icon' => '🗂️', 'color' => 'teal'],
-            self::EXTERNAL => CalendarSubscription::where('user_id', $user->id)->exists() ? ['label' => __('Other calendars'), 'icon' => '🗓️', 'color' => 'slate'] : null,
+            self::EXTERNAL => CalendarSubscription::query()->visibleTo($user, $user->currentHousehold()?->id)->exists() ? ['label' => __('Other calendars'), 'icon' => '🗓️', 'color' => 'slate'] : null,
         ]);
     }
 
@@ -100,9 +100,11 @@ class CalendarEvents
         }
 
         if (in_array(self::EXTERNAL, $allowed, true)) {
-            foreach (CalendarSubscription::where('user_id', $user->id)->get() as $subscription) {
+            foreach (CalendarSubscription::query()->visibleTo($user, $householdId)->with('user')->get() as $subscription) {
+                $label = $subscription->name.($subscription->user_id !== $user->id ? ' ('.$subscription->user?->name.')' : '');
+
                 foreach (IcsCalendar::eventsBetween($subscription, $from, $until) as $event) {
-                    $events[] = self::event($event['date'], self::EXTERNAL, $event['title'].' · '.$subscription->name, route('calendar.index', ['date' => $event['date'], 'day' => $event['date']]), time: $event['time']);
+                    $events[] = self::event($event['date'], self::EXTERNAL, $event['title'].' · '.$label, route('calendar.index', ['date' => $event['date'], 'day' => $event['date']]), time: $event['time']);
                 }
             }
         }

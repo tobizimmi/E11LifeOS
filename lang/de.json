@@ -4158,5 +4158,20 @@
     "Posts of the configured public profile (runs automatically every six hours).": "Beiträge des eingestellten öffentlichen Profils (läuft automatisch alle sechs Stunden).",
     "This AI function has been switched off by the administrator.": "Diese KI-Funktion wurde vom Administrator abgeschaltet.",
     "AI functions in use": "Genutzte KI-Funktionen",
-    "Only ticked functions send data to the AI service; everything else keeps working without AI.": "Nur angehakte Funktionen senden Daten an den KI-Dienst; alles andere funktioniert weiter ohne KI."
+    "Only ticked functions send data to the AI service; everything else keeps working without AI.": "Nur angehakte Funktionen senden Daten an den KI-Dienst; alles andere funktioniert weiter ohne KI.",
+    "Default (:value)": "Standard (:value)",
+    "Default (.env)": "Standard (.env)",
+    "Sign out after inactivity (minutes, 0 = never)": "Abmelden nach Inaktivität (Minuten, 0 = nie)",
+    "Maximum session length (minutes)": "Maximale Sitzungsdauer (Minuten)",
+    "App sign-ins expire after unused days (0 = never)": "App-Anmeldungen verfallen nach ungenutzten Tagen (0 = nie)",
+    "Keep security log (days)": "Sicherheitsprotokoll aufbewahren (Tage)",
+    "Where sessions are stored": "Speicherort der Sitzungen",
+    "Encrypt session data": "Sitzungsdaten verschlüsseln",
+    "Keep copies off the server": "Kopien außerhalb des Servers aufbewahren",
+    "marktguru API key (optional)": "marktguru-API-Schlüssel (optional)",
+    "marktguru client key (optional)": "marktguru-Client-Schlüssel (optional)",
+    "Database (sessions visible in the profile)": "Datenbank (Sitzungen im Profil sichtbar)",
+    "Files": "Dateien",
+    "Sign-out after inactivity, session length and storage, expiry of app sign-ins and how long the security log is kept.": "Abmeldung nach Inaktivität, Sitzungsdauer und -speicher, Ablauf der App-Anmeldungen und Aufbewahrung des Sicherheitsprotokolls.",
+    "Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.": "Schlüssel für die Supermarkt-Angebote (marktguru). Meist nicht nötig – ohne sie werden die Schlüssel von der marktguru-Webseite gelesen."
 }

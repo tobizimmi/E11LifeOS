@@ -12,7 +12,7 @@ use Throwable;
 class AppSettings
 {
     /**
-     * key => [group, config paths, secret?, type]
+     * key => [group, config paths, secret?, type]; "yesno" stores "1" or "0", empty keeps the .env value.
      *
      * @var array<string, array{group: string, config: list<string>, secret: bool, type: string}>
      */
@@ -48,9 +48,19 @@ class AppSettings
         'backup_remote_username' => ['group' => 'backup', 'config' => ['backup.remote_username'], 'secret' => false, 'type' => 'text'],
         'backup_remote_password' => ['group' => 'backup', 'config' => ['backup.remote_password'], 'secret' => true, 'type' => 'text'],
         'backup_encryption_password' => ['group' => 'backup', 'config' => ['backup.encryption_password'], 'secret' => true, 'type' => 'text'],
+        'backup_remote_keep' => ['group' => 'backup', 'config' => ['backup.remote_keep'], 'secret' => false, 'type' => 'number'],
+
+        'offers_api_key' => ['group' => 'shopping', 'config' => ['services.offers.api_key'], 'secret' => true, 'type' => 'text'],
+        'offers_client_key' => ['group' => 'shopping', 'config' => ['services.offers.client_key'], 'secret' => true, 'type' => 'text'],
 
         'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],
         'error_report_email' => ['group' => 'security', 'config' => ['security.error_report_email'], 'secret' => false, 'type' => 'email'],
+        'idle_minutes' => ['group' => 'security', 'config' => ['security.idle_minutes'], 'secret' => false, 'type' => 'number'],
+        'session_lifetime' => ['group' => 'security', 'config' => ['session.lifetime'], 'secret' => false, 'type' => 'number'],
+        'api_token_idle_days' => ['group' => 'security', 'config' => ['security.api_token_idle_days'], 'secret' => false, 'type' => 'number'],
+        'log_days' => ['group' => 'security', 'config' => ['security.log_days'], 'secret' => false, 'type' => 'number'],
+        'session_driver' => ['group' => 'security', 'config' => ['session.driver'], 'secret' => false, 'type' => 'select'],
+        'session_encrypt' => ['group' => 'security', 'config' => ['session.encrypt'], 'secret' => false, 'type' => 'yesno'],
 
         'reverb_publish_port' => ['group' => 'realtime', 'config' => ['broadcasting.connections.reverb.options.port'], 'secret' => false, 'type' => 'number'],
 

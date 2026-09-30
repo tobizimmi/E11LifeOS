@@ -1,0 +1,104 @@
+name: Server einrichten
+
+# Writes the .env of Live or Staging from the GitHub secret ENV_FILE_LIVE / ENV_FILE_STAGING
+# (merge: missing keys are added, APP_KEY is never replaced) and, once the code is deployed,
+# runs "php artisan app:install" (migrations, push keys, first invite code, checklist).
+# Started from deploy.yml: Actions → "Deploy E11LifeOS" → Run workflow → action "server-einrichten".
+# Step-by-step guide: docs/live-einrichten.md
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      overwrite:
+        type: boolean
+        default: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    env:
+      APP_PATH_DEPLOY: ${{ inputs.environment == 'live' && secrets.APP_PATH_LIVE || secrets.APP_PATH_STAGING }}
+      SSH_HOST_DEPLOY: ${{ inputs.environment == 'live' && secrets.SSH_HOST_LIVE || secrets.SSH_HOST_STAGING }}
+      ENV_SECRET_NAME: ${{ inputs.environment == 'live' && 'ENV_FILE_LIVE' || 'ENV_FILE_STAGING' }}
+
+    steps:
+      - name: Check input
+        run: |
+          case "${{ inputs.environment }}" in
+            live|staging) echo "Setting up ${{ inputs.environment }} (overwrite: ${{ inputs.overwrite }})" ;;
+            *) echo "::error::Unknown environment '${{ inputs.environment }}' (live or staging)"; exit 1 ;;
+          esac
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          cat >> ~/.ssh/config << 'SSHCONFIG'
+          Host *
+            ConnectTimeout 20
+            ServerAliveInterval 15
+          SSHCONFIG
+          chmod 600 ~/.ssh/config
+
+      - name: Connect to server (with retries)
+        run: |
+          for delay in 10 20 40 60 0; do
+            if ssh-keyscan -H "${{ env.SSH_HOST_DEPLOY }}" > /tmp/known_host 2>/dev/null && [ -s /tmp/known_host ] \
+              && cat /tmp/known_host >> ~/.ssh/known_hosts \
+              && ssh -i ~/.ssh/id_rsa -o BatchMode=yes ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} true; then
+              echo "SSH connection established"
+              exit 0
+            fi
+            [ "$delay" = 0 ] && break
+            echo "SSH not reachable yet, retrying in ${delay}s ..."
+            sleep "$delay"
+          done
+          echo "Could not connect to the server via SSH." >&2
+          exit 1
+
+      - name: Write .env on the server
+        env:
+          ENV_FILE: ${{ inputs.environment == 'live' && secrets.ENV_FILE_LIVE || secrets.ENV_FILE_STAGING }}
+        run: |
+          if [ -z "$ENV_FILE" ]; then
+            echo "::error::The GitHub secret $ENV_SECRET_NAME is missing (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$ENV_FILE" > /tmp/env.incoming
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} "mkdir -p '${{ env.APP_PATH_DEPLOY }}'"
+          scp -q -i ~/.ssh/id_rsa /tmp/env.incoming ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }}:"${{ env.APP_PATH_DEPLOY }}/.env.incoming"
+          scp -q -i ~/.ssh/id_rsa .github/scripts/merge-env.php ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }}:"${{ env.APP_PATH_DEPLOY }}/.env-merge.php"
+          rm -f /tmp/env.incoming
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- "${{ env.APP_PATH_DEPLOY }}" "${{ inputs.overwrite }}" << 'EOF'
+            export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+            cd "$1"
+            chmod 600 .env.incoming
+            php .env-merge.php .env .env.incoming "$2"
+            status=$?
+            rm -f .env.incoming .env-merge.php
+            exit $status
+          EOF
+
+      - name: Install / update the app
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- "${{ env.APP_PATH_DEPLOY }}" << 'EOF'
+            set -e
+            export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+            cd "$1"
+            if [ ! -f artisan ] || [ ! -d vendor ]; then
+              echo "The code is not on this server yet. Next step: deploy (see docs/live-einrichten.md)."
+              echo "The deploy runs the installation itself and prints the invite code for the first account."
+              exit 0
+            fi
+            php artisan config:clear
+            php artisan app:install --no-interaction
+          EOF

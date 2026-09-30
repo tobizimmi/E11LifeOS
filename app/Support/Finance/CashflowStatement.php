@@ -39,6 +39,7 @@ class CashflowStatement
      *     assets: array{total: float, rows: list<array{label: string, value: float, url: ?string}>},
      *     liabilities: array{total: float, rows: list<array{label: string, value: float, url: ?string}>},
      *     doodads: array{total: float, rows: list<array{label: string, value: float, url: ?string}>},
+     *     liquid: float, reserve_months: ?float,
      *     pattern: string, has_data: bool
      * }
      */

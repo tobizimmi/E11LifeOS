@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplyUrlPrefix;
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAddonEnabled;
 use App\Http\Middleware\LogSensitiveAccess;
@@ -35,6 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [RequireTwoFactor::class, ScanUploads::class]);
         $middleware->api(append: [ScanUploads::class]);
         $middleware->append(SecurityHeaders::class);
+
+        // Only X-Forwarded-Prefix/-Proto, which ApplyUrlPrefix sets itself from APP_URL (client values are dropped).
+        $middleware->prepend(ApplyUrlPrefix::class);
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_PREFIX | Request::HEADER_X_FORWARDED_PROTO);
 
         // Sign in before route model binding, so unknown tokens get 401 instead of 404.
         $middleware->prependToPriorityList(SubstituteBindings::class, AuthenticateApiToken::class);

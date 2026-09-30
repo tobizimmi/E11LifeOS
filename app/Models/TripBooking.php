@@ -7,9 +7,17 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * A flight, train, accommodation, rental car, activity or expense of a trip.
+ *
+ * @property string $kind
+ * @property string $title
+ * @property ?string $provider
+ * @property ?Carbon $starts_at
+ * @property ?Carbon $ends_at
+ * @property ?string $reference
  */
 #[Fillable(['trip_id', 'kind', 'title', 'provider', 'starts_at', 'ends_at', 'reference', 'cost', 'paid', 'notes'])]
 class TripBooking extends Model

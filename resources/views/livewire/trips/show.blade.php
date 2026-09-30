@@ -248,6 +248,7 @@ new #[Layout('layouts.app')] class extends Component
                 @foreach (['overview' => '🧭 '.__('Overview'), 'bookings' => '🎫 '.__('Bookings'), 'packing' => '🧳 '.__('Packing list')] as $key => $label)
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                 @endforeach
+                <a href="{{ route('trips.group', $trip) }}" wire:navigate class="shrink-0 rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">👥 {{ __('Group & trip folder') }}</a>
             </div>
 
             @if ($tab === 'overview')

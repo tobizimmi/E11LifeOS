@@ -120,7 +120,9 @@ class TripPlanner
     public static function overview(Trip $trip, User $user): array
     {
         $bookings = $trip->bookings;
-        $costs = round((float) $bookings->sum('cost'), 2);
+        $stopCosts = round((float) $trip->stops->sum('cost'), 2);
+        $bookingCosts = round((float) $bookings->sum('cost'), 2);
+        $costs = round($bookingCosts + $stopCosts, 2);
         $paid = round((float) $bookings->where('paid', true)->sum('cost'), 2);
         $items = $trip->packingItems;
 
@@ -129,10 +131,10 @@ class TripPlanner
             'nights' => $trip->nights(),
             'costs' => $costs,
             'paid' => $paid,
-            'open' => round($costs - $paid, 2),
+            'open' => round($bookingCosts - $paid, 2),
             'budget_left' => $trip->budget !== null ? round($trip->budget - $costs, 2) : null,
             'budget_percent' => $trip->budget ? round($costs / $trip->budget * 100, 1) : null,
-            'by_kind' => $bookings->groupBy('kind')->map(fn ($group) => round((float) $group->sum('cost'), 2))->filter()->sortDesc()->all(),
+            'by_kind' => $bookings->groupBy('kind')->map(fn ($group) => round((float) $group->sum('cost'), 2))->put('plan', $stopCosts)->filter()->sortDesc()->all(),
             'packed' => $items->where('packed', true)->count(),
             'packing_total' => $items->count(),
             'warnings' => $trip->isPast() ? [] : self::warnings($trip, $user),

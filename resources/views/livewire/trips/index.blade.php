@@ -62,7 +62,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $trips = Trip::query()->visibleTo(Auth::user(), (int) $this->householdId)->with('shareGroups')->withSum('bookings', 'cost')->withCount(['packingItems', 'packingItems as packed_count' => fn ($query) => $query->where('packed', true)])->orderBy('starts_on')->get();
+        $trips = Trip::query()->visibleTo(Auth::user(), (int) $this->householdId)->with(['shareGroups', 'participants'])->withSum('bookings', 'cost')->withCount(['packingItems', 'packingItems as packed_count' => fn ($query) => $query->where('packed', true)])->orderBy('starts_on')->get();
 
         return [
             'upcoming' => $trips->reject->isPast()->values(),
@@ -115,41 +115,65 @@ new #[Layout('layouts.app')] class extends Component
 
             @forelse ($upcoming as $plannedTrip)
                 @php($days = (int) today()->diffInDays($plannedTrip->starts_on, false))
-                <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="trip-{{ $plannedTrip->id }}" class="block rounded-2xl bg-white p-5 shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">✈️ {{ $plannedTrip->title }} <x-audience-badge :model="$plannedTrip" /></p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ collect([$plannedTrip->destination, $plannedTrip->starts_on->format('d.m.').' – '.$plannedTrip->ends_on->format('d.m.Y'), $plannedTrip->travelers])->filter()->implode(' · ') }}</p>
+                @php($scheme = $plannedTrip->colorScheme())
+                @php($travellers = $plannedTrip->travellerNames())
+                <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="trip-{{ $plannedTrip->id }}" class="group relative isolate block overflow-hidden rounded-3xl shadow-sm transition hover:shadow-md" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+                    @if ($plannedTrip->coverUrl())
+                        <img src="{{ $plannedTrip->coverUrl() }}" alt="" loading="lazy" class="absolute inset-0 -z-10 h-full w-full object-cover transition duration-500 group-hover:scale-105">
+                    @endif
+                    <div class="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div class="flex min-h-44 flex-col justify-between gap-4 p-5 text-white sm:min-h-52">
+                        <div class="flex items-start justify-between gap-3">
+                            <span class="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur">{{ $plannedTrip->isOngoing() ? __('On the road') : trans_choice('in :count day|in :count days', $days) }}</span>
+                            <x-audience-badge :model="$plannedTrip" />
                         </div>
-                        <span @class(['rounded-full px-3 py-1 text-sm font-medium', 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' => $plannedTrip->isOngoing(), 'bg-indigo-50 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200' => ! $plannedTrip->isOngoing()])>
-                            {{ $plannedTrip->isOngoing() ? __('On the road') : trans_choice('in :count day|in :count days', $days) }}
-                        </span>
-                    </div>
-                    <div class="mt-3 flex flex-wrap gap-2 text-xs">
-                        @if ($plannedTrip->bookings_sum_cost || $plannedTrip->budget)
-                            <span class="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 dark:bg-gray-700 dark:text-gray-200">💶 {{ $euro((float) $plannedTrip->bookings_sum_cost) }}{{ $plannedTrip->budget ? ' / '.$euro($plannedTrip->budget) : '' }}</span>
-                        @endif
-                        @if ($plannedTrip->packing_items_count)
-                            <span class="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 dark:bg-gray-700 dark:text-gray-200">🧳 {{ __(':packed of :total packed', ['packed' => $plannedTrip->packed_count, 'total' => $plannedTrip->packing_items_count]) }}</span>
-                        @endif
+                        <div class="flex flex-wrap items-end justify-between gap-3">
+                            <div class="min-w-0">
+                                @if ($plannedTrip->destination)
+                                    <p class="text-xs font-medium uppercase tracking-wide text-white/80">📍 {{ $plannedTrip->destination }}</p>
+                                @endif
+                                <p class="text-2xl font-bold leading-tight drop-shadow">{{ $plannedTrip->title }}</p>
+                                <p class="mt-0.5 text-sm text-white/90">{{ $plannedTrip->starts_on->translatedFormat('j. M') }} – {{ $plannedTrip->ends_on->translatedFormat('j. M Y') }}@if ($plannedTrip->bookings_sum_cost || $plannedTrip->budget) · 💶 {{ $euro((float) $plannedTrip->bookings_sum_cost) }}{{ $plannedTrip->budget ? ' / '.$euro($plannedTrip->budget) : '' }}@endif @if ($plannedTrip->packing_items_count) · 🧳 {{ $plannedTrip->packed_count }}/{{ $plannedTrip->packing_items_count }}@endif</p>
+                            </div>
+                            @if ($travellers !== [])
+                                <div class="flex -space-x-2">
+                                    @foreach (array_slice($travellers, 0, 4) as $name)
+                                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-xs font-semibold text-gray-800 ring-2 ring-white/60">{{ mb_strtoupper(mb_substr($name, 0, 1)) }}</span>
+                                    @endforeach
+                                    @if (count($travellers) > 4)
+                                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-xs font-semibold ring-2 ring-white/60">+{{ count($travellers) - 4 }}</span>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </a>
             @empty
                 <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🧳</p>
                     <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No trip planned yet.') }}</p>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Collect flights, accommodation and tickets with their booking codes, keep an eye on the budget, tick off the packing list – and get a reminder if your passport expires before the trip ends.') }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Plan each day with sights, restaurants and activities, collect flights and accommodation with their booking codes, keep an eye on the budget and tick off the packing list.') }}</p>
                 </section>
             @endforelse
 
             @if ($past->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
-                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Past trips') }}</h3>
-                    <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
+                <section>
+                    <h3 class="mb-2 font-semibold text-gray-900 dark:text-gray-100">{{ __('Past trips') }}</h3>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         @foreach ($past as $plannedTrip)
-                            <li wire:key="past-{{ $plannedTrip->id }}"><a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate class="flex flex-wrap items-center gap-x-3 py-2 text-sm hover:underline"><span class="min-w-0 flex-1 text-gray-900 dark:text-gray-100">{{ $plannedTrip->title }}</span><span class="text-gray-500 dark:text-gray-400">{{ $plannedTrip->starts_on->format('d.m.Y') }}{{ $plannedTrip->bookings_sum_cost ? ' · '.$euro((float) $plannedTrip->bookings_sum_cost) : '' }}</span></a></li>
+                            @php($scheme = $plannedTrip->colorScheme())
+                            <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="past-{{ $plannedTrip->id }}" class="relative isolate block overflow-hidden rounded-2xl shadow-sm" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+                                @if ($plannedTrip->coverUrl())
+                                    <img src="{{ $plannedTrip->coverUrl() }}" alt="" loading="lazy" class="absolute inset-0 -z-10 h-full w-full object-cover">
+                                @endif
+                                <div class="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 to-black/10"></div>
+                                <div class="flex min-h-28 flex-col justify-end p-3 text-white">
+                                    <p class="truncate font-semibold">{{ $plannedTrip->title }}</p>
+                                    <p class="text-xs text-white/85">{{ $plannedTrip->starts_on->translatedFormat('M Y') }}{{ $plannedTrip->bookings_sum_cost ? ' · '.$euro((float) $plannedTrip->bookings_sum_cost) : '' }}</p>
+                                </div>
+                            </a>
                         @endforeach
-                    </ul>
+                    </div>
                 </section>
             @endif
         </div>

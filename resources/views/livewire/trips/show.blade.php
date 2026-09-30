@@ -6,7 +6,9 @@ use App\Models\Item;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
-use App\Models\TripPackingItem;
+use App\Models\TripStop;
+use App\Support\Life\TripCovers;
+use App\Support\Life\TripItinerary;
 use App\Support\Life\TripPlanner;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -14,19 +16,22 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 /**
- * One trip: countdown, costs against the budget and checks before leaving, the bookings with
- * their codes and documents, and the packing list.
+ * One trip, laid out like Lambus: a cover with countdown and travellers, the day-by-day plan with
+ * ideas and drag & drop, routes per day, bookings with documents, costs and the packing list.
  */
 new #[Layout('layouts.app')] class extends Component
 {
-    use InteractsWithHousehold;
+    use InteractsWithHousehold, WithFileUploads;
+
+    private const TABS = ['overview', 'plan', 'map', 'bookings', 'costs', 'packing'];
 
     #[Locked]
     public int $tripId;
 
-    /** overview, bookings or packing */
+    /** overview, plan, map, bookings, costs or packing */
     #[Url(except: 'overview')]
     public string $tab = 'overview';
 
@@ -51,11 +56,26 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $details = [];
 
+    /** Cover photo while uploading (saved right away). */
+    public $cover = null;
+
+    /**
+     * @var array{kind: string, title: string, day: string, time: string, end_time: string, location: string, cost: string, notes: string}
+     */
+    public array $stop = [];
+
+    public ?int $editingStopId = null;
+
+    public bool $stopSheet = false;
+
+    public string $idea = '';
+
     public function mount(Trip $trip): void
     {
         $this->resolveHousehold();
         $this->tripId = $this->findTrip($trip->id)->id;
-        $this->tab = in_array($this->tab, ['overview', 'bookings', 'packing'], true) ? $this->tab : 'overview';
+        $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'overview';
+        $this->resetStop();
         $this->resetBooking();
         $this->fillDetails();
     }
@@ -106,6 +126,162 @@ new #[Layout('layouts.app')] class extends Component
         ]);
         $this->fillDetails();
         $this->dispatch('toast', message: __('Saved.'));
+    }
+
+    public function updatedCover(): void
+    {
+        $this->validate(['cover' => ['image', 'max:15360']], attributes: ['cover' => __('Cover photo')]);
+        $trip = $this->findTrip();
+        $old = $trip->cover_path;
+        $trip->update(['cover_path' => TripCovers::store($this->cover, $trip->household_id)]);
+        TripCovers::delete($old);
+        $this->cover = null;
+    }
+
+    public function removeCover(): void
+    {
+        $trip = $this->findTrip();
+        TripCovers::delete($trip->cover_path);
+        $trip->update(['cover_path' => null]);
+    }
+
+    public function setColor(string $color): void
+    {
+        abort_unless(array_key_exists($color, Trip::colorSchemes()), 422);
+        $this->findTrip()->update(['color' => $color]);
+    }
+
+    private function resetStop(?string $day = null, string $kind = 'sight'): void
+    {
+        $this->stop = ['kind' => $kind, 'title' => '', 'day' => (string) $day, 'time' => '', 'end_time' => '', 'location' => '', 'cost' => '', 'notes' => ''];
+        $this->editingStopId = null;
+        $this->resetValidation();
+    }
+
+    /**
+     * Opens the entry form for a day (Y-m-d) or, without one, for the ideas.
+     */
+    public function openStop(?string $day = null): void
+    {
+        $this->resetStop($day !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) ? $day : null);
+        $this->stopSheet = true;
+    }
+
+    public function editStop(int $id): void
+    {
+        $stop = $this->findStop($id);
+        $this->stop = [
+            'kind' => $stop->kind, 'title' => $stop->title, 'day' => (string) $stop->day?->toDateString(),
+            'time' => (string) $stop->time, 'end_time' => (string) $stop->end_time, 'location' => (string) $stop->location,
+            'cost' => $stop->cost !== null ? number_format($stop->cost, 2, ',', '') : '', 'notes' => (string) $stop->notes,
+        ];
+        $this->editingStopId = $stop->id;
+        $this->resetValidation();
+        $this->stopSheet = true;
+    }
+
+    public function closeStop(): void
+    {
+        $this->stopSheet = false;
+        $this->resetStop();
+    }
+
+    private function findStop(int $id): TripStop
+    {
+        return $this->findTrip()->stops()->find($id) ?? abort(404);
+    }
+
+    public function saveStop(): void
+    {
+        $this->stop['cost'] = TripPlanner::number((string) $this->stop['cost']);
+        $data = $this->validate([
+            'stop.kind' => ['required', Rule::in(TripStop::KINDS)],
+            'stop.title' => ['required', 'string', 'max:150'],
+            'stop.day' => ['nullable', 'date_format:Y-m-d'],
+            'stop.time' => ['nullable', 'date_format:H:i'],
+            'stop.end_time' => ['nullable', 'date_format:H:i'],
+            'stop.location' => ['nullable', 'string', 'max:255'],
+            'stop.cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+            'stop.notes' => ['nullable', 'string', 'max:2000'],
+        ], attributes: ['stop.title' => __('Title'), 'stop.cost' => __('Cost (€)'), 'stop.time' => __('Time')])['stop'];
+
+        $trip = $this->findTrip();
+        $values = [
+            'kind' => $data['kind'], 'title' => $data['title'], 'day' => $data['day'] ?: null,
+            'time' => $data['time'] ?: null, 'end_time' => $data['end_time'] ?: null, 'location' => $data['location'] ?: null,
+            'cost' => $data['cost'] !== '' ? $data['cost'] : null, 'notes' => $data['notes'] ?: null,
+        ];
+
+        if ($this->editingStopId) {
+            $stop = $this->findStop($this->editingStopId);
+            $moved = $stop->day?->toDateString() !== $values['day'];
+            $stop->update($values + ($moved ? ['position' => $this->nextPosition($trip, $values['day'])] : []));
+        } else {
+            $trip->stops()->create($values + ['position' => $this->nextPosition($trip, $values['day']), 'created_by' => Auth::id()]);
+        }
+
+        $this->closeStop();
+        $this->dispatch('toast', message: __('Saved.'));
+    }
+
+    /**
+     * Quick idea from the plan: just a title, planned later.
+     */
+    public function addIdea(): void
+    {
+        $title = trim($this->idea);
+
+        if ($title === '') {
+            return;
+        }
+
+        $trip = $this->findTrip();
+        $trip->stops()->create(['kind' => 'sight', 'title' => mb_substr($title, 0, 150), 'position' => $this->nextPosition($trip, null), 'created_by' => Auth::id()]);
+        $this->idea = '';
+    }
+
+    private function nextPosition(Trip $trip, ?string $day): int
+    {
+        return (int) $trip->stops()->when($day, fn ($query) => $query->whereDate('day', $day), fn ($query) => $query->whereNull('day'))->max('position') + 1;
+    }
+
+    /**
+     * Drag & drop in the plan: puts the entry on the day ("ideas" for none) at the given position.
+     */
+    public function moveStop(int $id, string $day, int $position): void
+    {
+        $trip = $this->findTrip();
+        $stop = $this->findStop($id);
+        $targetDay = $day === 'ideas' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) ? null : $day;
+        $siblings = $trip->stops()->where('id', '!=', $stop->id)
+            ->when($targetDay, fn ($query) => $query->whereDate('day', $targetDay), fn ($query) => $query->whereNull('day'))
+            ->get()->values();
+        $siblings->splice(max(0, min($position, $siblings->count())), 0, [$stop]);
+
+        foreach ($siblings as $index => $sibling) {
+            $sibling->forceFill(['position' => $index + 1] + ($sibling->is($stop) ? ['day' => $targetDay] : []))->save();
+        }
+    }
+
+    public function toggleStopDone(int $id): void
+    {
+        $stop = $this->findStop($id);
+        $stop->update(['done' => ! $stop->done]);
+    }
+
+    public function deleteStop(int $id): void
+    {
+        $this->findStop($id)->delete();
+        $this->closeStop();
+    }
+
+    /**
+     * Opens a booking from the plan in the bookings tab.
+     */
+    public function showBooking(int $id): void
+    {
+        $this->tab = 'bookings';
+        $this->editBooking($id);
     }
 
     public function deleteTrip(): void
@@ -216,10 +392,13 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $trip = $this->findTrip()->load(['bookings', 'packingItems']);
+        $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants']);
 
         return [
             'trip' => $trip,
+            'itinerary' => TripItinerary::build($trip),
+            'stopKinds' => TripStop::kinds(),
+            'colors' => Trip::colorSchemes(),
             'overview' => TripPlanner::overview($trip, $this->currentUser()),
             'kinds' => TripBooking::kinds(),
             'categories' => TripPlanner::categories(),
@@ -235,6 +414,9 @@ new #[Layout('layouts.app')] class extends Component
     $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $levels = ['critical' => 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800', 'warning' => 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800', 'hint' => 'bg-gray-50 text-gray-700 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-300 dark:ring-gray-700'];
+    $scheme = $trip->colorScheme();
+    $travellers = $trip->travellerNames();
+    $dayLabel = fn (\Illuminate\Support\Carbon $date, int $number) => __('Day :number', ['number' => $number]).' · '.$date->translatedFormat('D, j. M');
 @endphp
 
 <div>
@@ -247,14 +429,129 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                @foreach (['overview' => '🧭 '.__('Overview'), 'bookings' => '🎫 '.__('Bookings'), 'packing' => '🧳 '.__('Packing list')] as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
+            {{-- Cover: photo or colour, countdown, dates and travellers (like Lambus) --}}
+            <section class="relative isolate overflow-hidden rounded-3xl shadow-sm" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+                @if ($trip->coverUrl())
+                    <img src="{{ $trip->coverUrl() }}" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover">
+                @endif
+                <div class="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
+                <div class="flex min-h-52 flex-col justify-between gap-6 p-5 text-white sm:min-h-64 sm:p-6">
+                    <div class="flex items-start justify-between gap-3">
+                        <span class="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur">
+                            @if ($trip->isPast())
+                                {{ __('Travelled') }}
+                            @elseif ($trip->isOngoing())
+                                {{ __('On the road') }} · {{ __('Day :number', ['number' => (int) $trip->starts_on->diffInDays(today()) + 1]) }}
+                            @else
+                                {{ trans_choice('in :count day|in :count days', $overview['days_until']) }}
+                            @endif
+                        </span>
+                        <div class="flex items-center gap-1" x-data="{ open: false }">
+                            <label class="cursor-pointer rounded-full bg-white/20 p-2 backdrop-blur hover:bg-white/30" title="{{ __('Change cover photo') }}">
+                                <span class="sr-only">{{ __('Change cover photo') }}</span>
+                                <span aria-hidden="true" wire:loading.remove wire:target="cover">📷</span>
+                                <span aria-hidden="true" wire:loading wire:target="cover">⏳</span>
+                                <input type="file" accept="image/*" wire:model="cover" class="sr-only">
+                            </label>
+                            <button type="button" x-on:click="open = ! open" class="rounded-full bg-white/20 p-2 backdrop-blur hover:bg-white/30" title="{{ __('Colour') }}" aria-label="{{ __('Colour') }}">🎨</button>
+                            <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-5 top-16 z-10 flex gap-2 rounded-2xl bg-white p-2 shadow-lg dark:bg-gray-800">
+                                @foreach ($colors as $key => $color)
+                                    <button type="button" wire:click="setColor('{{ $key }}')" x-on:click="open = false" class="h-8 w-8 rounded-full ring-2 ring-offset-2 {{ $trip->color === $key ? 'ring-gray-900 dark:ring-white' : 'ring-transparent' }}" style="background-image: linear-gradient(135deg, {{ $color['from'] }}, {{ $color['to'] }})" aria-label="{{ $key }}"></button>
+                                @endforeach
+                                @if ($trip->cover_path)
+                                    <button type="button" wire:click="removeCover" x-on:click="open = false" class="rounded-full px-2 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ __('Remove photo') }}</button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-end justify-between gap-3">
+                        <div class="min-w-0">
+                            @if ($trip->destination)
+                                <p class="text-sm font-medium uppercase tracking-wide text-white/80">📍 {{ $trip->destination }}</p>
+                            @endif
+                            <p class="text-3xl font-bold leading-tight drop-shadow sm:text-4xl">{{ $trip->title }}</p>
+                            <p class="mt-1 text-sm text-white/90">{{ $trip->starts_on->translatedFormat('j. M') }} – {{ $trip->ends_on->translatedFormat('j. M Y') }} · {{ trans_choice(':count night|:count nights', $overview['nights']) }}</p>
+                        </div>
+                        @if ($travellers !== [])
+                            <div class="flex -space-x-2" title="{{ implode(', ', $travellers) }}">
+                                @foreach (array_slice($travellers, 0, 4) as $name)
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-sm font-semibold text-gray-800 ring-2 ring-white/60">{{ mb_strtoupper(mb_substr($name, 0, 1)) }}</span>
+                                @endforeach
+                                @if (count($travellers) > 4)
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-xs font-semibold text-white ring-2 ring-white/60">+{{ count($travellers) - 4 }}</span>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                <x-input-error :messages="$errors->get('cover')" class="px-5 pb-3 text-white" />
+            </section>
+
+            <div class="sticky top-14 z-10 -mx-1 flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/90 p-1 shadow-sm ring-1 ring-gray-200 backdrop-blur lg:top-2 dark:bg-gray-800/90 dark:ring-gray-700" role="tablist">
+                @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
+                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])><span class="text-base" aria-hidden="true">{{ $icon }}</span>{{ $label }}</button>
                 @endforeach
-                <a href="{{ route('trips.group', $trip) }}" wire:navigate class="shrink-0 rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">👥 {{ __('Group & trip folder') }}</a>
+                <a href="{{ route('trips.group', $trip) }}" wire:navigate class="flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 sm:flex-row sm:gap-1.5 sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700"><span class="text-base" aria-hidden="true">👥</span>{{ __('Group') }}</a>
             </div>
 
             @if ($tab === 'overview')
+                @if ($itinerary['next'])
+                    @php($next = $itinerary['next'])
+                    <button type="button" wire:click="$set('tab', 'plan')" class="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-2xl dark:bg-indigo-900/40" aria-hidden="true">{{ $next['icon'] }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">{{ __('Up next') }}</span>
+                            <span class="block truncate font-semibold text-gray-900 dark:text-gray-100">{{ $next['title'] }}</span>
+                            <span class="block text-sm text-gray-500 dark:text-gray-400">{{ $next['when']->isToday() ? __('Today') : ($next['when']->isTomorrow() ? __('Tomorrow') : $next['when']->translatedFormat('D, j. M')) }}@if ($next['when']->format('H:i') !== '23:59') · {{ $next['when']->format('H:i') }}@endif @if ($next['day']) · {{ __('Day :number', ['number' => $next['day']]) }}@endif</span>
+                        </span>
+                        <span class="text-gray-300" aria-hidden="true">›</span>
+                    </button>
+                @endif
+
+                <section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <button type="button" wire:click="$set('tab', 'plan')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">🗓️ {{ __('Itinerary') }}</p>
+                        <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $itinerary['planned_days'] }} / {{ count($itinerary['days']) }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('days planned') }}@if ($itinerary['ideas']->isNotEmpty()) · {{ trans_choice(':count idea|:count ideas', $itinerary['ideas']->count()) }}@endif</p>
+                    </button>
+                    <button type="button" wire:click="$set('tab', 'costs')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">💶 {{ __('Costs') }}</p>
+                        <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['costs']) }}</p>
+                        @if ($overview['budget_percent'] !== null)
+                            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ (int) $overview['budget_percent'] }}" aria-valuemin="0" aria-valuemax="100"><div @class(['h-full rounded-full', 'bg-emerald-500' => $overview['budget_percent'] < 90, 'bg-amber-500' => $overview['budget_percent'] >= 90 && $overview['budget_percent'] <= 100, 'bg-red-500' => $overview['budget_percent'] > 100]) style="width: {{ min(100, $overview['budget_percent']) }}%"></div></div>
+                        @endif
+                    </button>
+                    <button type="button" wire:click="$set('tab', 'bookings')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">🎫 {{ __('Bookings') }}</p>
+                        <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $trip->bookings->count() }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">@if ($overview['open'] > 0){{ __(':amount still to pay', ['amount' => $euro($overview['open'])]) }}@else{{ __('Tickets & documents') }}@endif</p>
+                    </button>
+                    <button type="button" wire:click="$set('tab', 'packing')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">🧳 {{ __('Packing list') }}</p>
+                        <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $overview['packed'] }} / {{ $overview['packing_total'] }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('packed') }}</p>
+                    </button>
+                </section>
+
+                @if ($overview['warnings'] !== [])
+                    <section class="space-y-2">
+                        @foreach ($overview['warnings'] as $warning)
+                            <div class="flex flex-wrap items-center gap-2 rounded-xl p-3 text-sm ring-1 {{ $levels[$warning['level']] }}" @if ($warning['level'] !== 'hint') role="alert" @endif>
+                                <span aria-hidden="true">{{ ['critical' => '⛔', 'warning' => '⚠️', 'hint' => '💡'][$warning['level']] }}</span>
+                                <span class="min-w-0 flex-1">{{ $warning['text'] }}</span>
+                                @if ($warning['url'])<a href="{{ $warning['url'] }}" wire:navigate class="text-xs font-medium underline">{{ __('Check now') }}</a>@endif
+                            </div>
+                        @endforeach
+                    </section>
+                @endif
+
+                @if ($trip->notes)
+                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">📝 {{ __('Notes') }}</h3>
+                        <p class="mt-2 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ $trip->notes }}</p>
+                    </section>
+                @endif
+
                 <livewire:sharing.panel type="trip" :id="$trip->id" :wire:key="'share-trip-'.$trip->id" />
                 <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
                     <span class="text-2xl" aria-hidden="true">🧾</span>
@@ -284,58 +581,9 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
                 @endif
-                <section class="grid gap-3 sm:grid-cols-3">
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $trip->isPast() ? __('Travelled') : ($trip->isOngoing() ? __('On the road') : __('Departure')) }}</p>
-                        <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $trip->isOngoing() || $trip->isPast() ? $trip->starts_on->format('d.m.') : trans_choice(':count day|:count days', $overview['days_until']) }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $trip->starts_on->translatedFormat('D, j. M') }} – {{ $trip->ends_on->translatedFormat('D, j. M Y') }} · {{ trans_choice(':count night|:count nights', $overview['nights']) }}</p>
-                    </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Costs') }}</p>
-                        <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['costs']) }}</p>
-                        @if ($overview['budget_percent'] !== null)
-                            <div class="mt-2 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ (int) $overview['budget_percent'] }}" aria-valuemin="0" aria-valuemax="100"><div @class(['h-full rounded-full', 'bg-emerald-500' => $overview['budget_percent'] < 90, 'bg-amber-500' => $overview['budget_percent'] >= 90 && $overview['budget_percent'] <= 100, 'bg-red-500' => $overview['budget_percent'] > 100]) style="width: {{ min(100, $overview['budget_percent']) }}%"></div></div>
-                            <p @class(['mt-1 text-xs', 'text-red-600 dark:text-red-400' => $overview['budget_left'] < 0, 'text-gray-500 dark:text-gray-400' => $overview['budget_left'] >= 0])>{{ $overview['budget_left'] >= 0 ? __(':amount of the budget left', ['amount' => $euro($overview['budget_left'])]) : __(':amount over budget', ['amount' => $euro(-$overview['budget_left'])]) }}</p>
-                        @elseif ($overview['open'] > 0)
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':amount still to pay', ['amount' => $euro($overview['open'])]) }}</p>
-                        @endif
-                    </div>
-                    <button type="button" wire:click="$set('tab', 'packing')" class="rounded-2xl bg-white p-5 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Packing list') }}</p>
-                        <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $overview['packed'] }} / {{ $overview['packing_total'] }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('packed') }}</p>
-                    </button>
-                </section>
-
-                @if ($overview['warnings'] !== [])
-                    <section class="space-y-2">
-                        @foreach ($overview['warnings'] as $warning)
-                            <div class="flex flex-wrap items-center gap-2 rounded-xl p-3 text-sm ring-1 {{ $levels[$warning['level']] }}" @if ($warning['level'] !== 'hint') role="alert" @endif>
-                                <span aria-hidden="true">{{ ['critical' => '⛔', 'warning' => '⚠️', 'hint' => '💡'][$warning['level']] }}</span>
-                                <span class="min-w-0 flex-1">{{ $warning['text'] }}</span>
-                                @if ($warning['url'])<a href="{{ $warning['url'] }}" wire:navigate class="text-xs font-medium underline">{{ __('Check now') }}</a>@endif
-                            </div>
-                        @endforeach
-                    </section>
-                @endif
-
-                @if ($overview['by_kind'] !== [])
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
-                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Costs by type') }}</h3>
-                        <ul class="mt-2 space-y-1 text-sm">
-                            @foreach ($overview['by_kind'] as $kind => $amount)
-                                <li class="flex justify-between gap-2"><span class="text-gray-700 dark:text-gray-200">{{ $kinds[$kind]['icon'] ?? '' }} {{ $kinds[$kind]['label'] ?? $kind }}</span><span class="tabular-nums text-gray-600 dark:text-gray-300">{{ $euro($amount) }}</span></li>
-                            @endforeach
-                        </ul>
-                    </section>
-                @endif
-
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
-                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">📎 {{ __('Tickets & documents') }}</h3>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Booking confirmations, boarding passes and visas – stored encrypted.') }}</p>
-                    <div class="mt-3"><livewire:documents-panel type="trip" :id="$trip->id" :wire:key="'documents-trip-'.$trip->id" /></div>
-                </section>
-
+                <details class="group rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between p-5 font-semibold text-gray-900 dark:text-gray-100">✏️ {{ __('Edit trip') }} <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span></summary>
+                    <div class="px-0 pb-0">
                 <form wire:submit="saveDetails" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">✏️ {{ __('Details') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="details.title" class="{{ $input }}"><x-input-error :messages="$errors->get('details.title')" /></label>
@@ -355,6 +603,119 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </div>
                 </form>
+                    </div>
+                </details>
+            @elseif ($tab === 'plan')
+                <form wire:submit="addIdea" class="flex flex-wrap gap-2">
+                    <input type="text" wire:model="idea" class="block min-w-0 flex-1 basis-full rounded-xl sm:basis-0 border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" placeholder="💡 {{ __('Add an idea – plan it on a day later …') }}" aria-label="{{ __('Add an idea') }}">
+                    <x-secondary-button type="submit" class="flex-1 justify-center sm:flex-none">💡 {{ __('Add idea') }}</x-secondary-button>
+                    <x-primary-button type="button" wire:click="openStop" class="flex-1 justify-center sm:flex-none">+ {{ __('Entry') }}</x-primary-button>
+                </form>
+
+                <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
+                    <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>
+                    <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Drag onto a day to plan') }} (⠿)</p>
+                    <ul class="mt-2 min-h-10 space-y-2" x-sort="$wire.moveStop($item, 'ideas', $position)" x-sort:group="trip-plan">
+                        @forelse ($itinerary['ideas'] as $entry)
+                            @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro])
+                        @empty
+                            <li class="rounded-xl border border-dashed border-amber-200 p-3 text-center text-xs text-amber-700 dark:border-amber-800 dark:text-amber-300">{{ __('Collect sights, restaurants and tips here.') }}</li>
+                        @endforelse
+                    </ul>
+                </section>
+
+                @foreach ($itinerary['days'] as $day)
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="day-{{ $day['date']->toDateString() }}">
+                        <div class="flex items-center gap-3">
+                            <span @class(['flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl text-white', 'ring-2 ring-offset-2 ring-indigo-400 dark:ring-offset-gray-800' => $day['date']->isToday()]) style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+                                <span class="text-[10px] uppercase leading-none opacity-90">{{ __('Day') }}</span>
+                                <span class="text-base font-bold leading-none">{{ $day['number'] }}</span>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $day['date']->translatedFormat('l, j. F') }}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $day['date']->isToday() ? __('Today').' · ' : '' }}{{ trans_choice(':count entry|:count entries', $day['stops']->count() + count($day['bookings'])) }}</p>
+                            </div>
+                            @if ($day['route'])
+                                <a href="{{ $day['route'] }}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">🗺️ {{ __('Route') }}</a>
+                            @endif
+                            <button type="button" wire:click="openStop('{{ $day['date']->toDateString() }}')" class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-lg text-white hover:bg-indigo-500" aria-label="{{ __('Add entry to :day', ['day' => $dayLabel($day['date'], $day['number'])]) }}">+</button>
+                        </div>
+
+                        @if ($day['bookings'] !== [])
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($day['bookings'] as $event)
+                                    <li wire:key="day-booking-{{ $event['booking']->id }}-{{ $event['time'] }}-{{ $loop->index }}">
+                                        <button type="button" wire:click="showBooking({{ $event['booking']->id }})" class="flex w-full items-center gap-3 rounded-xl bg-indigo-50/70 p-2.5 text-left text-sm ring-1 ring-indigo-100 hover:ring-indigo-300 dark:bg-indigo-900/20 dark:ring-indigo-900/60">
+                                            <span class="w-11 shrink-0 text-center text-xs font-semibold tabular-nums text-indigo-700 dark:text-indigo-300">{{ $event['time'] }}</span>
+                                            <span class="text-lg" aria-hidden="true">{{ $kinds[$event['booking']->kind]['icon'] ?? '📌' }}</span>
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $event['label'] }}</span>
+                                                <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ collect([$event['label'] !== $event['booking']->title ? $event['booking']->title : null, $event['booking']->provider])->filter()->implode(' · ') ?: ($kinds[$event['booking']->kind]['label'] ?? '') }}</span>
+                                            </span>
+                                            <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-gray-800 dark:text-indigo-300">🎫 {{ __('Booking') }}</span>
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+
+                        <ul class="mt-2 min-h-10 space-y-2" x-sort="$wire.moveStop($item, '{{ $day['date']->toDateString() }}', $position)" x-sort:group="trip-plan">
+                            @foreach ($day['stops'] as $entry)
+                                @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro])
+                            @endforeach
+                            @if ($day['stops']->isEmpty() && $day['bookings'] === [])
+                                <li class="rounded-xl border border-dashed border-gray-200 p-3 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">{{ __('Nothing planned yet – tap + or drag an idea here.') }}</li>
+                            @endif
+                        </ul>
+                    </section>
+                @endforeach
+            @elseif ($tab === 'map')
+                @php($mappedDays = collect($itinerary['days'])->filter(fn ($day) => $day['route'] !== null))
+                @php($mappedIdeas = $itinerary['ideas']->filter(fn ($entry) => $entry->mapsUrl() !== null))
+                @if ($mappedDays->isEmpty() && $mappedIdeas->isEmpty())
+                    <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                        <p class="text-4xl" aria-hidden="true">🗺️</p>
+                        <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No places on the map yet.') }}</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Add a place or address to entries in the itinerary – then you get the route for each day here.') }}</p>
+                    </section>
+                @endif
+                @foreach ($mappedDays as $day)
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="map-day-{{ $day['number'] }}">
+                        <div class="flex items-center justify-between gap-3">
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $dayLabel($day['date'], $day['number']) }}</h3>
+                            <a href="{{ $day['route'] }}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">🧭 {{ __('Open route') }}</a>
+                        </div>
+                        <ol class="mt-3 space-y-2">
+                            @foreach ($day['stops']->filter(fn ($entry) => $entry->mapsUrl() && $entry->kind !== 'note')->values() as $index => $entry)
+                                <li class="flex items-center gap-3 text-sm" wire:key="map-stop-{{ $entry->id }}">
+                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style="background-color: {{ $scheme['to'] }}">{{ $index + 1 }}</span>
+                                    <span class="min-w-0 flex-1"><span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $stopKinds[$entry->kind]['icon'] ?? '' }} {{ $entry->title }}</span><span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $entry->location }}</span></span>
+                                    <a href="{{ $entry->mapsUrl() }}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 underline dark:text-indigo-400">{{ __('Map') }}</a>
+                                </li>
+                            @endforeach
+                        </ol>
+                    </section>
+                @endforeach
+                @if ($mappedIdeas->isNotEmpty())
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Ideas') }}</h3>
+                        <ul class="mt-2 grid gap-2 sm:grid-cols-2">
+                            @foreach ($mappedIdeas as $entry)
+                                <li wire:key="map-idea-{{ $entry->id }}"><a href="{{ $entry->mapsUrl() }}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 rounded-xl bg-gray-50 p-2 text-sm hover:bg-gray-100 dark:bg-gray-900/40 dark:hover:bg-gray-700"><span aria-hidden="true">{{ $stopKinds[$entry->kind]['icon'] ?? '📍' }}</span><span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $entry->title }}</span><span class="truncate text-xs text-gray-500">{{ $entry->location }}</span></a></li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+                @if ($places->isNotEmpty())
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">📍 {{ __('Places for this trip') }}</h3>
+                        <ul class="mt-2 grid gap-2 sm:grid-cols-2">
+                            @foreach ($places as $place)
+                                <li wire:key="map-place-{{ $place->id }}"><a href="{{ $place->mapsUrl() }}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 rounded-xl bg-gray-50 p-2 text-sm hover:bg-gray-100 dark:bg-gray-900/40 dark:hover:bg-gray-700"><span aria-hidden="true">{{ \App\Models\Place::categories()[$place->category]['icon'] ?? '📍' }}</span><span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $place->name }}</span></a></li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
             @elseif ($tab === 'bookings')
                 <form wire:submit="saveBooking" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ $editingBookingId ? __('Edit booking') : __('New booking') }}</h3>
@@ -402,6 +763,49 @@ new #[Layout('layouts.app')] class extends Component
                             @endforeach
                         </ul>
                     @endif
+                </section>
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">📎 {{ __('Tickets & documents') }}</h3>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Booking confirmations, boarding passes and visas – stored encrypted.') }}</p>
+                    <div class="mt-3"><livewire:documents-panel type="trip" :id="$trip->id" :wire:key="'documents-trip-'.$trip->id" /></div>
+                </section>
+            @elseif ($tab === 'costs')
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Costs of the trip') }}</p>
+                    <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['costs']) }}</p>
+                    @if ($overview['budget_percent'] !== null)
+                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ (int) $overview['budget_percent'] }}" aria-valuemin="0" aria-valuemax="100"><div @class(['h-full rounded-full', 'bg-emerald-500' => $overview['budget_percent'] < 90, 'bg-amber-500' => $overview['budget_percent'] >= 90 && $overview['budget_percent'] <= 100, 'bg-red-500' => $overview['budget_percent'] > 100]) style="width: {{ min(100, $overview['budget_percent']) }}%"></div></div>
+                        <p @class(['mt-1 text-sm', 'text-red-600 dark:text-red-400' => $overview['budget_left'] < 0, 'text-gray-500 dark:text-gray-400' => $overview['budget_left'] >= 0])>{{ $overview['budget_left'] >= 0 ? __(':amount of the budget left', ['amount' => $euro($overview['budget_left'])]) : __(':amount over budget', ['amount' => $euro(-$overview['budget_left'])]) }}</p>
+                    @else
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Set a budget under Overview → Edit trip to see how much is left.') }}</p>
+                    @endif
+                    @if ($overview['open'] > 0)
+                        <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">{{ __(':amount still to pay', ['amount' => $euro($overview['open'])]) }}</p>
+                    @endif
+                </section>
+
+                @if ($overview['by_kind'] !== [])
+                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Costs by type') }}</h3>
+                        <ul class="mt-3 space-y-2 text-sm">
+                            @foreach ($overview['by_kind'] as $kind => $amount)
+                                <li>
+                                    <div class="flex justify-between gap-2"><span class="text-gray-700 dark:text-gray-200">{{ $kind === 'plan' ? '🗓️ '.__('Itinerary (on site)') : ($kinds[$kind]['icon'] ?? '').' '.($kinds[$kind]['label'] ?? $kind) }}</span><span class="tabular-nums text-gray-600 dark:text-gray-300">{{ $euro($amount) }}</span></div>
+                                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700"><div class="h-full rounded-full" style="width: {{ $overview['costs'] > 0 ? round($amount / $overview['costs'] * 100) : 0 }}%; background-color: {{ $scheme['to'] }}"></div></div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+
+                <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <span class="text-2xl" aria-hidden="true">🧾</span>
+                    <p class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Share costs on the trip: who paid what and who owes whom.') }}</p>
+                    @forelse ($expenseGroups as $expenseGroup)
+                        <a href="{{ route('splits.show', $expenseGroup) }}" wire:navigate class="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200">{{ $expenseGroup->icon }} {{ $expenseGroup->title }}</a>
+                    @empty
+                        <a href="{{ route('splits.index', ['trip' => $trip->id]) }}" wire:navigate class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">+ {{ __('Split costs') }}</a>
+                    @endforelse
                 </section>
             @else
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
@@ -461,4 +865,42 @@ new #[Layout('layouts.app')] class extends Component
             @endif
         </div>
     </div>
+
+    @if ($stopSheet)
+        <x-sheet close="closeStop" :label="$editingStopId ? __('Edit entry') : __('New entry')" size="md" wire:key="trip-stop-sheet-{{ $editingStopId ?? 'new' }}">
+            <x-slot:header>
+                <span class="truncate">{{ $editingStopId ? __('Edit entry') : __('New entry') }}</span>
+            </x-slot:header>
+            <form wire:submit="saveStop" id="trip-stop-form" class="space-y-4">
+                <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="{{ __('Type') }}">
+                    @foreach ($stopKinds as $key => $stopKind)
+                        <button type="button" role="radio" aria-checked="{{ $stop['kind'] === $key ? 'true' : 'false' }}" wire:click="$set('stop.kind', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white' => $stop['kind'] === $key, 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200' => $stop['kind'] !== $key])>{{ $stopKind['icon'] }} {{ $stopKind['label'] }}</button>
+                    @endforeach
+                </div>
+                <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="stop.title" class="{{ $input }}" placeholder="{{ __('e.g. Sagrada Família') }}" autofocus><x-input-error :messages="$errors->get('stop.title')" /></label>
+                <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Day') }}
+                    <select wire:model="stop.day" class="{{ $input }}">
+                        <option value="">💡 {{ __('Idea – no day yet') }}</option>
+                        @foreach ($itinerary['days'] as $day)
+                            <option value="{{ $day['date']->toDateString() }}">{{ $dayLabel($day['date'], $day['number']) }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('From') }}<input type="time" wire:model="stop.time" class="{{ $input }}"><x-input-error :messages="$errors->get('stop.time')" /></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Until') }}<input type="time" wire:model="stop.end_time" class="{{ $input }}"></label>
+                </div>
+                <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Place / address') }}<input type="text" wire:model="stop.location" class="{{ $input }}" placeholder="{{ __('e.g. Carrer de Mallorca 401, Barcelona') }}"></label>
+                <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Cost (€)') }}<input type="text" inputmode="decimal" wire:model="stop.cost" class="{{ $input }}"><x-input-error :messages="$errors->get('stop.cost')" /></label>
+                <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Notes') }}<textarea wire:model="stop.notes" rows="3" class="{{ $input }}" placeholder="{{ __('Opening hours, tickets, tips …') }}"></textarea></label>
+            </form>
+            <x-slot:footer>
+                <x-primary-button form="trip-stop-form">{{ __('Save') }}</x-primary-button>
+                <x-secondary-button type="button" wire:click="closeStop">{{ __('Cancel') }}</x-secondary-button>
+                @if ($editingStopId)
+                    <button type="button" wire:click="deleteStop({{ $editingStopId }})" wire:confirm="{{ __('Delete this entry?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
+                @endif
+            </x-slot:footer>
+        </x-sheet>
+    @endif
 </div>

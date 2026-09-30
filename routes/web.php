@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseGroupController;
 use App\Http\Controllers\ExternalDocumentController;
 use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
+use App\Http\Controllers\GroupTripController;
 use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
@@ -75,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('splits/{group}', 'splits.show')->whereNumber('group')->name('splits.show');
     Route::get('splits/{group}/export/{format}', [ExpenseGroupController::class, 'export'])->whereNumber('group')->whereIn('format', ['csv', 'pdf'])->name('splits.export');
     Volt::route('trips/{trip}', 'trips.show')->whereNumber('trip')->name('trips.show');
+    Volt::route('trips/{trip}/group', 'trips.group')->whereNumber('trip')->name('trips.group');
     Volt::route('vehicles/{vehicle}', 'vehicles.show')->whereNumber('vehicle')->name('vehicles.show');
     Route::get('emergency/pdf', [EmergencyFolderController::class, 'pdf'])->middleware([Security::SENSITIVE, 'sensitive.log:emergency'])->name('emergency.pdf');
     Volt::route('quotes', 'quotes.index')->name('quotes.index');
@@ -187,6 +189,14 @@ Route::middleware('throttle:60,1')->group(function () {
     Volt::route('apply/{token}', 'rental.apply')->where('token', '[A-Za-z0-9]+')->name('rental.apply');
     Volt::route('s/{token}', 'shopping-list.shared')->where('token', '[A-Za-z0-9]+')->name('shopping-list.shared');
     Route::get('k/{token}', [ExpenseGroupController::class, 'shared'])->where('token', '[A-Za-z0-9]+')->name('splits.public');
+    Route::controller(GroupTripController::class)->where(['token' => '[A-Za-z0-9]+', 'file' => '[0-9]+'])->group(function () {
+        Route::get('g/{token}', 'folder')->name('trips.folder');
+        Route::post('g/{token}', 'unlock')->middleware('throttle:10,1')->name('trips.folder.unlock');
+        Route::get('g/{token}/files/{file}', 'file')->name('trips.folder.file');
+        Route::get('gp/{token}', 'participant')->name('trips.participant');
+        Route::post('gp/{token}', 'reply')->middleware('throttle:10,1')->name('trips.participant.reply');
+        Route::get('gp/{token}/files/{file}', 'participantFile')->name('trips.participant.file');
+    });
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
     Volt::route('emergency/access/{token}', 'emergency.access')->where('token', '[A-Za-z0-9]+')->name('emergency.access');

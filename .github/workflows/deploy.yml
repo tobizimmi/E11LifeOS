@@ -6,10 +6,38 @@ on:
       - main
       - develop
   workflow_dispatch:
+    inputs:
+      action:
+        description: 'deploy = Code ausrollen (develop → Staging, main → Live) · server-einrichten = .env aus dem Secret ENV_FILE_… schreiben und App installieren'
+        type: choice
+        options:
+          - deploy
+          - server-einrichten
+        default: deploy
+      environment:
+        description: 'Nur für server-einrichten: welcher Server?'
+        type: choice
+        options:
+          - staging
+          - live
+        default: staging
+      overwrite:
+        description: 'Nur für server-einrichten: abweichende Werte in der .env ersetzen (APP_KEY nie)'
+        type: boolean
+        default: false
 
 jobs:
   tests:
+    if: inputs.action != 'server-einrichten'
     uses: ./.github/workflows/tests.yml
+
+  server-setup:
+    if: inputs.action == 'server-einrichten'
+    uses: ./.github/workflows/server-setup.yml
+    with:
+      environment: ${{ inputs.environment }}
+      overwrite: ${{ inputs.overwrite }}
+    secrets: inherit
 
   deploy:
     needs: tests
@@ -22,6 +50,15 @@ jobs:
       # PM2 process names per environment (app = php built-in server, reverb = websocket server)
       PM2_APP_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-app' || 'e11lifeos-app-staging' }}
       PM2_REVERB_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-reverb' || 'e11lifeos-reverb-staging' }}
+      # Internal ports behind the Apache proxy (docs/deployment.md): Live 3010/3011, Staging 3020/3021.
+      APP_PORT: ${{ github.ref == 'refs/heads/main' && '3010' || '3020' }}
+      REVERB_PORT: ${{ github.ref == 'refs/heads/main' && '3011' || '3021' }}
+      # Scheduler (schedule:work) and queue worker run as PM2 processes of the same user as the
+      # app, so they can write to storage/ (a Plesk cron job runs as another user). Created on demand.
+      PM2_SCHEDULER_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-scheduler' || 'e11lifeos-scheduler-staging' }}
+      PM2_QUEUE_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-queue' || 'e11lifeos-queue-staging' }}
+      # Keeps the WireGuard connection (wireproxy, no root) as configured under Server settings → VPN.
+      PM2_VPN_NAME: ${{ github.ref == 'refs/heads/main' && 'e11lifeos-vpn' || 'e11lifeos-vpn-staging' }}
       # Baked into the built JS by Vite — these are the PUBLIC Reverb app key/host/etc.
       # (never the secret), so plain repo Variables are fine, no need for Secrets.
       VITE_REVERB_APP_KEY: ${{ github.ref == 'refs/heads/main' && vars.REVERB_APP_KEY_LIVE || vars.REVERB_APP_KEY_STAGING }}
@@ -90,6 +127,8 @@ jobs:
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/cache/data
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/sessions
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/logs
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/app/private
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/app/public
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/bootstrap/cache
           echo "Directories created"
           DIRSEOF
@@ -111,25 +150,32 @@ jobs:
       - name: Run server-side deployment tasks
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- \
-            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" << 'EOF'
+            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" "${{ env.PM2_SCHEDULER_NAME }}" "${{ env.PM2_QUEUE_NAME }}" "${{ env.PM2_VPN_NAME }}" "${{ env.APP_PORT }}" "${{ env.REVERB_PORT }}" "${{ env.DEPLOY_ENV }}" << 'EOF'
             set -e
             # Server default `php`/composer resolve to the OS-packaged PHP 8.2 (via
             # /usr/bin/php), but this app needs PHP >=8.3 (Laravel 13) — Plesk also has
             # PHP 8.4 installed under /opt/plesk/php/8.4, just not on the default PATH.
             export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"
+            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"; PM2_SCHEDULER_NAME="$4"; PM2_QUEUE_NAME="$5"; PM2_VPN_NAME="$6"; APP_PORT="$7"; REVERB_PORT="$8"; DEPLOY_ENV="$9"
 
             cd "$APP_PATH"
 
             if [ ! -f .env ]; then
-              echo "ERROR: .env missing at $APP_PATH/.env (server-managed; create it once manually)" >&2
+              echo "ERROR: .env missing at $APP_PATH/.env – run Actions → Deploy E11LifeOS → server-einrichten first (docs/live-einrichten.md)" >&2
               exit 1
             fi
 
             composer install --no-dev --optimize-autoloader --no-scripts
             php artisan package:discover --ansi
 
-            php artisan migrate --force
+            # Live: back up database and files before migrating (stops the deploy if the backup fails)
+            # (skipped on a fresh installation without tables yet).
+            if [ "$DEPLOY_ENV" = live ] && php artisan migrate:status > /dev/null 2>&1; then
+              php artisan backup:run
+            fi
+
+            # Migrations, push keys and – on a fresh installation – the invite code for the first account
+            php artisan app:install --no-interaction
 
             # Clear stale caches (do NOT config:cache — keep reading the live .env)
             php artisan config:clear
@@ -137,18 +183,39 @@ jobs:
             php artisan view:clear
             php artisan cache:clear
 
+            # App, Reverb, scheduler and queue worker: restart (new code) or start once.
+            PHP_BIN=/opt/plesk/php/8.4/bin/php
             if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
               pm2 restart "$PM2_APP_NAME" --update-env
             else
-              echo "PM2 process $PM2_APP_NAME not found — start it once manually (see docs/deployment.md), then re-deploy." >&2
-              exit 1
+              pm2 start "$PHP_BIN" --name "$PM2_APP_NAME" --cwd "$APP_PATH" -- -S "127.0.0.1:$APP_PORT" -t public/
             fi
 
             if pm2 describe "$PM2_REVERB_NAME" > /dev/null 2>&1; then
               pm2 restart "$PM2_REVERB_NAME" --update-env
             else
-              echo "PM2 process $PM2_REVERB_NAME not found — start it once manually (see docs/deployment.md), then re-deploy." >&2
-              exit 1
+              pm2 start "$PHP_BIN" --name "$PM2_REVERB_NAME" --cwd "$APP_PATH" -- artisan reverb:start "--port=$REVERB_PORT"
+            fi
+
+            if pm2 describe "$PM2_SCHEDULER_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_SCHEDULER_NAME" --update-env
+            else
+              pm2 start "$PHP_BIN" --name "$PM2_SCHEDULER_NAME" --cwd "$APP_PATH" -- artisan schedule:work
+            fi
+
+            if pm2 describe "$PM2_QUEUE_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_QUEUE_NAME" --update-env
+            else
+              pm2 start "$PHP_BIN" --name "$PM2_QUEUE_NAME" --cwd "$APP_PATH" -- artisan queue:work --queue=admin,default --tries=1 --sleep=3
+            fi
+
+            # VPN: wireproxy is downloaded once (a failed download must not stop the deploy);
+            # the process idles until a WireGuard configuration is saved on the admin page.
+            php artisan vpn:install --if-missing || echo "wireproxy could not be installed – VPN stays off."
+            if pm2 describe "$PM2_VPN_NAME" > /dev/null 2>&1; then
+              pm2 restart "$PM2_VPN_NAME" --update-env
+            else
+              pm2 start "$PHP_BIN" --name "$PM2_VPN_NAME" --cwd "$APP_PATH" -- artisan vpn:run
             fi
 
             pm2 save

@@ -87,7 +87,7 @@ new #[Layout('layouts.app')] class extends Component
 >
     {{-- Top bar --}}
     <div class="flex items-center gap-3 border-b border-gray-800 px-4 py-3">
-        <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="rounded-md px-2 py-1 text-gray-400 hover:bg-gray-800 hover:text-white" aria-label="{{ __('Close cooking mode') }}">✕</a>
+        <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="rounded-md px-2 py-1 text-gray-400 hover:bg-gray-800 hover:text-white" aria-label="{{ __('Close cooking mode') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></a>
         <div class="min-w-0 flex-1">
             <p class="truncate font-semibold">{{ $recipe->title }}</p>
             <p class="text-xs text-gray-400" x-text="step === 0 ? @js(__('Ingredients')) : @js(__('Step')) + ' ' + step + ' / ' + total"></p>
@@ -170,7 +170,7 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="max-w-[10rem] truncate text-xs text-gray-300" x-text="timer.label"></span>
                         <span class="font-mono text-lg tabular-nums" x-text="format(timer.remaining)"></span>
                         <button type="button" x-show="timer.remaining > 0" x-on:click="toggleTimer(timer)" class="text-gray-300 hover:text-white" :aria-label="timer.endsAt ? @js(__('Pause')) : @js(__('Resume'))" x-text="timer.endsAt ? '⏸' : '▶'"></button>
-                        <button type="button" x-on:click="removeTimer(timer)" class="text-gray-300 hover:text-white" aria-label="{{ __('Remove timer') }}">✕</button>
+                        <button type="button" x-on:click="removeTimer(timer)" class="text-gray-300 hover:text-white" aria-label="{{ __('Remove timer') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </div>
                 </template>
                 <span class="text-xs text-gray-500">{{ __('Timer') }}:</span>

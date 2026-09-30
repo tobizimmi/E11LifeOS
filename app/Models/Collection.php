@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
+use App\Models\Concerns\SharedWithGroups;
 use App\Support\Recurrence;
 use Database\Factories\CollectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +18,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A Notion-style database: entries (items) with typed properties, shown as
  * table or board. Tasks are the built-in collection with system_key "tasks".
  */
-#[Fillable(['household_id', 'name', 'icon', 'default_view', 'visibility', 'created_by', 'system_key'])]
+#[Fillable(['public_expires_at', 'household_id', 'name', 'icon', 'default_view', 'visibility', 'created_by', 'system_key'])]
+#[Hidden(['public_token', 'public_token_encrypted'])]
 class Collection extends Model
 {
     /** @use HasFactory<CollectionFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens, SharedWithGroups;
 
     public const SYSTEM_TASKS = 'tasks';
 
@@ -54,6 +58,9 @@ class Collection extends Model
         return $this->belongsTo(Household::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -116,6 +123,22 @@ class Collection extends Model
     /**
      * The household's tasks collection, created with its built-in properties on first use.
      */
+    /**
+     * Starting categories of the task list; members can rename, add and remove them.
+     *
+     * @return list<array{id: string, name: string, color: string}>
+     */
+    public static function defaultTaskCategories(): array
+    {
+        return [
+            ['id' => 'home', 'name' => __('Household'), 'color' => 'green'],
+            ['id' => 'work', 'name' => __('Work'), 'color' => 'blue'],
+            ['id' => 'private', 'name' => __('Private'), 'color' => 'purple'],
+            ['id' => 'finance', 'name' => __('Finances'), 'color' => 'orange'],
+            ['id' => 'errands', 'name' => __('Errands'), 'color' => 'gray'],
+        ];
+    }
+
     public static function tasksFor(int $householdId): self
     {
         $existing = self::where('household_id', $householdId)->where('system_key', self::SYSTEM_TASKS)->first();
@@ -168,8 +191,22 @@ class Collection extends Model
                 'system_key' => 'priority',
                 'position' => 4,
             ],
+            ['name' => __('Category'), 'type' => CollectionProperty::TYPE_SELECT, 'options' => self::defaultTaskCategories(), 'system_key' => 'category', 'position' => 5],
         ]);
 
         return $collection;
+    }
+
+    protected function casts(): array
+    {
+        return ['public_expires_at' => 'datetime'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['public_token'];
     }
 }

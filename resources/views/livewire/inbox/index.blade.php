@@ -2,9 +2,8 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
-use App\Models\ShoppingListEntry;
+use App\Support\InboxActions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -15,20 +14,11 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * @var array<string, string>
      */
-    protected $listeners = ['item-captured' => '$refresh'];
+    protected $listeners = ['item-captured' => '$refresh', 'inbox-updated' => '$refresh'];
 
     public function convertToTodo(int $id): void
     {
-        $item = $this->findVisibleItem(Item::TYPE_INBOX, $id);
-
-        $maxPosition = (int) $this->visibleItems(Item::TYPE_TODO)->max('position');
-
-        $item->update([
-            'type' => Item::TYPE_TODO,
-            'content' => null,
-            'done' => false,
-            'position' => $maxPosition + 1,
-        ]);
+        InboxActions::toTask($this->findVisibleItem(Item::TYPE_INBOX, $id));
     }
 
     /**
@@ -37,8 +27,7 @@ new #[Layout('layouts.app')] class extends Component
     public function convertToNote(int $id): void
     {
         $item = $this->findVisibleItem(Item::TYPE_INBOX, $id);
-
-        $item->update(['type' => Item::TYPE_NOTE, 'content' => ['body' => '']]);
+        InboxActions::toPage($item);
 
         $this->redirectRoute('pages.index', ['item' => $item->id], navigate: true);
     }
@@ -48,17 +37,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function moveToShoppingList(int $id): void
     {
-        $item = $this->findVisibleItem(Item::TYPE_INBOX, $id);
-
-        DB::transaction(function () use ($item) {
-            ShoppingListEntry::create([
-                'household_id' => $this->householdId,
-                'label' => $item->title,
-                'created_by' => Auth::id(),
-            ]);
-
-            $item->delete();
-        });
+        InboxActions::toShoppingList($this->findVisibleItem(Item::TYPE_INBOX, $id), (int) Auth::id());
     }
 
     public function delete(int $id): void
@@ -85,16 +64,20 @@ new #[Layout('layouts.app')] class extends Component
     </x-slot>
 
     <div class="py-8 sm:py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     {{ __('Capture first, sort later: turn each entry into a task, a note or a shopping list item.') }}
                 </p>
                 <livewire:quick-capture />
             </div>
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+            @if (auth()->user()->hasPaperless())
+                <livewire:paperless-inbox lazy />
+            @endif
+
+            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                 <ul class="space-y-3">
                     @forelse ($entries as $entry)
                         <li wire:key="inbox-{{ $entry->id }}" class="border border-gray-200 dark:border-gray-700 rounded-md p-3">

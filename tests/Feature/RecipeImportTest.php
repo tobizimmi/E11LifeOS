@@ -6,9 +6,11 @@ use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\RecipeCategory;
 use App\Models\RecipeRating;
+use App\Support\RecipeImages;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -154,6 +156,11 @@ class RecipeImportTest extends TestCase
         mkdir($this->uploads.'/recipes', 0777, true);
         $image = imagecreatetruecolor(40, 30);
         imagejpeg($image, $this->uploads.'/recipes/lasagne.jpg');
+
+        // No real RezepteApp2 on the test machine: only the directory above is used.
+        config(['services.rezepteapp.uploads_path' => null, 'services.rezepteapp.uploads_url' => null]);
+        Http::preventStrayRequests();
+        Http::fake(['zimmimail.de/*' => Http::response('', 404)]);
     }
 
     public function test_recipes_categories_tags_favorites_and_photos_are_imported(): void
@@ -168,7 +175,7 @@ class RecipeImportTest extends TestCase
 
         $lasagne = Recipe::where('legacy_id', 'r1')->firstOrFail();
         $this->assertSame('Lasagne', $lasagne->title);
-        $this->assertSame([['name' => 'Soße', 'isSection' => true], ['amount' => '500', 'unit' => 'g', 'name' => 'Hackfleisch']], $lasagne->ingredients);
+        $this->assertEquals([['name' => 'Soße', 'isSection' => true], ['amount' => '500', 'unit' => 'g', 'name' => 'Hackfleisch']], $lasagne->ingredients);
         $this->assertSame([['text' => 'Anbraten']], $lasagne->instructions);
         $this->assertSame([30, 45, 4, 7, 'mittel'], [$lasagne->prep_time, $lasagne->cook_time, $lasagne->servings, $lasagne->cooked_count, $lasagne->difficulty]);
         $this->assertSame('2025-01-10', $lasagne->created_at->toDateString());
@@ -200,6 +207,39 @@ class RecipeImportTest extends TestCase
         $this->assertDatabaseMissing('recipe_categories', ['name' => 'Nicht meins']);
     }
 
+    public function test_missing_photos_of_imported_recipes_are_repaired_without_touching_the_source(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $user->update(['email' => 'tobi@example.com']);
+        $source = $this->uploads.'/recipes/lasagne.jpg';
+        $checksum = md5_file($source);
+
+        // First import without access to the photos.
+        $this->artisan('recipes:import-rezepteapp', ['email' => 'tobi@example.com'])->assertSuccessful();
+        $lasagne = Recipe::where('legacy_id', 'r1')->firstOrFail();
+        $this->assertNull($lasagne->image_path);
+        $updatedAt = $lasagne->updated_at->toDateTimeString();
+
+        // Running it again with the upload directory (configured on the admin page) adds them.
+        config(['services.rezepteapp.uploads_path' => $this->uploads]);
+        $this->artisan('recipes:import-rezepteapp', ['email' => 'tobi@example.com'])
+            ->expectsOutputToContain('Added missing photos to 1 recipes')
+            ->assertSuccessful();
+
+        $lasagne->refresh();
+        Storage::disk('local')->assertExists($lasagne->image_path);
+        $this->assertCount(1, $lasagne->additional_images);
+        $this->assertSame($updatedAt, $lasagne->updated_at->toDateTimeString());
+
+        // A photo changed in LifeOS is kept, and the RezepteApp2 file is only read.
+        $lasagne->update(['image_path' => $own = RecipeImages::store(file_get_contents($source), $lasagne->household_id)]);
+        $this->artisan('recipes:import-rezepteapp', ['email' => 'tobi@example.com'])->assertSuccessful();
+        $this->assertSame($own, $lasagne->fresh()->image_path);
+        $this->assertFileExists($source);
+        $this->assertSame($checksum, md5_file($source));
+        $this->assertSame(3, DB::connection('rezepteapp')->table('recipes')->count());
+    }
+
     public function test_running_the_import_again_does_not_duplicate_anything(): void
     {
         [$user, $household] = $this->memberWithHousehold();
@@ -228,6 +268,15 @@ class RecipeImportTest extends TestCase
         $this->artisan('recipes:import-rezepteapp', ['email' => $user->email, '--source-email' => 'tobi@example.com', '--private' => true])
             ->assertSuccessful();
         $this->assertTrue(Recipe::where('household_id', $household->id)->get()->every->isPrivate());
+    }
+
+    public function test_all_accounts_can_be_imported_into_one_household(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $this->artisan('recipes:import-rezepteapp', ['email' => $user->email, '--all' => true])->assertSuccessful();
+
+        $this->assertSame(['Altes Rezept', 'Fremdes Rezept', 'Lasagne'], Recipe::where('household_id', $household->id)->orderBy('title')->pluck('title')->all());
     }
 
     public function test_unknown_accounts_fail_cleanly(): void

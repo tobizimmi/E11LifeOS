@@ -6,13 +6,18 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\HouseholdMember;
 use App\Models\Item;
+use App\Models\Space;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\ChecklistTemplate;
 use App\Support\BrainAi;
+use App\Support\ChecklistTemplates;
+use App\Support\Links;
 use App\Support\QuickCapture;
 use App\Support\Recurrence;
 use App\Support\TaskInput;
 use App\Support\TaskLists;
+use App\Support\TaskPages;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -37,6 +42,16 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
+    /** Category option id to filter by. */
+    #[Url(except: '')]
+    public string $category = '';
+
+    /** Space id to filter by. */
+    #[Url(except: '')]
+    public string $space = '';
+
+    public bool $managingCategories = false;
+
     /**
      * Task shown in the detail panel (id as string, so a malformed URL can't break the page).
      */
@@ -57,6 +72,15 @@ new #[Layout('layouts.app')] class extends Component
     public array $ignoredPhrases = [];
 
     public bool $selecting = false;
+
+    public bool $templatesOpen = false;
+
+    /**
+     * Chosen checklist: a built-in key or "own-{id}".
+     */
+    public string $templateKey = '';
+
+    public string $templateDate = '';
 
     /**
      * Ids of the tasks picked in selection mode.
@@ -144,6 +168,96 @@ new #[Layout('layouts.app')] class extends Component
         $this->tag = $this->tag === $name ? '' : $name;
     }
 
+    public function filterByCategory(string $id): void
+    {
+        $this->category = $this->category === $id ? '' : $id;
+    }
+
+    public function filterBySpace(string $id): void
+    {
+        $this->space = $this->space === $id ? '' : $id;
+    }
+
+    private function findSpace(int $id): Space
+    {
+        return Space::query()->visibleTo($this->currentUser(), (int) $this->householdId)->find($id) ?? abort(404);
+    }
+
+    // ── Categories ───────────────────────────────────────────────────────
+
+    public function addCategory(string $name): void
+    {
+        $name = trim(Str::limit($name, 40, ''));
+        abort_if($name === '', 422);
+        $property = $this->systemProperty('category');
+        $colors = ['green', 'blue', 'purple', 'orange', 'red', 'pink', 'gray'];
+        $property->update(['options' => [...($property->options ?? []), ['id' => Str::lower(Str::random(8)), 'name' => $name, 'color' => $colors[count($property->options ?? []) % count($colors)]]]]);
+    }
+
+    public function renameCategory(string $id, string $name): void
+    {
+        $name = trim(Str::limit($name, 40, ''));
+        abort_if($name === '', 422);
+        $property = $this->systemProperty('category');
+        $property->update(['options' => collect($property->options ?? [])->map(fn (array $option) => $option['id'] === $id ? [...$option, 'name' => $name] : $option)->all()]);
+    }
+
+    public function removeCategory(string $id): void
+    {
+        $property = $this->systemProperty('category');
+        $property->update(['options' => collect($property->options ?? [])->reject(fn (array $option) => $option['id'] === $id)->values()->all()]);
+
+        if ($this->category === $id) {
+            $this->category = '';
+        }
+    }
+
+    public function setCategory(int $taskId, string $category): void
+    {
+        $task = $this->findTask($taskId);
+        $this->setValue($task, 'category', $category !== '' ? $category : null);
+        $task->save();
+    }
+
+    public function setSpace(int $taskId, string $spaceId): void
+    {
+        $task = $this->findTask($taskId);
+        $task->forceFill(['space_id' => $spaceId !== '' ? $this->findSpace((int) $spaceId)->id : null])->save();
+    }
+
+    // ── Pages of a task ──────────────────────────────────────────────────
+
+    public function linkPage(int $taskId, string $pageId): void
+    {
+        $task = $this->findTask($taskId);
+        $page = Item::query()->forHousehold((int) $this->householdId)->visibleTo($this->currentUser())->where('type', Item::TYPE_NOTE)->find((int) $pageId) ?? abort(404);
+        Links::addManual(Links::ITEM, $task->id, Links::ITEM, $page->id, (int) $this->householdId, Auth::id());
+    }
+
+    public function unlinkPage(int $taskId, int $pageId): void
+    {
+        Links::removeManual(Links::ITEM, $this->findTask($taskId)->id, Links::ITEM, $pageId);
+    }
+
+    /**
+     * Creates a page for the task (same space, linked) and opens it for writing.
+     */
+    public function createPageForTask(int $taskId): void
+    {
+        $task = $this->findTask($taskId);
+        $page = Item::create([
+            'household_id' => $this->householdId,
+            'type' => Item::TYPE_NOTE,
+            'title' => $task->title,
+            'space_id' => $task->space_id,
+            'created_by' => Auth::id(),
+            'visibility' => $task->visibility,
+        ]);
+        Links::addManual(Links::ITEM, $task->id, Links::ITEM, $page->id, (int) $this->householdId, Auth::id());
+
+        $this->redirectRoute('pages.index', ['item' => $page->id, 'edit' => 1], navigate: true);
+    }
+
     // ── Quick entry ──────────────────────────────────────────────────────
 
     public function ignorePhrase(string $phrase): void
@@ -154,6 +268,65 @@ new #[Layout('layouts.app')] class extends Component
     public function previewTask(string $text): void
     {
         $this->draft = mb_substr($text, 0, 500);
+    }
+
+    // ── Checklist templates ──────────────────────────────────────────────
+
+    /**
+     * @return array<string, array{name: string, icon: string, anchor: string, default_offset: int, tasks: list<array{title: string, offset: int, subtasks: list<string>}>, own: bool}>
+     */
+    private function checklistTemplates(): array
+    {
+        $own = ChecklistTemplate::where('household_id', $this->householdId)->orderBy('name')->get()
+            ->mapWithKeys(fn (ChecklistTemplate $template) => ['own-'.$template->id => ['name' => $template->name, 'icon' => $template->icon ?: '📋', 'anchor' => __('Due'), 'default_offset' => 0, 'tasks' => $template->tasks, 'own' => true]])
+            ->all();
+
+        return array_map(fn (array $template) => $template + ['own' => false], ChecklistTemplates::builtIn()) + $own;
+    }
+
+    public function openTemplates(): void
+    {
+        $this->templatesOpen = true;
+        $this->reset('templateKey', 'templateDate');
+    }
+
+    public function closeTemplates(): void
+    {
+        $this->reset('templatesOpen', 'templateKey', 'templateDate');
+    }
+
+    public function chooseTemplate(string $key): void
+    {
+        $template = $this->checklistTemplates()[$key] ?? abort(404);
+        $this->templateKey = $key;
+        $this->templateDate = today()->addDays($template['default_offset'])->toDateString();
+    }
+
+    public function applyTemplate(): void
+    {
+        $template = $this->checklistTemplates()[$this->templateKey] ?? abort(404);
+        $this->validate(['templateDate' => ['required', 'date']]);
+
+        $count = ChecklistTemplates::apply($this->currentUser(), (int) $this->householdId, $template, Carbon::parse($this->templateDate));
+
+        $this->closeTemplates();
+        $this->list = TaskLists::ALL;
+        $this->dispatch('toast', message: trans_choice(':count task from “:name” added|:count tasks from “:name” added', $count, ['name' => $template['name']]));
+    }
+
+    public function deleteTemplate(int $templateId): void
+    {
+        ChecklistTemplate::where('household_id', $this->householdId)->findOrFail($templateId)->delete();
+        $this->reset('templateKey');
+    }
+
+    public function saveAsTemplate(int $taskId): void
+    {
+        $task = $this->findTask($taskId);
+        abort_if($task->subtasks() === [], 422);
+
+        ChecklistTemplates::saveFromTask($task, $this->currentUser());
+        $this->dispatch('toast', message: __('Saved as checklist template'));
     }
 
     /**
@@ -195,6 +368,17 @@ new #[Layout('layouts.app')] class extends Component
 
             return false;
         }
+
+        // Added while a category or space is filtered: the task belongs there.
+        if ($this->category !== '' && isset((new TaskLists($this->collection(), $this->currentUser()))->categories()[$this->category])) {
+            $this->setValue($task, 'category', $this->category);
+        }
+
+        if ($this->space !== '') {
+            $task->space_id = Space::query()->visibleTo($this->currentUser(), (int) $this->householdId)->find((int) $this->space)?->id;
+        }
+
+        $task->save();
 
         $this->reset('draft', 'ignoredPhrases');
         $this->resetErrorBag('newTask');
@@ -283,6 +467,66 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: __('Moved to tomorrow'));
     }
 
+    /**
+     * Drag & drop inside the task list: dropping into another date group sets that date,
+     * the position inside the group becomes the manual order.
+     */
+    public function moveTask(int $taskId, string $groupKey, int $position): void
+    {
+        $task = $this->findTask($taskId);
+        $lists = new TaskLists(Collection::tasksFor((int) $this->householdId)->load('properties'), $this->currentUser());
+        $current = $lists->due($task);
+        $today = now()->startOfDay();
+
+        $date = match (true) {
+            $groupKey === 'none' => '',
+            $groupKey === 'today' => $today->toDateString(),
+            $groupKey === 'tomorrow' => $today->copy()->addDay()->toDateString(),
+            $groupKey === 'overdue' => $current !== '' && $current < $today->toDateString() ? $current : $today->copy()->subDay()->toDateString(),
+            $groupKey === 'week' => $current > $today->copy()->addDay()->toDateString() && $current <= $today->copy()->addDays(7)->toDateString() ? $current : $today->copy()->addDays(2)->toDateString(),
+            $groupKey === 'later' => $current > $today->copy()->addDays(7)->toDateString() ? $current : $today->copy()->addDays(8)->toDateString(),
+            (bool) preg_match('/^day-(\d{4}-\d{2}-\d{2})$/', $groupKey, $day) => $day[1],
+            (bool) preg_match('/^month-(\d{4}-\d{2})$/', $groupKey, $month) => str_starts_with($current, $month[1]) ? $current : $month[1].'-01',
+            default => abort(404),
+        };
+
+        if ($date !== $current) {
+            $this->setValue($task, 'due', $date !== '' ? $date : null);
+
+            if ($date === '') {
+                $task->due_time = null;
+            }
+
+            $task->save();
+        }
+
+        // Manual order among the tasks of the same group.
+        $siblings = collect($lists->groups($this->list))->firstWhere('key', $groupKey)['tasks'] ?? [];
+        $ordered = collect($siblings)->reject(fn (Item $item) => $item->id === $task->id)->values();
+        $ordered->splice(max(0, min($position, $ordered->count())), 0, [$task]);
+
+        foreach ($ordered as $index => $item) {
+            if ($item->position !== $index + 1) {
+                $item->forceFill(['position' => $index + 1])->saveQuietly();
+            }
+        }
+    }
+
+    /**
+     * Drag & drop onto a list in the sidebar: "Today" / "Upcoming" set the date, "Mine"
+     * assigns the task to me, "Done" completes it.
+     */
+    public function dropOnList(int $taskId, string $list): void
+    {
+        match ($list) {
+            TaskLists::TODAY => $this->setDue($taskId, 'today'),
+            TaskLists::UPCOMING => $this->setDue($taskId, 'tomorrow'),
+            TaskLists::MINE => $this->setAssignee($taskId, (string) $this->currentUser()->id),
+            TaskLists::DONE => $this->toggleDone($taskId),
+            default => null,
+        };
+    }
+
     public function setPriority(int $taskId, string $priority): void
     {
         $task = $this->findTask($taskId);
@@ -301,6 +545,27 @@ new #[Layout('layouts.app')] class extends Component
     {
         $task = $this->findTask($taskId);
         $this->setValue($task, 'assignee', $userId !== '' ? (int) $userId : null);
+        $task->save();
+    }
+
+    /**
+     * Adds or removes a member from the task's rotation (cleaning plan). The first member in the
+     * rotation gets the task assigned right away if nobody has it yet.
+     */
+    public function toggleRotation(int $taskId, int $userId): void
+    {
+        $task = $this->findTask($taskId);
+        abort_unless(array_key_exists($userId, QuickCapture::members((int) $this->householdId)), 404);
+
+        $rotation = $task->rotation();
+        $rotation = in_array($userId, $rotation, true) ? array_values(array_diff($rotation, [$userId])) : [...$rotation, $userId];
+        $task->setRotation($rotation);
+        $assignee = $this->collection()->systemProperty('assignee');
+
+        if ($assignee && count($task->rotation()) > 1 && ! in_array((int) $task->propertyValue($assignee), $task->rotation(), true)) {
+            $task->setPropertyValue($assignee, $task->rotation()[0]);
+        }
+
         $task->save();
     }
 
@@ -437,10 +702,17 @@ new #[Layout('layouts.app')] class extends Component
             : null;
 
         return [
+            'checklistTemplates' => $this->templatesOpen ? $this->checklistTemplates() : [],
             'collection' => $collection,
             'lists' => $lists,
             'counts' => $lists->counts(),
-            'groups' => $lists->groups($this->list, $this->tag, $this->search),
+            'groups' => $lists->groups($this->list, $this->tag, $this->search, $this->category, $this->space),
+            'categories' => $lists->categories(),
+            'categoryCounts' => $lists->categoryCounts(),
+            'spaces' => Space::query()->visibleTo($this->currentUser(), (int) $this->householdId)->get()->keyBy('id'),
+            'linkedPages' => $openTask ? TaskPages::pagesOf($openTask, $this->currentUser()) : collect(),
+            'pageOptions' => $openTask ? Item::query()->forHousehold((int) $this->householdId)->visibleTo($this->currentUser())->where('type', Item::TYPE_NOTE)
+                ->orderByRaw('space_id = ? desc', [(int) $openTask->space_id])->orderBy('title')->limit(300)->get(['id', 'title', 'icon', 'space_id']) : collect(),
             'review' => $this->list === TaskLists::DONE ? $lists->review() : null,
             'members' => $members,
             'preview' => trim($this->draft) !== '' ? TaskInput::parse($this->draft, $members, Auth::id(), $this->ignoredPhrases) : null,
@@ -470,6 +742,16 @@ new #[Layout('layouts.app')] class extends Component
         'normal' => 'text-gray-700 dark:text-gray-300',
         'muted' => 'text-gray-500 dark:text-gray-400',
     ];
+    $categoryColor = [
+        'green' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
+        'blue' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
+        'purple' => 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200',
+        'orange' => 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200',
+        'red' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+        'pink' => 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-200',
+        'yellow' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200',
+        'gray' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+    ];
     $initials = fn (string $name) => mb_strtoupper(collect(preg_split('/\s+/u', trim($name)))->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
 @endphp
 
@@ -479,8 +761,13 @@ new #[Layout('layouts.app')] class extends Component
 >
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✅ {{ __('Tasks') }}</h2>
-            <a href="{{ route('collections.show', $collection) }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">{{ __('Board · Table · Calendar') }} →</a>
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Tasks') }}</h2>
+            <div class="inline-flex overflow-hidden rounded-md border border-gray-300 text-sm dark:border-gray-600" role="group" aria-label="{{ __('View') }}">
+                <span class="bg-indigo-600 px-3 py-1.5 text-white" aria-current="page">✅ {{ __('Task list') }}</span>
+                <a href="{{ route('collections.show', ['collection' => $collection, 'view' => 'board']) }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">▥ {{ __('Board') }}</a>
+                <a href="{{ route('collections.show', ['collection' => $collection, 'view' => 'table']) }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">▤ {{ __('Table') }}</a>
+                <a href="{{ route('collections.show', ['collection' => $collection, 'view' => 'calendar']) }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">📅 {{ __('Calendar') }}</a>
+            </div>
         </div>
     </x-slot>
 
@@ -490,6 +777,7 @@ new #[Layout('layouts.app')] class extends Component
             <nav class="lg:w-52 shrink-0 mb-4 lg:mb-0" aria-label="{{ __('Lists') }}">
                 <div class="flex lg:flex-col gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 lg:mx-0 lg:px-0">
                     @foreach (\App\Support\TaskLists::LISTS as $key)
+                        <div class="shrink-0 rounded-lg" x-sort="$wire.dropOnList($item, '{{ $key }}')" x-sort:group="tasks" x-sort:config="{ sort: false, ghostClass: 'hidden' }">
                         <button
                             type="button"
                             wire:click="showList('{{ $key }}')"
@@ -506,6 +794,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span @class(['text-xs tabular-nums', 'text-indigo-100' => $list === $key, 'text-gray-400' => $list !== $key])>{{ $counts[$key] }}</span>
                             @endif
                         </button>
+                        </div>
                     @endforeach
                 </div>
 
@@ -520,6 +809,55 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </div>
                 @endif
+
+                <div class="mt-4">
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Categories') }}</h3>
+                        <button type="button" wire:click="$toggle('managingCategories')" class="text-xs text-gray-500 underline dark:text-gray-400">{{ $managingCategories ? __('Done') : __('Edit') }}</button>
+                    </div>
+                    @if ($managingCategories)
+                        <ul class="mt-2 space-y-1.5">
+                            @foreach ($categories as $categoryId => $categoryOption)
+                                <li wire:key="manage-category-{{ $categoryId }}" class="flex items-center gap-1.5">
+                                    <input type="text" value="{{ $categoryOption['name'] }}" wire:change="renameCategory('{{ $categoryId }}', $event.target.value)" maxlength="40" class="min-w-0 flex-1 rounded-md border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900" aria-label="{{ __('Category name') }}">
+                                    <button type="button" wire:click="removeCategory('{{ $categoryId }}')" wire:confirm="{{ __('Remove this category? Tasks keep their other details.') }}" class="px-1 text-red-600 dark:text-red-400" aria-label="{{ __('Remove') }}: {{ $categoryOption['name'] }}">✕</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <form x-data x-on:submit.prevent="if ($refs.name.value.trim()) { $wire.addCategory($refs.name.value); $refs.name.value = '' }" class="mt-2 flex gap-1.5">
+                            <input type="text" x-ref="name" maxlength="40" placeholder="{{ __('New category') }}" class="min-w-0 flex-1 rounded-md border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900" aria-label="{{ __('New category') }}">
+                            <button type="submit" class="rounded-md px-2 text-sm ring-1 ring-gray-300 dark:ring-gray-600">+</button>
+                        </form>
+                    @else
+                        <div class="mt-2 flex lg:flex-wrap gap-1.5 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+                            @foreach ($categories as $categoryId => $categoryOption)
+                                <button type="button" wire:key="task-category-{{ $categoryId }}" wire:click="filterByCategory('{{ $categoryId }}')" aria-pressed="{{ $category === $categoryId ? 'true' : 'false' }}" @class([
+                                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs',
+                                    'bg-indigo-600 text-white' => $category === $categoryId,
+                                    ($categoryColor[$categoryOption['color'] ?? 'gray'] ?? $categoryColor['gray']) => $category !== $categoryId,
+                                ])>{{ $categoryOption['name'] }}@if ($categoryCounts[$categoryId] ?? 0) <span class="tabular-nums opacity-70">{{ $categoryCounts[$categoryId] }}</span>@endif</button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <div class="mt-4">
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Spaces') }}</h3>
+                        <a href="{{ route('spaces.index') }}" wire:navigate class="text-xs text-gray-500 underline dark:text-gray-400">{{ $spaces->isEmpty() ? '+ '.__('New') : __('Manage') }}</a>
+                    </div>
+                    @if ($spaces->isNotEmpty())
+                        <div class="mt-2 flex lg:flex-wrap gap-1.5 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+                            @foreach ($spaces as $spaceOption)
+                                <button type="button" wire:key="task-space-{{ $spaceOption->id }}" wire:click="filterBySpace('{{ $spaceOption->id }}')" aria-pressed="{{ $space === (string) $spaceOption->id ? 'true' : 'false' }}" @class([
+                                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs',
+                                    'bg-indigo-600 text-white' => $space === (string) $spaceOption->id,
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200' => $space !== (string) $spaceOption->id,
+                                ])>{{ $spaceOption->icon }} {{ $spaceOption->name }}</button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             </nav>
 
             <div class="min-w-0 flex-1 space-y-4">
@@ -541,7 +879,8 @@ new #[Layout('layouts.app')] class extends Component
                         "
                         class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm"
                     >
-                        <div class="flex gap-2">
+                        {{-- Phones: the field gets the full width, the buttons go below it. --}}
+                        <div class="flex flex-wrap gap-2 sm:flex-nowrap">
                             <label for="new-task" class="sr-only">{{ __('New task') }}</label>
                             <input
                                 id="new-task"
@@ -551,11 +890,12 @@ new #[Layout('layouts.app')] class extends Component
                                 autocomplete="off"
                                 enterkeyhint="done"
                                 placeholder="{{ __('New task … e.g. “Call dentist tomorrow !high #health”') }}"
-                                class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500"
+                                class="min-w-0 basis-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500 sm:basis-auto sm:flex-1"
                             />
                             <x-voice-button for="new-task" submit />
                             <button type="button" x-on:click="const input = $refs.input; if (! input.value.trim()) { input.focus(); return } $wire.addTaskWithDetails(input.value).then((added) => { if (added) { input.value = '' } })" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Add and fill in details') }}" aria-label="{{ __('Add and fill in details') }}">⤢</button>
-                            <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700" aria-label="{{ __('Add task') }}">＋</button>
+                            <button type="button" wire:click="openTemplates" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('From a checklist template') }}" aria-label="{{ __('From a checklist template') }}">📋</button>
+                            <button type="submit" class="min-h-10 flex-1 shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700 sm:flex-none" aria-label="{{ __('Add task') }}">＋</button>
                         </div>
                         <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
                         @if ($preview && $preview['tokens'] !== [])
@@ -612,7 +952,13 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </div>
 
-                        <ul class="space-y-1.5">
+                        <ul class="min-h-[2.5rem] space-y-1.5"
+                            @if ($list !== \App\Support\TaskLists::DONE && ! $selecting)
+                                x-sort="$wire.moveTask($item, @js($group['key']), $position)"
+                                x-sort:group="tasks"
+                                x-sort:config="{ handle: '.task-handle', animation: 150, ghostClass: 'opacity-40' }"
+                            @endif
+                        >
                             @foreach ($group['tasks'] as $task)
                                 @php
                                     $due = $lists->due($task);
@@ -624,30 +970,12 @@ new #[Layout('layouts.app')] class extends Component
                                 @endphp
                                 <li
                                     wire:key="task-{{ $task->id }}-{{ $task->updated_at?->timestamp }}"
-                                    x-data="{
-                                        startX: 0, startY: 0, dx: 0, swiping: false, leaving: false,
-                                        start(e) { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; this.swiping = true },
-                                        move(e) {
-                                            if (! this.swiping) return;
-                                            const dx = e.touches[0].clientX - this.startX, dy = e.touches[0].clientY - this.startY;
-                                            if (Math.abs(dy) > Math.abs(dx) && Math.abs(this.dx) < 10) { this.swiping = false; this.dx = 0; return }
-                                            this.dx = Math.max(-110, Math.min(110, dx));
-                                        },
-                                        end() {
-                                            this.swiping = false;
-                                            if (this.dx > 80) { this.complete() }
-                                            else if (this.dx < -80) { $wire.postpone({{ $task->id }}) }
-                                            this.dx = 0;
-                                        },
-                                        complete() {
-                                            @if (! $task->done && $list !== \App\Support\TaskLists::DONE)
-                                                this.leaving = true;
-                                                setTimeout(() => $wire.toggleDone({{ $task->id }}), 350);
-                                            @else
-                                                $wire.toggleDone({{ $task->id }});
-                                            @endif
-                                        },
-                                    }"
+                                    x-sort:item="{{ $task->id }}"
+                                    x-data="e11Swipe({
+                                        onRight: () => $wire.toggleDone({{ $task->id }}),
+                                        leaveOnRight: {{ ! $task->done && $list !== \App\Support\TaskLists::DONE ? 'true' : 'false' }},
+                                        onLeft: {{ $task->done ? 'null' : '() => $wire.postpone('.$task->id.')' }},
+                                    })"
                                     class="relative overflow-hidden rounded-xl"
                                 >
                                     <div class="absolute inset-0 flex items-center justify-between px-4 text-sm text-white" aria-hidden="true" :class="dx > 0 ? 'bg-green-600' : (dx < 0 ? 'bg-amber-500' : '')">
@@ -655,17 +983,22 @@ new #[Layout('layouts.app')] class extends Component
                                         <span x-show="dx < 0" class="ml-auto">{{ __('Tomorrow') }} →</span>
                                     </div>
                                     <div
-                                        x-on:touchstart.passive="start($event)"
-                                        x-on:touchmove.passive="move($event)"
-                                        x-on:touchend="end()"
-                                        :style="`transform: translateX(${dx}px)`"
-                                        :class="{ 'opacity-40 scale-[0.98]': leaving, 'transition-transform': ! swiping }"
+                                        x-ref="content"
+                                        style="touch-action: pan-y"
+                                        x-on:pointerdown="start($event)"
+                                        x-on:pointermove="move($event)"
+                                        x-on:pointerup="end()"
+                                        x-on:pointercancel="end()"
+                                        :class="{ 'opacity-40': leaving }"
                                         @class([
                                             'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 duration-300',
                                             'ring-indigo-500' => $isSelected || (int) $openTaskId === $task->id,
                                             'ring-gray-200 dark:ring-gray-700' => ! $isSelected && (int) $openTaskId !== $task->id,
                                         ])
                                     >
+                                        @if (! $selecting && $list !== \App\Support\TaskLists::DONE)
+                                            <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-600" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
+                                        @endif
                                         @if ($selecting)
                                             <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />
                                         @else
@@ -695,6 +1028,12 @@ new #[Layout('layouts.app')] class extends Component
                                                 @endif
                                                 @if ($priority)
                                                     <span class="{{ $priorityText[$priority] }}">⚑ {{ \App\Support\TaskInput::priorityLabel($priority) }}</span>
+                                                @endif
+                                                @if (($taskCategory = $lists->category($task)) && isset($categories[$taskCategory]))
+                                                    <span class="rounded-full px-1.5 {{ $categoryColor[$categories[$taskCategory]['color'] ?? 'gray'] ?? $categoryColor['gray'] }}">{{ $categories[$taskCategory]['name'] }}</span>
+                                                @endif
+                                                @if ($task->space_id && ($taskSpace = $spaces->get($task->space_id)))
+                                                    <span>{{ $taskSpace->icon }} {{ $taskSpace->name }}</span>
                                                 @endif
                                                 @if ($subtasks !== [])
                                                     <span>☑ {{ $subtasksDone }}/{{ count($subtasks) }}</span>
@@ -857,6 +1196,68 @@ new #[Layout('layouts.app')] class extends Component
                         </label>
                     </div>
 
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">🏷 {{ __('Category') }}</span>
+                            <select wire:change="setCategory({{ $openTask->id }}, $event.target.value)" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm">
+                                <option value="">{{ __('None') }}</option>
+                                @foreach ($categories as $categoryId => $categoryOption)
+                                    <option value="{{ $categoryId }}" @selected($lists->category($openTask) === $categoryId)>{{ $categoryOption['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">🗂 {{ __('Space') }}</span>
+                            <select wire:change="setSpace({{ $openTask->id }}, $event.target.value)" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm">
+                                <option value="">{{ __('None') }}</option>
+                                @foreach ($spaces as $spaceOption)
+                                    <option value="{{ $spaceOption->id }}" @selected($openTask->space_id === $spaceOption->id)>{{ $spaceOption->icon }} {{ $spaceOption->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+
+                    {{-- Pages --}}
+                    <div>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📄 {{ __('Pages') }}</h4>
+                        @if ($linkedPages->isNotEmpty())
+                            <ul class="mb-2 space-y-1">
+                                @foreach ($linkedPages as $linkedPage)
+                                    <li wire:key="linked-page-{{ $linkedPage->id }}" class="flex items-center gap-2 text-sm">
+                                        <a href="{{ route('pages.index', ['item' => $linkedPage->id]) }}" wire:navigate class="min-w-0 flex-1 truncate text-indigo-600 hover:underline dark:text-indigo-400">{{ $linkedPage->displayIcon() }} {{ $linkedPage->title }}</a>
+                                        <button type="button" wire:click="unlinkPage({{ $openTask->id }}, {{ $linkedPage->id }})" class="px-1 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove link') }}: {{ $linkedPage->title }}">✕</button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        <div class="flex gap-2">
+                            <select x-data x-on:change="if ($event.target.value) { $wire.linkPage({{ $openTask->id }}, $event.target.value); $event.target.value = '' }" class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm" aria-label="{{ __('Link a page') }}">
+                                <option value="">{{ __('Link a page …') }}</option>
+                                @foreach ($pageOptions->whereNotIn('id', $linkedPages->pluck('id')) as $pageOption)
+                                    <option value="{{ $pageOption->id }}">{{ $pageOption->displayIcon() }} {{ $pageOption->title }}@if ($pageOption->space_id && $spaces->has($pageOption->space_id)) · {{ $spaces[$pageOption->space_id]->name }}@endif</option>
+                                @endforeach
+                            </select>
+                            <button type="button" wire:click="createPageForTask({{ $openTask->id }})" class="shrink-0 rounded-lg px-3 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-600 dark:hover:bg-gray-700">+ {{ __('New page') }}</button>
+                        </div>
+                    </div>
+
+                    @if ($repeat && count($members) > 1)
+                        @php
+                            $rotation = $openTask->rotation();
+                        @endphp
+                        <div>
+                            <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">🔄 {{ __('Take turns') }}</h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach ($members as $memberId => $memberName)
+                                    <button type="button" wire:click="toggleRotation({{ $openTask->id }}, {{ $memberId }})" aria-pressed="{{ in_array($memberId, $rotation, true) ? 'true' : 'false' }}" @class(['rounded-full px-2.5 py-1 text-xs ring-1', 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800' => in_array($memberId, $rotation, true), 'text-gray-500 ring-gray-200 dark:text-gray-400 dark:ring-gray-700' => ! in_array($memberId, $rotation, true)])>
+                                        @if (in_array($memberId, $rotation, true))<span class="font-semibold">{{ array_search($memberId, $rotation, true) + 1 }}.</span>@endif {{ $memberName }}
+                                    </button>
+                                @endforeach
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ count($rotation) > 1 ? __('After each completion the next person in this order gets the task.') : __('Choose at least two people who do the task in turns (e.g. cleaning plan).') }}</p>
+                        </div>
+                    @endif
+
                     {{-- Subtasks --}}
                     <div>
                         <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">☑ {{ __('Subtasks') }}</h4>
@@ -874,6 +1275,9 @@ new #[Layout('layouts.app')] class extends Component
                             <input x-ref="subtask" id="new-subtask" type="text" enterkeyhint="done" placeholder="{{ __('Add a subtask') }}" class="flex-1 border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-0 py-1 text-sm focus:border-indigo-500 focus:ring-0 dark:text-gray-100" aria-label="{{ __('Add a subtask') }}" />
                             <x-voice-button for="new-subtask" class="py-0.5" />
                         </form>
+                        @if ($subtasks !== [])
+                            <button type="button" wire:click="saveAsTemplate({{ $openTask->id }})" class="mt-2 text-xs text-indigo-600 hover:underline dark:text-indigo-400">📋 {{ __('Save as checklist template') }}</button>
+                        @endif
                     </div>
 
                     {{-- Notes --}}
@@ -906,7 +1310,10 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </div>
 
+                    <livewire:documents-panel type="item" :id="$openTask->id" :key="'task-documents-'.$openTask->id" />
                     <livewire:links-panel type="item" :id="$openTask->id" :key="'task-links-'.$openTask->id" />
+
+                    <livewire:entries.activity :item-id="$openTask->id" :key="'task-activity-'.$openTask->id" />
 
                     <a href="{{ route('collections.show', ['collection' => $collection, 'entry' => $openTask->id]) }}" wire:navigate class="inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">{{ __('Formatting & files') }} →</a>
                 </div>
@@ -917,6 +1324,61 @@ new #[Layout('layouts.app')] class extends Component
                 </button>
                 <x-secondary-button type="button" wire:click="closeTask">{{ __('Close') }}</x-secondary-button>
                 <button type="button" wire:click="deleteTask({{ $openTask->id }})" wire:confirm="{{ __('Delete this task?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">🗑 {{ __('Delete') }}</button>
+            </x-slot:footer>
+        </x-sheet>
+    @endif
+    {{-- Checklist templates: pick one, choose the day, the tasks are created --}}
+    @if ($templatesOpen)
+        <x-sheet close="closeTemplates" :label="__('Checklist templates')" size="md">
+            <x-slot:header>📋 {{ __('Checklist templates') }}</x-slot:header>
+            @php
+                $chosen = $checklistTemplates[$templateKey] ?? null;
+            @endphp
+            @if (! $chosen)
+                <ul class="space-y-2">
+                    @foreach ($checklistTemplates as $key => $template)
+                        <li wire:key="checklist-{{ $key }}" class="flex items-center gap-2">
+                            <button type="button" wire:click="chooseTemplate('{{ $key }}')" class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-start ring-1 ring-gray-200 hover:bg-gray-50 dark:ring-gray-700 dark:hover:bg-gray-700/50">
+                                <span class="text-2xl" aria-hidden="true">{{ $template['icon'] }}</span>
+                                <span class="min-w-0">
+                                    <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $template['name'] }}</span>
+                                    <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count task|:count tasks', count($template['tasks'])) }} · {{ trans_choice(':count item|:count items', collect($template['tasks'])->sum(fn ($task) => count($task['subtasks']))) }}</span>
+                                </span>
+                            </button>
+                            @if ($template['own'])
+                                <button type="button" wire:click="deleteTemplate({{ (int) substr($key, 4) }})" wire:confirm="{{ __('Delete this template?') }}" class="rounded-lg p-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="trash" class="h-5 w-5" /></button>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Your own templates: open a task with sub-items and choose “Save as checklist template”.') }}</p>
+            @else
+                <form wire:submit="applyTemplate" id="checklist-form" class="space-y-4">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ $chosen['icon'] }} {{ $chosen['name'] }}</p>
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">{{ $chosen['anchor'] }}
+                        <input type="date" wire:model.live="templateDate" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    </label>
+                    <x-input-error :messages="$errors->get('templateDate')" />
+                    <ul class="space-y-2 text-sm">
+                        @foreach ($chosen['tasks'] as $task)
+                            <li class="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/50">
+                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $task['title'] }}</span>
+                                @if ($templateDate)
+                                    <span class="text-xs text-gray-500">· {{ \Illuminate\Support\Carbon::parse($templateDate)->addDays($task['offset'])->translatedFormat('D, j. M Y') }}</span>
+                                @endif
+                                <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $task['subtasks']) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </form>
+            @endif
+            <x-slot:footer>
+                @if ($chosen)
+                    <x-primary-button type="submit" form="checklist-form">{{ __('Create tasks') }}</x-primary-button>
+                    <x-secondary-button type="button" wire:click="$set('templateKey', '')">{{ __('Back') }}</x-secondary-button>
+                @else
+                    <x-secondary-button type="button" wire:click="closeTemplates">{{ __('Close') }}</x-secondary-button>
+                @endif
             </x-slot:footer>
         </x-sheet>
     @endif

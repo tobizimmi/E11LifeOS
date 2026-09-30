@@ -1,5 +1,10 @@
 # Deployment auf den Strato VPS (217.72.202.93)
 
+> **Neu einrichten ohne SSH:** [live-einrichten.md](live-einrichten.md) – `.env` aus dem GitHub-Secret
+> `ENV_FILE_LIVE`/`ENV_FILE_STAGING` per Actions → „Deploy E11LifeOS“ → `server-einrichten`; der Deploy
+> startet fehlende PM2-Prozesse selbst und führt `php artisan app:install` aus. Die Abschnitte 3 und 4
+> unten beschreiben den manuellen Weg.
+
 Beide Umgebungen laufen **ohne eigene Subdomain** als Pfad unter der
 bestehenden `zimmimail.de`-Domain (wie z.B. auch `zimmimail.de/RoboDoc/`):
 
@@ -38,6 +43,8 @@ FLUSH PRIVILEGES;
 ## 3. `.env` je Umgebung
 
 Der Deploy-Workflow fasst `.env` nie an — einmalig von Hand anlegen.
+Vollständige Vorlage mit allen Werten: [`env.production.example`](env.production.example),
+Erklärung jedes Werts: [`env-anleitung.md`](env-anleitung.md).
 **Wichtig für den Pfad-Betrieb:** `APP_URL` UND `ASSET_URL` müssen beide den
 vollen Pfad inkl. `/E11LifeOS`(`-staging`) enthalten, und `VITE_REVERB_PATH`
 muss auf denselben Pfad gesetzt sein (das ist der Präfix, den Apache vor dem
@@ -70,6 +77,10 @@ REVERB_APP_SECRET=<eigenes-secret-live>
 REVERB_HOST=zimmimail.de
 REVERB_PORT=443
 REVERB_SCHEME=https
+# Live-Updates vom Server direkt an den lokalen Reverb-Prozess (Staging: 3021)
+REVERB_PUBLISH_HOST=127.0.0.1
+REVERB_PUBLISH_PORT=3011
+REVERB_PUBLISH_SCHEME=http
 
 VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
 VITE_REVERB_HOST="${REVERB_HOST}"
@@ -101,6 +112,9 @@ pm2 start "/opt/plesk/php/8.4/bin/php artisan reverb:start --port=3021" --name e
 
 pm2 save
 ```
+
+Scheduler (`artisan schedule:work`) und Queue-Worker (`artisan queue:work`) legt der Deploy
+selbst als `e11lifeos-scheduler(-staging)` / `e11lifeos-queue(-staging)` an – kein Cronjob nötig.
 
 ## 5. Apache Reverse Proxy (Pfad statt Subdomain)
 

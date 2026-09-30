@@ -4,7 +4,9 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
+use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
+use App\Support\ShoppingLists;
 use App\Support\RecipeAi;
 use App\Support\RecipeAiException;
 use Illuminate\Support\Carbon;
@@ -35,6 +37,8 @@ new #[Layout('layouts.app')] class extends Component
     public array $selectedIngredients = [];
 
     public bool $choosingIngredients = false;
+
+    public ?int $shoppingListId = null;
 
     public bool $planning = false;
 
@@ -67,6 +71,17 @@ new #[Layout('layouts.app')] class extends Component
         return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($id ?? $this->recipeId);
     }
 
+    /**
+     * Recipes of another household shared with a group: members may use them, not change them.
+     */
+    private function ownRecipe(): Recipe
+    {
+        $recipe = $this->findRecipe();
+        abort_unless($recipe->household_id === $this->householdId, 403);
+
+        return $recipe;
+    }
+
     public function changeServings(int $delta): void
     {
         $this->servings = max(1, min(99, $this->servings + $delta));
@@ -79,18 +94,34 @@ new #[Layout('layouts.app')] class extends Component
 
     public function chooseIngredients(): void
     {
+        $this->shoppingListId ??= ShoppingList::defaultFor((int) $this->householdId)->id;
+        $onList = $this->openOnList();
+        // Items already open on the list start unticked.
         $this->selectedIngredients = collect($this->findRecipe()->scaledIngredients($this->servings))
-            ->reject(fn (array $ingredient) => $ingredient['isSection'])
+            ->reject(fn (array $ingredient) => $ingredient['isSection'] || in_array(mb_strtolower(trim($ingredient['name'])), $onList, true))
             ->keys()
             ->all();
         $this->choosingIngredients = true;
     }
 
     /**
-     * Adds the selected ingredients (scaled to the chosen servings) to the household shopping list.
+     * Lower-case names of the open items on the chosen shopping list.
+     *
+     * @return list<string>
+     */
+    private function openOnList(): array
+    {
+        return ShoppingListEntry::where('household_id', $this->householdId)->where('shopping_list_id', $this->shoppingListId)->where('checked', false)
+            ->pluck('label')->map(fn (string $label) => mb_strtolower(trim($label)))->all();
+    }
+
+    /**
+     * Adds the selected ingredients (scaled to the chosen servings) to the chosen shopping list;
+     * items already on it get the amount added.
      */
     public function addToShoppingList(): void
     {
+        $list = ShoppingList::where('household_id', $this->householdId)->find($this->shoppingListId) ?? ShoppingList::defaultFor((int) $this->householdId);
         $recipe = $this->findRecipe();
         $ingredients = $recipe->scaledIngredients($this->servings);
         $added = 0;
@@ -102,17 +133,12 @@ new #[Layout('layouts.app')] class extends Component
                 continue;
             }
 
-            ShoppingListEntry::create([
-                'household_id' => $this->householdId,
-                'label' => mb_substr($ingredient['name'], 0, 255),
-                'quantity' => trim($ingredient['amount'].' '.$ingredient['unit']) ?: null,
-                'created_by' => Auth::id(),
-            ]);
+            ShoppingLists::add($list, $ingredient['name'], trim($ingredient['amount'].' '.$ingredient['unit']) ?: null, Auth::id(), ['note' => mb_substr($recipe->title, 0, 200)]);
             $added++;
         }
 
         $this->choosingIngredients = false;
-        $this->dispatch('toast', message: trans_choice(':count item added to the shopping list.|:count items added to the shopping list.', $added));
+        $this->dispatch('toast', message: trans_choice(':count item added to the shopping list.|:count items added to the shopping list.', $added).' ('.$list->name.')');
     }
 
     /**
@@ -166,7 +192,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function estimateNutrition(RecipeAi $ai): void
     {
-        $recipe = $this->findRecipe();
+        $recipe = $this->ownRecipe();
 
         try {
             $recipe->update(['nutrition' => $ai->estimateNutrition($recipe) + ['estimated' => true]]);
@@ -177,7 +203,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function createPublicLink(): void
     {
-        $recipe = $this->findRecipe();
+        $recipe = $this->ownRecipe();
 
         if (! $recipe->public_token) {
             $recipe->update(['public_token' => Str::random(40)]);
@@ -186,15 +212,24 @@ new #[Layout('layouts.app')] class extends Component
         $this->sharing = true;
     }
 
+    /**
+     * Validity of the share link in days from now; empty = unlimited.
+     */
+    public function setPublicLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->ownRecipe()->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
     public function revokePublicLink(): void
     {
-        $this->findRecipe()->update(['public_token' => null]);
+        $this->ownRecipe()->update(['public_token' => null, 'public_expires_at' => null]);
         $this->dispatch('toast', message: __('The public link no longer works.'));
     }
 
     public function duplicate(): void
     {
-        $copy = $this->findRecipe()->duplicateFor(Auth::user());
+        $copy = $this->findRecipe()->duplicateFor(Auth::user(), (int) $this->householdId);
 
         $this->redirectRoute('recipes.edit', ['recipe' => $copy->id], navigate: true);
     }
@@ -207,23 +242,24 @@ new #[Layout('layouts.app')] class extends Component
 
     public function toggleArchive(): void
     {
-        $recipe = $this->findRecipe();
+        $recipe = $this->ownRecipe();
         $recipe->update(['archived_at' => $recipe->isArchived() ? null : now()]);
     }
 
     public function delete(): void
     {
-        $this->findRecipe()->delete();
+        $this->ownRecipe()->delete();
 
         $this->redirectRoute('recipes.index', navigate: true);
     }
 
     public function with(): array
     {
-        $recipe = $this->findRecipe()->load(['categories', 'tags', 'creator', 'ratings.user']);
+        $recipe = $this->findRecipe()->load(['categories', 'tags', 'creator', 'ratings.user', 'shareGroups']);
 
         return [
             'recipe' => $recipe,
+            'foreign' => $recipe->household_id !== $this->householdId,
             'averageRating' => $recipe->averageRating(),
             'otherRatings' => $recipe->ratings->where('user_id', '!=', Auth::id())->sortByDesc('updated_at')->values(),
             'photos' => $recipe->additionalImageUrls(),
@@ -269,9 +305,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </a>
                             @endif
                             <div class="mt-2 flex flex-wrap items-center gap-2">
-                                @if ($recipe->isPrivate())
-                                    <x-private-badge />
-                                @endif
+                                <x-audience-badge :model="$recipe" />
                                 @if ($recipe->isArchived())
                                     <span class="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300">{{ __('Archived') }}</span>
                                 @endif
@@ -287,23 +321,31 @@ new #[Layout('layouts.app')] class extends Component
                             @if ($steps !== [])
                                 <a href="{{ route('recipes.cook', ['recipe' => $recipe, 'servings' => $servings]) }}" wire:navigate class="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700">👩‍🍳 {{ __('Cooking mode') }}</a>
                             @endif
-                            <button type="button" wire:click="$toggle('planning')" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-expanded="{{ $planning ? 'true' : 'false' }}">📅 {{ __('Plan') }}</button>
-                            <button type="button" wire:click="toggleFavorite" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}">{{ $isFavorite ? '♥' : '♡' }} {{ __('Favorite') }}</button>
-                            <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5">✎ {{ __('Edit') }}</a>
+                            <button type="button" wire:click="$toggle('planning')" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-expanded="{{ $planning ? 'true' : 'false' }}">📅 {{ __('Plan') }}</button>
+                            <button type="button" wire:click="toggleFavorite" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}">{{ $isFavorite ? '♥' : '♡' }} {{ __('Favorite') }}</button>
+                            @unless ($foreign)
+                                <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200">✎ {{ __('Edit') }}</a>
+                            @endunless
                             <div x-data="{ open: false }" class="relative">
-                                <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-label="{{ __('More') }}">⋯</button>
+                                <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="{{ __('More') }}">⋯</button>
                                 <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
                                     <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📄 {{ __('Download as PDF') }}</a>
-                                    <button type="button" wire:click="$toggle('sharing')" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🔗 {{ __('Public link') }}</button>
-                                    <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
-                                    <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
-                                    <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
+                                    @if ($foreign)
+                                        <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Save a copy to my recipes') }}</button>
+                                    @else
+                                        <button type="button" wire:click="$toggle('sharing')" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🔗 {{ __('Public link') }}</button>
+                                        <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
+                                        <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
+                                        <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    @if ($sharing)
+                    <div class="mt-4"><livewire:sharing.panel type="recipe" :id="$recipe->id" :wire:key="'share-recipe-'.$recipe->id" /></div>
+
+                    @if ($sharing && ! $foreign)
                         <div class="rounded-md bg-emerald-50 dark:bg-emerald-900/30 p-3 space-y-2 text-sm">
                             @if ($recipe->publicUrl())
                                 <p class="text-gray-700 dark:text-gray-300">{{ __('Anyone with this link can view the recipe (without ratings, notes or the meal plan).') }}</p>
@@ -312,6 +354,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" x-on:click="navigator.clipboard.writeText(@js($recipe->publicUrl())).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700" x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></button>
                                     <button type="button" wire:click="revokePublicLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 dark:text-red-400 underline">{{ __('Turn off link') }}</button>
                                 </div>
+                                <x-share-expiry :expires="$recipe->public_expires_at" action="setPublicLinkExpiry" class="mt-2" />
                             @else
                                 <p class="text-gray-700 dark:text-gray-300">{{ __('Share the recipe with people outside the household via a link. You can turn it off at any time.') }}</p>
                                 <button type="button" wire:click="createPublicLink" class="rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700">🔗 {{ __('Create public link') }}</button>
@@ -389,13 +432,31 @@ new #[Layout('layouts.app')] class extends Component
                     @if ($choosingIngredients)
                         <form wire:submit="addToShoppingList" class="mt-3 space-y-2">
                             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Which ingredients do you need?') }}</p>
+                            @php
+                                $shoppingLists = \App\Models\ShoppingList::where('household_id', $this->householdId)->orderBy('position')->orderBy('id')->get();
+                                $alreadyOnList = \App\Models\ShoppingListEntry::where('shopping_list_id', $shoppingListId)->where('checked', false)->pluck('label')->map(fn ($label) => mb_strtolower(trim($label)))->all();
+                            @endphp
+                            @if ($shoppingLists->count() > 1)
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    {{ __('List') }}
+                                    <select wire:model.live="shoppingListId" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                        @foreach ($shoppingLists as $shoppingList)
+                                            <option value="{{ $shoppingList->id }}">{{ $shoppingList->icon }} {{ $shoppingList->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            @endif
                             @foreach ($ingredients as $index => $ingredient)
                                 @if ($ingredient['isSection'])
                                     <p class="pt-2 text-xs font-semibold uppercase text-gray-500">{{ $ingredient['name'] }}</p>
                                 @else
                                     <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="choose-{{ $index }}">
                                         <input type="checkbox" wire:model="selectedIngredients" value="{{ $index }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
-                                        <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}</span>
+                                        <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}
+                                            @if (in_array(mb_strtolower(trim($ingredient['name'])), $alreadyOnList, true))
+                                                <span class="ms-1 rounded bg-indigo-50 px-1 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">🛒 {{ __('already on the list') }}</span>
+                                            @endif
+                                        </span>
                                     </label>
                                 @endif
                             @endforeach
@@ -454,7 +515,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="text-sm font-normal text-gray-500">({{ __('estimated') }})</span>
                             @endif
                         </h2>
-                        @if ($aiAvailable && collect($ingredients)->contains('isSection', false))
+                        @if ($aiAvailable && ! $foreign && collect($ingredients)->contains('isSection', false))
                             <button type="button" wire:click="estimateNutrition" wire:loading.attr="disabled" class="text-sm text-indigo-600 dark:text-indigo-400 underline disabled:opacity-50">
                                 <span wire:loading.remove wire:target="estimateNutrition">✨ {{ $nutritionValues === [] ? __('Estimate with AI') : __('Estimate again') }}</span>
                                 <span wire:loading wire:target="estimateNutrition">{{ __('Estimating …') }}</span>
@@ -498,7 +559,7 @@ new #[Layout('layouts.app')] class extends Component
                         aria-modal="true"
                     >
                         <img :src="open !== null ? photos[open] : ''" alt="" class="max-h-full max-w-full rounded-md object-contain" />
-                        <button type="button" x-on:click="open = null" class="absolute end-4 top-4 text-3xl text-white" aria-label="{{ __('Close') }}">✕</button>
+                        <button type="button" x-on:click="open = null" class="absolute end-4 top-4 text-3xl text-white" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         <template x-if="photos.length > 1">
                             <div>
                                 <button type="button" x-on:click="open = (open + photos.length - 1) % photos.length" class="absolute start-2 top-1/2 -translate-y-1/2 px-3 text-4xl text-white" aria-label="{{ __('Previous photo') }}">‹</button>
@@ -509,9 +570,11 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endif
 
-            <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
-                <livewire:links-panel type="recipe" :id="$recipe->id" :wire:key="'links-recipe-'.$recipe->id" />
-            </div>
+            @unless ($foreign)
+                <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                    <livewire:links-panel type="recipe" :id="$recipe->id" :wire:key="'links-recipe-'.$recipe->id" />
+                </div>
+            @endunless
 
             {{-- Ratings --}}
             <section id="ratings" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">

@@ -108,7 +108,7 @@ new class extends Component
                 <li wire:key="linked-{{ $node['type'] }}-{{ $node['id'] }}" class="inline-flex max-w-full items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 ps-2.5 pe-1.5 py-1 text-sm">
                     <a href="{{ $node['url'] }}" class="truncate text-indigo-800 dark:text-indigo-100 hover:underline" title="{{ $node['kind'] }}">{{ $node['icon'] }} {{ $node['title'] }}</a>
                     @if ($node['removable'])
-                        <button type="button" wire:click="unlink(@js($node['type'].':'.$node['id']))" class="px-0.5 text-indigo-400 hover:text-red-600" aria-label="{{ __('Remove link') }}">✕</button>
+                        <button type="button" wire:click="unlink(@js($node['type'].':'.$node['id']))" class="px-0.5 text-indigo-400 hover:text-red-600" aria-label="{{ __('Remove link') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     @endif
                 </li>
             @endforeach

@@ -149,7 +149,7 @@ class TasksPageTest extends TestCase
         $task->refresh();
         $this->assertSame('2026-09-28', $task->propertyValue($tasks->systemProperty('due')));
         $this->assertSame('medium', $task->propertyValue($tasks->systemProperty('priority')));
-        $this->assertSame([['id' => $first['id'], 'text' => 'Kartons besorgen', 'done' => true]], $task->subtasks());
+        $this->assertEquals([['id' => $first['id'], 'text' => 'Kartons besorgen', 'done' => true]], $task->subtasks());
         $this->assertSame('Termin: Anfang Oktober', $task->body());
 
         // Editing the text in the collection view keeps the subtasks.

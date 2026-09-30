@@ -8,11 +8,15 @@ use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
 use App\Models\Collection;
 use App\Models\CollectionProperty;
+use App\Models\CollectionTemplate;
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
 use App\Models\CollectionView;
 use App\Support\BrainAi;
+use App\Support\ContractAssistant;
+use App\Support\AiException;
+use App\Support\EntryAi;
 use App\Support\EntryFilters;
 use App\Support\Links;
 use App\Support\Recurrence;
@@ -20,6 +24,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -65,6 +70,11 @@ new #[Layout('layouts.app')] class extends Component
      */
     #[Url(as: 'entry', except: '')]
     public string $openEntryId = '';
+
+    /**
+     * Cancellation letter being edited in the detail popup of a contract.
+     */
+    public ?string $letterText = null;
 
     /**
      * AI tag suggestions for the open entry.
@@ -137,6 +147,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $showSettings = false;
 
+    public bool $showImport = false;
+
     public string $newPropertyName = '';
 
     public string $newPropertyType = CollectionProperty::TYPE_TEXT;
@@ -166,6 +178,22 @@ new #[Layout('layouts.app')] class extends Component
      * @var array{title: string, values: array<int|string, mixed>, tags: string, body: string}
      */
     public array $form = ['title' => '', 'values' => [], 'tags' => '', 'body' => ''];
+
+    /**
+     * Documents picked in the entry form (stored with the entry on save).
+     *
+     * @var array<int, mixed>
+     */
+    public array $formDocuments = [];
+
+    /**
+     * Documents added in the detail popup (stored right away).
+     *
+     * @var array<int, mixed>
+     */
+    public array $documentUploads = [];
+
+    public ?string $aiFillMessage = null;
 
     public function mount(int $collection): void
     {
@@ -239,6 +267,10 @@ new #[Layout('layouts.app')] class extends Component
             'created_by' => Auth::id(),
             'position' => (int) $this->entries()->max('position') + 1,
         ]);
+
+        foreach ($collection->properties as $property) {
+            $entry->setPropertyValue($property, $property->normalizeValue($property->resolvedDefault(Auth::id()), $this->memberIds()));
+        }
 
         $groupProperty = $this->groupProperty($collection);
 
@@ -451,11 +483,59 @@ new #[Layout('layouts.app')] class extends Component
         $this->openEntryId = (string) $this->findEntry($entryId)->id;
         $this->editingBody = false;
         $this->entryTagSuggestions = [];
+        $this->letterText = null;
     }
 
     public function closeEntry(): void
     {
-        $this->reset('openEntryId', 'editingBody', 'body', 'entryTagSuggestions');
+        $this->reset('openEntryId', 'editingBody', 'body', 'entryTagSuggestions', 'letterText');
+    }
+
+    /**
+     * Read-only link for people outside the household.
+     */
+    public function createCollectionLink(): void
+    {
+        $collection = $this->findCollection();
+        abort_if($collection->isTasks(), 404);
+
+        if (! $collection->public_token) {
+            $collection->forceFill(['public_token' => \Illuminate\Support\Str::random(40)])->save();
+        }
+    }
+
+    /**
+     * Validity of the share link in days from now; empty = unlimited.
+     */
+    public function setCollectionLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->findCollection()->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
+    public function revokeCollectionLink(): void
+    {
+        $this->findCollection()->forceFill(['public_token' => null, 'public_expires_at' => null])->save();
+        $this->dispatch('toast', message: __('The public link no longer works.'));
+    }
+
+    public function openCancellationLetter(): void
+    {
+        $collection = $this->findCollection();
+        abort_unless(ContractAssistant::isContractCollection($collection), 404);
+
+        $this->letterText = ContractAssistant::letter($collection, $this->findEntry((int) $this->openEntryId), Auth::user());
+    }
+
+    public function downloadCancellationLetter(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless(ContractAssistant::isContractCollection($this->findCollection()), 404);
+        $this->validate(['letterText' => ['required', 'string', 'max:20000']]);
+
+        $entry = $this->findEntry((int) $this->openEntryId);
+        $pdf = ContractAssistant::pdf((string) $this->letterText);
+
+        return response()->streamDownload(fn () => print ($pdf), \Illuminate\Support\Str::slug(__('Cancellation').' '.$entry->title).'.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     // ── Entry form (popup) ───────────────────────────────────────────────
@@ -466,7 +546,9 @@ new #[Layout('layouts.app')] class extends Component
     public function newEntry(?string $optionId = null, ?string $date = null): void
     {
         $collection = $this->findCollection();
-        $values = [];
+        $values = $collection->properties
+            ->mapWithKeys(fn (CollectionProperty $property) => [$property->id => $property->normalizeValue($property->resolvedDefault(Auth::id()), $this->memberIds())])
+            ->filter(fn ($value) => $value !== null)->all();
 
         if ($optionId !== null && $optionId !== '' && ($groupProperty = $this->groupProperty($collection))) {
             $values[$groupProperty->id] = $groupProperty->normalizeValue($optionId);
@@ -500,8 +582,89 @@ new #[Layout('layouts.app')] class extends Component
 
     public function closeEntryForm(): void
     {
-        $this->reset('showEntryForm', 'formEntryId', 'form');
+        $this->reset('showEntryForm', 'formEntryId', 'form', 'formDocuments', 'aiFillMessage');
         $this->resetValidation();
+    }
+
+    public function removeFormDocument(int $index): void
+    {
+        unset($this->formDocuments[$index]);
+        $this->formDocuments = array_values($this->formDocuments);
+    }
+
+    /**
+     * "✨ Fill in from document": the AI reads the (last) picked PDF or photo and fills empty fields.
+     */
+    public function fillFormFromDocument(EntryAi $ai): void
+    {
+        $this->aiFillMessage = null;
+        $this->validate(['formDocuments' => ['array', 'max:10'], 'formDocuments.*' => Attachment::rules()]);
+
+        $document = collect($this->formDocuments)->reverse()->first(fn ($file) => in_array($file->getMimeType(), EntryAi::MEDIA_TYPES, true));
+
+        if (! $document) {
+            $this->aiFillMessage = __('Add a PDF or a photo of the document first.');
+
+            return;
+        }
+
+        $collection = $this->findCollection();
+
+        try {
+            $result = $ai->extract($collection, (string) file_get_contents($document->getRealPath()), $document->getMimeType());
+        } catch (AiException $exception) {
+            $this->aiFillMessage = $exception->getMessage();
+
+            return;
+        }
+
+        $filled = 0;
+        $formatted = $this->formValues($collection, $result['values']);
+
+        foreach (array_keys($result['values']) as $propertyId) {
+            $current = $this->form['values'][$propertyId] ?? null;
+
+            if ($current === null || $current === '' || $current === [] || $current === false) {
+                $this->form['values'][$propertyId] = $formatted[$propertyId];
+                $filled++;
+            }
+        }
+
+        if (trim($this->form['title']) === '' && $result['title'] !== '') {
+            $this->form['title'] = $result['title'];
+            $filled++;
+        }
+
+        if (trim($this->form['body']) === '' && $result['notes'] !== '') {
+            $this->form['body'] = $result['notes'];
+        }
+
+        $this->aiFillMessage = trans_choice('Filled in :count field from the document – please check.|Filled in :count fields from the document – please check.', $filled);
+    }
+
+    /**
+     * Detail popup: files are stored as soon as they are picked.
+     */
+    public function updatedDocumentUploads(): void
+    {
+        $this->validate(['documentUploads' => ['array', 'max:10'], 'documentUploads.*' => Attachment::rules()]);
+        $entry = $this->findEntry((int) $this->openEntryId);
+
+        foreach ($this->documentUploads as $upload) {
+            Attachment::storeUpload($upload, (int) $this->householdId, $entry->id, (int) Auth::id());
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count document added|:count documents added', count($this->documentUploads)));
+        $this->reset('documentUploads');
+    }
+
+    public function deleteDocument(int $attachmentId): void
+    {
+        Attachment::query()
+            ->where('household_id', $this->householdId)
+            ->whereIn('item_id', $this->entries()->select('items.id'))
+            ->find($attachmentId)
+            ?->delete() ?? abort(404);
     }
 
     /**
@@ -513,9 +676,22 @@ new #[Layout('layouts.app')] class extends Component
             'form.title' => ['required', 'string', 'max:255'],
             'form.tags' => ['nullable', 'string', 'max:1000'],
             'form.body' => ['nullable', 'string', 'max:100000'],
+            'formDocuments' => ['array', 'max:10'],
+            'formDocuments.*' => Attachment::rules(),
         ], attributes: ['form.title' => __('Title')]);
 
         $collection = $this->findCollection();
+        $missing = $collection->properties->filter(fn (CollectionProperty $property) => $property->required
+            && $property->normalizeValue($this->form['values'][$property->id] ?? null, $this->memberIds()) === null);
+
+        if ($missing->isNotEmpty()) {
+            foreach ($missing as $property) {
+                $this->addError('form.values.'.$property->id, __('Please fill in “:field”.', ['field' => $property->name]));
+            }
+
+            return;
+        }
+
         $entry = $this->formEntryId ? $this->findEntry($this->formEntryId) : new Item([
             'household_id' => $this->householdId,
             'collection_id' => $collection->id,
@@ -536,6 +712,12 @@ new #[Layout('layouts.app')] class extends Component
         $entry->save();
         $entry->syncTagNames(explode(',', (string) $this->form['tags']));
         Attachment::attachReferencedTo($entry, Auth::user());
+
+        foreach ($this->formDocuments as $document) {
+            Attachment::storeUpload($document, (int) $this->householdId, $entry->id, (int) Auth::id());
+        }
+
+        $this->reset('formDocuments', 'aiFillMessage');
         $this->announceReschedule($entry);
 
         $this->dispatch('toast', message: $isNew ? __('Entry added') : __('Changes saved'));
@@ -774,7 +956,29 @@ new #[Layout('layouts.app')] class extends Component
         $property = $this->findProperty($propertyId);
         abort_unless($property->type === CollectionProperty::TYPE_DATE, 422);
 
-        $property->update(['options' => $days === '' ? null : ['remind_days' => max(0, min(365, (int) $days))]]);
+        $options = $property->options ?? [];
+
+        if ($days === '') {
+            unset($options['remind_days'], $options['create_task']);
+        } else {
+            $options['remind_days'] = max(0, min(365, (int) $days));
+        }
+
+        $property->update(['options' => $options ?: null]);
+        $this->schemaChanged();
+    }
+
+    /**
+     * A date property with a reminder can also create a task before the date.
+     */
+    public function togglePropertyTask(int $propertyId): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->remindDays() !== null, 422);
+
+        $options = $property->options;
+        $options['create_task'] = ! $property->createsTask();
+        $property->update(['options' => $options]);
         $this->schemaChanged();
     }
 
@@ -786,6 +990,62 @@ new #[Layout('layouts.app')] class extends Component
             $this->findProperty($propertyId)->update(['name' => mb_substr($name, 0, 100)]);
             $this->schemaChanged();
         }
+    }
+
+    /**
+     * Moves a property one place up (-1) or down (1) in forms and views.
+     */
+    public function moveProperty(int $propertyId, int $direction): void
+    {
+        $properties = $this->findCollection()->properties->values();
+        $index = $properties->search(fn (CollectionProperty $property) => $property->id === $propertyId);
+        $target = $index === false ? null : $index + ($direction < 0 ? -1 : 1);
+
+        if ($target === null || ! isset($properties[$target])) {
+            return;
+        }
+
+        $ordered = $properties->all();
+        [$ordered[$index], $ordered[$target]] = [$ordered[$target], $ordered[$index]];
+
+        foreach ($ordered as $position => $property) {
+            if ($property->position !== $position + 1) {
+                $property->update(['position' => $position + 1]);
+            }
+        }
+
+        $this->schemaChanged();
+    }
+
+    public function setPropertyRequired(int $propertyId, bool $required): void
+    {
+        $this->findProperty($propertyId)->update(['required' => $required]);
+        $this->schemaChanged();
+    }
+
+    public function setPropertyHelp(int $propertyId, string $help): void
+    {
+        $this->findProperty($propertyId)->update(['help' => mb_substr(trim($help), 0, 255) ?: null]);
+        $this->schemaChanged();
+    }
+
+    /**
+     * Prefilled value for new entries. Dates accept "today" / "today+N", persons "me".
+     */
+    public function setPropertyDefault(int $propertyId, mixed $value): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_if($property->type === CollectionProperty::TYPE_RELATION, 422);
+
+        $default = match (true) {
+            $value === null || $value === '' || $value === [] => null,
+            $property->type === CollectionProperty::TYPE_DATE && is_string($value) && preg_match('/^today(\+\d{1,3})?$/', $value) === 1 => $value,
+            $property->type === CollectionProperty::TYPE_PERSON && $value === 'me' => 'me',
+            default => $property->normalizeValue($value, $this->memberIds()),
+        };
+
+        $property->update(['default_value' => $default]);
+        $this->schemaChanged();
     }
 
     /**
@@ -880,6 +1140,32 @@ new #[Layout('layouts.app')] class extends Component
 
         // Full navigation so the sidebar shows the new name.
         $this->redirectRoute('collections.show', ['collection' => $this->collectionId], navigate: true);
+    }
+
+    /**
+     * Saves the fields and form settings (not the entries) as a template for new collections.
+     */
+    #[On('collection-imported')]
+    public function closeImport(): void
+    {
+        $this->showImport = false;
+    }
+
+    public function saveAsTemplate(string $name): void
+    {
+        $collection = $this->findCollection();
+        $name = mb_substr(trim($name), 0, 100);
+
+        if ($name === '') {
+            return;
+        }
+
+        CollectionTemplate::updateOrCreate(
+            ['household_id' => $this->householdId, 'name' => $name],
+            ['created_by' => Auth::id(), 'icon' => $collection->icon, 'definition' => CollectionTemplate::definitionOf($collection)],
+        );
+
+        $this->dispatch('toast', message: __('Saved as template “:name” – choose it under “New collection”.', ['name' => $name]));
     }
 
     public function deleteCollection(): void
@@ -1017,7 +1303,7 @@ new #[Layout('layouts.app')] class extends Component
         $hidden = array_map('intval', $this->hiddenProperties);
         $visibleProperties = $properties->reject(fn (CollectionProperty $property) => in_array($property->id, $hidden, true))->values();
 
-        $entries = $this->entries()->with('creator', 'tags')->orderBy('position')->orderBy('id')->get()
+        $entries = $this->entries()->with('creator', 'tags')->withCount('attachments')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
             ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
@@ -1048,11 +1334,12 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $openEntry = $this->openEntryId !== '' && ctype_digit($this->openEntryId)
-            ? $this->entries()->with('creator', 'tags')->find((int) $this->openEntryId)
+            ? $this->entries()->with('creator', 'tags', 'attachments')->find((int) $this->openEntryId)
             : null;
 
         return [
             'collection' => $collection,
+            'isContracts' => ContractAssistant::isContractCollection($collection),
             'properties' => $properties,
             'visibleProperties' => $visibleProperties,
             'memberNames' => \App\Models\User::whereIn('id', $this->memberIds())->pluck('name', 'id')->all(),
@@ -1068,6 +1355,7 @@ new #[Layout('layouts.app')] class extends Component
             'openEntry' => $openEntry,
             'savedViews' => $collection->views,
             'aiAvailable' => BrainAi::isConfigured(),
+            'documentAiAvailable' => EntryAi::isConfigured(),
             'activeViewModel' => $this->activeView !== '' ? $collection->views->firstWhere('id', (int) $this->activeView) : null,
             'filterRows' => collect($this->filters)->map(function ($filter) use ($properties) {
                 $property = ($filter['property'] ?? 'title') === 'title' ? null : $properties->firstWhere('id', (int) $filter['property']);
@@ -1108,12 +1396,21 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6 sm:py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
+            @if ($collection->system_key === null)
+                <details class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <summary class="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-100">👥 {{ __('Who sees this collection?') }}</summary>
+                    <div class="mt-3"><livewire:sharing.panel type="collection" :id="$collection->id" :wire:key="'share-collection-'.$collection->id" /></div>
+                </details>
+            @endif
+
             {{-- Title bar --}}
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <span aria-hidden="true">{{ $collection->displayIcon() }}</span>
                     {{ $collection->name }}
-                    @if ($collection->isPrivate())
+                    @if ($collection->system_key === null)
+                        <x-audience-badge :model="$collection->loadMissing('shareGroups')" class="text-sm" />
+                    @elseif ($collection->isPrivate())
                         <x-private-badge />
                     @endif
                 </h1>
@@ -1130,6 +1427,9 @@ new #[Layout('layouts.app')] class extends Component
                     @endphp
                     @if (count($views) > 1)
                         <div class="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden text-sm" role="group" aria-label="{{ __('View') }}">
+                            @if ($collection->isTasks())
+                                <a href="{{ route('tasks.index') }}" wire:navigate class="bg-white px-3 py-1.5 text-gray-700 dark:bg-gray-800 dark:text-gray-300">✅ {{ __('Task list') }}</a>
+                            @endif
                             @foreach ($views as $viewKey => $viewLabel)
                                 <button type="button" wire:click="$set('viewMode', '{{ $viewKey }}')" @class(['px-3 py-1.5', 'bg-indigo-600 text-white' => $currentView === $viewKey, 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300' => $currentView !== $viewKey]) aria-pressed="{{ $currentView === $viewKey ? 'true' : 'false' }}">{{ $viewLabel }}</button>
                             @endforeach
@@ -1149,118 +1449,20 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </div>
                     @endif
+                    <x-secondary-button type="button" wire:click="$set('showImport', true)" title="{{ __('Import CSV or Excel') }}">⬆ <span class="ms-1 hidden sm:inline">{{ __('Import') }}</span></x-secondary-button>
                     <x-secondary-button type="button" wire:click="$toggle('showSettings')">⚙ {{ __('Properties') }}</x-secondary-button>
                 </div>
             </div>
 
-            {{-- Settings: collection details + properties --}}
-            @if ($showSettings)
-                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-5 space-y-5">
-                    <form wire:submit="saveCollectionDetails" class="flex flex-wrap items-end gap-3">
-                        <div class="w-20">
-                            <x-input-label for="collectionIcon" :value="__('Icon')" />
-                            <x-text-input wire:model="collectionIcon" id="collectionIcon" class="mt-1 block w-full text-center" maxlength="16" placeholder="{{ \App\Models\Collection::DEFAULT_ICON }}" />
-                        </div>
-                        <div class="flex-1 min-w-[12rem]">
-                            <x-input-label for="collectionName" :value="__('Name')" />
-                            <x-text-input wire:model="collectionName" id="collectionName" class="mt-1 block w-full" required />
-                        </div>
-                        <div class="w-44">
-                            <x-input-label for="collectionDefaultView" :value="__('Default view')" />
-                            <select wire:model="collectionDefaultView" id="collectionDefaultView" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
-                                <option value="">{{ __('Automatic') }}</option>
-                                @foreach (['cards' => __('Cards'), 'list' => __('List'), 'table' => __('Table'), 'board' => __('Board'), 'calendar' => __('Calendar')] as $viewKey => $viewLabel)
-                                    <option value="{{ $viewKey }}">{{ $viewLabel }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <x-primary-button>{{ __('Save') }}</x-primary-button>
-                        @if ($collection->system_key === null)
-                            <x-danger-button type="button" wire:click="deleteCollection" wire:confirm="{{ __('Delete this collection and all its entries?') }}">{{ __('Delete collection') }}</x-danger-button>
-                        @endif
-                    </form>
-                    <x-input-error :messages="$errors->get('collectionName')" />
-
-                    <div>
-                        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Properties') }}</h3>
-                        <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach ($properties as $property)
-                                <li wire:key="property-{{ $property->id }}" class="py-2 space-y-2">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <input
-                                            type="text"
-                                            value="{{ $property->name }}"
-                                            aria-label="{{ __('Property name') }}"
-                                            wire:change="renameProperty({{ $property->id }}, $event.target.value)"
-                                            class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 text-sm"
-                                        />
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $propertyTypes[$property->type] ?? $property->type }}</span>
-                                        @if ($property->isSystem())
-                                            <span class="text-xs text-gray-400">({{ __('built-in') }})</span>
-                                        @else
-                                            <button type="button" wire:click="deleteProperty({{ $property->id }})" wire:confirm="{{ __('Delete this property and its values?') }}" class="text-xs text-red-600 dark:text-red-400 underline">{{ __('Delete') }}</button>
-                                        @endif
-                                    </div>
-                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_DATE && $property->system_key === null)
-                                        <label class="flex flex-wrap items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
-                                            🔔 {{ __('E-mail reminder') }}
-                                            <select wire:change="setPropertyReminder({{ $property->id }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-0.5 text-xs">
-                                                <option value="" @selected($property->remindDays() === null)>{{ __('none') }}</option>
-                                                @foreach ([0, 1, 3, 7, 14, 30, 60, 90] as $days)
-                                                    <option value="{{ $days }}" @selected($property->remindDays() === $days)>{{ $days === 0 ? __('on the day') : trans_choice(':count day before|:count days before', $days) }}</option>
-                                                @endforeach
-                                            </select>
-                                        </label>
-                                    @endif
-                                    @if ($property->hasOptions())
-                                        <div class="flex flex-wrap items-center gap-2 ps-2">
-                                            @foreach ($property->selectOptions() as $option)
-                                                <span wire:key="option-{{ $property->id }}-{{ $option['id'] }}" class="inline-flex items-center gap-1">
-                                                    <x-option-badge :option="$option" />
-                                                    <button type="button" x-data x-on:click="const name = window.prompt(@js(__('Rename option:')), @js($option['name'])); if (name) { $wire.renameOption({{ $property->id }}, @js($option['id']), name) }" class="text-xs text-gray-400 hover:text-gray-700" title="{{ __('Rename') }}">✎</button>
-                                                    @unless ($property->isSystem())
-                                                        <button type="button" wire:click="deleteOption({{ $property->id }}, @js($option['id']))" wire:confirm="{{ __('Delete this option?') }}" class="text-xs text-gray-400 hover:text-red-600" title="{{ __('Delete') }}">✕</button>
-                                                    @endunless
-                                                </span>
-                                            @endforeach
-                                            @unless ($property->isSystem())
-                                                <form x-data="{ name: '' }" x-on:submit.prevent="if (name.trim()) { $wire.addOption({{ $property->id }}, name); name = '' }" class="inline-flex">
-                                                    <input x-model="name" type="text" placeholder="+ {{ __('Option') }}" aria-label="{{ __('New option') }}" class="w-28 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 py-0.5 text-xs" />
-                                                </form>
-                                            @endunless
-                                        </div>
-                                    @endif
-                                </li>
-                            @endforeach
-                        </ul>
-
-                        <form wire:submit="addProperty" class="mt-3 flex flex-wrap items-end gap-2">
-                            <div>
-                                <x-input-label for="newPropertyName" :value="__('New property')" />
-                                <x-text-input wire:model="newPropertyName" id="newPropertyName" class="mt-1 block" placeholder="{{ __('e.g. Priority') }}" />
-                            </div>
-                            <div>
-                                <x-input-label for="newPropertyType" :value="__('Type')" />
-                                <select wire:model="newPropertyType" id="newPropertyType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-sm text-sm">
-                                    @foreach ($propertyTypes as $type => $typeLabel)
-                                        <option value="{{ $type }}">{{ $typeLabel }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <x-primary-button>{{ __('Add') }}</x-primary-button>
-                        </form>
-                        <x-input-error :messages="$errors->get('newPropertyName')" class="mt-1" />
-                    </div>
-                </section>
-            @endif
+            @include('collections.partials.settings')
 
             {{-- Saved views and filters --}}
             <div class="flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-2" role="tablist" aria-label="{{ __('Views') }}">
-                <button type="button" role="tab" aria-selected="{{ $activeView === '' ? 'true' : 'false' }}" wire:click="clearView" @class(['rounded-md px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $activeView === '', 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== ''])>{{ __('All') }}</button>
+                <button type="button" role="tab" aria-selected="{{ $activeView === '' ? 'true' : 'false' }}" wire:click="clearView" @class(['rounded-md px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $activeView === '', 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== ''])>{{ __('All') }}</button>
                 @foreach ($savedViews as $savedView)
                     <span wire:key="view-{{ $savedView->id }}" class="group inline-flex items-center">
-                        <button type="button" role="tab" aria-selected="{{ $activeView === (string) $savedView->id ? 'true' : 'false' }}" wire:click="applyView({{ $savedView->id }})" @class(['rounded-md px-3 py-1 text-sm', 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' => $activeView === (string) $savedView->id, 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== (string) $savedView->id])>{{ $savedView->name }}</button>
-                        <button type="button" wire:click="deleteView({{ $savedView->id }})" wire:confirm="{{ __('Delete this view?') }}" class="px-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600" aria-label="{{ __('Delete view :name', ['name' => $savedView->name]) }}">✕</button>
+                        <button type="button" role="tab" aria-selected="{{ $activeView === (string) $savedView->id ? 'true' : 'false' }}" wire:click="applyView({{ $savedView->id }})" @class(['rounded-md px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $activeView === (string) $savedView->id, 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' => $activeView !== (string) $savedView->id])>{{ $savedView->name }}</button>
+                        <button type="button" wire:click="deleteView({{ $savedView->id }})" wire:confirm="{{ __('Delete this view?') }}" class="px-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600" aria-label="{{ __('Delete view :name', ['name' => $savedView->name]) }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </span>
                 @endforeach
                 <span class="flex-1"></span>
@@ -1313,7 +1515,7 @@ new #[Layout('layouts.app')] class extends Component
                                     />
                                 @endif
                             @endif
-                            <button type="button" wire:click="removeFilter({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove filter') }}">✕</button>
+                            <button type="button" wire:click="removeFilter({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove filter') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </div>
                     @endforeach
                     <button type="button" wire:click="addFilter" class="text-sm text-indigo-600 dark:text-indigo-400 underline">+ {{ __('Add filter') }}</button>
@@ -1410,9 +1612,14 @@ new #[Layout('layouts.app')] class extends Component
                                         </p>
                                     @endif
                                 </div>
-                                @if ($badge)
-                                    <x-option-badge :option="$badge['options'][0]" class="shrink-0" />
-                                @endif
+                                <span class="flex shrink-0 items-center gap-1.5">
+                                    @if ($entry->attachments_count > 0)
+                                        <span class="text-xs text-gray-400" title="{{ __('Documents') }}">📎 {{ $entry->attachments_count }}</span>
+                                    @endif
+                                    @if ($badge)
+                                        <x-option-badge :option="$badge['options'][0]" />
+                                    @endif
+                                </span>
                             </div>
 
                             @if ($rows->isNotEmpty())
@@ -1462,7 +1669,7 @@ new #[Layout('layouts.app')] class extends Component
                         <li wire:key="list-{{ $entry->id }}">
                             <button type="button" wire:click="openEntry({{ $entry->id }})" class="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-gray-50 dark:hover:bg-gray-700/40">
                                 <div class="min-w-0 flex-1">
-                                    <p @class(['truncate font-medium', 'line-through text-gray-400' => $isDone, 'text-gray-900 dark:text-gray-100' => ! $isDone])>{{ $entry->title }}</p>
+                                    <p @class(['truncate font-medium', 'line-through text-gray-400' => $isDone, 'text-gray-900 dark:text-gray-100' => ! $isDone])>{{ $entry->title }}{{ $entry->attachments_count > 0 ? ' 📎' : '' }}</p>
                                     @if ($secondary->isNotEmpty())
                                         <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                             @foreach ($secondary as $display)
@@ -1491,7 +1698,7 @@ new #[Layout('layouts.app')] class extends Component
                 </ul>
             @elseif ($currentView === 'table')
                 {{-- Table --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg overflow-x-auto">
+                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="border-b border-gray-200 dark:border-gray-700 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <tr>
@@ -1543,7 +1750,7 @@ new #[Layout('layouts.app')] class extends Component
                                         </td>
                                     @endforeach
                                     <td class="px-3 py-1.5 text-end">
-                                        <button type="button" wire:click="deleteEntry({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-gray-400 hover:text-red-600" title="{{ __('Delete') }}">✕</button>
+                                        <button type="button" wire:click="deleteEntry({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-gray-400 hover:text-red-600" title="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </td>
                                 </tr>
                             @empty
@@ -1576,7 +1783,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($currentView === 'calendar')
                 {{-- Calendar --}}
-                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-3 sm:p-4">
+                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-3 sm:p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div class="flex items-center gap-2">
                             <button type="button" wire:click="changeMonth(-1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ $calendar['isWeek'] ? __('Previous week') : __('Previous month') }}">‹</button>
@@ -1838,6 +2045,26 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="editEntry({{ $openEntry->id }})" class="-mt-3 text-sm text-gray-400 hover:text-indigo-600">{{ trans_choice(':count empty field – fill in|:count empty fields – fill in', $emptyCount) }} →</button>
                 @endif
 
+                @if ($isContracts)
+                    <div>
+                        @if ($letterText === null)
+                            <button type="button" wire:click="openCancellationLetter" class="rounded-md px-3 py-1.5 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-600 dark:hover:bg-gray-700">✉️ {{ __('Write cancellation letter') }}</button>
+                        @else
+                            <h3 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">✉️ {{ __('Cancellation letter') }}</h3>
+                            <p class="mb-1.5 text-xs text-gray-500 dark:text-gray-400">{{ __('Fill in the parts in [brackets], then download it as a PDF or copy the text.') }}</p>
+                            <textarea wire:model="letterText" rows="16" aria-label="{{ __('Cancellation letter') }}" class="w-full rounded-md border-gray-300 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></textarea>
+                            <x-input-error :messages="$errors->get('letterText')" />
+                            <div class="mt-2 flex flex-wrap gap-2" x-data="{ copied: false }">
+                                <x-primary-button type="button" wire:click="downloadCancellationLetter">⬇ {{ __('Download PDF') }}</x-primary-button>
+                                <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText($wire.letterText).then(() => { copied = true; setTimeout(() => copied = false, 2000) })">
+                                    <span x-show="! copied">📋 {{ __('Copy') }}</span><span x-show="copied" x-cloak>✓ {{ __('Copied') }}</span>
+                                </x-secondary-button>
+                                <x-secondary-button type="button" wire:click="$set('letterText', null)">{{ __('Close') }}</x-secondary-button>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 <div>
                     <h3 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"># {{ __('Tags') }}</h3>
                         <div class="flex gap-1.5">
@@ -1866,7 +2093,42 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                 </div>
 
-                <div class="border-t border-gray-100 pt-4 dark:border-gray-700">
+                <x-drop-zone model="documentUploads" multiple>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📎 {{ __('Documents') }} <span class="hidden font-normal normal-case text-gray-400 sm:inline">· {{ __('or drop files here') }}</span></h3>
+                        <label class="cursor-pointer text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+                            + {{ __('Add files') }}
+                            <input type="file" multiple wire:model="documentUploads" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
+                        </label>
+                    </div>
+                    <p wire:loading wire:target="documentUploads" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                    <x-input-error :messages="array_merge($errors->get('documentUploads'), $errors->get('documentUploads.*'))" />
+                    @if ($openEntry->attachments->isNotEmpty())
+                        <ul class="grid gap-2 sm:grid-cols-2">
+                            @foreach ($openEntry->attachments->sortByDesc('id') as $document)
+                                <li wire:key="document-{{ $document->id }}" class="group flex items-center gap-3 rounded-xl bg-gray-50 p-2 dark:bg-gray-900/40">
+                                    <a href="{{ $document->url() }}" target="_blank" rel="noopener" class="flex min-w-0 flex-1 items-center gap-3">
+                                        @if ($document->isImage())
+                                            <img src="{{ $document->url() }}" alt="" class="h-12 w-12 shrink-0 rounded-lg object-cover" loading="lazy" />
+                                        @else
+                                            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-2xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" aria-hidden="true">{{ $document->isPdf() ? '📄' : '📎' }}</span>
+                                        @endif
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ $document->original_name }}</span>
+                                            <span class="block text-xs text-gray-500">{{ $document->sizeLabel() }} · {{ $document->created_at->translatedFormat('j. M Y') }}</span>
+                                        </span>
+                                    </a>
+                                    <button type="button" wire:click="deleteDocument({{ $document->id }})" wire:confirm="{{ __('Delete this document?') }}" class="px-1 text-gray-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label="{{ __('Delete') }}">×</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="text-sm text-gray-400">{{ __('No documents yet.') }}</p>
+                    @endif
+                </x-drop-zone>
+
+                <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <livewire:documents-panel type="item" :id="$openEntry->id" :wire:key="'documents-entry-'.$openEntry->id" />
                     <livewire:links-panel type="item" :id="$openEntry->id" :wire:key="'links-entry-'.$openEntry->id" />
                 </div>
 
@@ -1917,6 +2179,10 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
+                <div class="border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <livewire:entries.activity :item-id="$openEntry->id" :wire:key="'activity-entry-'.$openEntry->id" />
+                </div>
+
                 <p class="text-xs text-gray-400">
                     {{ __('Created') }} {{ $openEntry->created_at->translatedFormat('j. F Y') }}@if ($openEntry->creator) · {{ $openEntry->creator->name }}@endif
                     @if (! $collection->isPrivate() && $openEntry->visibilityCanBeChangedBy(auth()->user()))
@@ -1941,7 +2207,7 @@ new #[Layout('layouts.app')] class extends Component
                 <span class="truncate">{{ $collection->name }} · <strong class="text-gray-800 dark:text-gray-100">{{ $formEntryId ? __('Edit entry') : ($collection->isTasks() ? __('New task') : __('New entry')) }}</strong></span>
             </x-slot:header>
 
-            <form id="entry-form" wire:submit="saveEntryForm" class="space-y-5">
+            <form id="entry-form" wire:submit="saveEntryForm" @if (! $formEntryId) data-draft="entry-{{ $collection->id }}" data-draft-restored="{{ __('Draft restored') }}" @endif class="space-y-5">
                 <div>
                     <label for="form-title" class="sr-only">{{ __('Title') }}</label>
                     <div class="flex gap-2">
@@ -1958,6 +2224,40 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </div>
                 @endif
+
+                <div class="rounded-xl border border-dashed border-gray-300 p-4 dark:border-gray-600">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📎 {{ __('Documents') }}</p>
+                        <label class="cursor-pointer rounded-lg px-3 py-1.5 text-sm text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">
+                            + {{ __('Add files') }}
+                            <input type="file" multiple wire:model="formDocuments" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
+                        </label>
+                    </div>
+                    <p wire:loading wire:target="formDocuments" class="mt-2 text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                    @if ($formDocuments !== [])
+                        <ul class="mt-2 space-y-1 text-sm">
+                            @foreach ($formDocuments as $index => $document)
+                                <li wire:key="form-document-{{ $index }}" class="flex items-center gap-2">
+                                    <span aria-hidden="true">{{ str_starts_with((string) $document->getMimeType(), 'image/') ? '🖼️' : '📄' }}</span>
+                                    <span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">{{ $document->getClientOriginalName() }}</span>
+                                    <button type="button" wire:click="removeFormDocument({{ $index }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($documentAiAvailable)
+                            <button type="button" wire:click="fillFormFromDocument" wire:loading.attr="disabled" wire:target="fillFormFromDocument" class="mt-3 inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200">
+                                <span wire:loading.remove wire:target="fillFormFromDocument">✨ {{ __('Fill in from document') }}</span>
+                                <span wire:loading wire:target="fillFormFromDocument">{{ __('Reading the document …') }}</span>
+                            </button>
+                        @endif
+                    @else
+                        <p class="mt-1 text-xs text-gray-400">{{ $documentAiAvailable ? __('Contract, policy, invoice or photo – the AI can fill in the fields from it.') : __('Contract, policy, invoice or photo.') }}</p>
+                    @endif
+                    @if ($aiFillMessage)
+                        <p class="mt-2 text-sm text-gray-700 dark:text-gray-200" role="status">{{ $aiFillMessage }}</p>
+                    @endif
+                    <x-input-error :messages="array_merge($errors->get('formDocuments'), $errors->get('formDocuments.*'))" class="mt-1" />
+                </div>
 
                 <div>
                     <label for="form-tags" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"># {{ __('Tags') }}</label>
@@ -1978,6 +2278,15 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
                 <button type="button" wire:click="closeEntryForm" class="ms-auto rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ __('Cancel') }}</button>
             </x-slot:footer>
+        </x-sheet>
+    @endif
+    @if ($showImport)
+        <x-sheet close="closeImport" :label="__('Import entries')" wire:key="import-sheet">
+            <x-slot:header>
+                <span aria-hidden="true">{{ $collection->displayIcon() }}</span>
+                <span class="truncate">{{ $collection->name }} · <strong class="text-gray-800 dark:text-gray-100">{{ __('Import entries') }}</strong></span>
+            </x-slot:header>
+            <livewire:collections.import :collection-id="$collection->id" :wire:key="'import-'.$collection->id" />
         </x-sheet>
     @endif
 </div>

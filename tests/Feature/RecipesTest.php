@@ -84,7 +84,7 @@ class RecipesTest extends TestCase
         $component->assertRedirect(route('recipes.show', $recipe));
 
         $this->assertSame($household->id, $recipe->household_id);
-        $this->assertSame([['name' => 'Teig', 'isSection' => true], ['amount' => '250', 'unit' => 'g', 'name' => 'Mehl']], $recipe->ingredients);
+        $this->assertEquals([['name' => 'Teig', 'isSection' => true], ['amount' => '250', 'unit' => 'g', 'name' => 'Mehl']], $recipe->ingredients);
         $this->assertSame(['Verrühren', 'Ausbacken'], $recipe->steps());
         $this->assertSame(['Frühstück'], $recipe->categories->pluck('name')->all());
         $this->assertSame(['schnell', 'süß'], $recipe->tags->pluck('name')->sort()->values()->all());
@@ -214,6 +214,23 @@ class RecipesTest extends TestCase
             ->assertViewHas('recipes', fn ($recipes) => $titles($recipes) === ['Alter Auflauf']);
     }
 
+    public function test_recipes_can_be_shown_as_cards_list_or_table(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        Recipe::factory()->for($household)->create(['title' => 'Lasagne', 'prep_time' => 20, 'cook_time' => 40, 'cooked_count' => 3]);
+
+        Volt::test('recipes.index')->assertSet('view', 'cards')->assertSee('Lasagne')
+            ->set('view', 'list')->assertSee('Lasagne')->assertSee('60 Min')
+            ->set('view', 'table')->assertSee('Gesamtzeit')->assertSee('Lasagne')
+            ->set('view', 'unknown');
+
+        // The choice is kept for the session; unknown values fall back to cards.
+        Volt::test('recipes.index')->assertSet('view', 'cards');
+        Volt::test('recipes.index')->set('view', 'table');
+        Volt::test('recipes.index')->assertSet('view', 'table');
+    }
+
     public function test_private_recipes_and_other_households_stay_hidden(): void
     {
         [$owner, $household] = $this->memberWithHousehold();
@@ -263,7 +280,7 @@ class RecipesTest extends TestCase
         $this->actingAs($user);
         Volt::test('search-palette')->set('query', 'chili')->assertSee('Chili sin Carne')->assertSeeHtml(e(route('recipes.show', $shared)));
 
-        $export = $this->get('/profile/export')->assertOk()->json();
+        $export = $this->withSession(['auth.password_confirmed_at' => time()])->get('/profile/export')->assertOk()->json();
         $this->assertSame(['Chili sin Carne', 'Mein Curry'], collect($export['recipes'])->pluck('title')->all());
 
         $user->delete();

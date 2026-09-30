@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Models\Recipe;
+use App\Models\ShoppingListEntry;
 use App\Support\AiException;
 use App\Support\BrainAi;
 use App\Support\BrainSearch;
+use App\Support\Finance\FinanceAi;
+use App\Support\RecipeAi;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 use Mockery\MockInterface;
@@ -99,6 +102,21 @@ class SecondBrainAiTest extends TestCase
             ->assertSee('ANTHROPIC_API_KEY');
     }
 
+    public function test_a_switched_off_ai_function_hides_its_buttons_and_refuses_calls(): void
+    {
+        config(['services.anthropic.disabled_features' => 'brain,recipes']);
+        [$user] = $this->memberWithHousehold();
+
+        $this->assertFalse(BrainAi::isConfigured());
+        $this->assertFalse(RecipeAi::isConfigured());
+        $this->assertTrue(FinanceAi::isConfigured());
+        $this->actingAs($user)->get(route('brain.ask'))->assertOk()->assertSee('Diese KI-Funktion wurde vom Administrator abgeschaltet.');
+
+        $this->expectException(AiException::class);
+        $this->expectExceptionMessage('Diese KI-Funktion wurde vom Administrator abgeschaltet.');
+        app(BrainAi::class)->suggestTags('Reifenwechsel', '', []);
+    }
+
     public function test_suggested_tags_can_be_added_to_pages_and_entries(): void
     {
         [$user, $household] = $this->memberWithHousehold();
@@ -125,5 +143,44 @@ class SecondBrainAiTest extends TestCase
             ->call('addEntryTag', $entry->id, 'wochenende');
 
         $this->assertSame(['garten', 'wochenende'], $entry->fresh()->tags->pluck('name')->sort()->values()->all());
+    }
+
+    public function test_proposed_actions_are_only_carried_out_after_confirmation(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        Item::factory()->note()->for($household)->create(['title' => 'Zahnarzt Dr. Weiß']);
+
+        $this->mock(BrainAi::class, fn (MockInterface $ai) => $ai->shouldReceive('answer')->once()->andReturn([
+            'answer' => 'Ich habe die Aufgabe und die Einkäufe vorbereitet.',
+            'sources' => [],
+            'actions' => BrainAi::cleanActions([
+                ['type' => 'create_task', 'title' => 'Zahnarzt anrufen', 'due' => '2026-10-02', 'items' => []],
+                ['type' => 'add_to_shopping_list', 'title' => '', 'due' => '', 'items' => ['Milch', ' ', 'Brot']],
+                ['type' => 'delete_everything', 'title' => 'x', 'due' => '', 'items' => []],
+            ]),
+        ]));
+
+        $component = Volt::test('brain.ask')
+            ->set('question', 'Erinnere mich Freitag an den Zahnarzt und setz Milch und Brot auf die Liste')
+            ->call('ask')
+            ->assertSee('Zahnarzt anrufen')
+            ->assertSee('fällig 02.10.2026')
+            ->assertSee('Milch, Brot')
+            ->assertDontSee('delete_everything');
+
+        $this->assertSame(0, Item::where('title', 'Zahnarzt anrufen')->count());
+        $this->assertSame(0, ShoppingListEntry::count());
+
+        $component->call('runAction', 0, 0)->call('runAction', 0, 1);
+
+        $task = Item::where('title', 'Zahnarzt anrufen')->sole();
+        $this->assertSame(Item::TYPE_TODO, $task->type);
+        $this->assertSame('2026-10-02', $task->propertyValue(Collection::tasksFor($household->id)->systemProperty('due')));
+        $this->assertSame(['Milch', 'Brot'], ShoppingListEntry::orderBy('id')->pluck('label')->all());
+
+        // A confirmed action cannot be run twice.
+        $component->call('runAction', 0, 0)->assertNotFound();
+        $this->assertSame(1, Item::where('title', 'Zahnarzt anrufen')->count());
     }
 }

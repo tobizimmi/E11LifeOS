@@ -2,10 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Backup\BackupEncryption;
+use App\Support\Backup\WebDavTarget;
 use App\Support\DatabaseDump;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -52,7 +55,44 @@ class RunBackup extends Command
         $removed = $this->removeOldBackups($directory, $keep);
         $this->info("Backup {$name} created ({$files} files, ".round(filesize($zipPath) / 1048576, 1)." MB); {$removed} old backup(s) removed.");
 
-        return self::SUCCESS;
+        return $this->copyOffServer($zipPath, $name) ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Encrypts the backup and uploads it to the WebDAV folder, if one is set up.
+     */
+    private function copyOffServer(string $zipPath, string $name): bool
+    {
+        $target = WebDavTarget::fromConfig();
+
+        if (! $target) {
+            return true;
+        }
+
+        if (blank(config('backup.encryption_password'))) {
+            $this->warn('Off-server copy skipped: set an encryption password first.');
+
+            return true;
+        }
+
+        $encrypted = $zipPath.'.enc';
+
+        try {
+            BackupEncryption::encrypt($zipPath, $encrypted, (string) config('backup.encryption_password'));
+            $target->upload($encrypted, $name.'.enc');
+            $pruned = $target->prune(max(1, (int) config('backup.remote_keep')));
+            Cache::forever('backup:remote-last', now()->toIso8601String());
+            $this->info("Encrypted copy uploaded; {$pruned} old copy/copies removed there.");
+
+            return true;
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->error('Off-server copy failed: '.$exception->getMessage());
+
+            return false;
+        } finally {
+            File::delete($encrypted);
+        }
     }
 
     /**

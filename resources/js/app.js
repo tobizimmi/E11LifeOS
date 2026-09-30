@@ -1,4 +1,5 @@
 import sort from '@alpinejs/sort';
+import { browserSupportsWebAuthn, startAuthentication, startRegistration } from '@simplewebauthn/browser';
 
 import './echo';
 
@@ -124,7 +125,10 @@ document.addEventListener('alpine:init', () => {
                         markdown: this.$wire.body ?? '',
                         pageTitles,
                         translations,
-                        onChange: (markdown) => this.$wire.$set('body', markdown, false),
+                        onChange: (markdown) => {
+                            this.$wire.$set('body', markdown, false);
+                            this.scheduleAutosave();
+                        },
                         onFiles: (files) => this.uploadFiles(files),
                         onPickFile: () => this.pickFile(),
                         searchLinks: (term) => this.$wire.linkTargets(term),
@@ -140,8 +144,34 @@ document.addEventListener('alpine:init', () => {
             },
 
             destroy() {
+                clearTimeout(this.autosaveTimer);
                 editor?.destroy();
                 editor = null;
+            },
+
+            autosaveTimer: null,
+
+            /**
+             * Existing pages save title and text a moment after typing stops; the status line
+             * next to the save button listens to "page-autosave".
+             */
+            scheduleAutosave() {
+                if (!this.$wire.editingId) {
+                    return;
+                }
+
+                clearTimeout(this.autosaveTimer);
+                this.autosaveTimer = setTimeout(async () => {
+                    const report = (detail) => window.dispatchEvent(new CustomEvent('page-autosave', { detail }));
+                    report({ state: 'saving' });
+
+                    try {
+                        const at = await this.$wire.autosave(this.$wire.title ?? '', this.$wire.body ?? '');
+                        report(at ? { state: 'saved', at } : { state: '' });
+                    } catch (error) {
+                        report({ state: 'error' });
+                    }
+                }, 1200);
             },
 
             toggleMode() {
@@ -567,4 +597,929 @@ document.addEventListener('alpine:init', () => {
             },
         };
     });
+});
+
+/**
+ * Immediate feedback for every Livewire action: the clicked button (or the submit button of a
+ * form) is marked busy until the server answered, and a thin bar appears at the top when a
+ * request takes longer than a moment.
+ */
+const LivewireFeedback = {
+    busy: new Set(),
+    pending: 0,
+    barTimer: null,
+
+    bar() {
+        let bar = document.getElementById('e11-progress');
+
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'e11-progress';
+            bar.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(bar);
+        }
+
+        return bar;
+    },
+
+    mark(element) {
+        if (!element || element.hasAttribute('data-busy')) {
+            return;
+        }
+
+        element.setAttribute('data-busy', '');
+        element.setAttribute('aria-busy', 'true');
+        this.busy.add(element);
+        // Never leave a button stuck if no request follows (e.g. client-only actions).
+        setTimeout(() => this.pending === 0 && this.release(element), 400);
+    },
+
+    release(element) {
+        element.removeAttribute('data-busy');
+        element.removeAttribute('aria-busy');
+        this.busy.delete(element);
+    },
+
+    start() {
+        this.pending++;
+        clearTimeout(this.barTimer);
+        this.barTimer = setTimeout(() => this.bar().classList.add('is-active'), 250);
+    },
+
+    done() {
+        this.pending = Math.max(0, this.pending - 1);
+
+        if (this.pending === 0) {
+            clearTimeout(this.barTimer);
+            this.bar().classList.remove('is-active');
+            [...this.busy].forEach((element) => this.release(element));
+        }
+    },
+};
+
+document.addEventListener('click', (event) => {
+    const trigger = event.target.closest?.('[wire\\:click], [wire\\:click\\.prevent], [wire\\:click\\.stop]');
+
+    if (trigger && !trigger.hasAttribute('wire:confirm')) {
+        LivewireFeedback.mark(trigger);
+    }
+}, true);
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+
+    if (form?.matches?.('[wire\\:submit], [wire\\:submit\\.prevent]')) {
+        LivewireFeedback.mark(event.submitter ?? form.querySelector('[type=submit], button:not([type])'));
+    }
+}, true);
+
+document.addEventListener('livewire:init', () => {
+    window.Livewire.hook('request', ({ succeed, fail }) => {
+        LivewireFeedback.start();
+        succeed(() => LivewireFeedback.done());
+        fail(() => LivewireFeedback.done());
+    });
+});
+
+/*
+ * Physical motion (Apple "Designing Fluid Interfaces"): springs described by damping ratio and
+ * response, interruptible (they start from the current value and velocity), plus momentum
+ * projection and rubber-banding for gestures.
+ */
+const Motion = {
+    reduced: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+
+    /**
+     * Animates a number with a spring; returns a handle whose stop() freezes it where it is.
+     */
+    spring({ from, to, velocity = 0, damping = 1, response = 0.35, onUpdate, onComplete }) {
+        const stiffness = (2 * Math.PI / response) ** 2;
+        const friction = (4 * Math.PI * damping) / response;
+        let value = from;
+        let speed = velocity;
+        let last = performance.now();
+        let frame = null;
+
+        const step = (now) => {
+            const elapsed = Math.min(0.064, (now - last) / 1000);
+            last = now;
+            const substeps = Math.max(1, Math.ceil(elapsed / 0.004));
+            const dt = elapsed / substeps;
+
+            for (let i = 0; i < substeps; i++) {
+                speed += (-stiffness * (value - to) - friction * speed) * dt;
+                value += speed * dt;
+            }
+
+            if (Math.abs(value - to) < 0.5 && Math.abs(speed) < 10) {
+                onUpdate(to, 0);
+                onComplete?.();
+
+                return;
+            }
+
+            onUpdate(value, speed);
+            frame = requestAnimationFrame(step);
+        };
+
+        frame = requestAnimationFrame(step);
+
+        return {
+            stop: () => cancelAnimationFrame(frame),
+            get value() { return value; },
+            get velocity() { return speed; },
+        };
+    },
+
+    /** Where a flick would come to rest (Apple's projection, like scroll deceleration). */
+    project(velocity, decelerationRate = 0.998) {
+        return ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
+    },
+
+    /** Progressive resistance past a boundary. */
+    rubberband(overshoot, dimension, constant = 0.55) {
+        return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+    },
+
+    /** Velocity in px/s from the pointer samples of the last 100 ms. */
+    velocity(samples) {
+        const now = performance.now();
+        const recent = samples.filter((sample) => now - sample.t < 100);
+
+        if (recent.length < 2) {
+            return 0;
+        }
+
+        const first = recent[0];
+        const last = recent[recent.length - 1];
+
+        return ((last.v - first.v) / Math.max(1, last.t - first.t)) * 1000;
+    },
+};
+
+window.E11Motion = Motion;
+
+document.addEventListener('alpine:init', () => {
+    /**
+     * Sheet (components/sheet): springs in from the bottom on phones, scales in on larger
+     * screens, closes at once on tap (the server follows), and can be dragged down by its
+     * grabber or header; a flick is projected to decide between closing and snapping back.
+     */
+    window.Alpine.data('e11Sheet', (closeMethod) => ({
+        offset: 0,
+        height: 0,
+        animation: null,
+        closing: false,
+        drag: null,
+
+        isPhone() {
+            return window.matchMedia('(max-width: 639px)').matches;
+        },
+
+        init() {
+            // Start position before the first paint, so the sheet never flashes in its final place.
+            if (Motion.reduced()) {
+                this.$refs.panel.style.opacity = '0';
+                this.$refs.backdrop.style.opacity = '0';
+            } else if (this.isPhone()) {
+                this.render(window.innerHeight);
+            } else {
+                this.render(0, 'scale');
+            }
+
+            this.$nextTick(() => {
+                this.height = this.$refs.panel.offsetHeight || window.innerHeight;
+
+                if (Motion.reduced()) {
+                    this.fade(0, 1);
+                } else if (this.isPhone()) {
+                    this.animateTo(0, 0, { from: this.height, damping: 1, response: 0.35 });
+                } else {
+                    this.animateTo(1, 0, { from: 0, damping: 1, response: 0.3, property: 'scale' });
+                }
+            });
+        },
+
+        render(value, property = 'offset') {
+            const panel = this.$refs.panel;
+            const backdrop = this.$refs.backdrop;
+
+            if (property === 'scale') {
+                panel.style.transform = `scale(${0.96 + 0.04 * value})`;
+                panel.style.opacity = String(Math.max(0, Math.min(1, value)));
+                backdrop.style.opacity = String(Math.max(0, Math.min(1, value)));
+
+                return;
+            }
+
+            this.offset = value;
+            panel.style.transform = `translate3d(0, ${value}px, 0)`;
+            backdrop.style.opacity = String(Math.max(0, Math.min(1, 1 - value / Math.max(1, this.height))));
+        },
+
+        clear() {
+            this.$refs.panel.style.transform = '';
+            this.$refs.panel.style.opacity = '';
+            this.$refs.backdrop.style.opacity = '';
+        },
+
+        animateTo(to, velocity, { from = null, damping = 1, response = 0.35, property = 'offset', onComplete = null } = {}) {
+            const start = from ?? (this.animation ? this.animation.value : this.offset);
+            this.animation?.stop();
+            this.animation = Motion.spring({
+                from: start,
+                to,
+                velocity,
+                damping,
+                response,
+                onUpdate: (value) => this.render(value, property),
+                onComplete: () => {
+                    this.animation = null;
+                    if (onComplete) {
+                        onComplete();
+                    } else if ((property === 'offset' && to === 0) || (property === 'scale' && to === 1)) {
+                        this.clear();
+                    }
+                },
+            });
+        },
+
+        fade(from, to, onComplete = null) {
+            const panel = this.$refs.panel;
+            const backdrop = this.$refs.backdrop;
+            [panel, backdrop].forEach((element) => {
+                element.style.transition = 'none';
+                element.style.opacity = String(from);
+            });
+            requestAnimationFrame(() => {
+                [panel, backdrop].forEach((element) => {
+                    element.style.transition = 'opacity 180ms ease';
+                    element.style.opacity = String(to);
+                });
+                setTimeout(() => onComplete?.(), 180);
+            });
+        },
+
+        close(velocity = 0) {
+            if (this.closing) {
+                return;
+            }
+
+            this.closing = true;
+            this.$root.style.pointerEvents = 'none';
+            const done = () => this.$wire[closeMethod]();
+
+            if (Motion.reduced()) {
+                this.fade(1, 0, done);
+            } else if (this.isPhone()) {
+                this.animateTo(this.height + 40, velocity, { damping: 1, response: 0.3, onComplete: done });
+            } else {
+                this.animateTo(0, 0, { from: 1, damping: 1, response: 0.2, property: 'scale', onComplete: done });
+            }
+        },
+
+        dragStart(event) {
+            if (!this.isPhone() || this.closing || event.button > 0 || event.target.closest('button, a, input, select, textarea, [contenteditable]')) {
+                return;
+            }
+
+            this.animation?.stop();
+            this.animation = null;
+            this.drag = { startY: event.clientY - this.offset, samples: [{ t: performance.now(), v: this.offset }] };
+            event.currentTarget.setPointerCapture(event.pointerId);
+        },
+
+        dragMove(event) {
+            if (!this.drag) {
+                return;
+            }
+
+            const raw = event.clientY - this.drag.startY;
+            // Down follows the finger 1:1; up resists like a real sheet at its top.
+            const value = raw < 0 ? -Motion.rubberband(-raw, this.height) : raw;
+            this.drag.samples.push({ t: performance.now(), v: raw });
+            this.drag.samples = this.drag.samples.slice(-8);
+            this.render(value);
+        },
+
+        dragEnd() {
+            if (!this.drag) {
+                return;
+            }
+
+            const velocity = Motion.velocity(this.drag.samples);
+            this.drag = null;
+            const projected = this.offset + Motion.project(velocity);
+
+            if (projected > this.height * 0.4 || velocity > 900) {
+                this.close(velocity);
+            } else {
+                // Back to the top; a little bounce only because a gesture carried momentum.
+                this.animateTo(0, velocity, { damping: 0.8, response: 0.3 });
+            }
+        },
+    }));
+
+    /**
+     * Mobile sidebar: follows the finger when swiped to the left and decides by projected
+     * momentum whether to close or to spring back.
+     */
+    window.Alpine.data('e11Drawer', () => ({
+        drawerDrag: null,
+
+        backdrop() {
+            return document.getElementById('e11-drawer-backdrop') ?? document.createElement('div');
+        },
+
+        drawerStart(event) {
+            if (window.matchMedia('(min-width: 1024px)').matches || !this.sidebarOpen || event.button > 0) {
+                return;
+            }
+
+            this.drawerDrag = { x: event.clientX, y: event.clientY, active: false, samples: [], width: this.$el.offsetWidth };
+        },
+
+        drawerMove(event) {
+            const drag = this.drawerDrag;
+
+            if (!drag) {
+                return;
+            }
+
+            const dx = event.clientX - drag.x;
+            const dy = event.clientY - drag.y;
+
+            if (!drag.active) {
+                // Commit to a horizontal swipe only after ~10px, so scrolling and taps still work.
+                if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy)) {
+                    if (Math.abs(dy) > 10) {
+                        this.drawerDrag = null;
+                    }
+
+                    return;
+                }
+
+                drag.active = true;
+                this.$el.setPointerCapture(event.pointerId);
+                this.$el.style.transition = 'none';
+            }
+
+            const offset = dx > 0 ? Motion.rubberband(dx, drag.width) : dx;
+            drag.offset = offset;
+            drag.samples.push({ t: performance.now(), v: dx });
+            drag.samples = drag.samples.slice(-8);
+            this.$el.style.transform = `translate3d(${offset}px, 0, 0)`;
+            this.backdrop().style.opacity = String(Math.max(0, 1 + Math.min(0, offset) / drag.width));
+        },
+
+        drawerEnd() {
+            const drag = this.drawerDrag;
+            this.drawerDrag = null;
+
+            if (!drag?.active) {
+                return;
+            }
+
+            const velocity = Motion.velocity(drag.samples);
+            const shouldClose = (drag.offset ?? 0) + Motion.project(velocity) < -drag.width / 2;
+            const drawer = this.$el;
+            const backdrop = this.backdrop();
+
+            Motion.spring({
+                from: drag.offset ?? 0,
+                to: shouldClose ? -drag.width : 0,
+                velocity,
+                damping: 1,
+                response: 0.3,
+                onUpdate: (value) => {
+                    drawer.style.transform = `translate3d(${value}px, 0, 0)`;
+                    backdrop.style.opacity = String(Math.max(0, 1 + Math.min(0, value) / drag.width));
+                },
+                onComplete: () => {
+                    if (shouldClose) {
+                        this.sidebarOpen = false;
+                    }
+
+                    requestAnimationFrame(() => {
+                        drawer.style.transform = '';
+                        drawer.style.transition = '';
+                        backdrop.style.opacity = '';
+                    });
+                },
+            });
+        },
+    }));
+});
+
+/** A short tap of the vibration motor where the device supports it (Android; ignored elsewhere). */
+window.E11Haptic = (duration = 8) => {
+    try {
+        navigator.vibrate?.(duration);
+    } catch {
+        // Not allowed here – feedback stays visual.
+    }
+};
+
+document.addEventListener('alpine:init', () => {
+    /**
+     * Swipe actions on list rows (touch): the row follows the finger 1:1; on release the
+     * projected momentum decides between running the action (the row flies out) and springing
+     * back. Crossing the threshold gives a short haptic tick.
+     *
+     * x-data="e11Swipe({ onRight: () => …, onLeft: () => …, leaveOnRight: true })", the moving
+     * part has x-ref="content"; the template can show the actions behind it with `dx`.
+     */
+    window.Alpine.data('e11Swipe', ({ onRight = null, onLeft = null, leaveOnRight = false, leaveOnLeft = false, enterFromOpposite = false } = {}) => ({
+        dx: 0,
+        swiping: false,
+        leaving: false,
+        gesture: null,
+        animation: null,
+
+        width() {
+            return this.$el.offsetWidth || 320;
+        },
+
+        render(value) {
+            this.dx = value;
+            this.$refs.content.style.transform = value === 0 ? '' : `translate3d(${value}px, 0, 0)`;
+        },
+
+        start(event) {
+            if (event.pointerType === 'mouse' || event.target.closest('.drag-handle, .task-handle, input, textarea, select, [x-sort\\:item]:not([x-data])')) {
+                return;
+            }
+
+            this.animation?.stop();
+            this.gesture = { x: event.clientX - this.dx, y: event.clientY, active: false, samples: [], armed: false, id: event.pointerId };
+        },
+
+        move(event) {
+            const gesture = this.gesture;
+
+            if (!gesture) {
+                return;
+            }
+
+            const dx = event.clientX - gesture.x;
+            const dy = event.clientY - gesture.y;
+
+            if (!gesture.active) {
+                if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy)) {
+                    if (Math.abs(dy) > 10) {
+                        this.gesture = null;
+                    }
+
+                    return;
+                }
+
+                gesture.active = true;
+                this.swiping = true;
+                try { this.$el.setPointerCapture(gesture.id); } catch { /* synthetic or already released pointer */ }
+            }
+
+            // Directions without an action resist instead of moving freely.
+            const allowed = (dx > 0 && onRight) || (dx < 0 && onLeft);
+            const value = allowed ? dx : E11Motion.rubberband(dx, this.width(), 0.15);
+            gesture.samples.push({ t: performance.now(), v: dx });
+            gesture.samples = gesture.samples.slice(-8);
+            this.render(value);
+
+            const armed = allowed && Math.abs(value) > this.width() * 0.35;
+
+            if (armed !== gesture.armed) {
+                gesture.armed = armed;
+                armed && E11Haptic();
+            }
+        },
+
+        end() {
+            const gesture = this.gesture;
+            this.gesture = null;
+
+            if (!gesture?.active) {
+                return;
+            }
+
+            this.swiping = false;
+            const velocity = E11Motion.velocity(gesture.samples);
+            const projected = this.dx + E11Motion.project(velocity, 0.99);
+            const limit = this.width() * 0.35;
+
+            if (projected > limit && this.dx > 0 && onRight) {
+                this.commit(1, velocity, onRight, leaveOnRight);
+            } else if (projected < -limit && this.dx < 0 && onLeft) {
+                this.commit(-1, velocity, onLeft, leaveOnLeft);
+            } else {
+                this.springTo(0, velocity, Math.abs(velocity) > 300 ? 0.8 : 1);
+            }
+        },
+
+        springTo(target, velocity = 0, damping = 1, onComplete = null) {
+            this.animation?.stop();
+            this.animation = E11Motion.spring({ from: this.dx, to: target, velocity, damping, response: 0.3, onUpdate: (value) => this.render(value), onComplete });
+        },
+
+        commit(direction, velocity, action, leave) {
+            E11Haptic(12);
+
+            if (leave) {
+                this.leaving = true;
+            }
+
+            // Fly out along the swipe, then act; rows that stay (e.g. moved to another group) come back.
+            this.springTo(direction * this.width() * 1.05, velocity, 1, () => {
+                Promise.resolve(action()).finally(() => {
+                    if (this.$el.isConnected && !leave) {
+                        // Paging (e.g. the next month) slides in from the other side.
+                        if (enterFromOpposite) {
+                            this.render(-direction * this.width() * 0.35);
+                        }
+
+                        this.springTo(0);
+                    }
+                });
+            });
+        },
+
+        /** Completing by tapping the round checkbox: the row slides out, then the server is told. */
+        complete() {
+            if (!onRight) {
+                return;
+            }
+
+            E11Haptic(12);
+
+            if (!leaveOnRight) {
+                onRight();
+
+                return;
+            }
+
+            this.leaving = true;
+            this.springTo(this.width() * 1.05, 0, 1, () => onRight());
+        },
+    }));
+});
+
+document.addEventListener('alpine:init', () => {
+    /**
+     * Phone chrome: the page header is the large title; once it has scrolled under the top bar,
+     * the bar shows the title small and gets its edge line (a scroll edge instead of a fixed divider).
+     */
+    window.Alpine.store('chrome', {
+        compact: false,
+        title: '',
+        observer: null,
+
+        watch(header) {
+            this.observer?.disconnect();
+            this.compact = false;
+            this.title = (header.querySelector('h1, h2')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+            this.observer = new IntersectionObserver(([entry]) => {
+                this.compact = !entry.isIntersecting;
+            }, { rootMargin: '-56px 0px 0px 0px', threshold: 0 });
+            this.observer.observe(header);
+        },
+    });
+});
+
+// Soft cross-fade after wire:navigate page changes (skipped with reduced motion).
+document.addEventListener('livewire:navigated', () => {
+    const main = document.getElementById('main-content');
+
+    if (!main || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
+    main.animate([{ opacity: 0.35, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+});
+
+// Tab rows that scroll sideways fade out at the edge that has more to show (see app.css).
+const markScrollableTabs = () => {
+    document.querySelectorAll('[role="tablist"]:not(.flex-wrap), nav.overflow-x-auto').forEach((row) => {
+        const update = () => {
+            const more = row.scrollWidth - row.clientWidth - row.scrollLeft > 4;
+            row.classList.toggle('e11-fade-end', more);
+            row.classList.toggle('e11-fade-start', row.scrollLeft > 4);
+        };
+
+        if (!row.dataset.fadeBound) {
+            row.dataset.fadeBound = '1';
+            row.addEventListener('scroll', update, { passive: true });
+        }
+
+        update();
+    });
+};
+
+document.addEventListener('livewire:navigated', markScrollableTabs);
+window.addEventListener('resize', markScrollableTabs, { passive: true });
+
+// A page without a header must not keep the previous page's small title.
+document.addEventListener('livewire:navigating', () => {
+    const chrome = window.Alpine?.store('chrome');
+
+    if (chrome) {
+        chrome.observer?.disconnect();
+        chrome.compact = false;
+        chrome.title = '';
+    }
+});
+
+// Signs the browser out after the idle time set on the #idle-logout form; activity in any tab
+// counts (shared through localStorage). Lives here instead of an inline script so it also
+// starts after signing in with wire:navigate under the Content-Security-Policy.
+(() => {
+    const key = 'e11-last-activity';
+    let written = 0;
+    let started = false;
+    const form = () => document.getElementById('idle-logout');
+    const touch = () => {
+        const now = Date.now();
+        if (now - written < 5000) return;
+        written = now;
+        try { localStorage.setItem(key, String(now)); } catch (e) {}
+    };
+    const last = () => { try { return Number(localStorage.getItem(key)) || written; } catch (e) { return written; } };
+    const check = () => {
+        const limit = Number(form()?.dataset.idleMinutes || 0) * 60000;
+        if (limit > 0 && Date.now() - last() > limit) form().submit();
+    };
+    const start = () => {
+        if (started || !form()) return;
+        started = true;
+        written = 0;
+        touch();
+        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((name) => window.addEventListener(name, touch, { passive: true }));
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+        setInterval(check, 30000);
+    };
+    document.addEventListener('DOMContentLoaded', start);
+    document.addEventListener('livewire:navigated', start);
+})();
+
+/**
+ * Passkeys: registration in the profile (options and storage through the Livewire component)
+ * and sign-in on the login / second-step page (options and check through JSON endpoints).
+ * Texts come from data attributes of the element.
+ */
+document.addEventListener('alpine:init', () => {
+    const passkeyError = (error, texts) => (error?.name === 'NotAllowedError' || error?.name === 'AbortError' ? texts.cancelled : texts.failed);
+
+    window.Alpine.data('passkeyRegister', () => ({
+        supported: browserSupportsWebAuthn(),
+        busy: false,
+        error: '',
+
+        async register() {
+            this.error = '';
+            this.busy = true;
+
+            try {
+                const options = await this.$wire.prepare();
+
+                if (!options) {
+                    return;
+                }
+
+                const credential = await startRegistration({ optionsJSON: JSON.parse(options) });
+                await this.$wire.store(JSON.stringify(credential));
+            } catch (error) {
+                this.error = passkeyError(error, this.$root.dataset);
+            } finally {
+                this.busy = false;
+            }
+        },
+    }));
+
+    window.Alpine.data('passkeyLogin', () => ({
+        supported: browserSupportsWebAuthn(),
+        busy: false,
+        error: '',
+
+        async signIn() {
+            const texts = this.$root.dataset;
+            this.error = '';
+            this.busy = true;
+
+            try {
+                const optionsResponse = await fetch(texts.optionsUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                const credential = await startAuthentication({ optionsJSON: await optionsResponse.json() });
+                const response = await fetch(texts.loginUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+                    body: JSON.stringify({ credential: JSON.stringify(credential), remember: !!document.getElementById('remember')?.checked }),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    this.error = data.message || texts.failed;
+
+                    return;
+                }
+
+                window.location.href = data.redirect;
+            } catch (error) {
+                this.error = passkeyError(error, texts);
+            } finally {
+                this.busy = false;
+            }
+        },
+    }));
+});
+
+// Ctrl/⌘ + Enter in a text field sends its form (like in mail apps).
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || !event.target.matches?.('textarea, input')) {
+        return;
+    }
+
+    const form = event.target.closest('form');
+
+    if (form) {
+        event.preventDefault();
+        form.requestSubmit();
+    }
+});
+
+/*
+ * Drafts: forms with data-draft="key" keep what was typed in the browser (localStorage) until
+ * they are sent, so a closed tab, a crash or a lost connection does not cost the text. Only
+ * text fields bound with wire:model are kept; nothing leaves the device.
+ */
+const E11Drafts = (() => {
+    const prefix = 'e11-draft:';
+    const fields = (form) => Array.from(form.querySelectorAll('input[wire\\:model]:not([type=password]):not([type=file]):not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea[wire\\:model]'));
+    const storage = () => {
+        try {
+            return window.localStorage;
+        } catch (error) {
+            return null;
+        }
+    };
+
+    const bind = (form) => {
+        if (form.dataset.draftBound) {
+            return;
+        }
+
+        form.dataset.draftBound = '1';
+        const key = prefix + form.dataset.draft;
+        const store = storage();
+
+        if (!store) {
+            return;
+        }
+
+        // Restore only into empty fields, then tell Livewire about the values.
+        const saved = JSON.parse(store.getItem(key) || 'null');
+
+        if (saved && Date.now() - saved.at < 7 * 24 * 3600 * 1000) {
+            let restored = false;
+
+            fields(form).forEach((field) => {
+                const name = field.getAttribute('wire:model');
+
+                if (saved.values[name] && !field.value) {
+                    field.value = saved.values[name];
+                    field.dispatchEvent(new Event('input', { bubbles: true }));
+                    restored = true;
+                }
+            });
+
+            if (restored) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: form.dataset.draftRestored || 'Draft restored' } }));
+            }
+        }
+
+        form.addEventListener('input', () => {
+            const values = {};
+            fields(form).forEach((field) => {
+                if (field.value.trim() !== '') {
+                    values[field.getAttribute('wire:model')] = field.value;
+                }
+            });
+            Object.keys(values).length ? store.setItem(key, JSON.stringify({ at: Date.now(), values })) : store.removeItem(key);
+        });
+
+        form.addEventListener('submit', () => store.removeItem(key));
+    };
+
+    const scan = () => document.querySelectorAll('form[data-draft]').forEach(bind);
+
+    return { scan };
+})();
+
+document.addEventListener('livewire:navigated', E11Drafts.scan);
+document.addEventListener('livewire:init', () => {
+    window.Livewire.hook('morph.updated', () => E11Drafts.scan());
+});
+
+// Installed app on a phone (no browser reload button): pull down at the top to refresh.
+(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+    if (!standalone || !('ontouchstart' in window)) {
+        return;
+    }
+
+    let startY = null;
+    let indicator = null;
+
+    document.addEventListener('touchstart', (event) => {
+        startY = window.scrollY <= 0 && !event.target.closest('[role=dialog], .ProseMirror, textarea') ? event.touches[0].clientY : null;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (event) => {
+        if (startY === null) {
+            return;
+        }
+
+        const distance = event.touches[0].clientY - startY;
+
+        if (distance > 10) {
+            indicator ??= Object.assign(document.body.appendChild(document.createElement('div')), { className: 'e11-pull' });
+            indicator.style.setProperty('--pull', Math.min(distance, 120) / 120);
+            indicator.classList.toggle('is-ready', distance > 80);
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+        if (indicator?.classList.contains('is-ready')) {
+            window.location.reload();
+        }
+
+        indicator?.remove();
+        indicator = null;
+        startY = null;
+    });
+})();
+
+// Recently opened pages for the search palette (this browser only, max. 8).
+window.E11Recent = (() => {
+    const key = 'e11-recent';
+    const read = () => {
+        try {
+            return JSON.parse(window.localStorage.getItem(key) || '[]');
+        } catch (error) {
+            return [];
+        }
+    };
+
+    return {
+        list: () => read().filter((item) => item.url !== window.location.pathname + window.location.search).slice(0, 6),
+        remember() {
+            const title = document.querySelector('header[data-page-header] h2')?.textContent.replace(/\s+/g, ' ').trim();
+
+            if (!title || window.location.pathname === '/dashboard') {
+                return;
+            }
+
+            const url = window.location.pathname + window.location.search;
+
+            try {
+                window.localStorage.setItem(key, JSON.stringify([{ url, title }, ...read().filter((item) => item.url !== url)].slice(0, 8)));
+            } catch (error) {
+                // Private mode or full storage: no recent list.
+            }
+        },
+    };
+})();
+
+document.addEventListener('livewire:navigated', () => window.E11Recent.remember());
+
+// After signing out (login page): forget recent pages and drafts kept in this browser.
+if (window.location.pathname === '/login') {
+    try {
+        Object.keys(window.localStorage).filter((name) => name === 'e11-recent' || name.startsWith('e11-draft:')).forEach((name) => window.localStorage.removeItem(name));
+    } catch (error) {
+        // Storage not available.
+    }
+}
+
+// Task and inbox links (data-open-task / data-open-inbox="id") open their window in place. If the
+// window does not confirm within two seconds (slow connection, error), the link is followed instead.
+document.addEventListener('click', (event) => {
+    const link = event.target.closest?.('a[data-open-task], a[data-open-inbox]');
+
+    if (! link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+    }
+
+    event.preventDefault();
+    const kind = link.dataset.openTask !== undefined ? 'task' : 'inbox';
+    const id = Number(kind === 'task' ? link.dataset.openTask : link.dataset.openInbox);
+    let shown = false;
+    const confirm = (e) => { if (Number(e.detail?.id) === id) { shown = true; } };
+    window.addEventListener(`${kind}-sheet-shown`, confirm);
+    window.dispatchEvent(new CustomEvent(`open-${kind}`, { detail: { id } }));
+
+    setTimeout(() => {
+        window.removeEventListener(`${kind}-sheet-shown`, confirm);
+        if (! shown) {
+            window.Livewire?.navigate ? window.Livewire.navigate(link.href) : (window.location.href = link.href);
+        }
+    }, 2000);
 });

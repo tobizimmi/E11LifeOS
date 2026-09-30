@@ -5,7 +5,6 @@ namespace App\Livewire\Concerns;
 use App\Models\Attachment;
 use App\Models\Item;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 /**
  * Upload handling for the page editor ("📎 Image or file", drag & drop, paste).
@@ -22,21 +21,10 @@ trait StoresAttachments
     protected function storeAttachmentFor(?Item $item): array
     {
         $this->validate([
-            'attachmentUpload' => ['required', 'file', 'max:'.Attachment::MAX_KILOBYTES, 'mimes:'.implode(',', Attachment::EXTENSIONS)],
+            'attachmentUpload' => ['required', ...Attachment::rules()],
         ]);
 
-        $upload = $this->attachmentUpload;
-        $extension = strtolower($upload->guessExtension() ?: $upload->getClientOriginalExtension());
-
-        $attachment = Attachment::create([
-            'household_id' => $this->householdId,
-            'item_id' => $item?->id,
-            'created_by' => Auth::id(),
-            'path' => $upload->storeAs('attachments/'.$this->householdId, Str::uuid().'.'.$extension, Attachment::DISK),
-            'original_name' => mb_substr($upload->getClientOriginalName(), 0, 255),
-            'mime_type' => $upload->getMimeType() ?: 'application/octet-stream',
-            'size' => $upload->getSize(),
-        ]);
+        $attachment = Attachment::storeUpload($this->attachmentUpload, (int) $this->householdId, $item?->id, (int) Auth::id());
 
         $this->reset('attachmentUpload');
 

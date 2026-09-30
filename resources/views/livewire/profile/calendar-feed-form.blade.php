@@ -1,11 +1,34 @@
 <?php
 
+use App\Support\CalendarFeed;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
+    /** @var list<string> */
+    public array $sections = [];
+
+    public bool $details = true;
+
+    public function mount(): void
+    {
+        $options = CalendarFeed::options(Auth::user());
+        $this->sections = $options['sections'];
+        $this->details = $options['details'];
+    }
+
+    /**
+     * Stores which areas the subscription contains and whether descriptions and links are included.
+     */
+    public function saveOptions(): void
+    {
+        $this->validate(['sections' => ['array'], 'sections.*' => ['in:'.implode(',', CalendarFeed::SECTIONS)], 'details' => ['boolean']]);
+        Auth::user()->update(['calendar_feed_options' => ['sections' => array_values(array_unique($this->sections)), 'details' => $this->details]]);
+        $this->dispatch('toast', message: __('Saved.'));
+    }
+
     /**
      * Creates the subscription link, or a new one (the old link stops working).
      */
@@ -25,6 +48,14 @@ new class extends Component
 
         return [
             'url' => $token ? route('calendar.feed', ['token' => $token]) : null,
+            'sectionLabels' => [
+                'tasks' => '✅ '.__('Tasks'),
+                'dates' => '📌 '.__('Deadlines & dates'),
+                'life' => '🗂️ '.__('Trips, birthdays, vehicles, home & documents'),
+                'health' => '🩺 '.__('Health appointments & check-ups'),
+                'real_estate' => '🏠 '.__('Real estate'),
+                'portfolio' => '📈 '.__('Portfolio (savings plans, dividends)'),
+            ],
         ];
     }
 }; ?>
@@ -48,7 +79,17 @@ new class extends Component
                 </x-secondary-button>
             </div>
             <a href="{{ preg_replace('#^https?://#', 'webcal://', $url) }}" class="inline-block text-sm text-indigo-600 dark:text-indigo-400 underline">📅 {{ __('Open in calendar app') }}</a>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('iPhone: Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar, paste the link. Google Calendar: “Other calendars” → “From URL”. Keep the link private – anyone who has it can see these dates.') }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('iPhone: Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar, paste the link. Google Calendar: “Other calendars” → “From URL”. Proton Calendar: “Other calendars” → “Add calendar from URL”. Keep the link private – anyone who has it can see these dates.') }}</p>
+            <form wire:submit="saveOptions" class="rounded-lg bg-gray-50 p-3 dark:bg-gray-900/40">
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ __('What the subscription contains') }}</p>
+                <div class="mt-2 grid gap-1 sm:grid-cols-2">
+                    @foreach ($sectionLabels as $key => $label)
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" value="{{ $key }}" wire:model="sections" class="rounded border-gray-300 text-indigo-600"> {{ $label }}</label>
+                    @endforeach
+                </div>
+                <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="details" class="rounded border-gray-300 text-indigo-600"> {{ __('Include notes, amounts and links (off: titles and dates only)') }}</label>
+                <x-secondary-button type="submit" class="mt-2">{{ __('Save') }}</x-secondary-button>
+            </form>
             <div class="flex flex-wrap gap-3 text-sm">
                 <button type="button" wire:click="createLink" wire:confirm="{{ __('Create a new link? The old one stops working.') }}" class="text-gray-600 dark:text-gray-400 underline">{{ __('New link') }}</button>
                 <button type="button" wire:click="disableLink" class="text-red-600 dark:text-red-400 underline">{{ __('Switch off') }}</button>

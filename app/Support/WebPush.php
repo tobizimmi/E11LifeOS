@@ -33,10 +33,12 @@ class WebPush
     }
 
     /**
-     * Queues the message and wakes all of the user's devices; returns how many were reached.
+     * Adds the message to the bell, queues it and wakes all of the user's devices; returns how many were reached.
      */
     public function send(User $user, string $title, string $body, ?string $url = null): int
     {
+        InAppNotifications::record($user, $title, $body, $url);
+
         $subscriptions = $user->pushSubscriptions()->get();
 
         if (! self::isConfigured() || $subscriptions->isEmpty()) {

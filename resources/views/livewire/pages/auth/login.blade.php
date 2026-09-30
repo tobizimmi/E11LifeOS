@@ -16,11 +16,15 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $this->validate();
 
-        $this->form->authenticate();
+        if (! $this->form->authenticate()) {
+            $this->redirectRoute('two-factor.challenge', navigate: true);
+
+            return;
+        }
 
         Session::regenerate();
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirectIntended(default: route('dashboard'), navigate: true);
     }
 }; ?>
 
@@ -68,4 +72,8 @@ new #[Layout('layouts.guest')] class extends Component
             </x-primary-button>
         </div>
     </form>
+
+    <div class="mt-6 border-t border-gray-100 pt-5 dark:border-gray-700">
+        <x-passkey-login />
+    </div>
 </div>

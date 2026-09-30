@@ -6,6 +6,25 @@
     display: none !important;
 }
 
+/*
+ * Calm, uniform surfaces: white cards on the tinted page get a fine outline instead of
+ * only a grey shadow, dark cards a subtle light edge, so they sit together with the
+ * sidebar and header.
+ */
+@layer utilities {
+    main .bg-white.shadow-sm,
+    main .bg-white.shadow {
+        box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 0 0 1px rgb(15 23 42 / 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        main .dark\:bg-gray-800.shadow-sm,
+        main .dark\:bg-gray-800.shadow {
+            box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+        }
+    }
+}
+
 /* Rendered Markdown of notes (no @tailwindcss/typography dependency needed). */
 @layer components {
     .note-content {
@@ -174,7 +193,344 @@
         @apply bg-indigo-50 dark:bg-gray-700;
     }
 
+    /* Page blocks (callouts, toggles, embeds) – read view and editor */
+    .note-content mark {
+        @apply rounded bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40;
+    }
+
+    .note-content .callout {
+        @apply flex gap-3 rounded-lg border-s-4 px-4 py-3;
+    }
+
+    .note-content .callout-icon {
+        @apply shrink-0 select-none leading-7;
+    }
+
+    .note-content .callout-body {
+        @apply min-w-0 flex-1 space-y-2;
+    }
+
+    .note-content .callout-info {
+        @apply border-blue-400 bg-blue-50 dark:bg-blue-900/30;
+    }
+
+    .note-content .callout-tip {
+        @apply border-emerald-400 bg-emerald-50 dark:bg-emerald-900/30;
+    }
+
+    .note-content .callout-warning {
+        @apply border-amber-400 bg-amber-50 dark:bg-amber-900/30;
+    }
+
+    .note-content .callout-danger {
+        @apply border-red-400 bg-red-50 dark:bg-red-900/30;
+    }
+
+    .note-content .page-toggle {
+        @apply rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700;
+    }
+
+    .note-content .page-toggle > summary {
+        @apply cursor-pointer font-medium;
+    }
+
+    .note-content .page-toggle-body {
+        @apply mt-2 space-y-2;
+    }
+
+    .note-content .page-embed {
+        @apply rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40;
+    }
+
+    .note-content .page-embed-title {
+        @apply mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400;
+    }
+
+    .note-content .page-embed ul {
+        @apply list-none ps-0 space-y-1;
+    }
+
+    .note-content .page-embed a {
+        @apply no-underline text-gray-900 hover:underline dark:text-gray-100;
+    }
+
+    .note-content .page-embed a.is-done {
+        @apply text-gray-400 line-through;
+    }
+
+    .note-content .page-embed-tasks input {
+        @apply me-1 rounded border-gray-300 text-indigo-600 dark:border-gray-600;
+    }
+
+    .note-content .page-embed-calendar > li {
+        @apply flex gap-3;
+    }
+
+    .note-content .page-embed-date {
+        @apply w-20 shrink-0 font-medium text-gray-600 dark:text-gray-300;
+    }
+
+    .note-content .page-embed-time,
+    .note-content .page-embed-empty {
+        @apply text-gray-500 dark:text-gray-400;
+    }
+
+    .note-content .page-embed-more a {
+        @apply text-xs text-indigo-600 underline dark:text-indigo-400;
+    }
+
+    .note-editor .callout-icon {
+        @apply cursor-pointer rounded hover:bg-black/5;
+    }
+
+    .note-editor .page-toggle-title {
+        @apply w-full border-0 bg-transparent p-0 font-medium focus:ring-0;
+    }
+
+    .note-editor .editor-embed {
+        @apply rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-300;
+    }
+
+    .note-editor .editor-embed.ProseMirror-selectednode {
+        @apply ring-2 ring-indigo-500;
+    }
+
     .editor-popup-hint {
         @apply inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded border border-gray-200 dark:border-gray-600 px-1 text-xs text-gray-500 dark:text-gray-400;
     }
+}
+
+/* Respect the system setting for reduced motion (spinners, pulses, drag animations). */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Feedback while Livewire works on a click (set by resources/js/app.js). */
+[data-busy] {
+    cursor: progress;
+    opacity: 0.65;
+    position: relative;
+}
+
+button[data-busy]::after,
+a[data-busy]::after {
+    animation: e11-spin 0.7s linear infinite;
+    border: 2px solid currentColor;
+    border-radius: 9999px;
+    border-right-color: transparent;
+    content: '';
+    display: inline-block;
+    height: 0.8em;
+    margin-inline-start: 0.4em;
+    vertical-align: -0.1em;
+    width: 0.8em;
+}
+
+/*
+ * Press feedback on pointer-down: buttons shrink a little, button-like links darken. The release
+ * eases back instead of snapping.
+ */
+button:not(:disabled) {
+    transition-property: transform, color, background-color, border-color, box-shadow, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+button:not(:disabled):active {
+    transform: scale(0.97);
+    transition-duration: 60ms;
+}
+
+a:is(.rounded-md, .rounded-lg, .rounded-full)[class*='bg-']:active {
+    filter: brightness(0.94);
+}
+
+#e11-progress {
+    background: linear-gradient(90deg, #6366f1, #a855f7);
+    height: 3px;
+    left: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: fixed;
+    top: 0;
+    transition: opacity 0.2s, width 8s cubic-bezier(0.1, 0.8, 0.2, 1);
+    width: 0;
+    z-index: 100;
+}
+
+#e11-progress.is-active {
+    opacity: 1;
+    width: 85%;
+}
+
+@keyframes e11-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/*
+ * Typography: tighter tracking and leading as text grows, figures of equal width for amounts.
+ */
+h1, h2, h3,
+.text-2xl, .text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.015em;
+}
+
+.text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.022em;
+    line-height: 1.1;
+}
+
+.text-2xl, .text-3xl, .text-4xl {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Large amounts never break between number and currency. */
+:is(.text-xl, .text-2xl, .text-3xl, .text-4xl).tabular-nums {
+    white-space: nowrap;
+}
+
+/*
+ * Tab rows that scroll sideways fade out at the edge with more tabs (class set in app.js).
+ */
+/* Phones: segmented tab rows scroll sideways instead of running off the screen. */
+@media (max-width: 639px) {
+    [role='tablist']:not(.flex-wrap) {
+        max-width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    [role='tablist']:not(.flex-wrap)::-webkit-scrollbar {
+        display: none;
+    }
+
+    [role='tablist']:not(.flex-wrap) > * {
+        flex-shrink: 0;
+    }
+}
+
+.e11-fade-end {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+}
+
+.e11-fade-start {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem);
+    mask-image: linear-gradient(to right, transparent, #000 2rem);
+}
+
+.e11-fade-start.e11-fade-end {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+}
+
+/* Phones: 16px text in fields, so iOS Safari doesn't zoom in when a field gets focus. */
+@media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Touch screens: icon buttons get a hit area of about 44px without changing the layout. */
+@media (pointer: coarse) {
+    :is(button, a)[aria-label]:not(.absolute):not(.fixed):not(.sticky) {
+        position: relative;
+    }
+
+    :is(button, a)[aria-label]::before {
+        content: '';
+        inset: -10px;
+        position: absolute;
+    }
+}
+
+/*
+ * Floating chrome (top bar, sidebar, tab bar): a translucent material that turns solid when the
+ * system asks for less transparency or more contrast.
+ */
+@media (prefers-reduced-transparency: reduce) {
+    .e11-material {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: rgb(255 255 255) !important;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) and (prefers-color-scheme: dark) {
+    .e11-material {
+        background-color: rgb(17 24 39) !important;
+    }
+}
+
+@media (prefers-contrast: more) {
+    .e11-material {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: rgb(255 255 255) !important;
+        border-color: rgb(17 24 39) !important;
+    }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+    .e11-material {
+        background-color: rgb(3 7 18) !important;
+        border-color: rgb(229 231 235) !important;
+    }
+}
+
+/* Phones: the page header reads as a large title (it collapses into the top bar on scroll). */
+@media (max-width: 1023px) {
+    header[data-page-header] h2 {
+        font-size: 1.625rem;
+        font-weight: 700;
+        letter-spacing: -0.022em;
+        line-height: 1.15;
+    }
+}
+
+/* Pull to refresh in the installed app (app.js): a small circle that fills while pulling. */
+.e11-pull {
+    --pull: 0;
+    background: rgb(255 255 255 / 0.9);
+    border: 2px solid rgb(99 102 241 / calc(0.25 + var(--pull) * 0.75));
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+    height: 2.25rem;
+    left: 50%;
+    opacity: var(--pull);
+    pointer-events: none;
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 0.75rem);
+    transform: translate(-50%, calc(var(--pull) * 2.5rem)) rotate(calc(var(--pull) * 270deg));
+    width: 2.25rem;
+    z-index: 60;
+}
+
+.e11-pull::after {
+    color: rgb(79 70 229);
+    content: '↻';
+    font-size: 1.1rem;
+    inset: 0;
+    line-height: 2rem;
+    position: absolute;
+    text-align: center;
+}
+
+.e11-pull.is-ready {
+    background: rgb(79 70 229);
+}
+
+.e11-pull.is-ready::after {
+    color: white;
 }

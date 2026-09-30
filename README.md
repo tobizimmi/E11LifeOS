@@ -13,6 +13,7 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Übersicht** – offene Aufgaben, Einkaufsliste, zuletzt bearbeitete Seiten und Inbox auf einen Blick, mit Schnellerfassung.
 - **Spracheingabe** – 🎤 in Schnellerfassung, bei neuen Aufgaben/Einträgen und in der Einkaufsliste (Spracherkennung des Browsers).
 - **Schnell erfassen** (Übersicht) – wahlweise in die Inbox oder direkt als Aufgabe (mit Datum, Uhrzeit, !Priorität, @Name).
+- **Übersicht nach Wunsch** – Kacheln ein-/ausblenden und sortieren („⚙ Übersicht anpassen“), u. a. Fristen der nächsten 30 Tage aus allen Sammlungen und Fixkosten pro Monat (aus Verträgen).
 - **Inbox** – erst erfassen, später einsortieren: als Aufgabe, als Seite oder auf die Einkaufsliste; `#tags` im Text werden zu Tags.
 - **Erinnerungen** – Aufgaben mit Uhrzeit („morgen 18 Uhr“) erinnern genau dann per Push (ohne Push-Gerät per E-Mail); wer eine Aufgabe zugewiesen bekommt, erhält sofort einen Push. Dazu täglich um 7:00 per E-Mail und/oder Push-Benachrichtigung aufs Handy/den Computer: fällige und überfällige Aufgaben sowie Termine aus Sammlungen, z. B. Kündigungsfristen (im Profil einschalten; auf dem iPhone nach „Zum Home-Bildschirm“).
 - **Seiten** – beliebig verschachtelbar (Unterseiten, Pfadanzeige, Icons), Editor wie in Notion (Tiptap: „/“-Befehlsmenü, Formatierungsleiste, Checklisten, Tabellen), Verknüpfungen mit `[[Seitentitel]]` inkl. Vorschlägen (fehlende Seiten per Klick anlegen), „Verlinkt von“-Rückverweise, Tags mit Filter, Checklisten direkt in der Leseansicht abhaken, Bilder und Dateien per Knopf, „/“-Befehl, Drag & Drop oder Einfügen (privat gespeichert, sichtbar wie die Seite), Seiten in der Seitenleiste per Drag & Drop sortieren und verschieben. Gespeichert wird Markdown.
@@ -27,6 +28,19 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Kalender-Abo** – offene Aufgaben (mit Uhrzeit und Wiederholung) und Termine mit Erinnerung, z. B. Kündigungsfristen, als abonnierbarer Kalender für iPhone, Google oder Outlook (persönlicher Link im Profil, jederzeit erneuer- oder abschaltbar).
 - **Kalender** – Monats- und Wochenansicht für jede Sammlung mit Datumsfeld: Einträge per Drag & Drop umplanen, direkt an einem Tag anlegen; künftige Termine wiederkehrender Aufgaben als Vorschau.
 - **Sammlungen** – eigene Datenbanken wie in Notion, in fünf Ansichten (Karten, Liste, Tabelle, Board, Kalender; sichtbare Felder und Standardansicht wählbar). Neue Einträge und Änderungen über ein übersichtliches Formular-Popup, Details in einem Popup mit formatierten Werten (Beträge in €, Fristen mit Countdown und farbiger Warnung). Außerdem: Eigenschaften (Text, Zahl, Datum, Auswahl, Mehrfachauswahl, Checkbox, Person, Link, Verknüpfung), jeder Eintrag mit eigenen Notizen und Dateien; Filter pro Eigenschaft (z. B. „Fällig: überfällig“, „Zuständig: ich“) und gespeicherte Ansichten als Reiter, Summen für Zahlen und Checkboxen, E-Mail-Erinnerung für Datumsfelder, Einträge per Klick auf die Einkaufsliste.
+- **Formularaufbau & eigene Vorlagen**:
+  - Felder sortieren (↑/↓) und als Pflichtfeld markieren.
+  - Standardwerte vorgeben, z. B. Datum „in 1 Woche“, Person „wer den Eintrag anlegt“.
+  - Hinweistexte unter dem Feld.
+  - Jede Sammlung lässt sich „⧉ Als Vorlage speichern“ und unter „Neue Sammlung“ wiederverwenden (nur Aufbau, keine Einträge).
+- **Import aus CSV/Excel** – Tabellen (.csv, .xlsx) als Einträge übernehmen:
+  - Spalten Titel, vorhandenen Feldern oder neuen Feldern zuordnen; der passende Typ (Datum, Zahl, Auswahl, Checkbox, Link) wird erkannt.
+  - Deutsche Datums- und Zahlenformate werden verstanden.
+- **Kommentare & Verlauf** – an jedem Eintrag und jeder Aufgabe:
+  - Die Person, die den Eintrag angelegt hat, und die zuständige Person bekommen einen Push.
+  - Auf Wunsch zeigt der Verlauf, wer was geändert hat.
+- **Einladungslinks** – statt nur Code: Link kopieren oder teilen, der Code wird bei der Registrierung automatisch eingetragen.
+- **Dokumente an Einträgen** – PDFs, Fotos und Dateien direkt im Formular oder in der Detailansicht anhängen (mit Vorschau); „✨ Aus Dokument ausfüllen“ lässt die KI Anbieter, Kosten, Fristen usw. aus einem Vertrag oder Foto in die Felder übernehmen.
 - **Module als Vorlagen** – Verträge & Dokumente (Kündigungsfrist mit Erinnerung), Haushaltsbuch, Vorräte (Haltbarkeit mit Erinnerung), Lesezeichen / Später lesen, Tagebuch (privat), Gewohnheiten, Projekte, Leseliste.
 - **Offline** – Übersicht, Aufgaben, Inbox und Einkaufsliste öffnen auch ohne Netz (zuletzt geladener Stand); neue Inbox-Einträge und Aufgaben werden offline gespeichert und automatisch gesendet, sobald das Gerät wieder online ist.
 - **Einkaufsliste** – abhaken, per Wischen löschen, auch offline lesbar (zuletzt geladener Stand), Produkte per Barcode-Scanner eintragen (Kamera auf Android und iPhone, alternativ Nummer eintippen; Daten von Open Food Facts).
@@ -36,6 +50,51 @@ Deployment: [`docs/deployment.md`](docs/deployment.md)
 - **Wochenplan** – Rezepte oder freie Einträge („Reste“) pro Tag und Mahlzeit planen, per Drag & Drop verschieben; die Zutaten der Woche zusammengefasst auf die Einkaufsliste; „Heute auf dem Speiseplan“ auf der Übersicht.
 - **Verknüpfungen überall** – Seiten, Aufgaben, Einträge, Inbox und Rezepte lassen sich untereinander verlinken: im Text über `[[` (Vorschläge für alles), per Knopf „Verknüpfen“ oder über die Eigenschaft „Verknüpfung“. Jedes Ziel zeigt „Verknüpfungen“ und „Verlinkt von“.
 - **Frag dein Second Brain (KI, optional)** – Fragen in eigenen Worten (auch per Spracheingabe oder aus der Suche heraus), z. B. „Wann endet die Autoversicherung?“; die Antwort stützt sich nur auf Seiten, Aufgaben, Einträge und Rezepte, die du sehen darfst, und verlinkt ihre Quellen. Dazu Tag-Vorschläge per ✨ bei Seiten und Einträgen.
+- **Finanzen (privat)** – Kontoauszüge als CSV importieren (Sparkasse, Volksbank, ING, DKB, comdirect, N26 u. a. sowie Outbank mit mehreren Konten und Kategorien; doppelte Buchungen werden übersprungen), automatische Kategorien mit lernenden Regeln („immer“), Bericht mit Einnahmen/Ausgaben pro Monat, Kategorien, 50/30/20-Check, wiederkehrenden Zahlungen inkl. Preiserhöhungen und konkretem Sparpotenzial; optional eine KI-Finanzanalystin und KI-Kategorisierung, Bericht als PDF. Bankdaten sieht nur die Person, die sie importiert hat.
+- **Cashflow-Analyse (privat)** – Finanzbericht nach „Rich Dad Poor Dad“ mit Flussdiagramm (Arbeit → Einkommen, Vermögen → Einkommen, Raten → Ausgaben, Cashflow), Kacheln für Cashflow, passives Einkommen, Nettovermögen nach Rich Dad (ohne Scheinvermögen) und Wohlstand in Tagen samt Reserve, Fortschritt „Raus aus dem Hamsterrad“, Cashflow-Quadrant (E/S/B/I) und gute vs. schlechte Schulden. Einkommen, Ausgaben, Vermögenswerte und Verbindlichkeiten aus den Modulen (Konten, Depot, Mieter, Gewerbe) oder per Hand ergänzt – auf Wunsch nur eigene Angaben. Dazu Tipps aus weiteren Kiyosaki-Büchern im Finanzwissen.
+- **Finanzwissen** – kuratierte Tipps zu Finanzierung, Börse, Steuern und Vermögensaufbau zum Durchklicken und Durchsuchen, aktuelle Neuerungen (Steuern, Börse, Finanzierung, neue Gesetze) aus Google News; beides per Stern als Favorit merken.
+- **Notfallordner (privat)** – Dokumente & Ausweise (mit Ablaufdatum und Erinnerung), Vorsorge & Testament, wichtige Kontakte, digitales Leben und Wünsche mit Checkliste und Fortschritt je Bereich; Konten, Depots, Immobilien, Kredite und Verträge werden automatisch übernommen. Details verschlüsselt gespeichert, PDF zum Ausdrucken. Vertrauenspersonen bekommen einen persönlichen Link, fragen im Notfall Zugriff an und sehen den Ordner nach einer Wartezeit – außer du lehnst ab.
+- **Fahrzeuge** – Fahrzeugakte mit HU/TÜV, Inspektion (Datum oder km) und Reifenwechsel von O bis O inklusive Erinnerungen und Kalender; Protokoll für Tanken/Laden, Werkstatt, Reifen und sonstige Kosten mit Verbrauch pro 100 km, Kosten pro Monat und pro km (inkl. Kfz-Steuer und Versicherung); Fahrtenbuch nach dienstlich/Arbeitsweg/privat mit absetzbarer km-Pauschale. Geteilt im Haushalt oder privat.
+- **Zuhause** – Wartungsplan aus einer Bibliothek (Heizung, Schornsteinfeger, Rauchmelder, Dachrinne, Filter, Entkalken …) mit Intervall, „erledigt“ schiebt den nächsten Termin weiter, Erinnerung und Kalender; Zähler (Strom, Gas, Wasser, Wärme, PV) mit Zählerständen, Verbrauch pro Tag als Verlauf, Hochrechnung aufs Jahr, Kosten aus Tarif und Grundgebühr und Abschlag-Check (Guthaben oder Nachzahlung, passender Abschlag); jährliche Ablese-Erinnerung zum 31.12.
+- **Jahresrückblick** – das Jahr auf einen Blick: Einnahmen, Ausgaben, Sparquote, größte Ausgaben, bester Monat, Nettovermögen, Dividenden, erledigte Aufgaben, Seiten, Mahlzeiten, Einkäufe, gefahrene Kilometer und Lieblingsgericht; dazu im Haushalt „Wer macht was?“ (erledigt, geplant, offen pro Person mit Hinweis bei ungleicher Verteilung), der Cashflow-Verlauf Monat für Monat und Kacheln „Finanzielle Freiheit“ und „Leben & Vorsorge“ auf der Übersicht.
+- **Vorsorge-Check** – Versicherungen aus den Verträgen erkannt und passend zur Lage geprüft (Einkommen, Eigentum, Kredit, Fahrzeuge): wichtige Lücken (Haftpflicht, Berufsunfähigkeit, Risikoleben, Wohngebäude, Kfz), doppelte Verträge und oft unnötige Policen; „habe ich anderweitig“ bzw. „brauche ich nicht“ abhakbar. Dazu Rentenlücke und Weg zur finanziellen Freiheit: Kapitalbedarf nach 4-%-Regel, Hochrechnung in heutiger Kaufkraft, nötige Sparrate und Alter der finanziellen Freiheit, Werte aus den eigenen Daten vorbelegt.
+- **Gesundheit (privat)** – Profile für dich und die Familie mit verschlüsselter Notfallkarte (Blutgruppe, Allergien, Vorerkrankungen, Medikamente, Krankenkasse, Notfallkontakt, Ärzte; auch im Notfallordner), Vorsorge und Impfungen nach Alter und Geschlecht (Check-up, Hautkrebs-Screening, Zahnarzt, U-Untersuchungen, Tetanus, Grippe …) mit Erinnerung und Kalender, Medikamente mit Push zur Einnahmezeit und Arzttermine.
+- **Menschen & Anlässe** – Familie und Freunde mit Geburtstag (inkl. „wird 40“), Jahrestagen, Kontaktdaten und Notizen; Erinnerung vorab, Kalender und Übersicht „Nächste Geburtstage“; Geschenkideen mit Status (Idee, gekauft, verschenkt) und Übernahme auf die Einkaufsliste; „Heute Kontakt gehabt“. Geteilt im Haushalt oder privat.
+- **Reisen** – Reise mit Zeitraum, Ziel, Mitreisenden und Budget; Buchungen (Flug, Bahn, Unterkunft, Mietwagen, Aktivitäten, Versicherung, Ausgaben) mit verschlüsseltem Buchungscode, Kosten und bezahlt/offen; Tickets und Bestätigungen als verschlüsselte Dokumente; Packliste mit Vorlagen (Basis, Strand, Winter, Städtetrip, Flug, Business, mit Kindern, Camping) pro Person zum Abhaken; Warnung, wenn Ausweis oder Reisepass vor bzw. kurz nach der Reise abläuft; Reisebeginn, Flüge und Check-ins im Kalender mit Erinnerung.
+- **Kinder & Taschengeld** – Kinder ohne eigenes Konto mit Taschengeld-Konto: wöchentliches Taschengeld wird automatisch am gewählten Wochentag gebucht; Aufgaben (täglich, einmal pro Woche oder einmalig) mit Belohnung, die Kinder selbst abhaken und Eltern bestätigen (Push an die Eltern, optional automatisch gutschreiben); Bonus, Geschenk und Ausgaben buchen; Sparziel mit Fortschritt; Verlauf.
+- **Business (privat)** – Rechnungen, Angebote und Buchhaltung für Selbstständige und Kleingewerbe:
+  - Geschäftsdaten mit Kleinunternehmerregelung (§ 19 UStG) oder Umsatzsteuer, Logo und Akzentfarbe für die PDFs.
+  - Kunden und ein Katalog mit Leistungen und Produkten (mit einem Klick in Rechnungen und Angeboten).
+  - Angebote mit Gültigkeit, Status angenommen/abgelehnt und Umwandlung in eine Rechnung.
+  - Rechnungen mit Positionen, Rabatten, Entwürfen, lückenlosen Nummernkreisen (Rechnungen, Angebote, Gutschriften), PDF im DIN-5008-Layout mit allen Pflichtangaben, Teilzahlungen, Status offen/teilbezahlt/überfällig/bezahlt.
+  - Storno per Stornorechnung und Gutschriften mit Erstattung.
+  - Versand per E-Mail mit PDF-Anhang und Kundenportal-Link (Rechnung ansehen, PDF laden, Angebot online annehmen).
+  - Mahnwesen: Zahlungserinnerung, 1. und 2. Mahnung mit Frist und Gebühren, per E-Mail oder als Brief-PDF; Push bei neu überfälligen Rechnungen (`business:overdue-notices`).
+  - Wiederkehrende Rechnungen (monatlich bis jährlich), automatisch gestellt und auf Wunsch verschickt (`business:run-recurring`, täglich).
+  - Zeiterfassung mit Timer, Stundensätzen und Abrechnung als Rechnungsentwurf.
+  - Bankabgleich: passende Kontobewegungen aus Finanzen werden als Zahlung vorgeschlagen.
+  - E-Rechnung als XRechnung (CII) mit Leitweg-ID; Umsatzsteuer-Voranmeldung (Kz 81/86/66/83) je Monat oder Quartal.
+  - Belege für Ausgaben und Einnahmen ohne Rechnung, mit Foto/PDF und optionalem KI-Auslesen.
+  - Jahresabschluss als Einnahmenüberschussrechnung nach tatsächlichen Zahlungseingängen, gegliedert wie die Anlage EÜR (Bewirtung 70 %, Vorsteuer, Kleinunternehmer-Grenzen, Checkliste für ELSTER), als PDF und CSV.
+  - Keine Steuerberatung.
+- **Portfolio (privat, Addon)** – Portfolio-Manager für Aktien, ETFs, Fonds und Krypto:
+  - Mehrere Depots, Positionen nach Durchschnittskostenmethode aus Käufen, Verkäufen, Splits, Dividenden und Gebühren; Positionen ohne Historie auch von Hand, mit Labels, Notizen, Stop-Loss und Kursziel.
+  - Kurse über Yahoo Finance (ohne Schlüssel), Kurshistorie optional über Twelve Data (`TWELVE_DATA_KEY`), ISIN/WKN-Auflösung über OpenFIGI; Fremdwährungen in Euro umgerechnet.
+  - Import der CSV-Exporte von Trade Republic, DKB, ING, Smartbroker+, comdirect, Consorsbank, flatex, OnVista, Outbank und Finanzguru (plus beliebige CSV); PDF-Abrechnungen und Screenshots per KI. Doppelte Buchungen werden übersprungen.
+  - Überblick mit Depotwert, Tagesveränderung, Gewinn/Verlust und Wertverlauf, Watchlist mit 52-Wochen-Spanne, Wertpapierseite mit Kursverlauf.
+  - Analyse: Rendite im Vergleich zum Vergleichsindex, Volatilität, maximaler Rückgang, Aufteilung nach Position, Anlageklasse, Branche, Land und Währung, Korrelationsmatrix.
+  - Dividenden pro Monat, Jahr und Wertpapier mit Erwartung für die nächsten 12 Monate; Steuern nach FIFO mit Verlusttöpfen, Sparerpauschbetrag, Soli und Kirchensteuer.
+  - Rebalancing mit Zielgewichten (auch „nur kaufen“), Sparpläne mit automatischer Ausführung (`portfolio:execute-savings-plans`), Kursalarme sowie Stop-Loss/Kursziel-Hinweise per Push und Pushover (`portfolio:check-alerts`).
+  - Kaufempfehlungen nach Strategie (konservativ, ausgewogen, offensiv, Thieme oder eigene Kriterien: Rücksetzer vom Hoch, RSI, 200-Tage-Linie, Qualität aus KGV, Verschuldung, Wachstum, Marge) mit Backtest; täglicher Marktscan über Yahoo-Screener mit Kennzahlen (`portfolio:market-scan`).
+  - Entdecken mit Marktübersicht (DAX, S&P 500, Gold, Bitcoin …) und Screener-Listen; News aus Finanz-Feeds und Google News je Wertpapier mit Push für neue Schlagzeilen (`portfolio:fetch-news`).
+  - Banksync per FinTS/HBCI (ING, DKB, comdirect, Consorsbank, Smartbroker+, flatex, Sparkasse, beliebige Bank): Depotbestände abrufen und mit einem Depot abgleichen, Kontoumsätze der letzten 90 Tage direkt in Finanzen importieren; TAN oder Freigabe in der Banking-App; PIN nur auf Wunsch verschlüsselt gespeichert, dann täglicher Abruf (`banking:sync`). Benötigt eine registrierte FinTS-Produkt-ID (`FINTS_PRODUCT_ID`).
+  - Instagram-Analyse eines Börsen-Accounts (Standard @heikothieme.club): Beiträge über Apify abrufen (`APIFY_API_KEY`) oder per `POST /api/instagram/push` (Schlüssel `INSTAGRAM_PUSH_KEY`) einspielen, KI erkennt Aktie, Stimmung, Einstiegskurs, Stop-Loss und Tranchen; Anzeige mit aktuellem Kurs, Watchlist und Kursalarmen, Push bei neuen Ideen (`portfolio:instagram`, alle 6 Stunden).
+  - Mobile API für die Expo-App unter `/api/v1` (Anmeldung mit E-Mail und Passwort, danach Bearer-Token): Depots, Positionen, Verlauf, Umsätze, Watchlist, Kurse, Suche, Empfehlungen und Einstellungen; außerdem Aufgaben (Liste, Schnelleingabe, abhaken), Kalender, Benachrichtigungen, Einkaufsliste und Nettovermögen. Angemeldete Geräte lassen sich im Profil abmelden.
+  - Wochenübersicht per E-Mail und/oder Push (Profil: Tag und Uhrzeit, Vorschau, „Jetzt senden“): erledigte, überfällige und anstehende Aufgaben, Fristen, Wochenplan, Einkaufsliste, Depot-Entwicklung mit Terminen, Ausgaben der Woche und offene Rechnungen – jeweils nur für Module, die das Mitglied nutzen darf (`digest:weekly`, stündlich).
+  - Haushalt: Der Inhaber schaltet Rezepte, Finanzen, Business und Portfolio für einzelne Mitglieder aus; Navigation, Übersicht, Suche, KI, Kalender-Abo und API beachten das.
+  - Verzahnt mit LifeOS: Portfolio-Kachel auf der Übersicht (Wert, heute, größte Bewegungen, nächste Termine), Wertpapiere in der Suche, „Aufgabe erstellen“ auf Wertpapier-, Empfehlungs- und Instagram-Karten (privat, #portfolio, mit Link), „Erwähnt in“ zeigt Seiten und Aufgaben zum Wertpapier, Sparpläne und erwartete Dividenden im Kalender-Abo, „Frag dein Second Brain“ kennt das eigene Depot.
+  - Einstellungen wie im alten Portfolio-Manager: eigene Kriterien (Stabilität, KGV, Verschuldung), Pushover an/aus mit Testnachricht, Alter der gepushten News, überwachte Wertpapiere (Kurse/News auch ohne Depot oder Watchlist) und feste ISIN/WKN-Zuordnungen für den Broker-Import. Alle Werte (in Euro) und die Oberfläche (Deutsch) sind fest; Standardwährung und Sprache aus dem alten Manager gibt es daher nicht mehr.
+  - `portfolio:update-prices` aktualisiert Kurse und Depotwerte alle 15 Minuten; `portfolio:import-legacy {email}` übernimmt alle Daten aus dem alten Portfolio-Manager (Verbindung `PORTFOLIO_LEGACY_DB_*`).
 - **Privat oder geteilt** – Seiten, Aufgaben und Inbox-Einträge können privat sein; nur die erstellende Person sieht sie.
 - **Globale Suche** – `Strg/Cmd + K` durchsucht alle Module und Tags; mehrere Wörter werden in beliebiger Reihenfolge gefunden.
 - **Haushalt** – Registrierung nur per Einladungscode, Echtzeit-Sync via Laravel Reverb.
@@ -64,14 +123,14 @@ Registrierung unter `/register` mit dem erzeugten Code.
 
 ## KI-Funktionen (optional)
 
-Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“ und Tag-Vorschläge nutzen die Claude-API. Dafür in der `.env` auf dem Server:
+Rezept-Import von Fotos, PDFs und Text, die Nährwert-Schätzung, „Frag dein Second Brain“, Tag-Vorschläge, die Finanzanalystin und das Beleg-Auslesen nutzen die Claude-API. Dafür in der `.env` auf dem Server:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5   # optional, Standard
 ```
 
-Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden; bei einer Frage die bis zu 15 passendsten Inhalte, die die fragende Person sehen darf, bei Tag-Vorschlägen Titel und Text der Seite bzw. des Eintrags.
+Ohne Schlüssel bleiben diese Funktionen ausgeblendet; der Import per Link funktioniert für die meisten Rezeptseiten trotzdem (strukturierte Rezeptdaten). An die Claude-API gehen nur die Inhalte, die beim Import bzw. der Schätzung ausgewertet werden; bei einer Frage die bis zu 15 passendsten Inhalte, die die fragende Person sehen darf, bei Tag-Vorschlägen Titel und Text der Seite bzw. des Eintrags; für die Finanzanalyse nur Summen pro Kategorie und wiederkehrende Zahlungen (beim KI-Kategorisieren Empfänger, Verwendungszweck und Betrag offener Buchungen – nie Kontonummern).
 
 ## Rezepte aus der RezepteApp2 übernehmen
 
@@ -99,7 +158,7 @@ php artisan recipes:import-rezepteapp deine@email.de \
 
 ## Geplante Aufgaben (Erinnerungen)
 
-Die täglichen E-Mails und die Erinnerungen zur Uhrzeit (jede Minute geprüft) verschickt der Laravel-Scheduler. Auf dem Server einmalig einrichten, z. B. per Cron:
+Die täglichen E-Mails und die Erinnerungen zur Uhrzeit (jede Minute geprüft) verschickt der Laravel-Scheduler. Auf Staging/Live startet der Deploy ihn und den Queue-Worker automatisch als PM2-Prozesse (siehe `docs/deployment.md`). Anderswo einmalig einrichten, z. B. per Cron:
 
 ```bash
 * * * * * cd /pfad/zur/app && php artisan schedule:run >> /dev/null 2>&1

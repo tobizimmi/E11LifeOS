@@ -60,6 +60,41 @@ class RecurringTasksAndCalendarTest extends TestCase
         $this->assertSame(Collection::TASK_STATUS_TODO, $todo->propertyValue($tasks->systemProperty('status')));
     }
 
+    public function test_repeating_tasks_rotate_between_members(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
+        $this->actingAs($user);
+        $tasks = Collection::tasksFor($household->id);
+        $due = $tasks->systemProperty('due');
+        $assignee = $tasks->systemProperty('assignee');
+
+        $todo = Item::factory()->todo()->for($household)->create(['title' => 'Bad putzen', 'created_by' => $user->id]);
+        $todo->setPropertyValue($due, '2026-09-25');
+        $todo->setPropertyValue($tasks->systemProperty('repeat'), Recurrence::WEEKLY);
+        $todo->save();
+
+        // Rotation partner → me: the first person gets the task right away.
+        Volt::test('tasks.index')->call('toggleRotation', $todo->id, $partner->id)->call('toggleRotation', $todo->id, $user->id)
+            ->set('openTaskId', (string) $todo->id)->assertSee('Abwechselnd')->assertSee('1.');
+        $todo->refresh();
+        $this->assertSame([$partner->id, $user->id], $todo->rotation());
+        $this->assertSame($partner->id, (int) $todo->propertyValue($assignee));
+
+        // Every completion hands it to the next one.
+        $todo->update(['done' => true]);
+        $this->assertSame($user->id, (int) $todo->fresh()->propertyValue($assignee));
+        $this->assertSame('2026-10-02', $todo->fresh()->propertyValue($due));
+        $todo->fresh()->update(['done' => true]);
+        $this->assertSame($partner->id, (int) $todo->fresh()->propertyValue($assignee));
+
+        // Removing a person ends the rotation; strangers cannot be added.
+        Volt::test('tasks.index')->call('toggleRotation', $todo->id, $user->id)->call('toggleRotation', $todo->id, 99999)->assertNotFound();
+        $this->assertSame([$partner->id], $todo->fresh()->rotation());
+        $todo->fresh()->update(['done' => true]);
+        $this->assertSame($partner->id, (int) $todo->fresh()->propertyValue($assignee));
+    }
+
     public function test_setting_the_status_to_done_also_reschedules_and_tasks_without_due_date_just_close(): void
     {
         [$user, $household] = $this->memberWithHousehold();

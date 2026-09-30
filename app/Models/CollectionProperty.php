@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
-#[Fillable(['collection_id', 'name', 'type', 'options', 'system_key', 'position'])]
+#[Fillable(['collection_id', 'name', 'type', 'options', 'system_key', 'position', 'required', 'default_value', 'help'])]
 class CollectionProperty extends Model
 {
     public const TYPE_TEXT = 'text';
@@ -54,6 +54,8 @@ class CollectionProperty extends Model
     {
         return [
             'options' => 'array',
+            'required' => 'boolean',
+            'default_value' => 'json',
         ];
     }
 
@@ -100,6 +102,15 @@ class CollectionProperty extends Model
         $days = $this->type === self::TYPE_DATE ? ($this->options['remind_days'] ?? null) : null;
 
         return is_int($days) ? $days : null;
+    }
+
+    /**
+     * Date properties with a reminder can also create a task when the date comes close
+     * (e.g. the cancellation deadline of a contract), see App\Support\ContractAssistant.
+     */
+    public function createsTask(): bool
+    {
+        return $this->remindDays() !== null && ($this->options['create_task'] ?? false) === true;
     }
 
     /**
@@ -178,6 +189,29 @@ class CollectionProperty extends Model
                 : null,
             default => null,
         };
+    }
+
+    /**
+     * The value a new entry starts with. Dates may be relative ("today", "today+7"),
+     * a person may be "me" (the member creating the entry).
+     */
+    public function resolvedDefault(?int $userId = null): mixed
+    {
+        $default = $this->default_value;
+
+        if ($default === null || $default === '' || $default === []) {
+            return null;
+        }
+
+        if ($this->type === self::TYPE_DATE && is_string($default) && preg_match('/^today(?:\+(\d{1,3}))?$/', $default, $match)) {
+            return today()->addDays((int) ($match[1] ?? 0))->toDateString();
+        }
+
+        if ($this->type === self::TYPE_PERSON && $default === 'me') {
+            return $userId;
+        }
+
+        return $default;
     }
 
     private function normalizeDate(string $value): ?string

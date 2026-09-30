@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'addons'])]
+#[Fillable(['name', 'addons', 'offers_zip', 'offers_chains'])]
 class Household extends Model
 {
     /** @use HasFactory<HouseholdFactory> */
@@ -20,6 +20,7 @@ class Household extends Model
     {
         return [
             'addons' => 'array',
+            'offers_chains' => 'array',
         ];
     }
 
@@ -31,6 +32,16 @@ class Household extends Model
     public function setAddon(string $addon, bool $enabled): void
     {
         $this->update(['addons' => array_merge($this->addons ?? [], [$addon => $enabled])]);
+    }
+
+    public function shoppingLists(): HasMany
+    {
+        return $this->hasMany(ShoppingList::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function shoppingStores(): HasMany
+    {
+        return $this->hasMany(ShoppingStore::class)->orderBy('position')->orderBy('id');
     }
 
     public function recipes(): HasMany

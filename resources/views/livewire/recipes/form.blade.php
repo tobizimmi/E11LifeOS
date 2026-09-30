@@ -150,7 +150,8 @@ new #[Layout('layouts.app')] class extends Component
 
     private function findRecipe(int $id): Recipe
     {
-        return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->with('tags', 'categories')->findOrFail($id);
+        // Recipes shared by another household are used, not edited.
+        return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->where('recipes.household_id', $this->householdId)->with('tags', 'categories')->findOrFail($id);
     }
 
     /**
@@ -376,7 +377,7 @@ new #[Layout('layouts.app')] class extends Component
     </x-slot>
 
     <div class="py-6 sm:py-8">
-        <form wire:submit="save" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <form wire:submit="save" @if (! $recipeId) data-draft="recipe" data-draft-restored="{{ __('Draft restored') }}" @endif class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $recipeId ? __('Edit recipe') : __('New recipe') }}</h1>
                 <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>
@@ -466,7 +467,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @else
                                     <div class="flex h-20 w-20 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 text-xs text-gray-500">{{ __('Photo') }}</div>
                                 @endif
-                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ __('Remove photo') }}">✕</button>
+                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ __('Remove photo') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         @endforeach
                     </div>
@@ -494,7 +495,7 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="flex shrink-0 items-center text-gray-400">
                                 <button type="button" wire:click="moveIngredient({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
                                 <button type="button" wire:click="moveIngredient({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
-                                <button type="button" wire:click="removeIngredient({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                                <button type="button" wire:click="removeIngredient({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         </div>
                     @endforeach
@@ -516,7 +517,7 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="mt-2 flex shrink-0 flex-col text-gray-400">
                                 <button type="button" wire:click="moveStep({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
                                 <button type="button" wire:click="moveStep({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
-                                <button type="button" wire:click="removeStep({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}">✕</button>
+                                <button type="button" wire:click="removeStep({{ $index }})" class="px-1 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         </div>
                     @endforeach

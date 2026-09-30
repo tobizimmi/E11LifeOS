@@ -22,6 +22,7 @@ class PageAttachmentsAndTreeMovingTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
+        Storage::fake('secure');
     }
 
     private function page(int $householdId, string $title, array $attributes = []): Item
@@ -49,7 +50,7 @@ class PageAttachmentsAndTreeMovingTest extends TestCase
         // Not saved yet: only the uploader can open the files.
         $attachment = Attachment::where('original_name', 'Garten Plan.png')->sole();
         $this->assertNull($attachment->item_id);
-        Storage::disk('local')->assertExists($attachment->path);
+        Storage::disk('secure')->assertExists($attachment->path);
         $this->get($image['url'])->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->actingAs($partner)->get($image['url'])->assertNotFound();
 
@@ -86,7 +87,7 @@ class PageAttachmentsAndTreeMovingTest extends TestCase
         $this->actingAs($user);
         Volt::test('pages.index', ['item' => $private->id])->call('delete', $private->id);
         $this->assertDatabaseMissing('attachments', ['id' => $attachment->id]);
-        Storage::disk('local')->assertMissing($attachment->path);
+        Storage::disk('secure')->assertMissing($attachment->path);
     }
 
     public function test_files_can_be_attached_to_collection_entries(): void
@@ -127,9 +128,9 @@ class PageAttachmentsAndTreeMovingTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $shared = $this->page($household->id, 'Geteilt', ['created_by' => $user->id]);
         $private = $this->page($household->id, 'Privat', ['visibility' => Item::VISIBILITY_PRIVATE, 'created_by' => $user->id]);
-        Storage::disk('local')->put('attachments/a.jpg', 'a');
-        Storage::disk('local')->put('attachments/b.jpg', 'b');
-        Storage::disk('local')->put('attachments/c.jpg', 'c');
+        Storage::disk('secure')->put('attachments/a.jpg', 'a');
+        Storage::disk('secure')->put('attachments/b.jpg', 'b');
+        Storage::disk('secure')->put('attachments/c.jpg', 'c');
         $keep = Attachment::factory()->for($household)->create(['item_id' => $shared->id, 'created_by' => $user->id, 'path' => 'attachments/a.jpg']);
         Attachment::factory()->for($household)->create(['item_id' => $private->id, 'created_by' => $user->id, 'path' => 'attachments/b.jpg']);
         Attachment::factory()->for($household)->create(['item_id' => null, 'created_by' => $user->id, 'path' => 'attachments/c.jpg']);
@@ -137,8 +138,8 @@ class PageAttachmentsAndTreeMovingTest extends TestCase
         $user->delete();
 
         $this->assertSame([$keep->id], Attachment::pluck('id')->all());
-        Storage::disk('local')->assertExists('attachments/a.jpg');
-        Storage::disk('local')->assertMissing(['attachments/b.jpg', 'attachments/c.jpg']);
+        Storage::disk('secure')->assertExists('attachments/a.jpg');
+        Storage::disk('secure')->assertMissing(['attachments/b.jpg', 'attachments/c.jpg']);
     }
 
     public function test_pages_can_be_reordered_and_moved_in_the_sidebar(): void

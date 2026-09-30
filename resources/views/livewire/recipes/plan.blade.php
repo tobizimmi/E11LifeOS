@@ -4,7 +4,9 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\Recipe;
-use App\Models\ShoppingListEntry;
+use App\Models\ShoppingList;
+use App\Support\ShoppingLists;
+use App\Support\MealSuggestions;
 use App\Support\ShoppingIngredients;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -40,12 +42,21 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $choosingShopping = false;
 
+    public ?int $shoppingListId = null;
+
     /**
      * Indexes of the combined week ingredients that go onto the shopping list.
      *
      * @var array<int, int>
      */
     public array $selectedShopping = [];
+
+    /**
+     * Suggested dinners for the free days of the week, by date.
+     *
+     * @var array<string, array{id: int, reasons: list<string>}>
+     */
+    public array $suggestions = [];
 
     private function weekStart(): Carbon
     {
@@ -167,14 +178,94 @@ new #[Layout('layouts.app')] class extends Component
         return ShoppingIngredients::combine($lines);
     }
 
+    /**
+     * Pre-selects what is not in the pantry yet.
+     */
     public function chooseShopping(): void
     {
-        $this->selectedShopping = array_keys($this->weekIngredients());
+        $stock = MealSuggestions::pantry(Auth::user(), (int) $this->householdId)['stock'];
+        $this->selectedShopping = array_keys(array_filter($this->weekIngredients(), fn (array $ingredient) => ! MealSuggestions::inStock($ingredient['name'], $stock)));
+        $this->shoppingListId ??= ShoppingList::defaultFor((int) $this->householdId)->id;
         $this->choosingShopping = true;
+    }
+
+    // ── Suggestions ──────────────────────────────────────────────────────
+
+    /**
+     * Suggests a dinner for every day of the shown week (from today) that has none yet.
+     */
+    public function suggestWeek(): void
+    {
+        $planned = $this->entriesOfWeek()->where('meal_type', 'dinner')->map(fn (MealPlan $entry) => $entry->date->toDateString())->all();
+        $dates = collect(range(0, 6))->map(fn (int $offset) => $this->weekStart()->addDays($offset)->toDateString())
+            ->filter(fn (string $date) => $date >= today()->toDateString() && ! in_array($date, $planned, true))
+            ->values()->all();
+
+        $this->suggestions = $this->toSuggestionState(MealSuggestions::forDates(Auth::user(), (int) $this->householdId, $dates));
+
+        if ($this->suggestions === []) {
+            $this->dispatch('toast', message: $dates === [] ? __('Every day of this week already has a dinner.') : __('Add some recipes first.'));
+        }
+    }
+
+    public function rerollSuggestion(string $date): void
+    {
+        abort_unless(array_key_exists($date, $this->suggestions), 404);
+
+        $other = MealSuggestions::forDates(Auth::user(), (int) $this->householdId, [$date], array_column($this->suggestions, 'id'));
+
+        if ($other !== []) {
+            $this->suggestions[$date] = $this->toSuggestionState($other)[$date];
+        }
+    }
+
+    public function dropSuggestion(string $date): void
+    {
+        unset($this->suggestions[$date]);
+    }
+
+    /**
+     * Plans the suggested dinners and offers their ingredients for the shopping list.
+     */
+    public function applySuggestions(): void
+    {
+        $recipes = Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->whereIn('id', array_column($this->suggestions, 'id'))->get()->keyBy('id');
+
+        foreach ($this->suggestions as $date => $suggestion) {
+            $recipe = $recipes->get($suggestion['id']);
+
+            if (! $recipe || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $date)) {
+                continue;
+            }
+
+            MealPlan::create([
+                'household_id' => $this->householdId,
+                'created_by' => Auth::id(),
+                'visibility' => $recipe->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+                'date' => $date,
+                'meal_type' => 'dinner',
+                'recipe_id' => $recipe->id,
+                'title' => $recipe->title,
+                'servings' => $recipe->servings,
+            ]);
+        }
+
+        $this->suggestions = [];
+        $this->chooseShopping();
+    }
+
+    /**
+     * @param  array<string, array{recipe: Recipe, reasons: list<string>}>  $suggestions
+     * @return array<string, array{id: int, reasons: list<string>}>
+     */
+    private function toSuggestionState(array $suggestions): array
+    {
+        return array_map(fn (array $row) => ['id' => $row['recipe']->id, 'reasons' => $row['reasons']], $suggestions);
     }
 
     public function addWeekToShoppingList(): void
     {
+        $list = ShoppingList::where('household_id', $this->householdId)->find($this->shoppingListId) ?? ShoppingList::defaultFor((int) $this->householdId);
         $ingredients = $this->weekIngredients();
         $added = 0;
 
@@ -185,12 +276,7 @@ new #[Layout('layouts.app')] class extends Component
                 continue;
             }
 
-            ShoppingListEntry::create([
-                'household_id' => $this->householdId,
-                'label' => mb_substr($ingredient['name'], 0, 255),
-                'quantity' => $ingredient['quantity'] !== '' ? mb_substr($ingredient['quantity'], 0, 255) : null,
-                'created_by' => Auth::id(),
-            ]);
+            ShoppingLists::add($list, $ingredient['name'], $ingredient['quantity'] !== '' ? mb_substr($ingredient['quantity'], 0, 255) : null, Auth::id());
             $added++;
         }
 
@@ -250,6 +336,10 @@ new #[Layout('layouts.app')] class extends Component
             'hasRecipes' => $entries->contains(fn (MealPlan $entry) => $entry->recipe !== null),
             'recipeResults' => $recipeResults,
             'weekIngredients' => $this->choosingShopping ? $this->weekIngredients() : [],
+            'pantryStock' => $this->choosingShopping ? MealSuggestions::pantry(Auth::user(), (int) $this->householdId)['stock'] : [],
+            'suggestedRecipes' => $this->suggestions !== []
+                ? Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->whereIn('id', array_column($this->suggestions, 'id'))->get()->keyBy('id')
+                : collect(),
         ];
     }
 }; ?>
@@ -276,21 +366,68 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="$set('week', '')" class="text-sm text-indigo-600 dark:text-indigo-400 underline">{{ __('This week') }}</button>
                 @endunless
                 <span class="flex-1"></span>
+                <button type="button" wire:click="suggestWeek" wire:loading.attr="disabled" wire:target="suggestWeek" class="rounded-md px-3 py-2 text-sm font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">✨ {{ __('Suggest the week') }}</button>
                 @if ($hasRecipes)
                     <button type="button" wire:click="chooseShopping" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">🛒 {{ __('Ingredients of the week to shopping list') }}</button>
                 @endif
             </div>
 
+            @if ($suggestions !== [])
+                <section class="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="suggestions-heading">
+                    <h3 id="suggestions-heading" class="font-medium text-gray-900 dark:text-gray-100">✨ {{ __('Suggestions for dinner') }}</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('From your favorites, well-rated recipes and what is in the pantry – recently planned recipes come last.') }}</p>
+                    <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach ($suggestions as $date => $suggestion)
+                            @php
+                                $suggested = $suggestedRecipes->get($suggestion['id']);
+                            @endphp
+                            @continue(! $suggested)
+                            <li wire:key="suggestion-{{ $date }}" class="flex flex-wrap items-center gap-3 py-2">
+                                <span class="w-24 shrink-0 text-sm text-gray-500 dark:text-gray-400">{{ \Illuminate\Support\Carbon::parse($date)->translatedFormat('D, j. M') }}</span>
+                                <span class="min-w-0 flex-1">
+                                    <a href="{{ route('recipes.show', $suggested) }}" wire:navigate class="font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $suggested->title }}</a>
+                                    @if ($suggestion['reasons'] !== [])
+                                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $suggestion['reasons']) }}</span>
+                                    @endif
+                                </span>
+                                <button type="button" wire:click="rerollSuggestion('{{ $date }}')" class="rounded-md px-2 py-1 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Another recipe') }}" aria-label="{{ __('Another recipe') }}">🔄</button>
+                                <button type="button" wire:click="dropSuggestion('{{ $date }}')" class="rounded-md px-2 py-1 text-sm text-gray-500 hover:text-red-600" title="{{ __('No suggestion for this day') }}" aria-label="{{ __('No suggestion for this day') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <x-primary-button type="button" wire:click="applySuggestions">{{ __('Plan these and pick ingredients') }}</x-primary-button>
+                        <x-secondary-button type="button" wire:click="$set('suggestions', [])">{{ __('Cancel') }}</x-secondary-button>
+                    </div>
+                </section>
+            @endif
+
             @if ($choosingShopping)
                 <form wire:submit="addWeekToShoppingList" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-2">
                     <p class="font-medium text-gray-900 dark:text-gray-100">{{ __('Which ingredients do you need?') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Scaled to the planned servings; equal ingredients are added up.') }}</p>
+                    @php
+                        $shoppingLists = \App\Models\ShoppingList::where('household_id', $this->householdId)->orderBy('position')->orderBy('id')->get();
+                    @endphp
+                    @if ($shoppingLists->count() > 1)
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            {{ __('List') }}
+                            <select wire:model="shoppingListId" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                @foreach ($shoppingLists as $shoppingList)
+                                    <option value="{{ $shoppingList->id }}">{{ $shoppingList->icon }} {{ $shoppingList->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
                     <div class="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                         @forelse ($weekIngredients as $index => $ingredient)
                             <label class="flex items-baseline gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="week-ingredient-{{ $index }}">
                                 <input type="checkbox" wire:model="selectedShopping" value="{{ $index }}" class="translate-y-0.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
                                 <span>
                                     <span class="font-medium">{{ $ingredient['quantity'] }}</span> {{ $ingredient['name'] }}
+                                    @if (\App\Support\MealSuggestions::inStock($ingredient['name'], $pantryStock))
+                                        <span class="ms-1 rounded bg-emerald-50 px-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">🧺 {{ __('in stock') }}</span>
+                                    @endif
                                     <span class="block text-xs text-gray-500 dark:text-gray-400">{{ implode(', ', $ingredient['recipes']) }}</span>
                                 </span>
                             </label>
@@ -325,7 +462,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <li wire:key="entry-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group cursor-grab rounded-md bg-gray-50 dark:bg-gray-900/60 p-2 text-sm ring-1 ring-gray-200 dark:ring-gray-700">
                                     <p class="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-gray-400">
                                         <span>{{ \App\Models\MealPlan::mealTypeLabel($entry->meal_type) }}@if ($entry->servings) · {{ trans_choice(':count serving|:count servings', $entry->servings) }}@endif</span>
-                                        <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}">✕</button>
+                                        <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </p>
                                     @if ($entry->recipe)
                                         <a href="{{ route('recipes.show', $entry->recipe) }}" wire:navigate class="mt-0.5 flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100 hover:underline">
@@ -356,7 +493,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="w-full max-w-lg space-y-4 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-meal-title">
                 <div class="flex items-center justify-between gap-2">
                     <h3 id="add-meal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ \Illuminate\Support\Carbon::parse($addingDate)->translatedFormat('l, d.m.') }}</h3>
-                    <button type="button" wire:click="cancelAdding" class="text-gray-400 hover:text-gray-700" aria-label="{{ __('Close') }}">✕</button>
+                    <button type="button" wire:click="cancelAdding" class="text-gray-400 hover:text-gray-700" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                 </div>
 
                 <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="{{ __('Meal') }}">

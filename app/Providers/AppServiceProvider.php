@@ -2,8 +2,22 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsureAddonEnabled;
+use App\Models\User;
+use App\Support\AppSettings;
+use App\Support\PrefixAwareSignedUploadUrl;
+use App\Support\Security\EncryptedFilesystemAdapter;
+use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
+use League\Flysystem\Filesystem;
+use League\Flysystem\Local\LocalFilesystemAdapter;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +34,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Keys and mail settings entered on the admin page override .env.
+        AppSettings::apply();
+
+        Gate::define('admin', fn (User $user) => $user->isAdmin());
+
+        // Documents, ID scans and receipts are stored encrypted (disk "secure").
+        Storage::extend('encrypted', function (Application $app, array $config) {
+            $adapter = new EncryptedFilesystemAdapter(new LocalFilesystemAdapter($config['root']), $app['encrypter']);
+
+            return new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
+        });
+
+        // Long passwords; in production also checked against known data leaks (haveibeenpwned, k-anonymity).
+        Password::defaults(fn () => $this->app->isProduction()
+            ? Password::min(12)->letters()->numbers()->uncompromised()
+            : Password::min(12)->letters()->numbers());
+
+        // Addon checks also apply to the Livewire requests of pages behind "addon:…".
+        Livewire::addPersistentMiddleware([EnsureAddonEnabled::class]);
+
         // In production this app is reached through a reverse proxy that maps a
         // URL path (e.g. https://zimmimail.de/E11LifeOS) onto an unprefixed
         // internal PHP process. Laravel otherwise builds route()/url()/asset()
@@ -36,6 +70,9 @@ class AppServiceProvider extends ServiceProvider
             // just a base to prefix), see FrontendAssets::js().
             $filename = config('app.debug') ? '/livewire/livewire.js' : '/livewire/livewire.min.js';
             config(['livewire.asset_url' => rtrim(config('app.url'), '/').$filename]);
+
+            // File uploads: sign the upload URL without the path prefix (see the class).
+            GenerateSignedUploadUrl::swap(new PrefixAwareSignedUploadUrl);
         }
     }
 }

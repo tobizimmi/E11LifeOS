@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\User;
+use App\Support\Security\SecurityLog;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,16 +24,18 @@ class LoginForm extends Form
     public bool $remember = false;
 
     /**
-     * Attempt to authenticate the request's credentials.
+     * Attempt to authenticate the request's credentials. With two-factor authentication the
+     * user is not signed in yet: returns false and remembers them for the code challenge.
      *
      * @throws ValidationException
      */
-    public function authenticate(): void
+    public function authenticate(): bool
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only(['email', 'password']), $this->remember)) {
+        if (! Auth::validate($this->only(['email', 'password']))) {
             RateLimiter::hit($this->throttleKey());
+            SecurityLog::record(User::where('email', $this->email)->first(), 'login_failed');
 
             throw ValidationException::withMessages([
                 'form.email' => trans('auth.failed'),
@@ -39,6 +43,20 @@ class LoginForm extends Form
         }
 
         RateLimiter::clear($this->throttleKey());
+        $user = User::where('email', $this->email)->firstOrFail();
+
+        if ($user->hasSecondFactor()) {
+            session()->put('login.id', $user->id);
+            session()->put('login.remember', $this->remember);
+            session()->put('login.expires', now()->addMinutes(10)->timestamp);
+
+            return false;
+        }
+
+        Auth::login($user, $this->remember);
+        SecurityLog::login($user);
+
+        return true;
     }
 
     /**
@@ -51,6 +69,10 @@ class LoginForm extends Form
         }
 
         event(new Lockout(request()));
+
+        if ($user = User::where('email', $this->email)->first()) {
+            SecurityLog::lockout($user);
+        }
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 

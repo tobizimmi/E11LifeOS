@@ -6,6 +6,7 @@ use App\Models\RecipeCategory;
 use App\Models\Tag;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Session;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
@@ -45,9 +46,19 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $pantryMode = false;
 
+    /**
+     * "cards", "list" or "table"; remembered for the session.
+     */
+    #[Session]
+    public string $view = 'cards';
+
     public function mount(): void
     {
         $this->pantryMode = $this->pantry !== '';
+
+        if (! in_array($this->view, ['cards', 'list', 'table'], true)) {
+            $this->view = 'cards';
+        }
     }
 
     public function togglePantryMode(): void
@@ -85,7 +96,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $recipes = Recipe::query()
             ->visibleTo($user, $this->householdId)
-            ->with(['categories', 'favoritedBy' => fn ($query) => $query->whereKey($user->id)])
+            ->with(['categories', 'shareGroups', 'creator', 'favoritedBy' => fn ($query) => $query->whereKey($user->id)])
             ->withAvg('ratings', 'rating')
             ->when($this->archived, fn ($query) => $query->whereNotNull('archived_at'), fn ($query) => $query->whereNull('archived_at'))
             ->when($this->search !== '', fn ($query) => $query->matching($this->search))
@@ -146,7 +157,7 @@ new #[Layout('layouts.app')] class extends Component
                 </select>
                 <a href="{{ route('recipes.plan') }}" wire:navigate class="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">📅 {{ __('Meal plan') }}</a>
                 <a href="{{ route('recipes.import') }}" wire:navigate class="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">⬇️ {{ __('Import') }}</a>
-                <a href="{{ route('recipes.create') }}" wire:navigate class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white">
+                <a href="{{ route('recipes.create') }}" wire:navigate class="inline-flex items-center px-4 py-2 bg-indigo-600 dark:bg-indigo-500 rounded-md font-semibold text-sm text-white hover:bg-indigo-500 dark:hover:bg-indigo-400">
                     + {{ __('New recipe') }}
                 </a>
             </div>
@@ -186,8 +197,79 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @endif
 
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ trans_choice(':count recipe|:count recipes', $recipes->count()) }}</p>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ trans_choice(':count recipe|:count recipes', $recipes->count()) }}</p>
+                <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-sm dark:bg-gray-800" role="group" aria-label="{{ __('View') }}">
+                    @foreach (['cards' => '▦ '.__('Cards'), 'list' => '☰ '.__('List'), 'table' => '▤ '.__('Table')] as $key => $label)
+                        <button type="button" wire:click="$set('view', '{{ $key }}')" aria-pressed="{{ $view === $key ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $view === $key, 'text-gray-600 dark:text-gray-400' => $view !== $key])>{{ $label }}</button>
+                    @endforeach
+                </div>
+            </div>
 
+            @if ($view === 'list')
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-200/60 dark:divide-gray-700 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
+                    @forelse ($recipes as $recipe)
+                        <li wire:key="recipe-list-{{ $recipe->id }}" class="flex items-center gap-3 px-3 py-2">
+                            <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3">
+                                <span class="h-12 w-16 shrink-0 overflow-hidden rounded bg-gray-100 dark:bg-gray-700">
+                                    @if ($recipe->imageUrl())
+                                        <img src="{{ $recipe->imageUrl() }}" alt="" loading="lazy" class="h-full w-full object-cover" />
+                                    @else
+                                        <span class="flex h-full items-center justify-center text-2xl" aria-hidden="true">{{ $recipe->categories->first()?->icon ?: '🍽️' }}</span>
+                                    @endif
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $recipe->title }}</span>
+                                    <span class="flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
+                                        @if ($recipe->totalTime())<span>⏱ {{ $recipe->totalTime() }} {{ __('min') }}</span>@endif
+                                        @if ($recipe->servings)<span>🍽 {{ trans_choice(':count serving|:count servings', $recipe->servings) }}</span>@endif
+                                        @if ($recipe->ratings_avg_rating)<span class="text-amber-600 dark:text-amber-400">★ {{ number_format((float) $recipe->ratings_avg_rating, 1, ',', '') }}</span>@endif
+                                        @if (isset($pantryMatches[$recipe->id]))<span class="text-emerald-700 dark:text-emerald-300">{{ $pantryMatches[$recipe->id]['percent'] }} % {{ __('at home') }}</span>@endif
+                                        @if ($recipe->categories->isNotEmpty())<span class="truncate">{{ $recipe->categories->map(fn ($c) => trim($c->icon.' '.$c->name))->implode(' · ') }}</span>@endif
+                                    </span>
+                                </span>
+                                <x-audience-badge :model="$recipe" quiet />
+                            </a>
+                            <button type="button" wire:click="toggleFavorite({{ $recipe->id }})" class="shrink-0 px-1 text-lg leading-none" aria-pressed="{{ $recipe->favoritedBy->isNotEmpty() ? 'true' : 'false' }}" aria-label="{{ __('Favorite') }}">{{ $recipe->favoritedBy->isNotEmpty() ? '♥' : '♡' }}</button>
+                        </li>
+                    @empty
+                        <li class="p-8 text-center text-gray-500 dark:text-gray-400">{{ $filtered ? __('No recipes match your filter.') : ($archived ? __('The archive is empty.') : __('No recipes yet – add your first one!')) }}</li>
+                    @endforelse
+                </ul>
+            @elseif ($view === 'table')
+                <div class="overflow-x-auto rounded-lg bg-white shadow-sm ring-1 ring-gray-200/60 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-start text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+                            <tr>
+                                <th class="px-3 py-2 text-start font-medium">{{ __('Title') }}</th>
+                                <th class="px-3 py-2 text-start font-medium">{{ __('Categories') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Total time') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Servings') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Rating') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Cooked') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Added') }}</th>
+                                <th class="px-3 py-2"><span class="sr-only">{{ __('Favorite') }}</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @forelse ($recipes as $recipe)
+                                <tr wire:key="recipe-row-{{ $recipe->id }}" class="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                                    <td class="max-w-xs px-3 py-2"><a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="block truncate font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $recipe->title }}</a></td>
+                                    <td class="max-w-[14rem] truncate px-3 py-2 text-gray-600 dark:text-gray-400">{{ $recipe->categories->map(fn ($c) => trim($c->icon.' '.$c->name))->implode(' · ') }}</td>
+                                    <td class="whitespace-nowrap px-3 py-2 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $recipe->totalTime() ? $recipe->totalTime().' '.__('min') : '–' }}</td>
+                                    <td class="px-3 py-2 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $recipe->servings ?: '–' }}</td>
+                                    <td class="whitespace-nowrap px-3 py-2 text-end tabular-nums text-amber-600 dark:text-amber-400">{{ $recipe->ratings_avg_rating ? '★ '.number_format((float) $recipe->ratings_avg_rating, 1, ',', '') : '–' }}</td>
+                                    <td class="px-3 py-2 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $recipe->cooked_count ?: '–' }}</td>
+                                    <td class="whitespace-nowrap px-3 py-2 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $recipe->created_at?->format('d.m.Y') }}</td>
+                                    <td class="px-3 py-2 text-end"><button type="button" wire:click="toggleFavorite({{ $recipe->id }})" class="text-lg leading-none" aria-pressed="{{ $recipe->favoritedBy->isNotEmpty() ? 'true' : 'false' }}" aria-label="{{ __('Favorite') }}">{{ $recipe->favoritedBy->isNotEmpty() ? '♥' : '♡' }}</button></td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="8" class="p-8 text-center text-gray-500 dark:text-gray-400">{{ $filtered ? __('No recipes match your filter.') : ($archived ? __('The archive is empty.') : __('No recipes yet – add your first one!')) }}</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            @else
             <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" wire:loading.class="opacity-50">
                 @forelse ($recipes as $recipe)
                     <li wire:key="recipe-{{ $recipe->id }}" class="group relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700 hover:ring-indigo-300">
@@ -208,9 +290,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @if ($recipe->servings)
                                         <span>🍽 {{ trans_choice(':count serving|:count servings', $recipe->servings) }}</span>
                                     @endif
-                                    @if ($recipe->isPrivate())
-                                        <x-private-badge />
-                                    @endif
+                                    <x-audience-badge :model="$recipe" quiet />
                                 </p>
                                 @if ($recipe->ratings_avg_rating)
                                     <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">★ {{ number_format((float) $recipe->ratings_avg_rating, 1, ',', '') }}</p>
@@ -241,6 +321,7 @@ new #[Layout('layouts.app')] class extends Component
                     </li>
                 @endforelse
             </ul>
+            @endif
         </div>
     </div>
 </div>

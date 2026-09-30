@@ -34,8 +34,8 @@ class RegistrationTest extends TestCase
             ->set('household_name', 'Familie Test')
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 
@@ -51,6 +51,27 @@ class RegistrationTest extends TestCase
         $this->assertNotNull($invite->fresh()->used_at);
     }
 
+    public function test_only_the_first_account_of_an_installation_becomes_administrator(): void
+    {
+        foreach (['erste@example.com', 'zweite@example.com'] as $email) {
+            $invite = HouseholdInvite::create(['household_id' => null, 'code' => HouseholdInvite::generateCode()]);
+
+            Volt::test('pages.auth.register')
+                ->set('invite_code', $invite->code)
+                ->set('household_name', 'Haushalt '.$email)
+                ->set('name', 'Test')
+                ->set('email', $email)
+                ->set('password', 'sicheres-Passwort-2026')
+                ->set('password_confirmation', 'sicheres-Passwort-2026')
+                ->call('register');
+
+            auth()->logout();
+        }
+
+        $this->assertTrue(User::where('email', 'erste@example.com')->firstOrFail()->isAdmin());
+        $this->assertFalse(User::where('email', 'zweite@example.com')->firstOrFail()->isAdmin());
+    }
+
     public function test_a_household_scoped_invite_joins_the_user_to_that_household(): void
     {
         $household = Household::create(['name' => 'Bestehender Haushalt']);
@@ -63,8 +84,8 @@ class RegistrationTest extends TestCase
             ->set('invite_code', $invite->code)
             ->set('name', 'Partner User')
             ->set('email', 'partner@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 
@@ -82,8 +103,8 @@ class RegistrationTest extends TestCase
             ->set('invite_code', 'DOES-NOT-EXIST')
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 
@@ -105,8 +126,8 @@ class RegistrationTest extends TestCase
             ->set('household_name', 'Zweiter Versuch')
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026');
 
         $component->call('register');
 

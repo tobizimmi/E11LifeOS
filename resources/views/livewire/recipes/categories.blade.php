@@ -118,7 +118,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="flex shrink-0 text-gray-400">
                             <button type="button" wire:click="move({{ $category->id }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
                             <button type="button" wire:click="move({{ $category->id }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
-                            <button type="button" wire:click="delete({{ $category->id }})" wire:confirm="{{ __('Delete this category? The recipes stay.') }}" class="px-1 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                            <button type="button" wire:click="delete({{ $category->id }})" wire:confirm="{{ __('Delete this category? The recipes stay.') }}" class="px-1 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                         </div>
                     </li>
                 @empty

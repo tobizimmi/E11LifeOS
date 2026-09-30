@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SharedWithGroups;
 use App\Observers\ItemObserver;
 use App\Support\Recurrence;
 use Database\Factories\ItemFactory;
@@ -15,12 +16,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'completed_at', 'due_time', 'reminded_at', 'position'])]
+#[Fillable(['household_id', 'parent_id', 'collection_id', 'space_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'completed_at', 'due_time', 'reminded_at', 'position'])]
 #[ObservedBy(ItemObserver::class)]
 class Item extends Model
 {
     /** @use HasFactory<ItemFactory> */
-    use HasFactory;
+    use HasFactory, SharedWithGroups;
 
     public const TYPE_NOTE = 'note';
 
@@ -97,7 +98,18 @@ class Item extends Model
         // (No return value: a non-null result would stop the other "deleting" listeners.)
         static::deleting(function (Item $item): void {
             $item->attachments()->get()->each->delete();
+            ExternalLink::where('linkable_type', 'item')->where('linkable_id', $item->id)->get()->each->delete();
         });
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(ItemActivity::class);
     }
 
     public function attachments(): HasMany
@@ -163,9 +175,46 @@ class Item extends Model
         $values[$dueProperty->id] = $next;
         $values[$statusProperty->id] = Collection::TASK_STATUS_TODO;
 
+        // Rotation (e.g. cleaning plan): the next member of the list takes over.
+        $assigneeProperty = $this->collection->systemProperty('assignee');
+        $rotation = $this->rotation();
+
+        if ($assigneeProperty && count($rotation) > 1) {
+            $current = array_search((int) ($values[$assigneeProperty->id] ?? 0), $rotation, true);
+            $values[$assigneeProperty->id] = $rotation[$current === false ? 0 : ($current + 1) % count($rotation)];
+        }
+
         $this->properties = $values;
         $this->done = false;
         $this->rescheduledTo = $next;
+    }
+
+    /**
+     * Members (user ids) a repeating task rotates between, in order (content.rotation).
+     *
+     * @return list<int>
+     */
+    public function rotation(): array
+    {
+        return array_values(array_map('intval', array_filter((array) ($this->content['rotation'] ?? []), 'is_numeric')));
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     */
+    public function setRotation(array $userIds): void
+    {
+        $content = $this->content ?? [];
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+
+        // Stored from the first person on; it only takes effect with two or more.
+        if ($userIds !== []) {
+            $content['rotation'] = $userIds;
+        } else {
+            unset($content['rotation']);
+        }
+
+        $this->content = $content;
     }
 
     /**
@@ -200,6 +249,9 @@ class Item extends Model
         return $this->belongsTo(Household::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -218,6 +270,14 @@ class Item extends Model
     public function collection(): BelongsTo
     {
         return $this->belongsTo(Collection::class);
+    }
+
+    /**
+     * @return BelongsTo<Space, $this>
+     */
+    public function space(): BelongsTo
+    {
+        return $this->belongsTo(Space::class);
     }
 
     public function tags(): BelongsToMany

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
+use App\Support\Security\SecurityLog;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +34,7 @@ new class extends Component
         ]);
 
         $this->reset('current_password', 'password', 'password_confirmation');
+        SecurityLog::record(Auth::user(), 'password_changed');
 
         $this->dispatch('password-updated');
     }

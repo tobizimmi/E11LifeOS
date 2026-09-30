@@ -36,6 +36,7 @@ use App\Models\RealEstate;
 use App\Models\Recipe;
 use App\Models\RecurringInvoice;
 use App\Models\SavingsGoal;
+use App\Models\SecurityEvent;
 use App\Models\ShoppingListEntry;
 use App\Models\TargetAllocation;
 use App\Models\TimeEntry;
@@ -44,6 +45,7 @@ use App\Models\TrustedPerson;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\WatchlistItem;
+use App\Support\Security\SecurityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection as SupportCollection;
@@ -56,6 +58,7 @@ class DataExportController extends Controller
      */
     public function __invoke(Request $request): JsonResponse
     {
+        SecurityLog::record($request->user(), 'export');
         $user = $request->user();
         $household = $user->currentHousehold();
 
@@ -124,6 +127,7 @@ class DataExportController extends Controller
                 ? Vehicle::query()->where('household_id', $household->id)->where('created_by', $user->id)->with('logs')->orderBy('id')->get()
                     ->map(fn (Vehicle $vehicle) => $vehicle->makeHidden(['household_id', 'created_by'])->toArray())
                 : [],
+            'security_log' => SecurityEvent::where('user_id', $user->id)->latest('created_at')->get()->map->only(['event', 'ip_address', 'device', 'details', 'created_at']),
             'kids' => $household
                 ? Kid::where('household_id', $household->id)->with(['transactions'])->orderBy('id')->get()
                     ->map(fn (Kid $kid) => $kid->makeHidden(['household_id'])->toArray())

@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Security\SecurityLog;
 use App\Models\EmergencyEntry;
 use App\Models\TrustedPerson;
 use App\Notifications\EmergencyAccessUpdate;
@@ -28,6 +29,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         if ($person->hasAccess() && ($person->last_viewed_at === null || $person->last_viewed_at->lt(now()->subDay()))) {
             $person->update(['last_viewed_at' => now()]);
+            SecurityLog::record($person->user, 'trusted_access', details: $person->name);
             app(WebPush::class)->send($person->user, '👀 '.__(':name opened your emergency folder', ['name' => $person->name]), '', route('emergency.index', ['section' => 'access']));
         }
     }

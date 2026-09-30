@@ -3,6 +3,7 @@
 use App\Support\QrCode;
 use App\Support\TwoFactor;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Security\SecurityLog;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Volt\Component;
 
@@ -52,6 +53,7 @@ new class extends Component
 
         $this->shownRecoveryCodes = $codes;
         $this->reset('pendingSecret', 'code', 'password');
+        SecurityLog::record(Auth::user(), 'two_factor_enabled');
     }
 
     public function regenerateCodes(): void
@@ -67,6 +69,8 @@ new class extends Component
     {
         $this->validatePassword();
         Auth::user()->forceFill(['two_factor_secret' => null, 'two_factor_recovery_codes' => null, 'two_factor_confirmed_at' => null, 'two_factor_last_step' => null])->save();
+        SecurityLog::record(Auth::user(), 'two_factor_disabled');
+        SecurityLog::alert(Auth::user(), __('Two-factor authentication switched off'), [__('Two-factor authentication was switched off for your account.')]);
         $this->reset('pendingSecret', 'code', 'password', 'shownRecoveryCodes');
     }
 

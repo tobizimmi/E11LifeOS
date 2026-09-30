@@ -14,6 +14,7 @@ use App\Http\Controllers\GroupTripController;
 use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
+use App\Http\Controllers\NetworkDriveController;
 use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicCollectionController;
 use App\Http\Controllers\PublicDocumentController;
@@ -68,6 +69,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('people', 'people.index')->name('people.index');
     Volt::route('places', 'places.index')->name('places.index');
     Volt::route('learnings', 'learnings.index')->name('learnings.index');
+    Volt::route('drives', 'drives.index')->name('drives.index');
+    Route::get('drives/{drive}/download', [NetworkDriveController::class, 'download'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.download');
     Volt::route('work', 'work.index')->name('work.index');
     Volt::route('trips', 'trips.index')->name('trips.index');
     Volt::route('kids', 'kids.index')->name('kids.index');

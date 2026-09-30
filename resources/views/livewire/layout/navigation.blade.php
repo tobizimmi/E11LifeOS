@@ -222,6 +222,7 @@ new class extends Component
                 <div class="space-y-0.5">
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Life & provisions') }}</h3>
                     <x-sidebar-link icon="shield-check" :href="route('emergency.index')" :active="request()->routeIs('emergency.*')" wire:navigate>{{ __('Emergency folder') }}</x-sidebar-link>
+                    <x-sidebar-link icon="server-stack" :href="route('drives.index')" :active="request()->routeIs('drives.*')" wire:navigate>{{ __('Network drives') }}</x-sidebar-link>
                     <x-sidebar-link icon="scale" :href="route('provision.index')" :active="request()->routeIs('provision.*')" wire:navigate>{{ __('Provision check') }}</x-sidebar-link>
                     <x-sidebar-link icon="truck" :href="route('vehicles.index')" :active="request()->routeIs('vehicles.*')" wire:navigate>{{ __('Vehicles') }}</x-sidebar-link>
                     <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>

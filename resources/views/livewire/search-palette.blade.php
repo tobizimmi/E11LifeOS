@@ -183,6 +183,7 @@ new class extends Component
             ['🗂️ '.__('Spaces'), route('spaces.index'), 'spaces workspaces bereiche arbeitsbereich projekte gruppieren'],
             ['⏱️ '.__('Working time & leave'), route('work.index'), 'arbeitszeit stunden überstunden urlaub resturlaub feiertage brückentage stempeln zeiterfassung krank'],
             ['🎓 '.__('Lessons learned'), route('learnings.index'), 'erkenntnisse lektionen gelernt erfahrungen fehler tagebuch wiederholen zweites gehirn prinzipien'],
+            ['🗄️ '.__('Network drives'), route('drives.index'), 'nas synology qnap webdav netzlaufwerk nextcloud dateien vpn laufwerk'],
             ['📍 '.__('Places'), route('places.index'), 'orte restaurants cafés bars merkliste ausflug lokal essen gehen empfehlung'],
             ['🧾 '.__('Split costs'), route('splits.index'), 'kosten teilen splid tricount abrechnung gruppe wg urlaub schulden ausgleich'],
             ['⭐ '.__('Kids & pocket money'), route('kids.index'), 'kinder kind taschengeld aufgaben ämtchen belohnung sparziel familie'],

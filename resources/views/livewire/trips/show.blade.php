@@ -8,6 +8,7 @@ use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripStop;
 use App\Support\Life\TripCovers;
+use App\Support\Life\TripDayPlanner;
 use App\Support\Life\PlaceFinder;
 use App\Support\Life\TripItinerary;
 use App\Support\Life\TripPlanner;
@@ -301,6 +302,54 @@ new #[Layout('layouts.app')] class extends Component
         foreach ($siblings as $index => $sibling) {
             $sibling->forceFill(['position' => $index + 1] + ($sibling->is($stop) ? ['day' => $targetDay] : []))->save();
         }
+    }
+
+    /**
+     * Sorts the places of a day by distance (the first stays the start); planned times follow the new order.
+     */
+    public function optimizeDay(string $day): void
+    {
+        $stops = $this->dayStops($day);
+
+        foreach (TripDayPlanner::shortestOrder($stops) as $index => $id) {
+            $stops->firstWhere('id', $id)?->forceFill(['position' => $index + 1])->save();
+        }
+
+        if ($stops->contains(fn (TripStop $stop) => $stop->time !== null)) {
+            $this->scheduleDay($day, announce: false);
+        }
+
+        $this->dispatch('toast', message: __('The places are now sorted by distance.'));
+    }
+
+    /**
+     * Sets the times of a day: stay at each place plus the way to the next one.
+     */
+    public function scheduleDay(string $day, bool $announce = true): void
+    {
+        $trip = $this->findTrip()->load('stops');
+        $mode = $trip->travel_mode ?: 'foot';
+        $plan = TripItinerary::build($trip);
+        $routes = $this->limited(fn () => TripItinerary::dayRoutes($plan, $mode, fetch: true)) ?? ['days' => []];
+        $stops = $this->dayStops($day);
+
+        foreach (TripDayPlanner::schedule($stops, $routes['days'][$day]['legs'] ?? [], $mode) as $id => $times) {
+            $stops->firstWhere('id', $id)?->update($times);
+        }
+
+        if ($announce) {
+            $this->dispatch('toast', message: __('Times planned – change single times in the entry.'));
+        }
+    }
+
+    /**
+     * @return Collection<int, TripStop>
+     */
+    private function dayStops(string $day): Collection
+    {
+        abort_unless((bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $day), 422);
+
+        return $this->findTrip()->stops()->whereDate('day', $day)->get()->values();
     }
 
     public function toggleStopDone(int $id): void
@@ -690,7 +739,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="sr-only">{{ __('Change cover photo') }}</span>
                                 <span aria-hidden="true" wire:loading.remove wire:target="cover">📷</span>
                                 <span aria-hidden="true" wire:loading wire:target="cover">⏳</span>
-                                <input type="file" accept="image/*" wire:model="cover" class="sr-only">
+                                <input type="file" accept="image/*" class="sr-only" x-on:change="const file = $event.target.files[0]; if (file) { $wire.upload('cover', await window.e11ShrinkImage(file), () => {}, () => $dispatch('toast', { message: @js(__('The cover photo could not be uploaded. Please try a smaller photo.')) })); } $event.target.value = ''">
                             </label>
                             <button type="button" x-on:click="open = ! open" class="rounded-full bg-white/20 p-2 backdrop-blur hover:bg-white/30" title="{{ __('Colour') }}" aria-label="{{ __('Colour') }}">🎨</button>
                             <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-5 top-16 z-10 flex gap-2 rounded-2xl bg-white p-2 shadow-lg dark:bg-gray-800">
@@ -892,6 +941,15 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                             <button type="button" wire:click="openStop('{{ $day['date']->toDateString() }}')" class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-lg text-white hover:bg-indigo-500" aria-label="{{ __('Add entry to :day', ['day' => $dayLabel($day['date'], $day['number'])]) }}">+</button>
                         </div>
+
+                        @if ($day['stops']->count() > 1)
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @if ($day['stops']->filter->hasPosition()->count() > 2)
+                                    <button type="button" wire:click="optimizeDay('{{ $day['date']->toDateString() }}')" wire:loading.attr="disabled" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">🔀 {{ __('Shortest order') }}</button>
+                                @endif
+                                <button type="button" wire:click="scheduleDay('{{ $day['date']->toDateString() }}')" wire:loading.attr="disabled" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">🕘 {{ __('Plan times') }}</button>
+                            </div>
+                        @endif
 
                         @if ($day['bookings'] !== [])
                             <ul class="mt-3 space-y-2">

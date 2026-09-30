@@ -210,7 +210,8 @@ jobs:
               fi
             }
 
-            ensure_process "$PM2_APP_NAME" -S "127.0.0.1:$APP_PORT" -t public/
+            # The built-in server uses the CLI php.ini (uploads max. 2 MB): allow photos and documents up to 20 MB.
+            ensure_process "$PM2_APP_NAME" -d upload_max_filesize=25M -d post_max_size=30M -d memory_limit=512M -S "127.0.0.1:$APP_PORT" -t public/
             ensure_process "$PM2_REVERB_NAME" artisan reverb:start "--port=$REVERB_PORT"
             ensure_process "$PM2_SCHEDULER_NAME" artisan schedule:work
             ensure_process "$PM2_QUEUE_NAME" artisan queue:work --queue=admin,default --tries=1 --sleep=3

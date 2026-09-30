@@ -991,7 +991,7 @@ new #[Layout('layouts.app')] class extends Component
                                         x-on:pointercancel="end()"
                                         :class="{ 'opacity-40': leaving }"
                                         @class([
-                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 duration-300',
+                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 transition-[box-shadow,opacity] duration-300',
                                             'ring-indigo-500' => $isSelected || (int) $openTaskId === $task->id,
                                             'ring-gray-200 dark:ring-gray-700' => ! $isSelected && (int) $openTaskId !== $task->id,
                                         ])

@@ -212,6 +212,34 @@ class TripItineraryTest extends TestCase
         $page->call('setTravelMode', 'plane')->assertStatus(422);
     }
 
+    public function test_a_day_is_sorted_by_distance_and_its_times_follow_the_ways_between_the_places(): void
+    {
+        Http::fake(['routing.openstreetmap.de/*' => Http::response([], 503)]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-23']);
+        // Planned zig-zag along one street: hotel (start), far end, middle, near.
+        foreach ([['Hotel', 'accommodation', 47.5000], ['Weit', 'sight', 47.5300], ['Mitte', 'food', 47.5150], ['Nah', 'sight', 47.5050]] as $index => [$title, $kind, $lat]) {
+            TripStop::factory()->create(['trip_id' => $trip->id, 'day' => '2026-07-22', 'kind' => $kind, 'title' => $title, 'time' => null, 'end_time' => null, 'lat' => $lat, 'lng' => 19.0400, 'position' => $index + 1]);
+        }
+        TripStop::factory()->create(['trip_id' => $trip->id, 'day' => '2026-07-22', 'kind' => 'note', 'title' => 'Ohne Ort', 'time' => null, 'end_time' => null, 'lat' => null, 'lng' => null, 'position' => 0]);
+
+        $this->actingAs($user);
+        $page = Volt::test('trips.show', ['trip' => $trip])->set('tab', 'plan')->call('optimizeDay', '2026-07-22');
+        $order = fn () => TripItinerary::build($trip->fresh())['days'][0]['stops']->pluck('title')->all();
+        $this->assertSame(['Hotel', 'Nah', 'Mitte', 'Weit', 'Ohne Ort'], $order());
+
+        // Without a route the way is estimated (on foot about 4 km/h with detours).
+        $page->call('scheduleDay', '2026-07-22');
+        $times = TripStop::orderBy('position')->get()->mapWithKeys(fn (TripStop $stop) => [$stop->title => [$stop->time, $stop->end_time]])->all();
+        $this->assertSame(['09:00', null], $times['Hotel']);
+        $this->assertSame(['09:15', '10:45'], $times['Nah']);
+        $this->assertSame(['11:10', '12:10'], $times['Mitte']);
+        $this->assertSame(['12:45', '14:15'], $times['Weit']);
+        $this->assertSame(['14:15', null], $times['Ohne Ort']);
+
+        $page->call('scheduleDay', 'kein-tag')->assertStatus(422);
+    }
+
     public function test_a_cover_photo_is_stored_and_only_shown_to_people_who_see_the_trip(): void
     {
         Storage::fake('local');

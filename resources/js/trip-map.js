@@ -24,11 +24,18 @@ export default (texts, center) => {
         searching: false,
         loadingNearby: false,
         ready: false,
+        failed: false,
 
         async init() {
             this.groups = this.readGroups();
-            L = (await import('leaflet')).default;
-            await import('leaflet/dist/leaflet.css');
+
+            try {
+                L = (await import('leaflet')).default;
+            } catch {
+                this.failed = true;
+
+                return;
+            }
 
             const dark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
             map = L.map(this.$refs.map, { zoomControl: false, tap: true }).setView(center ? [center.lat, center.lng] : [48.14, 11.58], center ? 13 : 4);

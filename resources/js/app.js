@@ -2,6 +2,7 @@ import sort from '@alpinejs/sort';
 import { browserSupportsWebAuthn, startAuthentication, startRegistration } from '@simplewebauthn/browser';
 
 import './echo';
+import 'leaflet/dist/leaflet.css';
 import tripMap from './trip-map';
 
 const isAuthenticated = !!document.querySelector('meta[name="e11-authenticated"]');

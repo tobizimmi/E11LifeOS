@@ -209,7 +209,7 @@ class ExpenseSplitter
     {
         $group->loadMissing(['members', 'expenses.shares']);
         /** @var Collection<int, Expense> $spending */
-        $spending = $group->expenses->reject->is_transfer;
+        $spending = $group->expenses->reject(fn (Expense $expense) => $expense->is_transfer);
         $total = round((float) $spending->sum('amount'), 2);
         $byMember = [];
 

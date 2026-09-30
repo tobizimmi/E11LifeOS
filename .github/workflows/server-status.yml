@@ -18,8 +18,8 @@ jobs:
       APP_PATH_DEPLOY: ${{ inputs.environment == 'live' && secrets.APP_PATH_LIVE || secrets.APP_PATH_STAGING }}
       SSH_HOST_DEPLOY: ${{ inputs.environment == 'live' && secrets.SSH_HOST_LIVE || secrets.SSH_HOST_STAGING }}
       SUFFIX: ${{ inputs.environment == 'live' && 'none' || '-staging' }}
-      APP_PORT: ${{ inputs.environment == 'live' && '3010' || '3020' }}
-      REVERB_PORT: ${{ inputs.environment == 'live' && '3011' || '3021' }}
+      APP_PORT: ${{ inputs.environment == 'live' && '3012' || '3020' }}
+      REVERB_PORT: ${{ inputs.environment == 'live' && '3013' || '3021' }}
 
     steps:
       - name: Set up SSH

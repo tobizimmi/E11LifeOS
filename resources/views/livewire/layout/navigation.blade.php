@@ -5,6 +5,7 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
+use App\Models\Space;
 use App\Support\Addons;
 use App\Support\InAppNotifications;
 use App\Support\PageMover;
@@ -77,7 +78,7 @@ new class extends Component
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect(), 'unreadNotifications' => InAppNotifications::unreadCount(Auth::user())];
+            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect(), 'spaces' => collect(), 'unreadNotifications' => InAppNotifications::unreadCount(Auth::user())];
         }
 
         $tree = new PageTree(
@@ -109,6 +110,7 @@ new class extends Component
                 ->whereNull('system_key')
                 ->orderBy('name')
                 ->get(['id', 'name', 'icon', 'visibility']),
+            'spaces' => Space::query()->visibleTo(Auth::user(), $this->householdId)->get(['id', 'name', 'icon']),
         ];
     }
 }; ?>
@@ -232,6 +234,16 @@ new class extends Component
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
                     <x-sidebar-link icon="user-group" :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>{{ __('Members') }}</x-sidebar-link>
                 </div>
+
+                <x-sidebar-section :title="__('Spaces')" :add-href="route('spaces.index', ['create' => 1])" :all-href="route('spaces.index')" :add-label="__('New space')">
+                    @forelse ($spaces as $sidebarSpace)
+                        <x-sidebar-link :href="route('spaces.show', $sidebarSpace)" :active="request()->routeIs('spaces.show') && (int) request()->route('space')?->id === $sidebarSpace->id" wire:navigate wire:key="sidebar-space-{{ $sidebarSpace->id }}">
+                            {{ $sidebarSpace->icon }} {{ $sidebarSpace->name }}
+                        </x-sidebar-link>
+                    @empty
+                        <p class="px-2 text-xs text-gray-400">{{ __('Group pages and tasks, e.g. Work, Home, Club.') }}</p>
+                    @endforelse
+                </x-sidebar-section>
 
                 <x-sidebar-section :title="__('Pages')" :add-href="route('pages.index', ['create' => 1])" :all-href="route('pages.index')">
                     @if ($sharedRoots !== [])

@@ -105,7 +105,7 @@ class CollectionsTest extends TestCase
         $this->assertTrue($tasks->isTasks());
         $this->assertSame($tasks->id, $todo->collection_id);
         $this->assertSame(Collection::TASK_STATUS_TODO, $todo->propertyValue($status));
-        $this->assertSame(['status', 'due', 'assignee', 'repeat', 'priority'], $tasks->properties->pluck('system_key')->all());
+        $this->assertSame(['status', 'due', 'assignee', 'repeat', 'priority', 'category'], $tasks->properties->pluck('system_key')->all());
 
         $component = Volt::test('collections.show', ['collection' => $tasks->id]);
 

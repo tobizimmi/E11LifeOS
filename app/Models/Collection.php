@@ -119,6 +119,22 @@ class Collection extends Model
     /**
      * The household's tasks collection, created with its built-in properties on first use.
      */
+    /**
+     * Starting categories of the task list; members can rename, add and remove them.
+     *
+     * @return list<array{id: string, name: string, color: string}>
+     */
+    public static function defaultTaskCategories(): array
+    {
+        return [
+            ['id' => 'home', 'name' => __('Household'), 'color' => 'green'],
+            ['id' => 'work', 'name' => __('Work'), 'color' => 'blue'],
+            ['id' => 'private', 'name' => __('Private'), 'color' => 'purple'],
+            ['id' => 'finance', 'name' => __('Finances'), 'color' => 'orange'],
+            ['id' => 'errands', 'name' => __('Errands'), 'color' => 'gray'],
+        ];
+    }
+
     public static function tasksFor(int $householdId): self
     {
         $existing = self::where('household_id', $householdId)->where('system_key', self::SYSTEM_TASKS)->first();
@@ -171,6 +187,7 @@ class Collection extends Model
                 'system_key' => 'priority',
                 'position' => 4,
             ],
+            ['name' => __('Category'), 'type' => CollectionProperty::TYPE_SELECT, 'options' => self::defaultTaskCategories(), 'system_key' => 'category', 'position' => 5],
         ]);
 
         return $collection;

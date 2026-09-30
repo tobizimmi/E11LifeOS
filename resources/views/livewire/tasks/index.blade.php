@@ -6,15 +6,18 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\HouseholdMember;
 use App\Models\Item;
+use App\Models\Space;
 use App\Models\Tag;
 use App\Models\User;
 use App\Models\ChecklistTemplate;
 use App\Support\BrainAi;
 use App\Support\ChecklistTemplates;
+use App\Support\Links;
 use App\Support\QuickCapture;
 use App\Support\Recurrence;
 use App\Support\TaskInput;
 use App\Support\TaskLists;
+use App\Support\TaskPages;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -38,6 +41,16 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
+
+    /** Category option id to filter by. */
+    #[Url(except: '')]
+    public string $category = '';
+
+    /** Space id to filter by. */
+    #[Url(except: '')]
+    public string $space = '';
+
+    public bool $managingCategories = false;
 
     /**
      * Task shown in the detail panel (id as string, so a malformed URL can't break the page).
@@ -155,6 +168,96 @@ new #[Layout('layouts.app')] class extends Component
         $this->tag = $this->tag === $name ? '' : $name;
     }
 
+    public function filterByCategory(string $id): void
+    {
+        $this->category = $this->category === $id ? '' : $id;
+    }
+
+    public function filterBySpace(string $id): void
+    {
+        $this->space = $this->space === $id ? '' : $id;
+    }
+
+    private function findSpace(int $id): Space
+    {
+        return Space::query()->visibleTo($this->currentUser(), (int) $this->householdId)->find($id) ?? abort(404);
+    }
+
+    // ── Categories ───────────────────────────────────────────────────────
+
+    public function addCategory(string $name): void
+    {
+        $name = trim(Str::limit($name, 40, ''));
+        abort_if($name === '', 422);
+        $property = $this->systemProperty('category');
+        $colors = ['green', 'blue', 'purple', 'orange', 'red', 'pink', 'gray'];
+        $property->update(['options' => [...($property->options ?? []), ['id' => Str::lower(Str::random(8)), 'name' => $name, 'color' => $colors[count($property->options ?? []) % count($colors)]]]]);
+    }
+
+    public function renameCategory(string $id, string $name): void
+    {
+        $name = trim(Str::limit($name, 40, ''));
+        abort_if($name === '', 422);
+        $property = $this->systemProperty('category');
+        $property->update(['options' => collect($property->options ?? [])->map(fn (array $option) => $option['id'] === $id ? [...$option, 'name' => $name] : $option)->all()]);
+    }
+
+    public function removeCategory(string $id): void
+    {
+        $property = $this->systemProperty('category');
+        $property->update(['options' => collect($property->options ?? [])->reject(fn (array $option) => $option['id'] === $id)->values()->all()]);
+
+        if ($this->category === $id) {
+            $this->category = '';
+        }
+    }
+
+    public function setCategory(int $taskId, string $category): void
+    {
+        $task = $this->findTask($taskId);
+        $this->setValue($task, 'category', $category !== '' ? $category : null);
+        $task->save();
+    }
+
+    public function setSpace(int $taskId, string $spaceId): void
+    {
+        $task = $this->findTask($taskId);
+        $task->forceFill(['space_id' => $spaceId !== '' ? $this->findSpace((int) $spaceId)->id : null])->save();
+    }
+
+    // ── Pages of a task ──────────────────────────────────────────────────
+
+    public function linkPage(int $taskId, string $pageId): void
+    {
+        $task = $this->findTask($taskId);
+        $page = Item::query()->forHousehold((int) $this->householdId)->visibleTo($this->currentUser())->where('type', Item::TYPE_NOTE)->find((int) $pageId) ?? abort(404);
+        Links::addManual(Links::ITEM, $task->id, Links::ITEM, $page->id, (int) $this->householdId, Auth::id());
+    }
+
+    public function unlinkPage(int $taskId, int $pageId): void
+    {
+        Links::removeManual(Links::ITEM, $this->findTask($taskId)->id, Links::ITEM, $pageId);
+    }
+
+    /**
+     * Creates a page for the task (same space, linked) and opens it for writing.
+     */
+    public function createPageForTask(int $taskId): void
+    {
+        $task = $this->findTask($taskId);
+        $page = Item::create([
+            'household_id' => $this->householdId,
+            'type' => Item::TYPE_NOTE,
+            'title' => $task->title,
+            'space_id' => $task->space_id,
+            'created_by' => Auth::id(),
+            'visibility' => $task->visibility,
+        ]);
+        Links::addManual(Links::ITEM, $task->id, Links::ITEM, $page->id, (int) $this->householdId, Auth::id());
+
+        $this->redirectRoute('pages.index', ['item' => $page->id, 'edit' => 1], navigate: true);
+    }
+
     // ── Quick entry ──────────────────────────────────────────────────────
 
     public function ignorePhrase(string $phrase): void
@@ -265,6 +368,17 @@ new #[Layout('layouts.app')] class extends Component
 
             return false;
         }
+
+        // Added while a category or space is filtered: the task belongs there.
+        if ($this->category !== '' && isset((new TaskLists($this->collection(), $this->currentUser()))->categories()[$this->category])) {
+            $this->setValue($task, 'category', $this->category);
+        }
+
+        if ($this->space !== '') {
+            $task->space_id = Space::query()->visibleTo($this->currentUser(), (int) $this->householdId)->find((int) $this->space)?->id;
+        }
+
+        $task->save();
 
         $this->reset('draft', 'ignoredPhrases');
         $this->resetErrorBag('newTask');
@@ -592,7 +706,13 @@ new #[Layout('layouts.app')] class extends Component
             'collection' => $collection,
             'lists' => $lists,
             'counts' => $lists->counts(),
-            'groups' => $lists->groups($this->list, $this->tag, $this->search),
+            'groups' => $lists->groups($this->list, $this->tag, $this->search, $this->category, $this->space),
+            'categories' => $lists->categories(),
+            'categoryCounts' => $lists->categoryCounts(),
+            'spaces' => Space::query()->visibleTo($this->currentUser(), (int) $this->householdId)->get()->keyBy('id'),
+            'linkedPages' => $openTask ? TaskPages::pagesOf($openTask, $this->currentUser()) : collect(),
+            'pageOptions' => $openTask ? Item::query()->forHousehold((int) $this->householdId)->visibleTo($this->currentUser())->where('type', Item::TYPE_NOTE)
+                ->orderByRaw('space_id = ? desc', [(int) $openTask->space_id])->orderBy('title')->limit(300)->get(['id', 'title', 'icon', 'space_id']) : collect(),
             'review' => $this->list === TaskLists::DONE ? $lists->review() : null,
             'members' => $members,
             'preview' => trim($this->draft) !== '' ? TaskInput::parse($this->draft, $members, Auth::id(), $this->ignoredPhrases) : null,
@@ -621,6 +741,16 @@ new #[Layout('layouts.app')] class extends Component
         'accent' => 'text-indigo-600 dark:text-indigo-400',
         'normal' => 'text-gray-700 dark:text-gray-300',
         'muted' => 'text-gray-500 dark:text-gray-400',
+    ];
+    $categoryColor = [
+        'green' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
+        'blue' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
+        'purple' => 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200',
+        'orange' => 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200',
+        'red' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+        'pink' => 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-200',
+        'yellow' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200',
+        'gray' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
     ];
     $initials = fn (string $name) => mb_strtoupper(collect(preg_split('/\s+/u', trim($name)))->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
 @endphp
@@ -679,6 +809,55 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </div>
                 @endif
+
+                <div class="mt-4">
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Categories') }}</h3>
+                        <button type="button" wire:click="$toggle('managingCategories')" class="text-xs text-gray-500 underline dark:text-gray-400">{{ $managingCategories ? __('Done') : __('Edit') }}</button>
+                    </div>
+                    @if ($managingCategories)
+                        <ul class="mt-2 space-y-1.5">
+                            @foreach ($categories as $categoryId => $categoryOption)
+                                <li wire:key="manage-category-{{ $categoryId }}" class="flex items-center gap-1.5">
+                                    <input type="text" value="{{ $categoryOption['name'] }}" wire:change="renameCategory('{{ $categoryId }}', $event.target.value)" maxlength="40" class="min-w-0 flex-1 rounded-md border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900" aria-label="{{ __('Category name') }}">
+                                    <button type="button" wire:click="removeCategory('{{ $categoryId }}')" wire:confirm="{{ __('Remove this category? Tasks keep their other details.') }}" class="px-1 text-red-600 dark:text-red-400" aria-label="{{ __('Remove') }}: {{ $categoryOption['name'] }}">✕</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <form x-data x-on:submit.prevent="if ($refs.name.value.trim()) { $wire.addCategory($refs.name.value); $refs.name.value = '' }" class="mt-2 flex gap-1.5">
+                            <input type="text" x-ref="name" maxlength="40" placeholder="{{ __('New category') }}" class="min-w-0 flex-1 rounded-md border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900" aria-label="{{ __('New category') }}">
+                            <button type="submit" class="rounded-md px-2 text-sm ring-1 ring-gray-300 dark:ring-gray-600">+</button>
+                        </form>
+                    @else
+                        <div class="mt-2 flex lg:flex-wrap gap-1.5 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+                            @foreach ($categories as $categoryId => $categoryOption)
+                                <button type="button" wire:key="task-category-{{ $categoryId }}" wire:click="filterByCategory('{{ $categoryId }}')" aria-pressed="{{ $category === $categoryId ? 'true' : 'false' }}" @class([
+                                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs',
+                                    'bg-indigo-600 text-white' => $category === $categoryId,
+                                    ($categoryColor[$categoryOption['color'] ?? 'gray'] ?? $categoryColor['gray']) => $category !== $categoryId,
+                                ])>{{ $categoryOption['name'] }}@if ($categoryCounts[$categoryId] ?? 0) <span class="tabular-nums opacity-70">{{ $categoryCounts[$categoryId] }}</span>@endif</button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <div class="mt-4">
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Spaces') }}</h3>
+                        <a href="{{ route('spaces.index') }}" wire:navigate class="text-xs text-gray-500 underline dark:text-gray-400">{{ $spaces->isEmpty() ? '+ '.__('New') : __('Manage') }}</a>
+                    </div>
+                    @if ($spaces->isNotEmpty())
+                        <div class="mt-2 flex lg:flex-wrap gap-1.5 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+                            @foreach ($spaces as $spaceOption)
+                                <button type="button" wire:key="task-space-{{ $spaceOption->id }}" wire:click="filterBySpace('{{ $spaceOption->id }}')" aria-pressed="{{ $space === (string) $spaceOption->id ? 'true' : 'false' }}" @class([
+                                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs',
+                                    'bg-indigo-600 text-white' => $space === (string) $spaceOption->id,
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200' => $space !== (string) $spaceOption->id,
+                                ])>{{ $spaceOption->icon }} {{ $spaceOption->name }}</button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             </nav>
 
             <div class="min-w-0 flex-1 space-y-4">
@@ -849,6 +1028,12 @@ new #[Layout('layouts.app')] class extends Component
                                                 @if ($priority)
                                                     <span class="{{ $priorityText[$priority] }}">⚑ {{ \App\Support\TaskInput::priorityLabel($priority) }}</span>
                                                 @endif
+                                                @if (($taskCategory = $lists->category($task)) && isset($categories[$taskCategory]))
+                                                    <span class="rounded-full px-1.5 {{ $categoryColor[$categories[$taskCategory]['color'] ?? 'gray'] ?? $categoryColor['gray'] }}">{{ $categories[$taskCategory]['name'] }}</span>
+                                                @endif
+                                                @if ($task->space_id && ($taskSpace = $spaces->get($task->space_id)))
+                                                    <span>{{ $taskSpace->icon }} {{ $taskSpace->name }}</span>
+                                                @endif
                                                 @if ($subtasks !== [])
                                                     <span>☑ {{ $subtasksDone }}/{{ count($subtasks) }}</span>
                                                 @endif
@@ -1008,6 +1193,51 @@ new #[Layout('layouts.app')] class extends Component
                                 @endforeach
                             </select>
                         </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">🏷 {{ __('Category') }}</span>
+                            <select wire:change="setCategory({{ $openTask->id }}, $event.target.value)" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm">
+                                <option value="">{{ __('None') }}</option>
+                                @foreach ($categories as $categoryId => $categoryOption)
+                                    <option value="{{ $categoryId }}" @selected($lists->category($openTask) === $categoryId)>{{ $categoryOption['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">🗂 {{ __('Space') }}</span>
+                            <select wire:change="setSpace({{ $openTask->id }}, $event.target.value)" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm">
+                                <option value="">{{ __('None') }}</option>
+                                @foreach ($spaces as $spaceOption)
+                                    <option value="{{ $spaceOption->id }}" @selected($openTask->space_id === $spaceOption->id)>{{ $spaceOption->icon }} {{ $spaceOption->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+
+                    {{-- Pages --}}
+                    <div>
+                        <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">📄 {{ __('Pages') }}</h4>
+                        @if ($linkedPages->isNotEmpty())
+                            <ul class="mb-2 space-y-1">
+                                @foreach ($linkedPages as $linkedPage)
+                                    <li wire:key="linked-page-{{ $linkedPage->id }}" class="flex items-center gap-2 text-sm">
+                                        <a href="{{ route('pages.index', ['item' => $linkedPage->id]) }}" wire:navigate class="min-w-0 flex-1 truncate text-indigo-600 hover:underline dark:text-indigo-400">{{ $linkedPage->displayIcon() }} {{ $linkedPage->title }}</a>
+                                        <button type="button" wire:click="unlinkPage({{ $openTask->id }}, {{ $linkedPage->id }})" class="px-1 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove link') }}: {{ $linkedPage->title }}">✕</button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        <div class="flex gap-2">
+                            <select x-data x-on:change="if ($event.target.value) { $wire.linkPage({{ $openTask->id }}, $event.target.value); $event.target.value = '' }" class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm" aria-label="{{ __('Link a page') }}">
+                                <option value="">{{ __('Link a page …') }}</option>
+                                @foreach ($pageOptions->whereNotIn('id', $linkedPages->pluck('id')) as $pageOption)
+                                    <option value="{{ $pageOption->id }}">{{ $pageOption->displayIcon() }} {{ $pageOption->title }}@if ($pageOption->space_id && $spaces->has($pageOption->space_id)) · {{ $spaces[$pageOption->space_id]->name }}@endif</option>
+                                @endforeach
+                            </select>
+                            <button type="button" wire:click="createPageForTask({{ $openTask->id }})" class="shrink-0 rounded-lg px-3 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-600 dark:hover:bg-gray-700">+ {{ __('New page') }}</button>
+                        </div>
                     </div>
 
                     @if ($repeat && count($members) > 1)

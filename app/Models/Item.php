@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['household_id', 'parent_id', 'collection_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'completed_at', 'due_time', 'reminded_at', 'position'])]
+#[Fillable(['household_id', 'parent_id', 'collection_id', 'space_id', 'type', 'visibility', 'title', 'icon', 'content', 'properties', 'created_by', 'done', 'completed_at', 'due_time', 'reminded_at', 'position'])]
 #[ObservedBy(ItemObserver::class)]
 class Item extends Model
 {
@@ -266,6 +266,14 @@ class Item extends Model
     public function collection(): BelongsTo
     {
         return $this->belongsTo(Collection::class);
+    }
+
+    /**
+     * @return BelongsTo<Space, $this>
+     */
+    public function space(): BelongsTo
+    {
+        return $this->belongsTo(Space::class);
     }
 
     public function tags(): BelongsToMany

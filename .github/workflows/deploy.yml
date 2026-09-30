@@ -13,9 +13,10 @@ on:
         options:
           - deploy
           - server-einrichten
+          - status
         default: deploy
       environment:
-        description: 'Nur für server-einrichten: welcher Server?'
+        description: 'Nur für server-einrichten / status: welcher Server?'
         type: choice
         options:
           - staging
@@ -28,7 +29,7 @@ on:
 
 jobs:
   tests:
-    if: inputs.action != 'server-einrichten'
+    if: inputs.action != 'server-einrichten' && inputs.action != 'status'
     uses: ./.github/workflows/tests.yml
 
   server-setup:
@@ -37,6 +38,13 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       overwrite: ${{ inputs.overwrite }}
+    secrets: inherit
+
+  server-status:
+    if: inputs.action == 'status'
+    uses: ./.github/workflows/server-status.yml
+    with:
+      environment: ${{ inputs.environment }}
     secrets: inherit
 
   deploy:

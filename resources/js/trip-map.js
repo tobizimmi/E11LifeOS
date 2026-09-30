@@ -15,6 +15,7 @@ export default (texts, center) => {
     let tempMarker = null;
     let fitted = false;
     let pendingPlace = null;
+    let searchRun = 0;
 
     return {
         groups: [],
@@ -22,6 +23,8 @@ export default (texts, center) => {
         query: '',
         results: [],
         searching: false,
+        searched: false,
+        active: 0,
         loadingNearby: false,
         ready: false,
         failed: false,
@@ -103,13 +106,17 @@ export default (texts, center) => {
 
                 for (const pin of group.pins) {
                     const marker = L.marker([pin.lat, pin.lng], { icon: this.pinIcon(group.color, pin.title, group.key === 'ideas' ? pin.icon : pin.n), riseOnHover: true });
-                    marker.bindPopup(`<div class="space-y-1"><p class="text-xs font-semibold" style="color:${group.color}">${escapeHtml(group.label)}</p><p class="text-sm font-semibold">${escapeHtml(pin.icon)} ${escapeHtml(pin.title)}</p><button type="button" data-trip-edit="${pin.id}" class="mt-1 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white">${escapeHtml(texts.edit)}</button></div>`);
+                    marker.bindPopup(`<div class="space-y-1"><p class="text-xs font-semibold" style="color:${group.color}">${escapeHtml(group.label)}</p><p class="text-sm font-semibold">${escapeHtml(pin.icon)} ${escapeHtml(pin.title)}</p>${pin.leg ? `<p class="text-xs text-gray-500">↓ ${escapeHtml(pin.leg)} ${escapeHtml(texts.fromPrevious)}</p>` : ''}<button type="button" data-trip-edit="${pin.id}" class="mt-1 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white">${escapeHtml(texts.edit)}</button></div>`);
                     marker.addTo(pinLayer);
                     line.push([pin.lat, pin.lng]);
                     all.push([pin.lat, pin.lng]);
                 }
 
-                if (group.key !== 'ideas' && line.length > 1) {
+                if (group.key !== 'ideas' && group.line) {
+                    // The way along the streets, with a light outline so it stays visible on every map.
+                    L.polyline(group.line, { color: '#ffffff', weight: 7, opacity: 0.8, interactive: false }).addTo(pinLayer);
+                    L.polyline(group.line, { color: group.color, weight: 4, opacity: 0.9 }).bindTooltip(group.total || '', { sticky: true }).addTo(pinLayer);
+                } else if (group.key !== 'ideas' && line.length > 1) {
                     L.polyline(line, { color: group.color, weight: 3, opacity: 0.7, dashArray: '6 8' }).addTo(pinLayer);
                 }
             }
@@ -191,22 +198,69 @@ export default (texts, center) => {
 
         async search() {
             const query = this.query.trim();
+            const run = ++searchRun;
+            this.active = 0;
 
             if (query.length < 2) {
                 this.results = [];
+                this.searching = false;
+                this.searched = false;
 
                 return;
             }
 
+            // Places already in the plan appear at once, the rest follows from the server.
+            const needle = query.toLowerCase();
+            const planned = this.groups.flatMap((group) => group.pins.filter((pin) => pin.title.toLowerCase().includes(needle))
+                .map((pin) => ({ id: pin.id, name: pin.title, address: group.label, lat: pin.lat, lng: pin.lng, kind: 'plan', icon: pin.icon }))).slice(0, 3);
+            this.results = planned;
             this.searching = true;
-            this.results = await this.$wire.searchPlaces(query, this.bounds());
+
+            const found = map ? await this.$wire.searchPlaces(query, this.bounds()) : [];
+
+            if (run !== searchRun) {
+                return; // An older search answered after a newer one.
+            }
+
+            this.results = [...planned, ...found.filter((place) => ! planned.some((pin) => pin.name === place.name && Math.abs(pin.lat - place.lat) < 0.0005))];
             this.searching = false;
+            this.searched = true;
+        },
+
+        move(step) {
+            if (this.results.length > 0) {
+                this.active = (this.active + step + this.results.length) % this.results.length;
+            }
+        },
+
+        chooseActive() {
+            if (this.results[this.active]) {
+                this.choose(this.results[this.active]);
+            } else {
+                this.search();
+            }
+        },
+
+        closeResults() {
+            this.results = [];
+            this.searched = false;
+        },
+
+        resultIcon(place) {
+            return place.kind === 'plan' ? place.icon : (texts.icons[place.kind] ?? '📍');
         },
 
         choose(place) {
-            this.results = [];
+            this.closeResults();
             this.query = '';
             map.setView([place.lat, place.lng], Math.max(map.getZoom(), 16));
+
+            if (place.kind === 'plan') {
+                pinLayer.eachLayer((layer) => layer.getLatLng && layer.getLatLng().equals([place.lat, place.lng]) && layer.openPopup());
+
+                return;
+            }
+
             this.showPlace(place);
         },
 

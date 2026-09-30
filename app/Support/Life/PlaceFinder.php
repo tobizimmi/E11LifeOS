@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Places for the trip map from OpenStreetMap: search (Nominatim), the address of a point on the map
- * and sights, restaurants … nearby (Overpass). Called from the server, cached, without API key.
+ * Places for the trip map from OpenStreetMap: search as you type (Photon, Nominatim as fallback), addresses
+ * of entries and of a point on the map (Nominatim) and sights, restaurants … nearby (Overpass).
+ * Called from the server, cached, without API key.
  */
 class PlaceFinder
 {
@@ -19,10 +20,61 @@ class PlaceFinder
     public static bool $failed = false;
 
     /**
-     * @param  ?array{0: float, 1: float, 2: float, 3: float}  $bounds  south, west, north, east of the visible map (results there first)
+     * Search as you type: places near the visible map first. Falls back to Nominatim if Photon fails.
+     *
+     * @param  ?array{0: float, 1: float, 2: float, 3: float}  $bounds  south, west, north, east of the visible map
      * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
      */
     public static function search(string $query, ?array $bounds = null): array
+    {
+        $query = trim(mb_substr($query, 0, 150));
+
+        if (mb_strlen($query) < 2) {
+            return [];
+        }
+
+        $parameters = ['q' => $query, 'limit' => 8, 'lang' => 'de'];
+
+        if ($bounds !== null) {
+            [$south, $west, $north, $east] = array_map(fn ($value) => (float) $value, $bounds);
+            $parameters += ['lat' => round(($south + $north) / 2, 2), 'lon' => round(($west + $east) / 2, 2), 'zoom' => 12];
+        }
+
+        $key = 'places:photon:'.md5(json_encode($parameters));
+        $cached = Cache::get($key);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $response = self::get(rtrim((string) config('services.maps.photon_url'), '/').'/api/', $parameters);
+
+        if ($response === null) {
+            return self::geocode($query, $bounds);
+        }
+
+        $places = [];
+
+        foreach ((array) ($response['features'] ?? []) as $feature) {
+            $place = self::fromPhoton((array) $feature);
+
+            if ($place && ! collect($places)->contains(fn (array $other) => $other['name'] === $place['name'] && abs($other['lat'] - $place['lat']) < 0.001)) {
+                $places[] = $place;
+            }
+        }
+
+        Cache::put($key, $places, now()->addDays(7));
+
+        return $places;
+    }
+
+    /**
+     * Address search (Nominatim): best for full addresses, one request per second.
+     *
+     * @param  ?array{0: float, 1: float, 2: float, 3: float}  $bounds  south, west, north, east (results there first)
+     * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
+     */
+    public static function geocode(string $query, ?array $bounds = null): array
     {
         $query = trim(mb_substr($query, 0, 150));
 
@@ -82,11 +134,11 @@ class PlaceFinder
      */
     public static function locate(string $address, ?string $destination = null): ?array
     {
-        $first = self::search($address)[0] ?? null;
+        $first = self::geocode($address)[0] ?? null;
         $destination = trim((string) $destination);
 
         if ($first === null && ! self::$failed && $destination !== '' && ! str_contains(mb_strtolower($address), mb_strtolower($destination))) {
-            $first = self::search($address.', '.$destination)[0] ?? null;
+            $first = self::geocode($address.', '.$destination)[0] ?? null;
         }
 
         return $first ? ['lat' => $first['lat'], 'lng' => $first['lng']] : null;
@@ -207,6 +259,38 @@ class PlaceFinder
             'lat' => (float) $result['lat'],
             'lng' => (float) $result['lon'],
             'kind' => self::kindFor((string) ($result['category'] ?? ''), (string) ($result['type'] ?? '')),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $feature  GeoJSON feature from Photon
+     * @return ?array{name: string, address: string, lat: float, lng: float, kind: string}
+     */
+    private static function fromPhoton(array $feature): ?array
+    {
+        $coordinates = $feature['geometry']['coordinates'] ?? null;
+        $properties = (array) ($feature['properties'] ?? []);
+
+        if (! is_array($coordinates) || count($coordinates) < 2) {
+            return null;
+        }
+
+        $street = trim(($properties['street'] ?? '').' '.($properties['housenumber'] ?? ''));
+        $name = trim((string) ($properties['name'] ?? '')) ?: $street;
+
+        if ($name === '') {
+            return null;
+        }
+
+        $address = collect([$street, trim(($properties['postcode'] ?? '').' '.($properties['city'] ?? $properties['district'] ?? '')), $properties['country'] ?? null])
+            ->map(fn ($part) => trim((string) $part))->filter(fn (string $part) => $part !== '' && $part !== $name)->unique()->implode(', ');
+
+        return [
+            'name' => mb_substr($name, 0, 150),
+            'address' => mb_substr($address, 0, 255),
+            'lat' => (float) $coordinates[1],
+            'lng' => (float) $coordinates[0],
+            'kind' => self::kindFor((string) ($properties['osm_key'] ?? ''), (string) ($properties['osm_value'] ?? '')),
         ];
     }
 

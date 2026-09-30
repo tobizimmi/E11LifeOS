@@ -4891,5 +4891,17 @@
     "Tile address (optional)": "Kachel-Adresse (optional)",
     "The place search (OpenStreetMap) cannot be reached right now. Please try again later.": "Die Ortssuche (OpenStreetMap) ist gerade nicht erreichbar. Bitte versuche es später noch einmal.",
     ":count not found – add an address or pick it on the map.|:count not found – add an address or pick them on the map.": ":count nicht gefunden – ergänze eine Adresse oder wähle den Ort auf der Karte.|:count nicht gefunden – ergänze eine Adresse oder wähle die Orte auf der Karte.",
-    ":count entry has no place on the map yet.|:count entries have no place on the map yet.": ":count Eintrag hat noch keinen Ort auf der Karte.|:count Einträge haben noch keinen Ort auf der Karte."
+    ":count entry has no place on the map yet.|:count entries have no place on the map yet.": ":count Eintrag hat noch keinen Ort auf der Karte.|:count Einträge haben noch keinen Ort auf der Karte.",
+    "On foot": "Zu Fuß",
+    "By bike": "Mit dem Rad",
+    "By car": "Mit dem Auto",
+    ":minutes min": ":minutes Min.",
+    "h": "Std.",
+    "Getting around": "Unterwegs",
+    "Calculating travel times …": "Wegzeiten werden berechnet …",
+    "Travel times are not available for every day right now.": "Wegzeiten sind gerade nicht für jeden Tag verfügbar.",
+    "Whole route": "Ganze Route",
+    "from the place before": "vom Ort davor",
+    "In the plan": "Im Plan",
+    "Nothing found. Try another spelling or tap the place on the map.": "Nichts gefunden. Versuche eine andere Schreibweise oder tippe den Ort auf der Karte an."
 }

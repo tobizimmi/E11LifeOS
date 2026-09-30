@@ -11,6 +11,7 @@ use App\Support\Life\TripCovers;
 use App\Support\Life\PlaceFinder;
 use App\Support\Life\TripItinerary;
 use App\Support\Life\TripPlanner;
+use App\Support\Life\TripRoutes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
@@ -325,7 +327,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $key = 'places:'.Auth::id();
 
-        if (RateLimiter::tooManyAttempts($key, 40)) {
+        if (RateLimiter::tooManyAttempts($key, 60)) {
             return null;
         }
 
@@ -340,6 +342,7 @@ new #[Layout('layouts.app')] class extends Component
      * @param  list<float>  $bounds  south, west, north, east
      * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
      */
+    #[Renderless]
     public function searchPlaces(string $query, array $bounds = []): array
     {
         return $this->limited(fn () => PlaceFinder::search($query, count($bounds) === 4 ? array_map('floatval', array_values($bounds)) : null)) ?? [];
@@ -350,6 +353,7 @@ new #[Layout('layouts.app')] class extends Component
      *
      * @return ?array{name: string, address: string, lat: float, lng: float, kind: string}
      */
+    #[Renderless]
     public function placeAt(float $lat, float $lng): ?array
     {
         abort_unless(abs($lat) <= 90 && abs($lng) <= 180, 422);
@@ -363,11 +367,30 @@ new #[Layout('layouts.app')] class extends Component
      * @param  list<float>  $bounds  south, west, north, east
      * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
      */
+    #[Renderless]
     public function placesNearby(array $bounds): array
     {
         abort_unless(count($bounds) === 4, 422);
 
         return $this->limited(fn () => PlaceFinder::nearby(array_map('floatval', array_values($bounds)))) ?? [];
+    }
+
+    /**
+     * Calculates the routes of the days that have none yet (the page shows the times afterwards).
+     */
+    public function loadRoutes(): void
+    {
+        $trip = $this->findTrip()->load('stops');
+        $this->limited(fn () => TripItinerary::dayRoutes(TripItinerary::build($trip), $trip->travel_mode ?: 'foot', fetch: true));
+    }
+
+    /**
+     * On foot, by bike or by car: changes the routes and times of all days.
+     */
+    public function setTravelMode(string $mode): void
+    {
+        abort_unless(isset(TripRoutes::modes()[$mode]), 422);
+        $this->findTrip()->update(['travel_mode' => $mode]);
     }
 
     /**
@@ -424,6 +447,31 @@ new #[Layout('layouts.app')] class extends Component
 
         $notFound = $missing->count() - $found;
         $this->dispatch('toast', message: trans_choice(':count place found on the map.|:count places found on the map.', $found).($notFound > 0 ? ' '.trans_choice(':count not found – add an address or pick it on the map.|:count not found – add an address or pick them on the map.', $notFound) : ''));
+    }
+
+    /**
+     * Adds the route line and the way to each pin (e.g. "🚶 12 min · 900 m") to the map groups.
+     *
+     * @param  list<array<string, mixed>>  $groups
+     * @param  array<string, array{duration: float, distance: float, line: list<array{0: float, 1: float}>, legs: array<int, array{duration: float, distance: float}>}>  $routes
+     * @return list<array<string, mixed>>
+     */
+    private function withRoutes(array $groups, array $routes, string $mode): array
+    {
+        $icon = TripRoutes::modes()[$mode]['icon'] ?? '';
+
+        foreach ($groups as &$group) {
+            $route = $routes[$group['key']] ?? null;
+            $group['line'] = $route['line'] ?? null;
+            $group['total'] = $route ? $icon.' '.TripRoutes::duration($route['duration']).' · '.TripRoutes::distance($route['distance']) : null;
+
+            foreach ($group['pins'] as &$pin) {
+                $leg = $route['legs'][$pin['id']] ?? null;
+                $pin['leg'] = $leg ? $icon.' '.TripRoutes::duration($leg['duration']).' · '.TripRoutes::distance($leg['distance']) : null;
+            }
+        }
+
+        return $groups;
     }
 
     /**
@@ -574,11 +622,15 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants']);
+        $itinerary = TripItinerary::build($trip);
+        $routes = in_array($this->tab, ['plan', 'map'], true) ? TripItinerary::dayRoutes($itinerary, $trip->travel_mode ?: 'foot') : ['days' => [], 'failed' => [], 'pending' => []];
 
         return [
             'trip' => $trip,
-            'itinerary' => $itinerary = TripItinerary::build($trip),
-            'mapGroups' => $this->tab === 'map' ? TripItinerary::mapGroups($itinerary) : [],
+            'itinerary' => $itinerary,
+            'routes' => $routes,
+            'travelModes' => TripRoutes::modes(),
+            'mapGroups' => $this->tab === 'map' ? $this->withRoutes(TripItinerary::mapGroups($itinerary), $routes['days'], $trip->travel_mode ?: 'foot') : [],
             'mapCenter' => $this->tab === 'map' && $trip->destination ? $this->mapCenter((string) $trip->destination) : null,
             'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => ($stop->location || $trip->destination) && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
@@ -597,6 +649,9 @@ new #[Layout('layouts.app')] class extends Component
 @php
     $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
+    $travelMode = $trip->travel_mode ?: 'foot';
+    $legs = collect($routes['days'])->reduce(fn (array $carry, array $route) => $carry + $route['legs'], []);
+    $legText = fn (array $way) => ($travelModes[$travelMode]['icon'] ?? '').' '.TripRoutes::duration($way['duration']).' · '.TripRoutes::distance($way['distance']);
     $levels = ['critical' => 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800', 'warning' => 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800', 'hint' => 'bg-gray-50 text-gray-700 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-300 dark:ring-gray-700'];
     $scheme = $trip->colorScheme();
     $travellers = $trip->travellerNames();
@@ -795,13 +850,26 @@ new #[Layout('layouts.app')] class extends Component
                     <x-secondary-button type="submit" class="flex-1 justify-center sm:flex-none">💡 {{ __('Add idea') }}</x-secondary-button>
                     <x-primary-button type="button" wire:click="openStop" class="flex-1 justify-center sm:flex-none">+ {{ __('Entry') }}</x-primary-button>
                 </form>
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
+                    <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">
+                        @foreach ($travelModes as $modeKey => $mode)
+                            <button type="button" wire:click="setTravelMode('{{ $modeKey }}')" @class(['rounded-full px-3 py-1 text-xs font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $travelMode === $modeKey, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $travelMode !== $modeKey]) aria-pressed="{{ $travelMode === $modeKey ? 'true' : 'false' }}">{{ $mode['icon'] }} {{ $mode['label'] }}</button>
+                        @endforeach
+                    </div>
+                    @if ($routes['pending'] !== [])
+                        <span x-init="$wire.loadRoutes()" class="text-xs text-gray-500 dark:text-gray-400">⏳ {{ __('Calculating travel times …') }}</span>
+                    @elseif ($routes['failed'] !== [])
+                        <span class="text-xs text-amber-700 dark:text-amber-300">{{ __('Travel times are not available for every day right now.') }}</span>
+                    @endif
+                </div>
 
                 <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
                     <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>
                     <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Drag onto a day to plan') }} (⠿)</p>
                     <ul class="mt-2 min-h-10 space-y-2" x-sort="$wire.moveStop($item, 'ideas', $position)" x-sort:group="trip-plan">
                         @forelse ($itinerary['ideas'] as $entry)
-                            @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro])
+                            @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro, 'leg' => isset($legs[$entry->id]) ? $legText($legs[$entry->id]) : null])
                         @empty
                             <li class="rounded-xl border border-dashed border-amber-200 p-3 text-center text-xs text-amber-700 dark:border-amber-800 dark:text-amber-300">{{ __('Collect sights, restaurants and tips here.') }}</li>
                         @endforelse
@@ -817,7 +885,7 @@ new #[Layout('layouts.app')] class extends Component
                             </span>
                             <div class="min-w-0 flex-1">
                                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $day['date']->translatedFormat('l, j. F') }}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $day['date']->isToday() ? __('Today').' · ' : '' }}{{ trans_choice(':count entry|:count entries', $day['stops']->count() + count($day['bookings'])) }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $day['date']->isToday() ? __('Today').' · ' : '' }}{{ trans_choice(':count entry|:count entries', $day['stops']->count() + count($day['bookings'])) }}@if ($dayRoute = $routes['days'][$day['date']->toDateString()] ?? null) · {{ $legText($dayRoute) }}@endif</p>
                             </div>
                             @if ($day['route'])
                                 <a href="{{ $day['route'] }}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">🗺️ {{ __('Route') }}</a>
@@ -845,7 +913,7 @@ new #[Layout('layouts.app')] class extends Component
 
                         <ul class="mt-2 min-h-10 space-y-2" x-sort="$wire.moveStop($item, '{{ $day['date']->toDateString() }}', $position)" x-sort:group="trip-plan">
                             @foreach ($day['stops'] as $entry)
-                                @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro])
+                                @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro, 'leg' => isset($legs[$entry->id]) ? $legText($legs[$entry->id]) : null])
                             @endforeach
                             @if ($day['stops']->isEmpty() && $day['bookings'] === [])
                                 <li class="rounded-xl border border-dashed border-gray-200 p-3 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">{{ __('Nothing planned yet – tap + or drag an idea here.') }}</li>
@@ -854,18 +922,43 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endforeach
             @elseif ($tab === 'map')
-                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'tiles' => config('services.maps.tile_url') ?: null, 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'tiles' => config('services.maps.tile_url') ?: null, 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
+                    <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">
+                        @foreach ($travelModes as $modeKey => $mode)
+                            <button type="button" wire:click="setTravelMode('{{ $modeKey }}')" @class(['rounded-full px-3 py-1 text-xs font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $travelMode === $modeKey, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $travelMode !== $modeKey]) aria-pressed="{{ $travelMode === $modeKey ? 'true' : 'false' }}">{{ $mode['icon'] }} {{ $mode['label'] }}</button>
+                        @endforeach
+                    </div>
+                    @if ($routes['pending'] !== [])
+                        <span x-init="$wire.loadRoutes()" class="text-xs text-gray-500 dark:text-gray-400">⏳ {{ __('Calculating travel times …') }}</span>
+                    @elseif ($routes['failed'] !== [])
+                        <span class="text-xs text-amber-700 dark:text-amber-300">{{ __('Travel times are not available for every day right now.') }}</span>
+                    @endif
+                </div>
                 <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="tripMap(@js($mapTexts), @js($mapCenter))" wire:key="trip-map-{{ $trip->id }}">
                     <div x-ref="data" class="hidden" data-groups="{{ json_encode($mapGroups) }}"></div>
                     <div class="relative z-[500] flex flex-wrap gap-2 p-3">
-                        <div class="relative min-w-0 flex-1 basis-full sm:basis-0">
-                            <input type="search" x-model="query" x-on:input.debounce.500ms="search()" x-on:keydown.escape="results = []" placeholder="🔎 {{ __('Search a place, sight or restaurant …') }}" aria-label="{{ __('Search a place') }}" class="block w-full rounded-xl border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                            <ul x-show="results.length > 0" x-cloak class="absolute inset-x-0 top-full z-[1000] mt-1 max-h-72 overflow-y-auto rounded-xl bg-white py-1 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
-                                <template x-for="place in results" :key="place.lat + ',' + place.lng">
-                                    <li><button type="button" x-on:click="choose(place)" class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"><span class="block font-medium text-gray-900 dark:text-gray-100" x-text="place.name"></span><span class="block truncate text-xs text-gray-500 dark:text-gray-400" x-text="place.address"></span></button></li>
-                                </template>
-                            </ul>
-                            <span x-show="searching" x-cloak class="absolute end-3 top-2.5 text-xs text-gray-400">…</span>
+                        <div class="relative min-w-0 flex-1 basis-full sm:basis-0" x-on:click.outside="closeResults()">
+                            <input type="search" x-model="query" x-on:input.debounce.250ms="search()" x-on:keydown.escape="closeResults()" x-on:keydown.arrow-down.prevent="move(1)" x-on:keydown.arrow-up.prevent="move(-1)" x-on:keydown.enter.prevent="chooseActive()" x-on:focus="query.trim().length > 1 && results.length === 0 && search()" placeholder="🔎 {{ __('Search a place, sight or restaurant …') }}" aria-label="{{ __('Search a place') }}" autocomplete="off" enterkeyhint="search" class="block w-full rounded-xl border-gray-300 pe-9 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                            <span x-show="searching" x-cloak class="absolute end-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" aria-hidden="true"></span>
+                            <div x-show="results.length > 0 || (searched && query.trim().length > 1)" x-cloak x-transition.opacity.duration.150ms class="absolute inset-x-0 top-full z-[1000] mt-1 max-h-80 overflow-y-auto rounded-xl bg-white py-1 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                <ul role="listbox">
+                                    <template x-for="(place, index) in results" :key="index + ':' + place.lat + ',' + place.lng">
+                                        <li role="option" x-bind:aria-selected="index === active">
+                                            <button type="button" x-on:click="choose(place)" x-on:mouseenter="active = index" class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm" x-bind:class="index === active ? 'bg-indigo-50 dark:bg-gray-700' : ''">
+                                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-base dark:bg-gray-900" x-text="resultIcon(place)" aria-hidden="true"></span>
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="block truncate font-medium text-gray-900 dark:text-gray-100" x-text="place.name"></span>
+                                                    <span class="block truncate text-xs text-gray-500 dark:text-gray-400" x-text="place.address"></span>
+                                                </span>
+                                                <span x-show="place.kind === 'plan'" class="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">{{ __('In the plan') }}</span>
+                                            </button>
+                                        </li>
+                                    </template>
+                                </ul>
+                                <p x-show="searched && ! searching && results.length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing found. Try another spelling or tap the place on the map.') }}</p>
+                            </div>
                         </div>
                         <button type="button" x-on:click="nearby()" x-bind:disabled="loadingNearby" class="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 sm:flex-none dark:bg-gray-700 dark:text-gray-100"><span x-show="! loadingNearby">📍 {{ __('Places nearby') }}</span><span x-show="loadingNearby" x-cloak>⏳ {{ __('Searching …') }}</span></button>
                         <button type="button" x-on:click="fitAll()" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('Show all') }}" aria-label="{{ __('Show all') }}">⤢</button>
@@ -884,7 +977,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="h-5 w-5 shrink-0 rounded-full ring-2 ring-white dark:ring-gray-800" x-bind:style="'background:' + group.color" x-bind:class="hidden.includes(group.key) && 'opacity-30'"></span>
                                         <span class="min-w-0 flex-1">
                                             <span class="block text-sm font-medium text-gray-900 dark:text-gray-100" x-text="group.label"></span>
-                                            <span class="block text-xs text-gray-500 dark:text-gray-400" x-text="group.pins.length + ' / ' + group.count + ' {{ __('on the map') }}'"></span>
+                                            <span class="block text-xs text-gray-500 dark:text-gray-400" x-text="group.pins.length + ' / ' + group.count + ' {{ __('on the map') }}' + (group.total ? ' · ' + group.total : '')"></span>
                                         </span>
                                         <span class="text-lg" x-bind:class="hidden.includes(group.key) ? 'text-gray-300 dark:text-gray-600' : 'text-emerald-500'" aria-hidden="true">✓</span>
                                     </button>
@@ -904,11 +997,14 @@ new #[Layout('layouts.app')] class extends Component
                 @foreach ($mappedDays as $day)
                     <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="map-day-{{ $day['number'] }}">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $dayLabel($day['date'], $day['number']) }}</h3>
+                            <div class="min-w-0"><h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $dayLabel($day['date'], $day['number']) }}</h3>@if ($dayRoute = $routes['days'][$day['date']->toDateString()] ?? null)<p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Whole route') }}: {{ $legText($dayRoute) }}</p>@endif</div>
                             <a href="{{ $day['route'] }}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">🧭 {{ __('Open route') }}</a>
                         </div>
                         <ol class="mt-3 space-y-2">
                             @foreach ($day['stops']->filter(fn ($entry) => $entry->mapsUrl() && $entry->kind !== 'note')->values() as $index => $entry)
+                                @if (isset($legs[$entry->id]))
+                                    <li class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400" wire:key="map-leg-{{ $entry->id }}"><span class="flex w-7 justify-center" aria-hidden="true"><span class="h-4 border-l-2 border-dashed border-gray-300 dark:border-gray-600"></span></span>{{ $legText($legs[$entry->id]) }}</li>
+                                @endif
                                 <li class="flex items-center gap-3 text-sm" wire:key="map-stop-{{ $entry->id }}">
                                     <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style="background-color: {{ $scheme['to'] }}">{{ $index + 1 }}</span>
                                     <span class="min-w-0 flex-1"><span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $stopKinds[$entry->kind]['icon'] ?? '' }} {{ $entry->title }}</span><span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $entry->location }}</span></span>

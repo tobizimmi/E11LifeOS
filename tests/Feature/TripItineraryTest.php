@@ -94,9 +94,10 @@ class TripItineraryTest extends TestCase
     public function test_places_are_found_on_the_map_and_added_to_a_day_with_their_position(): void
     {
         Http::fake([
-            'nominatim.openstreetmap.org/search*' => Http::response([
-                ['name' => 'Parlament', 'display_name' => 'Parlament, Kossuth Lajos tér 1-3, Budapest, Ungarn', 'lat' => '47.5071', 'lon' => '19.0457', 'category' => 'tourism', 'type' => 'attraction'],
-            ]),
+            'photon.komoot.io/*' => Http::response(['features' => [
+                ['geometry' => ['coordinates' => [19.0457, 47.5071]], 'properties' => ['name' => 'Parlament', 'street' => 'Kossuth Lajos tér', 'housenumber' => '1-3', 'city' => 'Budapest', 'country' => 'Ungarn', 'osm_key' => 'tourism', 'osm_value' => 'attraction']],
+                ['geometry' => ['coordinates' => [19.0457, 47.5072]], 'properties' => ['name' => 'Parlament', 'city' => 'Budapest', 'osm_key' => 'tourism', 'osm_value' => 'attraction']],
+            ]]),
             'nominatim.openstreetmap.org/reverse*' => Http::response(['name' => 'Frici Papa', 'display_name' => 'Frici Papa, Király utca 55, Budapest', 'lat' => '47.5010', 'lon' => '19.0620', 'category' => 'amenity', 'type' => 'restaurant']),
             'overpass-api.de/*' => Http::response(['elements' => [
                 ['lat' => 47.4968, 'lon' => 19.0511, 'tags' => ['name' => 'Vörösmarty tér', 'tourism' => 'attraction']],
@@ -111,6 +112,8 @@ class TripItineraryTest extends TestCase
 
         $results = $page->instance()->searchPlaces('Parlament', [47.4, 18.9, 47.6, 19.2]);
         $this->assertSame(['Parlament', 'Kossuth Lajos tér 1-3, Budapest, Ungarn', 'sight'], [$results[0]['name'], $results[0]['address'], $results[0]['kind']]);
+        $this->assertCount(1, $results);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'photon.komoot.io/api/') && $request['lat'] == 47.5);
         $this->assertSame('Frici Papa', $page->instance()->placeAt(47.501, 19.062)['name']);
         $this->assertSame(['Vörösmarty tér'], array_column($page->instance()->placesNearby([47.49, 19.03, 47.51, 19.07]), 'name'));
         $this->assertSame([], $page->instance()->placesNearby([40.0, 5.0, 50.0, 20.0]));
@@ -177,6 +180,36 @@ class TripItineraryTest extends TestCase
         $page->set('idea', 'Park Güell')->call('addIdea');
         $this->assertSame(2, TripStop::whereNotNull('lat')->count());
         Http::assertSent(fn ($request) => str_contains(urldecode($request->url()), 'q=Park Güell, Barcelona'));
+    }
+
+    public function test_the_route_of_a_day_shows_the_way_between_the_places_and_follows_the_travel_mode(): void
+    {
+        Http::fake(['routing.openstreetmap.de/*' => Http::response(['routes' => [[
+            'duration' => 1500, 'distance' => 2100,
+            'legs' => [['duration' => 600, 'distance' => 800], ['duration' => 900, 'distance' => 1300]],
+            'geometry' => ['coordinates' => [[19.0402, 47.4979], [19.0450, 47.5000], [19.0511, 47.4968], [19.0620, 47.5010]]],
+        ]]])]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-23']);
+        foreach ([['Burg', 47.4979, 19.0402], ['Vörösmarty tér', 47.4968, 19.0511], ['Frici Papa', 47.5010, 19.0620]] as $index => [$title, $lat, $lng]) {
+            TripStop::factory()->create(['trip_id' => $trip->id, 'day' => '2026-07-22', 'title' => $title, 'lat' => $lat, 'lng' => $lng, 'position' => $index + 1]);
+        }
+
+        $this->actingAs($user);
+        $page = Volt::test('trips.show', ['trip' => $trip])->set('tab', 'plan')->assertSee('Wegzeiten werden berechnet');
+        Http::assertNothingSent();
+
+        $page->call('loadRoutes')->assertSee('🚶 10 Min. · 800 m')->assertSee('🚶 15 Min. · 1,3 km')->assertSee('🚶 25 Min. · 2,1 km')->assertDontSee('Wegzeiten werden berechnet');
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'routed-foot/route/v1/driving/19.0402,47.4979;19.0511,47.4968;19.062,47.501'));
+
+        $groups = collect(Volt::test('trips.show', ['trip' => $trip])->set('tab', 'map')->viewData('mapGroups'))->keyBy('key');
+        $this->assertCount(4, $groups['2026-07-22']['line']);
+        $this->assertSame([null, '🚶 10 Min. · 800 m', '🚶 15 Min. · 1,3 km'], array_column($groups['2026-07-22']['pins'], 'leg'));
+
+        $page->call('setTravelMode', 'car')->call('loadRoutes')->assertSee('🚗 25 Min. · 2,1 km');
+        $this->assertSame('car', $trip->fresh()->travel_mode);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'routed-car/'));
+        $page->call('setTravelMode', 'plane')->assertStatus(422);
     }
 
     public function test_a_cover_photo_is_stored_and_only_shown_to_people_who_see_the_trip(): void

@@ -1,6 +1,8 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Household;
+use App\Models\HouseholdMember;
 use App\Models\Share;
 use App\Models\ShareGroup;
 use App\Support\Life\GroupTrip;
@@ -73,6 +75,18 @@ new #[Layout('layouts.app')] class extends Component
         $group->removeMember($member->user);
     }
 
+    /**
+     * The group admin takes a household out, or the household's owner takes their own household out.
+     */
+    public function removeHousehold(int $groupId, int $householdId): void
+    {
+        $group = $this->findGroup($groupId);
+        $household = $group->households()->whereKey($householdId)->firstOrFail();
+        $ownsHousehold = HouseholdMember::query()->where('household_id', $household->id)->where('user_id', Auth::id())->where('role', 'owner')->exists();
+        abort_unless($group->isOwner(Auth::user()) || $ownsHousehold, 403);
+        $group->removeHousehold($household);
+    }
+
     public function leave(int $id): void
     {
         $this->findGroup($id)->removeMember(Auth::user());
@@ -92,7 +106,7 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $user = Auth::user();
-        $groups = ShareGroup::query()->ofMember($user)->with(['members' => fn ($query) => $query->orderBy('id'), 'members.user.households'])->orderBy('name')->get();
+        $groups = ShareGroup::query()->ofMember($user)->with(['members' => fn ($query) => $query->orderBy('id'), 'members.user.households', 'households.members.user'])->orderBy('name')->get();
         $shares = Share::query()->whereIn('share_group_id', $groups->pluck('id'))->with(['shareable', 'group', 'sharer'])->latest()->get();
         $existing = collect(Sharing::existing($shares));
 
@@ -101,6 +115,7 @@ new #[Layout('layouts.app')] class extends Component
             'myShares' => $existing->where('shared_by', $user->id)->values(),
             'sharedWithMe' => $existing->where('shared_by', '!=', $user->id)->values(),
             'householdId' => (int) $this->householdId,
+            'ownedHouseholdIds' => HouseholdMember::query()->where('user_id', $user->id)->where('role', 'owner')->pluck('household_id')->map(fn ($id) => (int) $id)->all(),
             'whatsapp' => fn (ShareGroup $group) => GroupTrip::whatsappUrl(__('Join my group “:name” in E11LifeOS: :link', ['name' => $group->name, 'link' => route('groups.join', $group->invite_token)])),
         ];
     }
@@ -125,9 +140,9 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                     <div class="rounded-xl bg-amber-50 p-3 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100"><p class="font-medium">🔒 {{ __('Only me') }}</p><p class="mt-1 text-xs">{{ __('Private contents – nobody else, not even your household.') }}</p></div>
                     <div class="rounded-xl bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100"><p class="font-medium">🏠 {{ __('Household') }}</p><p class="mt-1 text-xs">{{ __('The standard: everyone in your household.') }}</p></div>
-                    <div class="rounded-xl bg-sky-50 p-3 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100"><p class="font-medium">👥 {{ __('Groups') }}</p><p class="mt-1 text-xs">{{ __('Single trips, pages or cost splits you shared with people outside your household.') }}</p></div>
+                    <div class="rounded-xl bg-sky-50 p-3 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100"><p class="font-medium">👥 {{ __('Groups') }}</p><p class="mt-1 text-xs">{{ __('Single contents you shared with people or households outside your household.') }}</p></div>
                 </div>
-                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Each trip, page and cost split shows this badge and a “Who sees this?” box where you choose the groups.') }}</p>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Trips, pages, cost splits, recipes, shopping lists, places and collections show this badge and a “Who sees this?” box where you choose the groups.') }}</p>
             </section>
 
             <section class="space-y-3">
@@ -152,7 +167,7 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="flex gap-3 text-sm">
                                 @if ($isOwner)
                                     <button type="button" wire:click="deleteGroup({{ $group->id }})" wire:confirm="{{ __('Delete this group? Everything shared in it is no longer shared.') }}" class="text-red-600 underline dark:text-red-400">{{ __('Delete group') }}</button>
-                                @else
+                                @elseif ($group->members->contains('user_id', auth()->id()))
                                     <button type="button" wire:click="leave({{ $group->id }})" wire:confirm="{{ __('Leave this group? What you shared there is no longer shared.') }}" class="text-red-600 underline dark:text-red-400">{{ __('Leave group') }}</button>
                                 @endif
                             </div>
@@ -169,10 +184,19 @@ new #[Layout('layouts.app')] class extends Component
                                 </li>
                             @endforeach
                         </ul>
+                        @foreach ($group->households as $groupHousehold)
+                            <div wire:key="group-household-{{ $group->id }}-{{ $groupHousehold->id }}" class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-violet-50 px-3 py-2 text-sm text-violet-900 dark:bg-violet-900/30 dark:text-violet-100">
+                                <span class="font-medium">🏠 {{ $groupHousehold->name }}</span>
+                                <span class="text-xs">{{ __('whole household: :names', ['names' => $groupHousehold->members->map(fn ($member) => $member->user?->name)->filter()->implode(', ')]) }}</span>
+                                @if ($isOwner || in_array($groupHousehold->id, $ownedHouseholdIds, true))
+                                    <button type="button" wire:click="removeHousehold({{ $group->id }}, {{ $groupHousehold->id }})" wire:confirm="{{ __('Take the household :name out of the group? What its people shared there is no longer shared.', ['name' => $groupHousehold->name]) }}" class="ms-auto text-xs text-red-600 underline dark:text-red-400">{{ in_array($groupHousehold->id, $ownedHouseholdIds, true) && ! $isOwner ? __('Leave with household') : __('Remove household') }}</button>
+                                @endif
+                            </div>
+                        @endforeach
                         @if ($isOwner)
                             <div class="mt-3 border-t border-gray-100 pt-3 text-sm dark:border-gray-700">
                                 @if ($group->hasValidInvite())
-                                    <p class="text-gray-600 dark:text-gray-300">{{ __('Invite link (valid until :date, for people with an account):', ['date' => $group->invite_expires_at?->format('d.m.Y')]) }}</p>
+                                    <p class="text-gray-600 dark:text-gray-300">{{ __('Invite link (valid until :date, for people with an account – a household owner can bring the whole household):', ['date' => $group->invite_expires_at?->format('d.m.Y')]) }}</p>
                                     <div class="mt-1 flex flex-wrap items-center gap-2" x-data="{ copied: false }">
                                         <input type="text" readonly value="{{ route('groups.join', $group->invite_token) }}" class="min-w-0 flex-1 rounded-md border-gray-300 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" x-ref="link" @focus="$event.target.select()">
                                         <button type="button" class="text-indigo-600 underline dark:text-indigo-400" @click="navigator.clipboard.writeText($refs.link.value); copied = true" x-text="copied ? @js(__('Copied')) : @js(__('Copy'))"></button>
@@ -186,7 +210,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </article>
                 @empty
-                    <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No group yet. Create one to share single trips, pages or cost splits with friends or other households – everything else stays in your household.') }}</p>
+                    <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No group yet. Create one to share single contents with friends or other households – everything else stays in your household.') }}</p>
                 @endforelse
             </section>
 
@@ -196,7 +220,7 @@ new #[Layout('layouts.app')] class extends Component
                     @forelse ($myShares as $share)
                         @php($kind = \App\Support\Sharing::describe($share->shareable))
                         <li wire:key="my-share-{{ $share->id }}" class="flex flex-wrap items-center gap-2 py-2 text-sm">
-                            <a href="{{ \App\Support\Sharing::url($share->shareable, $householdId) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 hover:underline dark:text-gray-100">{{ $kind['icon'] }} {{ $share->shareable->title }} <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $kind['label'] }}</span></a>
+                            <a href="{{ \App\Support\Sharing::url($share->shareable, $householdId) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 hover:underline dark:text-gray-100">{{ $kind['icon'] }} {{ \App\Support\Sharing::titleOf($share->shareable) }} <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $kind['label'] }}</span></a>
                             <span class="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800 dark:bg-sky-900/30 dark:text-sky-200">👥 {{ $share->group->name }}</span>
                             <button type="button" wire:click="unshare({{ $share->id }})" class="text-xs text-red-600 underline dark:text-red-400">{{ __('Stop sharing') }}</button>
                         </li>
@@ -212,7 +236,7 @@ new #[Layout('layouts.app')] class extends Component
                     @forelse ($sharedWithMe as $share)
                         @php($kind = \App\Support\Sharing::describe($share->shareable))
                         <li wire:key="with-me-{{ $share->id }}" class="flex flex-wrap items-center gap-2 py-2 text-sm">
-                            <a href="{{ \App\Support\Sharing::url($share->shareable, $householdId) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 hover:underline dark:text-gray-100">{{ $kind['icon'] }} {{ $share->shareable->title }} <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $kind['label'] }}</span></a>
+                            <a href="{{ \App\Support\Sharing::url($share->shareable, $householdId) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 hover:underline dark:text-gray-100">{{ $kind['icon'] }} {{ \App\Support\Sharing::titleOf($share->shareable) }} <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $kind['label'] }}</span></a>
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('from :name via :group', ['name' => $share->sharer?->name ?? '–', 'group' => $share->group->name]) }}</span>
                         </li>
                     @empty

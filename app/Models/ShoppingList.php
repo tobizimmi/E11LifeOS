@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasShareTokens;
+use App\Models\Concerns\SharedWithGroups;
 use Database\Factories\ShoppingListFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ShoppingList extends Model
 {
     /** @use HasFactory<ShoppingListFactory> */
-    use HasFactory, HasShareTokens;
+    use HasFactory, HasShareTokens, SharedWithGroups;
 
     public const ICONS = ['🛒', '🥦', '🧴', '💊', '🎉', '🏠', '🐾', '👶', '🍷', '🔧'];
 
@@ -31,6 +32,14 @@ class ShoppingList extends Model
     {
         return self::where('household_id', $householdId)->orderBy('position')->orderBy('id')->first()
             ?? self::create(['household_id' => $householdId, 'name' => __('Shopping List'), 'icon' => '🛒']);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function household(): BelongsTo

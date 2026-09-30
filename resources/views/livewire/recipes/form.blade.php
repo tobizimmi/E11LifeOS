@@ -150,7 +150,8 @@ new #[Layout('layouts.app')] class extends Component
 
     private function findRecipe(int $id): Recipe
     {
-        return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->with('tags', 'categories')->findOrFail($id);
+        // Recipes shared by another household are used, not edited.
+        return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->where('recipes.household_id', $this->householdId)->with('tags', 'categories')->findOrFail($id);
     }
 
     /**

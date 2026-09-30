@@ -423,8 +423,9 @@ new #[Layout('layouts.app')] class extends Component
             : collect(['all' => ['key' => null, 'label' => null, 'icon' => null, 'entries' => $open->values()]]);
 
         return [
-            'list' => $list,
+            'list' => $list->load('shareGroups'),
             'lists' => $lists,
+            'sharedWithMe' => ShoppingList::query()->whereIn('id', ShoppingList::sharedIdsFor(Auth::user()))->where('household_id', '!=', $this->householdId)->with('household')->orderBy('name')->get(),
             'entries' => $entries,
             'openCount' => $open->count(),
             'groups' => $groups->filter(fn (array $group) => $group['entries']->isNotEmpty()),
@@ -693,6 +694,23 @@ new #[Layout('layouts.app')] class extends Component
                     </details>
                 @endif
             </section>
+
+            @unless ($shoppingMode)
+                <details class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <summary class="flex cursor-pointer flex-wrap items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-100">👥 {{ __('Who sees this list?') }} <x-audience-badge :model="$list" /></summary>
+                    <div class="mt-3"><livewire:sharing.panel type="shopping" :id="$list->id" :wire:key="'share-shopping-'.$list->id" /></div>
+                </details>
+                @if ($sharedWithMe->isNotEmpty())
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">↪ {{ __('Lists shared with me') }}</h3>
+                        <ul class="mt-2 flex flex-wrap gap-2">
+                            @foreach ($sharedWithMe as $sharedList)
+                                <li wire:key="shared-list-{{ $sharedList->id }}"><a href="{{ route('groups.shopping', $sharedList) }}" wire:navigate class="inline-flex items-center gap-1 rounded-full bg-violet-50 px-3 py-1.5 text-sm text-violet-900 ring-1 ring-violet-200 hover:bg-violet-100 dark:bg-violet-900/30 dark:text-violet-100 dark:ring-violet-800">{{ $sharedList->icon }} {{ $sharedList->name }} <span class="text-xs text-violet-700 dark:text-violet-300">· {{ $sharedList->household?->name }}</span></a></li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+            @endunless
         </div>
     </div>
 

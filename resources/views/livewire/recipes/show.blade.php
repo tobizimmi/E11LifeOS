@@ -71,6 +71,17 @@ new #[Layout('layouts.app')] class extends Component
         return Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($id ?? $this->recipeId);
     }
 
+    /**
+     * Recipes of another household shared with a group: members may use them, not change them.
+     */
+    private function ownRecipe(): Recipe
+    {
+        $recipe = $this->findRecipe();
+        abort_unless($recipe->household_id === $this->householdId, 403);
+
+        return $recipe;
+    }
+
     public function changeServings(int $delta): void
     {
         $this->servings = max(1, min(99, $this->servings + $delta));
@@ -181,7 +192,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function estimateNutrition(RecipeAi $ai): void
     {
-        $recipe = $this->findRecipe();
+        $recipe = $this->ownRecipe();
 
         try {
             $recipe->update(['nutrition' => $ai->estimateNutrition($recipe) + ['estimated' => true]]);
@@ -192,7 +203,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function createPublicLink(): void
     {
-        $recipe = $this->findRecipe();
+        $recipe = $this->ownRecipe();
 
         if (! $recipe->public_token) {
             $recipe->update(['public_token' => Str::random(40)]);
@@ -207,18 +218,18 @@ new #[Layout('layouts.app')] class extends Component
     public function setPublicLinkExpiry(string $days = ''): void
     {
         abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
-        $this->findRecipe()->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+        $this->ownRecipe()->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
     }
 
     public function revokePublicLink(): void
     {
-        $this->findRecipe()->update(['public_token' => null, 'public_expires_at' => null]);
+        $this->ownRecipe()->update(['public_token' => null, 'public_expires_at' => null]);
         $this->dispatch('toast', message: __('The public link no longer works.'));
     }
 
     public function duplicate(): void
     {
-        $copy = $this->findRecipe()->duplicateFor(Auth::user());
+        $copy = $this->findRecipe()->duplicateFor(Auth::user(), (int) $this->householdId);
 
         $this->redirectRoute('recipes.edit', ['recipe' => $copy->id], navigate: true);
     }
@@ -231,23 +242,24 @@ new #[Layout('layouts.app')] class extends Component
 
     public function toggleArchive(): void
     {
-        $recipe = $this->findRecipe();
+        $recipe = $this->ownRecipe();
         $recipe->update(['archived_at' => $recipe->isArchived() ? null : now()]);
     }
 
     public function delete(): void
     {
-        $this->findRecipe()->delete();
+        $this->ownRecipe()->delete();
 
         $this->redirectRoute('recipes.index', navigate: true);
     }
 
     public function with(): array
     {
-        $recipe = $this->findRecipe()->load(['categories', 'tags', 'creator', 'ratings.user']);
+        $recipe = $this->findRecipe()->load(['categories', 'tags', 'creator', 'ratings.user', 'shareGroups']);
 
         return [
             'recipe' => $recipe,
+            'foreign' => $recipe->household_id !== $this->householdId,
             'averageRating' => $recipe->averageRating(),
             'otherRatings' => $recipe->ratings->where('user_id', '!=', Auth::id())->sortByDesc('updated_at')->values(),
             'photos' => $recipe->additionalImageUrls(),
@@ -293,9 +305,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </a>
                             @endif
                             <div class="mt-2 flex flex-wrap items-center gap-2">
-                                @if ($recipe->isPrivate())
-                                    <x-private-badge />
-                                @endif
+                                <x-audience-badge :model="$recipe" />
                                 @if ($recipe->isArchived())
                                     <span class="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300">{{ __('Archived') }}</span>
                                 @endif
@@ -313,21 +323,29 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                             <button type="button" wire:click="$toggle('planning')" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-expanded="{{ $planning ? 'true' : 'false' }}">📅 {{ __('Plan') }}</button>
                             <button type="button" wire:click="toggleFavorite" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}">{{ $isFavorite ? '♥' : '♡' }} {{ __('Favorite') }}</button>
-                            <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5">✎ {{ __('Edit') }}</a>
+                            @unless ($foreign)
+                                <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5">✎ {{ __('Edit') }}</a>
+                            @endunless
                             <div x-data="{ open: false }" class="relative">
                                 <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-label="{{ __('More') }}">⋯</button>
                                 <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
                                     <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📄 {{ __('Download as PDF') }}</a>
-                                    <button type="button" wire:click="$toggle('sharing')" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🔗 {{ __('Public link') }}</button>
-                                    <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
-                                    <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
-                                    <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
+                                    @if ($foreign)
+                                        <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Save a copy to my recipes') }}</button>
+                                    @else
+                                        <button type="button" wire:click="$toggle('sharing')" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🔗 {{ __('Public link') }}</button>
+                                        <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
+                                        <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
+                                        <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    @if ($sharing)
+                    <div class="mt-4"><livewire:sharing.panel type="recipe" :id="$recipe->id" :wire:key="'share-recipe-'.$recipe->id" /></div>
+
+                    @if ($sharing && ! $foreign)
                         <div class="rounded-md bg-emerald-50 dark:bg-emerald-900/30 p-3 space-y-2 text-sm">
                             @if ($recipe->publicUrl())
                                 <p class="text-gray-700 dark:text-gray-300">{{ __('Anyone with this link can view the recipe (without ratings, notes or the meal plan).') }}</p>
@@ -497,7 +515,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="text-sm font-normal text-gray-500">({{ __('estimated') }})</span>
                             @endif
                         </h2>
-                        @if ($aiAvailable && collect($ingredients)->contains('isSection', false))
+                        @if ($aiAvailable && ! $foreign && collect($ingredients)->contains('isSection', false))
                             <button type="button" wire:click="estimateNutrition" wire:loading.attr="disabled" class="text-sm text-indigo-600 dark:text-indigo-400 underline disabled:opacity-50">
                                 <span wire:loading.remove wire:target="estimateNutrition">✨ {{ $nutritionValues === [] ? __('Estimate with AI') : __('Estimate again') }}</span>
                                 <span wire:loading wire:target="estimateNutrition">{{ __('Estimating …') }}</span>
@@ -552,9 +570,11 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endif
 
-            <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
-                <livewire:links-panel type="recipe" :id="$recipe->id" :wire:key="'links-recipe-'.$recipe->id" />
-            </div>
+            @unless ($foreign)
+                <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                    <livewire:links-panel type="recipe" :id="$recipe->id" :wire:key="'links-recipe-'.$recipe->id" />
+                </div>
+            @endunless
 
             {{-- Ratings --}}
             <section id="ratings" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">

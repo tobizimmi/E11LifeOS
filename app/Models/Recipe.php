@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasShareTokens;
+use App\Models\Concerns\SharedWithGroups;
 use App\Support\IngredientAmount;
 use App\Support\Links;
 use App\Support\RecipeImages;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\DB;
 class Recipe extends Model
 {
     /** @use HasFactory<RecipeFactory> */
-    use HasFactory, HasShareTokens;
+    use HasFactory, HasShareTokens, SharedWithGroups;
 
     public const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
@@ -67,6 +68,9 @@ class Recipe extends Model
         return $this->belongsTo(Household::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -104,10 +108,12 @@ class Recipe extends Model
      */
     public function scopeVisibleTo(Builder $query, User $user, int $householdId): void
     {
-        $query->where('recipes.household_id', $householdId)
-            ->where(fn (Builder $query) => $query
-                ->where('recipes.visibility', Item::VISIBILITY_SHARED)
-                ->orWhere('recipes.created_by', $user->id));
+        $query->where(fn (Builder $query) => $query
+            ->where(fn (Builder $query) => $query->where('recipes.household_id', $householdId)
+                ->where(fn (Builder $query) => $query
+                    ->where('recipes.visibility', Item::VISIBILITY_SHARED)
+                    ->orWhere('recipes.created_by', $user->id)))
+            ->orWhereIn('recipes.id', static::sharedIdsFor($user)));
     }
 
     /**
@@ -254,21 +260,28 @@ class Recipe extends Model
      * Copy with categories, tags and own photo files, owned by the given user.
      * Ratings, favorites, meal plans and the cooked counter start fresh.
      */
-    public function duplicateFor(User $user): Recipe
+    public function duplicateFor(User $user, ?int $householdId = null): Recipe
     {
-        return DB::transaction(function () use ($user) {
+        $householdId ??= $this->household_id;
+        // A copy of a recipe shared by another household lands in the own household, without its categories.
+        $sameHousehold = $householdId === $this->household_id;
+
+        return DB::transaction(function () use ($user, $householdId, $sameHousehold) {
             $copy = $this->replicate(['cooked_count', 'archived_at', 'legacy_id', 'public_token', 'public_token_encrypted', 'public_expires_at', 'image_path', 'additional_images']);
+            $copy->household_id = $householdId;
             $copy->title = mb_substr(__(':title (copy)', ['title' => $this->title]), 0, 500);
             $copy->created_by = $user->id;
-            $copy->image_path = RecipeImages::copy($this->image_path, $this->household_id);
+            $copy->image_path = RecipeImages::copy($this->image_path, $householdId);
             $copy->additional_images = array_values(array_filter(array_map(
-                fn (string $path) => RecipeImages::copy($path, $this->household_id),
+                fn (string $path) => RecipeImages::copy($path, $householdId),
                 $this->additional_images ?? [],
             ))) ?: null;
             $copy->save();
 
-            $copy->categories()->sync($this->categories()->pluck('recipe_categories.id'));
-            $copy->tags()->sync($this->tags()->pluck('tags.id'));
+            if ($sameHousehold) {
+                $copy->categories()->sync($this->categories()->pluck('recipe_categories.id'));
+                $copy->tags()->sync($this->tags()->pluck('tags.id'));
+            }
 
             return $copy;
         });

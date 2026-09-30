@@ -106,7 +106,8 @@ new #[Layout('layouts.app')] class extends Component
 
         if ($this->editingId) {
             $place = $this->findPlace($this->editingId);
-            $place->update($place->created_by === Auth::id() ? $attributes : array_diff_key($attributes, ['visibility' => true]));
+            $keep = ($place->created_by === Auth::id() ? [] : ['visibility' => true]) + ($place->household_id === $this->householdId ? [] : ['trip_id' => true]);
+            $place->update(array_diff_key($attributes, $keep));
         } else {
             Place::create($attributes + ['household_id' => $this->householdId, 'created_by' => Auth::id(), 'visit_count' => $attributes['visited'] ? 1 : 0, 'last_visited_on' => $attributes['visited'] ? today() : null]);
         }
@@ -133,7 +134,10 @@ new #[Layout('layouts.app')] class extends Component
 
     public function delete(int $id): void
     {
-        $this->findPlace($id)->delete();
+        $place = $this->findPlace($id);
+        // Group members from other households may edit, but not delete.
+        abort_unless($place->household_id === $this->householdId, 403);
+        $place->delete();
         $this->reset(['editingId', 'place', 'showForm']);
     }
 
@@ -183,7 +187,8 @@ new #[Layout('layouts.app')] class extends Component
         $all = Place::query()->visibleTo(Auth::user(), (int) $this->householdId)->get(['id', 'category', 'city', 'visited']);
 
         return [
-            'places' => $this->filtered()->with('trip')->orderBy('visited')->orderByDesc('rating')->orderBy('name')->get(),
+            'editingForeign' => $this->editingId !== null && $this->findPlace($this->editingId)->household_id !== $this->householdId,
+            'places' => $this->filtered()->with('trip', 'shareGroups', 'creator')->orderBy('visited')->orderByDesc('rating')->orderBy('name')->get(),
             'suggested' => $this->suggestedId ? Place::query()->visibleTo(Auth::user(), (int) $this->householdId)->find($this->suggestedId) : null,
             'cities' => $all->pluck('city')->filter()->unique()->sort()->values(),
             'categoryCounts' => $all->countBy('category'),
@@ -280,11 +285,14 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingId ? __('Save changes') : __('Add') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
-                        @if ($editingId)
+                        @if ($editingId && ! $editingForeign)
                             <button type="button" wire:click="delete({{ $editingId }})" wire:confirm="{{ __('Delete this place?') }}" class="ms-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete') }}</button>
                         @endif
                     </div>
                 </form>
+                @if ($editingId)
+                    <livewire:sharing.panel type="place" :id="$editingId" :wire:key="'share-place-'.$editingId" />
+                @endif
             @endif
 
             @if ($suggested)
@@ -305,9 +313,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $categories[$item->category]['icon'] ?? '📍' }} {{ $item->name }}
-                                    @if ($item->isPrivate())
-                                        <x-private-badge />
-                                    @endif
+                                    <x-audience-badge :model="$item" quiet />
                                 </p>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ collect([$item->cuisine, $item->price_level ? str_repeat('€', $item->price_level) : null, $item->city])->filter()->implode(' · ') }}</p>
                             </div>

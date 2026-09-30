@@ -1,9 +1,13 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Collection;
 use App\Models\ExpenseGroup;
 use App\Models\Item;
+use App\Models\Place;
+use App\Models\Recipe;
 use App\Models\ShareGroup;
+use App\Models\ShoppingList;
 use App\Models\Trip;
 use App\Support\Sharing;
 use Illuminate\Database\Eloquent\Model;
@@ -34,7 +38,7 @@ new class extends Component
     }
 
     /**
-     * @return Trip|ExpenseGroup|Item
+     * @return Trip|ExpenseGroup|Item|Recipe|ShoppingList|Place|Collection
      */
     private function content(?int $id = null): Model
     {
@@ -67,7 +71,8 @@ new class extends Component
             'canManage' => $canManage,
             'groups' => $canManage ? ShareGroup::query()->ofMember(Auth::user())->withCount('members')->orderBy('name')->get() : collect(),
             'sharedIds' => $content->shareGroups->pluck('id')->all(),
-            'creator' => $canManage ? null : $content->creator?->name,
+            'creator' => $canManage ? null : $content->sharerName(),
+            'manager' => $canManage ? null : $content->sharingManagerName(),
             'foreign' => (int) $content->household_id !== (int) $this->householdId,
         ];
     }
@@ -106,9 +111,9 @@ new class extends Component
                     @endforeach
                 </div>
             </fieldset>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Group members can view and edit it, but not delete it or share it further.') }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ \App\Support\Sharing::permissions($type) }}</p>
         @endif
     @elseif ($content->shareGroups->isNotEmpty())
-        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Only :name can change who sees it. You can view and edit it, but not delete it.', ['name' => $creator ?? __('someone')]) }}</p>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Only :name can change who sees it.', ['name' => $manager ?? __('someone')]) }} {{ $foreign ? \App\Support\Sharing::permissions($type) : '' }}</p>
     @endif
 </section>

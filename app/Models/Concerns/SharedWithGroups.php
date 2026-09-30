@@ -2,10 +2,11 @@
 
 namespace App\Models\Concerns;
 
+use App\Models\Household;
+use App\Models\HouseholdMember;
 use App\Models\Item;
 use App\Models\Share;
 use App\Models\ShareGroup;
-use App\Models\ShareGroupMember;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -60,7 +61,7 @@ trait SharedWithGroups
         return Share::query()
             ->select('shareable_id')
             ->where('shareable_type', (new self)->getMorphClass())
-            ->whereIn('share_group_id', ShareGroupMember::query()->select('share_group_id')->where('user_id', $user->id));
+            ->whereIn('share_group_id', ShareGroup::query()->select('share_groups.id')->ofMember($user));
     }
 
     public function isSharedWith(User $user): bool
@@ -69,10 +70,15 @@ trait SharedWithGroups
     }
 
     /**
-     * Only the creator decides with whom a content is shared.
+     * Only the creator decides with whom a content is shared; contents without a creator (e.g. the
+     * household's first shopping list) by any member of their household.
      */
     public function canManageSharing(User $user): bool
     {
+        if ($this->created_by === null) {
+            return HouseholdMember::query()->where('household_id', $this->household_id)->where('user_id', $user->id)->exists();
+        }
+
         return (int) $this->created_by === $user->id;
     }
 
@@ -85,14 +91,31 @@ trait SharedWithGroups
     public function audience(?int $viewerHouseholdId = null): array
     {
         $groups = $this->shareGroups->pluck('name')->values()->all();
-        $household = $this->visibility !== Item::VISIBILITY_PRIVATE;
+        // Contents without a visibility (shopping lists) belong to the whole household.
+        $household = $this->getAttribute('visibility') !== Item::VISIBILITY_PRIVATE;
         $foreign = $viewerHouseholdId !== null && (int) $this->household_id !== $viewerHouseholdId;
 
         return [
             'level' => $foreign ? 'foreign' : ($groups !== [] ? 'groups' : ($household ? 'household' : 'private')),
             'household' => $household,
             'groups' => $groups,
-            'sharer' => $foreign ? $this->creator?->name : null,
+            'sharer' => $foreign ? $this->sharerName() : null,
         ];
+    }
+
+    /**
+     * Who shared it: the creator, otherwise the person who shared it last.
+     */
+    public function sharerName(): ?string
+    {
+        return $this->creator->name ?? $this->shares()->with('sharer')->latest('id')->first()?->sharer?->name;
+    }
+
+    /**
+     * Who decides about sharing, for the explanation: the creator or the whole owning household.
+     */
+    public function sharingManagerName(): ?string
+    {
+        return $this->creator->name ?? Household::query()->whereKey($this->household_id)->value('name');
     }
 }

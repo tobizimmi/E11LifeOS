@@ -73,6 +73,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('groups', 'groups.index')->name('groups.index');
     Volt::route('groups/join/{token}', 'groups.join')->middleware('throttle:20,1')->name('groups.join');
     Volt::route('groups/pages/{item}', 'groups.page')->whereNumber('item')->name('groups.page');
+    Volt::route('groups/lists/{list}', 'groups.shopping')->whereNumber('list')->name('groups.shopping');
+    Volt::route('groups/collections/{collection}', 'groups.collection')->whereNumber('collection')->name('groups.collection');
     Volt::route('drives', 'drives.index')->name('drives.index');
     Route::get('drives/{drive}/download', [NetworkDriveController::class, 'download'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.download');
     Route::get('drives/google/connect', [GoogleDriveController::class, 'connect'])->middleware('throttle:10,1')->name('drives.google.connect');

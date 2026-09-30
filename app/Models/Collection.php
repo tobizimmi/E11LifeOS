@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasShareTokens;
+use App\Models\Concerns\SharedWithGroups;
 use App\Support\Recurrence;
 use Database\Factories\CollectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Collection extends Model
 {
     /** @use HasFactory<CollectionFactory> */
-    use HasFactory, HasShareTokens;
+    use HasFactory, HasShareTokens, SharedWithGroups;
 
     public const SYSTEM_TASKS = 'tasks';
 
@@ -57,6 +58,9 @@ class Collection extends Model
         return $this->belongsTo(Household::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

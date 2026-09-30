@@ -66,6 +66,7 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🏠 {{ __('Real estate') }}</h2>
+            <a href="{{ route('real-estate.analysis') }}" wire:navigate class="rounded-lg bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600">🧮 {{ __('Profitability check') }}</a>
         </div>
     </x-slot>
 

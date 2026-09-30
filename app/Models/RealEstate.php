@@ -171,6 +171,9 @@ class RealEstate extends Model
         return $this->hasMany(RealEstateHandover::class)->orderByDesc('handed_over_on');
     }
 
+    /**
+     * @return HasMany<RealEstateLoan, $this>
+     */
     public function loans(): HasMany
     {
         return $this->hasMany(RealEstateLoan::class)->orderBy('id');

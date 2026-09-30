@@ -1723,12 +1723,6 @@ parameters:
 			path: app/Support/Finance/Budgets.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$lender\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/Finance/CashflowStatement.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_value\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1772,12 +1766,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: lowercase\-string, Closure\(App\\Models\\RealEstateTenant\)\: lowercase\-string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Finance/CashflowStatement.php
-
-		-
-			message: '#^Parameter \#1 \$loan of static method App\\Support\\Finance\\CashflowStatement\:\:remainingDebt\(\) expects App\\Models\\RealEstateLoan, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Support/Finance/CashflowStatement.php
@@ -1879,12 +1867,6 @@ parameters:
 			path: app/Support/Finance/NetWorth.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{label\: string, value\: float, hint\: null, url\: string\}, Closure\(App\\Models\\RealEstateLoan\)\: array\{label\: string, value\: float, hint\: null, url\: string\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Finance/NetWorth.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1965,12 +1947,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$array \(list\<array\{label\: string, detail\: string\|null\}\>\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
-			count: 1
-			path: app/Support/Life/EmergencyFolder.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{label\: string, detail\: non\-falsy\-string\}, Closure\(App\\Models\\RealEstateLoan\)\: array\{label\: string, detail\: non\-falsy\-string\} given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Support/Life/EmergencyFolder.php
 
@@ -2809,12 +2785,6 @@ parameters:
 			path: app/Support/RealEstate/RealEstatePlan.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: float\)\|string\|null, Closure\(App\\Models\\RealEstateLoan\)\: float given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/RealEstate/RealEstatePlan.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$budget_item_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2853,12 +2823,6 @@ parameters:
 		-
 			message: '#^Cannot call method copy\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 1
-			path: app/Support/RealEstate/RealEstateTax.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: float\)\|string\|null, Closure\(App\\Models\\RealEstateLoan\)\: float given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Support/RealEstate/RealEstateTax.php
 

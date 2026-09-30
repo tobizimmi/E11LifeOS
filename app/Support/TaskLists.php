@@ -185,7 +185,15 @@ class TaskLists
      */
     public function categories(): array
     {
-        return collect($this->categoryProperty?->options ?? [])->keyBy('id')->all();
+        /** @var list<array{id: string, name: string, color?: string}> $options */
+        $options = $this->categoryProperty === null ? [] : ($this->categoryProperty->options ?? []);
+        $categories = [];
+
+        foreach ($options as $option) {
+            $categories[$option['id']] = ['id' => $option['id'], 'name' => $option['name'], 'color' => $option['color'] ?? 'gray'];
+        }
+
+        return $categories;
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Support\Life;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -13,6 +14,9 @@ use Throwable;
 class PlaceFinder
 {
     private const TIMEOUT = 8;
+
+    /** Whether the last request to OpenStreetMap failed (not reachable, blocked …). */
+    public static bool $failed = false;
 
     /**
      * @param  ?array{0: float, 1: float, 2: float, 3: float}  $bounds  south, west, north, east of the visible map (results there first)
@@ -33,11 +37,24 @@ class PlaceFinder
             $parameters['viewbox'] = "{$west},{$north},{$east},{$south}";
         }
 
-        return Cache::remember('places:search:'.md5(json_encode($parameters)), now()->addDays(7), function () use ($parameters) {
-            $results = self::get(config('services.maps.nominatim_url').'/search', $parameters) ?? [];
+        $key = 'places:search:'.md5(json_encode($parameters));
+        $cached = Cache::get($key);
 
-            return array_values(array_filter(array_map(fn (array $result) => self::fromNominatim($result), $results)));
-        });
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $results = self::get(config('services.maps.nominatim_url').'/search', $parameters);
+
+        if ($results === null) {
+            return [];
+        }
+
+        // Failed requests are not remembered, so the next try asks again.
+        $places = array_values(array_filter(array_map(fn (array $result) => self::fromNominatim($result), $results)));
+        Cache::put($key, $places, $places === [] ? now()->addHour() : now()->addDays(7));
+
+        return $places;
     }
 
     /**
@@ -59,12 +76,18 @@ class PlaceFinder
 
     /**
      * Coordinates for an address typed into an entry (best match); null if not found.
+     * Without a result the trip destination is added (e.g. "Sagrada Família" + "Barcelona").
      *
      * @return ?array{lat: float, lng: float}
      */
-    public static function locate(string $address): ?array
+    public static function locate(string $address, ?string $destination = null): ?array
     {
         $first = self::search($address)[0] ?? null;
+        $destination = trim((string) $destination);
+
+        if ($first === null && ! self::$failed && $destination !== '' && ! str_contains(mb_strtolower($address), mb_strtolower($destination))) {
+            $first = self::search($address.', '.$destination)[0] ?? null;
+        }
 
         return $first ? ['lat' => $first['lat'], 'lng' => $first['lng']] : null;
     }
@@ -87,14 +110,23 @@ class PlaceFinder
         $box = "{$south},{$west},{$north},{$east}";
         $query = "[out:json][timeout:15];(node[\"tourism\"~\"^(attraction|museum|viewpoint|gallery|zoo|theme_park)$\"][\"name\"]({$box});node[\"historic\"~\"^(monument|castle|memorial|ruins)$\"][\"name\"]({$box});node[\"amenity\"~\"^(restaurant|cafe|bar|pub|ice_cream)$\"][\"name\"]({$box}););out 60;";
 
-        return Cache::remember('places:nearby:'.md5($box), now()->addDay(), function () use ($query) {
+        // A failed request returns null and is therefore not remembered.
+        return Cache::remember('places:nearby:'.md5($box), now()->addDay(), function () use ($query): ?array {
             try {
                 $response = Http::withHeaders(self::headers())->timeout(self::TIMEOUT + 10)->asForm()->post(config('services.maps.overpass_url'), ['data' => $query]);
-            } catch (Throwable) {
-                return [];
+            } catch (Throwable $exception) {
+                Log::warning('Places nearby not reachable: '.$exception->getMessage());
+
+                return null;
             }
 
-            $elements = $response->successful() ? (array) $response->json('elements', []) : [];
+            if (! $response->successful()) {
+                Log::warning('Places nearby failed with HTTP '.$response->status());
+
+                return null;
+            }
+
+            $elements = (array) $response->json('elements', []);
 
             return array_values(array_filter(array_map(function (array $element): ?array {
                 $tags = (array) ($element['tags'] ?? []);
@@ -111,7 +143,7 @@ class PlaceFinder
                     'kind' => self::kindFor((string) ($tags['tourism'] ?? $tags['historic'] ?? ''), (string) ($tags['amenity'] ?? '')),
                 ];
             }, $elements)));
-        });
+        }) ?? [];
     }
 
     /**
@@ -119,13 +151,25 @@ class PlaceFinder
      */
     private static function get(string $url, array $parameters): ?array
     {
+        self::$failed = false;
+
         try {
             $response = Http::withHeaders(self::headers())->timeout(self::TIMEOUT)->get($url, $parameters);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            self::$failed = true;
+            Log::warning('Place search not reachable: '.$exception->getMessage());
+
             return null;
         }
 
-        return $response->successful() ? (array) $response->json() : null;
+        if (! $response->successful()) {
+            self::$failed = true;
+            Log::warning('Place search failed with HTTP '.$response->status());
+
+            return null;
+        }
+
+        return (array) $response->json();
     }
 
     /**

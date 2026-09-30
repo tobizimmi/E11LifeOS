@@ -9,6 +9,7 @@ use App\Support\Life\TripPlanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -150,6 +151,32 @@ class TripItineraryTest extends TestCase
 
         $page->call('editStop', $stop->id)->set('stop.location', '')->call('saveStop');
         $this->assertNull($stop->fresh()->lat);
+    }
+
+    public function test_entries_without_an_address_are_found_at_the_trip_destination_and_failures_are_retried(): void
+    {
+        Http::fake(['nominatim.openstreetmap.org/search*' => Http::sequence()
+            ->push('', 503)
+            ->push([['name' => 'Park Güell', 'display_name' => 'Park Güell, Barcelona', 'lat' => '41.4145', 'lon' => '2.1527']])
+            ->push([['name' => 'Park Güell', 'display_name' => 'Park Güell, Barcelona', 'lat' => '41.4145', 'lon' => '2.1527']]),
+        ]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'destination' => 'Barcelona', 'starts_on' => '2026-10-10', 'ends_on' => '2026-10-12']);
+        TripStop::factory()->create(['trip_id' => $trip->id, 'day' => null, 'title' => 'Park Güell', 'location' => null]);
+        Cache::put('places:center:'.md5('Barcelona'), ['lat' => 41.39, 'lng' => 2.17]);
+
+        $this->actingAs($user);
+        $page = Volt::test('trips.show', ['trip' => $trip])->set('tab', 'map')->assertSee('1 Eintrag hat noch keinen Ort auf der Karte.')
+            ->call('locateMissing')->assertDispatched('toast', message: 'Die Ortssuche (OpenStreetMap) ist gerade nicht erreichbar. Bitte versuche es später noch einmal.');
+        $this->assertNull(TripStop::sole()->lat);
+
+        // The failure was not remembered: the next try asks again and finds the place.
+        $page->call('locateMissing');
+        $this->assertSame(41.4145, TripStop::sole()->lat);
+
+        $page->set('idea', 'Park Güell')->call('addIdea');
+        $this->assertSame(2, TripStop::whereNotNull('lat')->count());
+        Http::assertSent(fn ($request) => str_contains(urldecode($request->url()), 'q=Park Güell, Barcelona'));
     }
 
     public function test_a_cover_photo_is_stored_and_only_shown_to_people_who_see_the_trip(): void

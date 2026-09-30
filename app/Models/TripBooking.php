@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A flight, train, accommodation, rental car, activity or expense of a trip.
+ *
+ * @property string $kind
+ * @property string $title
+ * @property ?string $provider
+ * @property ?\Illuminate\Support\Carbon $starts_at
+ * @property ?\Illuminate\Support\Carbon $ends_at
+ * @property ?string $reference
  */
 #[Fillable(['trip_id', 'kind', 'title', 'provider', 'starts_at', 'ends_at', 'reference', 'cost', 'paid', 'notes'])]
 class TripBooking extends Model

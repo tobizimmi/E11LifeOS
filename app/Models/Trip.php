@@ -72,6 +72,9 @@ class Trip extends Model
         return $this->hasMany(TripParticipant::class)->orderBy('position')->orderBy('id');
     }
 
+    /**
+     * @return HasMany<TripBooking, $this>
+     */
     public function bookings(): HasMany
     {
         return $this->hasMany(TripBooking::class)->orderByRaw('starts_at IS NULL')->orderBy('starts_at')->orderBy('id');

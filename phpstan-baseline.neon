@@ -1057,24 +1057,6 @@ parameters:
 			path: app/Models/TimeEntry.php
 
 		-
-			message: '#^Cannot call method diffInDays\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/Trip.php
-
-		-
-			message: '#^Cannot call method gt\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/Trip.php
-
-		-
-			message: '#^Cannot call method lt\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/Trip.php
-
-		-
 			message: '#^Cannot call method copy\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -2023,25 +2005,7 @@ parameters:
 			path: app/Support/Life/HouseholdLoad.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$kind\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Support/Life/LifeDates.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/Life/LifeDates.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$starts_at\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Support/Life/LifeDates.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Support/Life/LifeDates.php
@@ -2055,19 +2019,13 @@ parameters:
 		-
 			message: '#^Cannot call method between\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 3
-			path: app/Support/Life/LifeDates.php
-
-		-
-			message: '#^Cannot call method isSameDay\(\) on string\.$#'
-			identifier: method.nonObject
 			count: 1
 			path: app/Support/Life/LifeDates.php
 
 		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 6
+			count: 4
 			path: app/Support/Life/LifeDates.php
 
 		-
@@ -2131,19 +2089,7 @@ parameters:
 			path: app/Support/Life/PocketMoney.php
 
 		-
-			message: '#^Cannot call method copy\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Life/TripPlanner.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(lowercase\-string&non\-falsy\-string\), Closure\(App\\Models\\TripPackingItem\)\: \(lowercase\-string&non\-falsy\-string\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Life/TripPlanner.php
-
-		-
-			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:contains\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model\|int\|string, Closure\(App\\Models\\TripBooking\)\: bool given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Support/Life/TripPlanner.php

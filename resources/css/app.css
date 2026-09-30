@@ -578,3 +578,9 @@ h1, h2, h3,
 .leaflet-container {
     font-family: inherit;
 }
+
+@media (prefers-color-scheme: dark) {
+    .leaflet-tile-pane {
+        filter: brightness(0.8) contrast(1.1) saturate(0.8);
+    }
+}

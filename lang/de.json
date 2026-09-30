@@ -4886,5 +4886,8 @@
     "Find on the map": "Auf der Karte suchen",
     ":place added to the plan.": ":place zum Reiseplan hinzugefügt.",
     ":count place found on the map.|:count places found on the map.": ":count Ort auf der Karte gefunden.|:count Orte auf der Karte gefunden.",
-    "The map could not be loaded. Please reload the page.": "Die Karte konnte nicht geladen werden. Bitte lade die Seite neu."
+    "The map could not be loaded. Please reload the page.": "Die Karte konnte nicht geladen werden. Bitte lade die Seite neu.",
+    "Trip map": "Reisekarte",
+    "Without an entry the map shows OpenStreetMap. For another map style enter the tile address of a map service, e.g. from MapTiler or Stadia Maps, with {z}, {x} and {y} and your key.": "Ohne Eintrag zeigt die Karte OpenStreetMap. Für einen anderen Kartenstil trage die Kachel-Adresse eines Kartendienstes ein, z. B. von MapTiler oder Stadia Maps, mit {z}, {x} und {y} und deinem Schlüssel.",
+    "Tile address (optional)": "Kachel-Adresse (optional)"
 }

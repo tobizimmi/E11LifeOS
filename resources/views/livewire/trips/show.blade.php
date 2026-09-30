@@ -797,7 +797,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endforeach
             @elseif ($tab === 'map')
-                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'tiles' => config('services.maps.tile_url') ?: null, 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
                 <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="tripMap(@js($mapTexts), @js($mapCenter))" wire:key="trip-map-{{ $trip->id }}">
                     <div x-ref="data" class="hidden" data-groups="{{ json_encode($mapGroups) }}"></div>
                     <div class="relative z-[500] flex flex-wrap gap-2 p-3">

@@ -127,6 +127,7 @@ new #[Layout('layouts.app')] class extends Component
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'aiFeatures.*' => ['in:'.implode(',', array_keys(AiFeatures::all()))],
+            'form.maps_tile_url' => ['nullable', 'regex:/^https:\/\/[^\s"\'<>]+\{z\}[^\s"\'<>]*\{x\}[^\s"\'<>]*\{y\}[^\s"\'<>]*$/'],
             'form.reverb_publish_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.vpn_enabled' => ['nullable', 'in:0,1'],
             'form.vpn_socks_port' => ['nullable', 'integer', 'between:1024,65535'],
@@ -382,6 +383,7 @@ new #[Layout('layouts.app')] class extends Component
         'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).').' '.__('Sign-out after inactivity, session length and storage, expiry of app sign-ins and how long the security log is kept.')],
         'virus' => ['title' => __('Virus scan (ClamAV)'), 'text' => __('Checks every uploaded file with the ClamAV virus scanner on the server before it is stored. The server needs the ClamAV daemon (package “clamav-daemon”); enter its socket, e.g. /var/run/clamav/clamd.ctl or tcp://127.0.0.1:3310.')],
         'shopping' => ['title' => __('Shopping list'), 'text' => __('Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.')],
+        'maps' => ['title' => __('Trip map'), 'text' => __('Without an entry the map shows OpenStreetMap. For another map style enter the tile address of a map service, e.g. from MapTiler or Stadia Maps, with {z}, {x} and {y} and your key.')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
     ];
@@ -416,6 +418,7 @@ new #[Layout('layouts.app')] class extends Component
         'backup_remote_keep' => [__('Keep copies off the server'), '30'],
         'offers_api_key' => [__('marktguru API key (optional)'), ''],
         'offers_client_key' => [__('marktguru client key (optional)'), ''],
+        'maps_tile_url' => [__('Tile address (optional)'), 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=…'],
         'require_two_factor' => [__('Two-factor authentication required'), ''],
         'error_report_email' => [__('Send error reports to'), 'admin@example.com'],
         'idle_minutes' => [__('Sign out after inactivity (minutes, 0 = never)'), '30'],

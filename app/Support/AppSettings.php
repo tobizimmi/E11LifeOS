@@ -53,6 +53,8 @@ class AppSettings
         'offers_api_key' => ['group' => 'shopping', 'config' => ['services.offers.api_key'], 'secret' => true, 'type' => 'text'],
         'offers_client_key' => ['group' => 'shopping', 'config' => ['services.offers.client_key'], 'secret' => true, 'type' => 'text'],
 
+        'maps_tile_url' => ['group' => 'maps', 'config' => ['services.maps.tile_url'], 'secret' => false, 'type' => 'text'],
+
         'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],
         'error_report_email' => ['group' => 'security', 'config' => ['security.error_report_email'], 'secret' => false, 'type' => 'email'],
         'idle_minutes' => ['group' => 'security', 'config' => ['security.idle_minutes'], 'secret' => false, 'type' => 'number'],

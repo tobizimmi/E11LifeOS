@@ -37,13 +37,13 @@ export default (texts, center) => {
                 return;
             }
 
-            const dark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
             map = L.map(this.$refs.map, { zoomControl: false, tap: true }).setView(center ? [center.lat, center.lng] : [48.14, 11.58], center ? 13 : 4);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
-            L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 20,
+            // Tile servers want to know the site (the app itself sends no referrer): only the domain, no path.
+            L.tileLayer(texts.tiles || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+                maxZoom: 19,
+                referrerPolicy: 'strict-origin',
             }).addTo(map);
             pinLayer = L.layerGroup().addTo(map);
             poiLayer = L.layerGroup().addTo(map);

@@ -23,6 +23,12 @@ new #[Layout('layouts.app')] class extends Component
     #[On('task-updated')]
     public function refreshAfterTaskChange(): void {}
 
+    /**
+     * Re-renders after an entry was edited or sorted in the inbox window.
+     */
+    #[On('inbox-updated')]
+    public function refreshAfterInboxChange(): void {}
+
     private const LIST_LIMIT = 5;
 
     /**
@@ -410,7 +416,9 @@ new #[Layout('layouts.app')] class extends Component
                             <x-dashboard-card-header :title="__('Inbox')" :count="$inboxCount" :href="route('inbox.index')" />
                             <ul class="mt-3 space-y-1">
                                 @forelse ($inboxEntries as $entry)
-                                    <li wire:key="dashboard-inbox-{{ $entry->id }}" class="text-gray-900 dark:text-gray-100 truncate">{{ $entry->title }}</li>
+                                    <li wire:key="dashboard-inbox-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}">
+                                        <a href="{{ route('inbox.index') }}" data-open-inbox="{{ $entry->id }}" class="block truncate text-gray-900 hover:underline dark:text-gray-100">{{ $entry->title }}</a>
+                                    </li>
                                 @empty
                                     <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('Inbox is empty.') }}</li>
                                 @endforelse

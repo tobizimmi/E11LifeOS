@@ -2,9 +2,8 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
-use App\Models\ShoppingListEntry;
+use App\Support\InboxActions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -15,20 +14,11 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * @var array<string, string>
      */
-    protected $listeners = ['item-captured' => '$refresh'];
+    protected $listeners = ['item-captured' => '$refresh', 'inbox-updated' => '$refresh'];
 
     public function convertToTodo(int $id): void
     {
-        $item = $this->findVisibleItem(Item::TYPE_INBOX, $id);
-
-        $maxPosition = (int) $this->visibleItems(Item::TYPE_TODO)->max('position');
-
-        $item->update([
-            'type' => Item::TYPE_TODO,
-            'content' => null,
-            'done' => false,
-            'position' => $maxPosition + 1,
-        ]);
+        InboxActions::toTask($this->findVisibleItem(Item::TYPE_INBOX, $id));
     }
 
     /**
@@ -37,8 +27,7 @@ new #[Layout('layouts.app')] class extends Component
     public function convertToNote(int $id): void
     {
         $item = $this->findVisibleItem(Item::TYPE_INBOX, $id);
-
-        $item->update(['type' => Item::TYPE_NOTE, 'content' => ['body' => '']]);
+        InboxActions::toPage($item);
 
         $this->redirectRoute('pages.index', ['item' => $item->id], navigate: true);
     }
@@ -48,17 +37,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function moveToShoppingList(int $id): void
     {
-        $item = $this->findVisibleItem(Item::TYPE_INBOX, $id);
-
-        DB::transaction(function () use ($item) {
-            ShoppingListEntry::create([
-                'household_id' => $this->householdId,
-                'label' => $item->title,
-                'created_by' => Auth::id(),
-            ]);
-
-            $item->delete();
-        });
+        InboxActions::toShoppingList($this->findVisibleItem(Item::TYPE_INBOX, $id), (int) Auth::id());
     }
 
     public function delete(int $id): void

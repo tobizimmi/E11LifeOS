@@ -415,7 +415,7 @@ new class extends Component
     }
 }; ?>
 
-<div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 space-y-4">
+<div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🗂 {{ __('paperless inbox') }}</h3>
         @if ($instances->count() > 1)

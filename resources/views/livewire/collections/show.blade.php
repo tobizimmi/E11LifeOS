@@ -1389,7 +1389,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Collections') }}
+            🗂️ {{ __('Collections') }}
         </h2>
     </x-slot>
 
@@ -1698,7 +1698,7 @@ new #[Layout('layouts.app')] class extends Component
                 </ul>
             @elseif ($currentView === 'table')
                 {{-- Table --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg overflow-x-auto">
+                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="border-b border-gray-200 dark:border-gray-700 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <tr>
@@ -1783,7 +1783,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($currentView === 'calendar')
                 {{-- Calendar --}}
-                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-3 sm:p-4">
+                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-3 sm:p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div class="flex items-center gap-2">
                             <button type="button" wire:click="changeMonth(-1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ $calendar['isWeek'] ? __('Previous week') : __('Previous month') }}">‹</button>

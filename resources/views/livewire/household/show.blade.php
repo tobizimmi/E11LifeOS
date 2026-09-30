@@ -85,14 +85,14 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Household') }}: {{ $household->name }}
+            🏠 {{ __('Household') }}: {{ $household->name }}
         </h2>
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Members') }}</h3>
                 <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                     @foreach ($members as $member)
@@ -121,7 +121,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Invite someone') }}</h3>
 
                 <x-primary-button wire:click="generateInvite">
@@ -168,7 +168,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Addons') }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Optional modules for your household. Switching one off hides it; its data is kept.') }}</p>
                 <ul class="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
@@ -198,7 +198,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if (count($load['members']) > 1)
-                <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">⚖️ {{ __('Who does what?') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Last :days days: completed tasks and entries, what was thought of and planned (tasks, shopping entries, meals) and open tasks assigned.', ['days' => $load['days']]) }}</p>
                     <ul class="mt-4 space-y-3">

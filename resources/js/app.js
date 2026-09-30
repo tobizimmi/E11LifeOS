@@ -1166,6 +1166,27 @@ document.addEventListener('livewire:navigated', () => {
     main.animate([{ opacity: 0.35, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
 });
 
+// Tab rows that scroll sideways fade out at the edge that has more to show (see app.css).
+const markScrollableTabs = () => {
+    document.querySelectorAll('[role="tablist"]:not(.flex-wrap), nav.overflow-x-auto').forEach((row) => {
+        const update = () => {
+            const more = row.scrollWidth - row.clientWidth - row.scrollLeft > 4;
+            row.classList.toggle('e11-fade-end', more);
+            row.classList.toggle('e11-fade-start', row.scrollLeft > 4);
+        };
+
+        if (!row.dataset.fadeBound) {
+            row.dataset.fadeBound = '1';
+            row.addEventListener('scroll', update, { passive: true });
+        }
+
+        update();
+    });
+};
+
+document.addEventListener('livewire:navigated', markScrollableTabs);
+window.addEventListener('resize', markScrollableTabs, { passive: true });
+
 // A page without a header must not keep the previous page's small title.
 document.addEventListener('livewire:navigating', () => {
     const chrome = window.Alpine?.store('chrome');

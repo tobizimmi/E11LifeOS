@@ -169,6 +169,7 @@ new class extends Component
             ['✨ '.__('Ask your Second Brain'), route('brain.ask'), 'ki ai frage'],
             ['👥 '.__('Members'), route('household.show'), 'haushalt mitglieder members'],
             ['⚙️ '.__('Profile'), route('profile'), 'profil einstellungen settings'],
+            ['🎁 '.__('Wishlist'), route('wishlist.index'), 'wunschliste wünsche kaufen leisten leistbar sparen anschaffung'],
             ['🧭 '.__('Cashflow analysis'), route('cashflow.index'), 'cashflow rich dad poor dad kiyosaki einnahmen ausgaben bilanz passives einkommen finanzielle freiheit'],
             ['💡 '.__('Money knowledge'), route('knowledge.index'), 'wissen tipps steuern börse finanzierung neuerungen news favoriten'],
             ['🗂️ '.__('Emergency folder'), route('emergency.index'), 'notfall notfallordner vorsorge vollmacht patientenverfügung testament ausweis reisepass vertrauensperson'],

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use Carbon\CarbonInterface;
 use Database\Factories\RealEstateTenantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,10 +21,11 @@ use Illuminate\Support\Carbon;
     'cold_rent', 'utilities_advance', 'deposit', 'deposit_paid_on', 'payment_reference', 'lease_end_on', 'notice_months', 'rent_adjustment',
     'index_base', 'index_base_month', 'last_rent_change_on', 'portal_token', 'due_day', 'special_terms', 'notes',
 ])]
+#[Hidden(['portal_token', 'portal_token_encrypted'])]
 class RealEstateTenant extends Model
 {
     /** @use HasFactory<RealEstateTenantFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens;
 
     public const RENT_ADJUSTMENTS = ['none', 'index', 'graduated'];
 
@@ -112,5 +115,13 @@ class RealEstateTenant extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(RealEstateRentPayment::class, 'tenant_id')->orderBy('month');
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['portal_token'];
     }
 }

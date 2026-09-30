@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use App\Support\IngredientAmount;
 use App\Support\Links;
 use App\Support\RecipeImages;
 use Database\Factories\RecipeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,15 +17,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable([
+#[Fillable(['public_expires_at',
     'household_id', 'created_by', 'visibility', 'public_token', 'title', 'description', 'ingredients', 'instructions',
     'prep_time', 'cook_time', 'servings', 'difficulty', 'image_path', 'additional_images', 'source_url', 'source_type',
     'nutrition', 'cooked_count', 'archived_at', 'legacy_id',
 ])]
+#[Hidden(['public_token', 'public_token_encrypted'])]
 class Recipe extends Model
 {
     /** @use HasFactory<RecipeFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens;
 
     public const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
@@ -41,6 +44,7 @@ class Recipe extends Model
     protected function casts(): array
     {
         return [
+            'public_expires_at' => 'datetime',
             'ingredients' => 'array',
             'instructions' => 'array',
             'additional_images' => 'array',
@@ -253,7 +257,7 @@ class Recipe extends Model
     public function duplicateFor(User $user): Recipe
     {
         return DB::transaction(function () use ($user) {
-            $copy = $this->replicate(['cooked_count', 'archived_at', 'legacy_id', 'public_token', 'image_path', 'additional_images']);
+            $copy = $this->replicate(['cooked_count', 'archived_at', 'legacy_id', 'public_token', 'public_token_encrypted', 'public_expires_at', 'image_path', 'additional_images']);
             $copy->title = mb_substr(__(':title (copy)', ['title' => $this->title]), 0, 500);
             $copy->created_by = $user->id;
             $copy->image_path = RecipeImages::copy($this->image_path, $this->household_id);
@@ -341,5 +345,13 @@ class Recipe extends Model
             ->all();
 
         $this->tags()->sync($tagIds);
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['public_token'];
     }
 }

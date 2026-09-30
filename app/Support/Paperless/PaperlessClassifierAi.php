@@ -2,6 +2,7 @@
 
 namespace App\Support\Paperless;
 
+use App\Support\AiFeatures;
 use App\Support\StructuredAi;
 use Illuminate\Support\Facades\Cache;
 
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class PaperlessClassifierAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::PAPERLESS;
+
     private const CACHE_DAYS = 30;
 
     /**

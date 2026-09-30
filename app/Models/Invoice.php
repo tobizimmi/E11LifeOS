@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,10 +21,11 @@ use Illuminate\Support\Str;
  * turned into an invoice.
  */
 #[Fillable(['user_id', 'household_id', 'type', 'customer_id', 'related_invoice_id', 'number', 'status', 'issued_on', 'service_period', 'due_on', 'valid_until', 'paid_on', 'recipient', 'subject', 'intro', 'closing', 'small_business', 'net_total', 'vat_total', 'gross_total', 'paid_total', 'sent_at', 'reminder_level', 'last_reminder_at', 'public_token', 'recurring_invoice_id'])]
+#[Hidden(['public_token', 'public_token_encrypted'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens;
 
     public const INVOICE = 'invoice';
 
@@ -307,5 +310,13 @@ class Invoice extends Model
     public function nextReminderLevel(): ?int
     {
         return $this->type === self::INVOICE && $this->status === self::OPEN && $this->reminder_level < 3 ? $this->reminder_level + 1 : null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['public_token'];
     }
 }

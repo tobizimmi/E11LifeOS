@@ -2,6 +2,7 @@
 
 namespace App\Support\Finance;
 
+use App\Support\AiFeatures;
 use App\Support\StructuredAi;
 
 /**
@@ -10,6 +11,8 @@ use App\Support\StructuredAi;
  */
 class FinanceAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::FINANCE;
+
     private const CATEGORIZE_BATCH = 80;
 
     /**

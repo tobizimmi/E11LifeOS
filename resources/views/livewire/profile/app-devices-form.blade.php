@@ -42,7 +42,7 @@ new class extends Component
                 <li wire:key="token-{{ $token->id }}" class="flex items-center justify-between gap-3 py-2 text-sm">
                     <span class="min-w-0">
                         <span class="block truncate font-medium text-gray-900 dark:text-gray-100">📱 {{ $token->name }}</span>
-                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ __('Signed in :date', ['date' => $token->created_at->format('d.m.Y')]) }} · {{ $token->last_used_at ? __('last used :time', ['time' => $token->last_used_at->diffForHumans()]) : __('not used yet') }}</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ __('Signed in :date', ['date' => $token->created_at->format('d.m.Y')]) }} · {{ $token->last_used_at ? __('last used :time', ['time' => $token->last_used_at->diffForHumans()]) : __('not used yet') }}@if ($token->expiresAt()) · {{ __('expires :date without use', ['date' => $token->expiresAt()->format('d.m.Y')]) }}@endif</span>
                     </span>
                     <button type="button" wire:click="revoke({{ $token->id }})" wire:confirm="{{ __('Sign this device out?') }}" class="shrink-0 text-red-600 underline dark:text-red-400">{{ __('Sign out') }}</button>
                 </li>

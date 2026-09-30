@@ -46,6 +46,26 @@ class SharedListsTest extends TestCase
         $this->get(route('shopping-list.shared', 'short'))->assertNotFound();
     }
 
+    public function test_share_links_are_stored_hashed_and_stop_working_after_their_expiry(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        ShoppingListEntry::create(['household_id' => $household->id, 'label' => 'Milch']);
+        $this->actingAs($user);
+
+        Volt::test('shopping-list.index')->call('createShareLink');
+        $list = ShoppingList::where('household_id', $household->id)->sole();
+        $token = $list->share_token;
+        $this->assertNotSame($token, $list->getRawOriginal('share_token'));
+        $this->assertSame(64, strlen($list->getRawOriginal('share_token')));
+
+        Volt::test('shopping-list.index')->set('sharing', true)->call('setShareLinkExpiry', '7')->assertSee('bis '.now()->addDays(7)->format('d.m.Y'));
+        auth()->logout();
+        $this->get(route('shopping-list.shared', $token))->assertOk()->assertSee('Milch');
+
+        $this->travel(8)->days();
+        $this->get(route('shopping-list.shared', $token))->assertNotFound();
+    }
+
     public function test_a_collection_can_be_shared_read_only_without_private_entries(): void
     {
         [$user, $household] = $this->memberWithHousehold();

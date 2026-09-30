@@ -11,6 +11,8 @@ use Throwable;
  */
 class RecipeAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::RECIPES;
+
     public const MAX_IMAGES = 5;
 
     /**

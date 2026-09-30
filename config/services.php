@@ -22,6 +22,8 @@ return [
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-5'),
+        // Comma-separated AI functions that are switched off (see App\Support\AiFeatures).
+        'disabled_features' => env('AI_DISABLED_FEATURES', ''),
     ],
 
     // Web push (generate the keys with "php artisan webpush:vapid").

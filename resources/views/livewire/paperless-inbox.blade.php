@@ -577,7 +577,7 @@ new class extends Component
 
                         <div class="flex flex-wrap items-center gap-2">
                             <x-primary-button>{{ __('File and link') }}</x-primary-button>
-                            @if (($form['target'] ?? '') !== 'task' && \App\Support\StructuredAi::isConfigured())
+                            @if (($form['target'] ?? '') !== 'task' && FinanceReceiptAi::isConfigured())
                                 <x-secondary-button type="button" wire:click="prefill" wire:loading.attr="disabled" wire:target="prefill">✨ {{ __('Read with AI') }}</x-secondary-button>
                             @endif
                             <button type="button" wire:click="cancel" class="text-sm text-gray-500 underline">{{ __('Cancel') }}</button>

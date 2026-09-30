@@ -22,7 +22,7 @@ new #[Layout('layouts.guest')] class extends Component
 
     private function tenant(): RealEstateTenant
     {
-        return (strlen($this->token) >= 32 ? RealEstateTenant::where('portal_token', $this->token)->with('realEstate')->first() : null) ?? abort(404);
+        return (strlen($this->token) >= 32 ? RealEstateTenant::whereShareToken('portal_token', $this->token)->with('realEstate')->first() : null) ?? abort(404);
     }
 
     public function with(): array

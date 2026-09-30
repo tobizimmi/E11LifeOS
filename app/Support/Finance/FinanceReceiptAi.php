@@ -2,6 +2,7 @@
 
 namespace App\Support\Finance;
 
+use App\Support\AiFeatures;
 use App\Support\StructuredAi;
 
 /**
@@ -9,6 +10,8 @@ use App\Support\StructuredAi;
  */
 class FinanceReceiptAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::RECEIPTS;
+
     public const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 
     /**

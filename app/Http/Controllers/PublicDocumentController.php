@@ -49,6 +49,6 @@ class PublicDocumentController extends Controller
 
     private function find(string $token): Invoice
     {
-        return Invoice::where('public_token', $token)->whereNotNull('number')->where('status', '!=', Invoice::DRAFT)->firstOrFail();
+        return Invoice::whereShareToken('public_token', $token)->whereNotNull('number')->where('status', '!=', Invoice::DRAFT)->firstOrFail();
     }
 }

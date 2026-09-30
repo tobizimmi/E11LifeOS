@@ -27,7 +27,7 @@ new #[Layout('layouts.guest')] class extends Component
 
     private function list(): ShoppingList
     {
-        $list = strlen($this->token) >= 32 ? ShoppingList::where('share_token', $this->token)->first() : null;
+        $list = strlen($this->token) >= 32 ? ShoppingList::whereShareToken('share_token', $this->token, 'share_expires_at')->first() : null;
 
         abort_unless($list, 404);
 

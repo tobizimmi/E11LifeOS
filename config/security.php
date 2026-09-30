@@ -23,4 +23,7 @@ return [
     // Security log entries are kept this many days.
     'log_days' => (int) env('SECURITY_LOG_DAYS', 365),
 
+    // App tokens (mobile app) unused for this many days stop working and are deleted (0 = never).
+    'api_token_idle_days' => (int) env('SECURITY_API_TOKEN_IDLE_DAYS', 90),
+
 ];

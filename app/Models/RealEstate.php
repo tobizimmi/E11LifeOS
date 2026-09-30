@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use Database\Factories\RealEstateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,10 +22,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'living_area', 'plot_area', 'construction_year', 'equity', 'monthly_rent', 'monthly_costs', 'tax_rate', 'notes',
     'applicant_token', 'applicant_intro', 'applicant_rent', 'landlord_name', 'landlord_address', 'landlord_iban',
 ])]
+#[Hidden(['applicant_token', 'applicant_token_encrypted'])]
 class RealEstate extends Model
 {
     /** @use HasFactory<RealEstateFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens;
 
     public const OWNER = 'owner';
 
@@ -203,5 +206,13 @@ class RealEstate extends Model
     public function address(): string
     {
         return trim(implode(', ', array_filter([$this->street, trim($this->postal_code.' '.$this->city)])));
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['applicant_token'];
     }
 }

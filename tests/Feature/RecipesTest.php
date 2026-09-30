@@ -280,7 +280,7 @@ class RecipesTest extends TestCase
         $this->actingAs($user);
         Volt::test('search-palette')->set('query', 'chili')->assertSee('Chili sin Carne')->assertSeeHtml(e(route('recipes.show', $shared)));
 
-        $export = $this->get('/profile/export')->assertOk()->json();
+        $export = $this->withSession(['auth.password_confirmed_at' => time()])->get('/profile/export')->assertOk()->json();
         $this->assertSame(['Chili sin Carne', 'Mein Curry'], collect($export['recipes'])->pluck('title')->all());
 
         $user->delete();

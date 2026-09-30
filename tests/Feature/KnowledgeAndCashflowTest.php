@@ -76,7 +76,7 @@ class KnowledgeAndCashflowTest extends TestCase
         $page->set('tab', 'favorites')->assertSee('Grundfreibetrag steigt 2027')->call('removeFavorite', $favorite->id);
         $this->assertSame(0, KnowledgeFavorite::count());
 
-        $this->get(route('profile.export'))->assertOk();
+        $this->withSession(['auth.password_confirmed_at' => time()])->get(route('profile.export'))->assertOk();
     }
 
     public function test_cashflow_statement_splits_income_after_rich_dad_poor_dad(): void

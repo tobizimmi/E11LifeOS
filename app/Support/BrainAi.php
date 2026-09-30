@@ -8,6 +8,8 @@ namespace App\Support;
  */
 class BrainAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::BRAIN;
+
     public const MAX_TAG_SUGGESTIONS = 5;
 
     public const ACTION_TASK = 'create_task';

@@ -504,9 +504,18 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * Validity of the share link in days from now; empty = unlimited.
+     */
+    public function setCollectionLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->findCollection()->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
     public function revokeCollectionLink(): void
     {
-        $this->findCollection()->forceFill(['public_token' => null])->save();
+        $this->findCollection()->forceFill(['public_token' => null, 'public_expires_at' => null])->save();
         $this->dispatch('toast', message: __('The public link no longer works.'));
     }
 
@@ -1346,6 +1355,7 @@ new #[Layout('layouts.app')] class extends Component
             'openEntry' => $openEntry,
             'savedViews' => $collection->views,
             'aiAvailable' => BrainAi::isConfigured(),
+            'documentAiAvailable' => EntryAi::isConfigured(),
             'activeViewModel' => $this->activeView !== '' ? $collection->views->firstWhere('id', (int) $this->activeView) : null,
             'filterRows' => collect($this->filters)->map(function ($filter) use ($properties) {
                 $property = ($filter['property'] ?? 'title') === 'title' ? null : $properties->firstWhere('id', (int) $filter['property']);
@@ -2225,14 +2235,14 @@ new #[Layout('layouts.app')] class extends Component
                                 </li>
                             @endforeach
                         </ul>
-                        @if ($aiAvailable)
+                        @if ($documentAiAvailable)
                             <button type="button" wire:click="fillFormFromDocument" wire:loading.attr="disabled" wire:target="fillFormFromDocument" class="mt-3 inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200">
                                 <span wire:loading.remove wire:target="fillFormFromDocument">✨ {{ __('Fill in from document') }}</span>
                                 <span wire:loading wire:target="fillFormFromDocument">{{ __('Reading the document …') }}</span>
                             </button>
                         @endif
                     @else
-                        <p class="mt-1 text-xs text-gray-400">{{ $aiAvailable ? __('Contract, policy, invoice or photo – the AI can fill in the fields from it.') : __('Contract, policy, invoice or photo.') }}</p>
+                        <p class="mt-1 text-xs text-gray-400">{{ $documentAiAvailable ? __('Contract, policy, invoice or photo – the AI can fill in the fields from it.') : __('Contract, policy, invoice or photo.') }}</p>
                     @endif
                     @if ($aiFillMessage)
                         <p class="mt-2 text-sm text-gray-700 dark:text-gray-200" role="status">{{ $aiFillMessage }}</p>

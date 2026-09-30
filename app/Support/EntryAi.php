@@ -11,6 +11,8 @@ use App\Models\CollectionProperty;
  */
 class EntryAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::DOCUMENTS;
+
     public const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 
     /**

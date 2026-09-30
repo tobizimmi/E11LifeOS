@@ -14,6 +14,11 @@ use Illuminate\Support\Collection;
  */
 class TripItinerary
 {
+    /** Pin colours of the days on the map (ideas are yellow), repeating after ten days. */
+    public const DAY_COLORS = ['#ef4444', '#22c55e', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#84cc16', '#3b82f6', '#14b8a6', '#a855f7'];
+
+    public const IDEA_COLOR = '#facc15';
+
     /** Bookings whose end is shown as its own event (check-out, car return). */
     private const END_EVENTS = ['hotel' => 'Check-out', 'car' => 'Car return'];
 
@@ -55,6 +60,33 @@ class TripItinerary
     }
 
     /**
+     * Pins for the trip map: one group per day (colour, numbered in the planned order) plus the ideas.
+     *
+     * @param  array{ideas: Collection<int, TripStop>, days: list<array{date: Carbon, number: int, stops: Collection<int, TripStop>}>}  $plan
+     * @return list<array{key: string, label: string, color: string, count: int, pins: list<array{id: int, title: string, icon: string, lat: float, lng: float, n: int}>}>
+     */
+    public static function mapGroups(array $plan): array
+    {
+        $kinds = TripStop::kinds();
+        $pins = fn (Collection $stops) => $stops->filter->hasPosition()->values()
+            ->map(fn (TripStop $stop, int $index) => ['id' => $stop->id, 'title' => $stop->title, 'icon' => $kinds[$stop->kind]['icon'] ?? '📍', 'lat' => (float) $stop->lat, 'lng' => (float) $stop->lng, 'n' => $index + 1])
+            ->all();
+        $groups = [['key' => 'ideas', 'label' => __('Ideas'), 'color' => self::IDEA_COLOR, 'count' => $plan['ideas']->count(), 'pins' => $pins($plan['ideas'])]];
+
+        foreach ($plan['days'] as $day) {
+            $groups[] = [
+                'key' => $day['date']->toDateString(),
+                'label' => __('Day :number', ['number' => $day['number']]).' · '.$day['date']->translatedFormat('D, j. M'),
+                'color' => self::DAY_COLORS[($day['number'] - 1) % count(self::DAY_COLORS)],
+                'count' => $day['stops']->count(),
+                'pins' => $pins($day['stops']),
+            ];
+        }
+
+        return $groups;
+    }
+
+    /**
      * @param  Collection<int, TripBooking>  $bookings
      * @return list<array{booking: TripBooking, time: string, label: string}>
      */
@@ -84,7 +116,9 @@ class TripItinerary
      */
     public static function routeUrl(Collection $stops): ?string
     {
-        $places = $stops->reject(fn (TripStop $stop) => $stop->kind === 'note')->pluck('location')->map(fn (?string $location) => trim((string) $location))->filter()->values();
+        $places = $stops->reject(fn (TripStop $stop) => $stop->kind === 'note')
+            ->map(fn (TripStop $stop) => trim((string) $stop->location) ?: ($stop->hasPosition() ? $stop->lat.','.$stop->lng : ''))
+            ->filter()->values();
 
         if ($places->isEmpty()) {
             return null;

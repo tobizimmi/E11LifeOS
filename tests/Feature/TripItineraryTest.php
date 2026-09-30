@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -28,6 +29,7 @@ class TripItineraryTest extends TestCase
 
     public function test_the_day_by_day_plan_combines_entries_bookings_and_ideas(): void
     {
+        Http::fake(['*' => Http::response([])]);
         [$user, $household] = $this->memberWithHousehold();
         $trip = Trip::factory()->create(['household_id' => $household->id, 'created_by' => $user->id, 'starts_on' => '2026-10-10', 'ends_on' => '2026-10-12']);
         $trip->bookings()->create(['kind' => 'hotel', 'title' => 'Hotel Arts', 'starts_at' => '2026-10-10 15:00', 'ends_at' => '2026-10-12 11:00']);
@@ -86,6 +88,68 @@ class TripItineraryTest extends TestCase
 
         Volt::test('trips.show', ['trip' => $trip])->call('deleteStop', $stop->id);
         $this->assertModelMissing($stop);
+    }
+
+    public function test_places_are_found_on_the_map_and_added_to_a_day_with_their_position(): void
+    {
+        Http::fake([
+            'nominatim.openstreetmap.org/search*' => Http::response([
+                ['name' => 'Parlament', 'display_name' => 'Parlament, Kossuth Lajos tér 1-3, Budapest, Ungarn', 'lat' => '47.5071', 'lon' => '19.0457', 'category' => 'tourism', 'type' => 'attraction'],
+            ]),
+            'nominatim.openstreetmap.org/reverse*' => Http::response(['name' => 'Frici Papa', 'display_name' => 'Frici Papa, Király utca 55, Budapest', 'lat' => '47.5010', 'lon' => '19.0620', 'category' => 'amenity', 'type' => 'restaurant']),
+            'overpass-api.de/*' => Http::response(['elements' => [
+                ['lat' => 47.4968, 'lon' => 19.0511, 'tags' => ['name' => 'Vörösmarty tér', 'tourism' => 'attraction']],
+                ['lat' => 47.4979, 'lon' => 19.0402, 'tags' => ['amenity' => 'bench']],
+            ]]),
+        ]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'destination' => 'Budapest', 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-24']);
+
+        $this->actingAs($user);
+        $page = Volt::test('trips.show', ['trip' => $trip])->set('tab', 'map');
+
+        $results = $page->instance()->searchPlaces('Parlament', [47.4, 18.9, 47.6, 19.2]);
+        $this->assertSame(['Parlament', 'Kossuth Lajos tér 1-3, Budapest, Ungarn', 'sight'], [$results[0]['name'], $results[0]['address'], $results[0]['kind']]);
+        $this->assertSame('Frici Papa', $page->instance()->placeAt(47.501, 19.062)['name']);
+        $this->assertSame(['Vörösmarty tér'], array_column($page->instance()->placesNearby([47.49, 19.03, 47.51, 19.07]), 'name'));
+        $this->assertSame([], $page->instance()->placesNearby([40.0, 5.0, 50.0, 20.0]));
+
+        $page->call('addPlace', $results[0], '2026-07-23')->assertHasNoErrors()
+            ->call('addPlace', ['name' => 'Frici Papa', 'address' => '', 'lat' => 47.501, 'lng' => 19.062, 'kind' => 'food'], '2026-07-23')
+            ->call('addPlace', ['name' => 'Therme', 'lat' => 47.518, 'lng' => 19.082], 'ideas');
+
+        $groups = TripItinerary::mapGroups(TripItinerary::build($trip->fresh()));
+        $this->assertSame(['ideas', '2026-07-22', '2026-07-23', '2026-07-24'], array_column($groups, 'key'));
+        $this->assertSame(['Parlament', 'Frici Papa'], array_column($groups[2]['pins'], 'title'));
+        $this->assertSame([1, 2], array_column($groups[2]['pins'], 'n'));
+        $this->assertSame(TripItinerary::DAY_COLORS[1], $groups[2]['color']);
+        $this->assertSame(['Therme'], array_column($groups[0]['pins'], 'title'));
+        $this->assertSame(47.5071, TripStop::where('title', 'Parlament')->sole()->lat);
+
+        $page->call('addPlace', ['name' => '', 'lat' => 100, 'lng' => 19], 'ideas')->assertHasErrors(['place.name', 'place.lat']);
+    }
+
+    public function test_a_typed_address_gets_its_map_position_and_a_changed_address_a_new_one(): void
+    {
+        Http::fake(['nominatim.openstreetmap.org/search*' => Http::sequence()
+            ->push([['name' => 'Fischerbastei', 'display_name' => 'Fischerbastei, Budapest', 'lat' => '47.5021', 'lon' => '19.0348']])
+            ->push([['name' => 'Burg', 'display_name' => 'Burgpalast, Budapest', 'lat' => '47.4962', 'lon' => '19.0396']]),
+        ]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-24']);
+
+        $this->actingAs($user);
+        $page = Volt::test('trips.show', ['trip' => $trip])
+            ->call('openStop', '2026-07-22')->set('stop.title', 'Fischerbastei')->set('stop.location', 'Fischerbastei, Budapest')->call('saveStop')->assertHasNoErrors();
+
+        $stop = TripStop::sole();
+        $this->assertSame([47.5021, 19.0348], [$stop->lat, $stop->lng]);
+
+        $page->call('editStop', $stop->id)->set('stop.location', 'Burgpalast, Budapest')->call('saveStop');
+        $this->assertSame(47.4962, $stop->fresh()->lat);
+
+        $page->call('editStop', $stop->id)->set('stop.location', '')->call('saveStop');
+        $this->assertNull($stop->fresh()->lat);
     }
 
     public function test_a_cover_photo_is_stored_and_only_shown_to_people_who_see_the_trip(): void

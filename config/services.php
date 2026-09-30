@@ -65,6 +65,12 @@ return [
         'token' => env('PUSHOVER_APP_TOKEN'),
     ],
 
+    // Trip map: place search, addresses and places nearby (OpenStreetMap services, called from the server).
+    'maps' => [
+        'nominatim_url' => env('MAPS_NOMINATIM_URL', 'https://nominatim.openstreetmap.org'),
+        'overpass_url' => env('MAPS_OVERPASS_URL', 'https://overpass-api.de/api/interpreter'),
+    ],
+
     'webpush' => [
         'public_key' => env('VAPID_PUBLIC_KEY'),
         'private_key' => env('VAPID_PRIVATE_KEY'),

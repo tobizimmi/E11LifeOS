@@ -8,9 +8,12 @@ use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripStop;
 use App\Support\Life\TripCovers;
+use App\Support\Life\PlaceFinder;
 use App\Support\Life\TripItinerary;
 use App\Support\Life\TripPlanner;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -60,7 +63,7 @@ new #[Layout('layouts.app')] class extends Component
     public $cover = null;
 
     /**
-     * @var array{kind: string, title: string, day: string, time: string, end_time: string, location: string, cost: string, notes: string}
+     * @var array{kind: string, title: string, day: string, time: string, end_time: string, location: string, lat: string, lng: string, cost: string, notes: string}
      */
     public array $stop = [];
 
@@ -153,7 +156,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function resetStop(?string $day = null, string $kind = 'sight'): void
     {
-        $this->stop = ['kind' => $kind, 'title' => '', 'day' => (string) $day, 'time' => '', 'end_time' => '', 'location' => '', 'cost' => '', 'notes' => ''];
+        $this->stop = ['kind' => $kind, 'title' => '', 'day' => (string) $day, 'time' => '', 'end_time' => '', 'location' => '', 'lat' => '', 'lng' => '', 'cost' => '', 'notes' => ''];
         $this->editingStopId = null;
         $this->resetValidation();
     }
@@ -173,6 +176,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->stop = [
             'kind' => $stop->kind, 'title' => $stop->title, 'day' => (string) $stop->day?->toDateString(),
             'time' => (string) $stop->time, 'end_time' => (string) $stop->end_time, 'location' => (string) $stop->location,
+            'lat' => $stop->lat !== null ? (string) $stop->lat : '', 'lng' => $stop->lng !== null ? (string) $stop->lng : '',
             'cost' => $stop->cost !== null ? number_format($stop->cost, 2, ',', '') : '', 'notes' => (string) $stop->notes,
         ];
         $this->editingStopId = $stop->id;
@@ -201,6 +205,8 @@ new #[Layout('layouts.app')] class extends Component
             'stop.time' => ['nullable', 'date_format:H:i'],
             'stop.end_time' => ['nullable', 'date_format:H:i'],
             'stop.location' => ['nullable', 'string', 'max:255'],
+            'stop.lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'stop.lng' => ['nullable', 'numeric', 'between:-180,180'],
             'stop.cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'stop.notes' => ['nullable', 'string', 'max:2000'],
         ], attributes: ['stop.title' => __('Title'), 'stop.cost' => __('Cost (€)'), 'stop.time' => __('Time')])['stop'];
@@ -209,8 +215,20 @@ new #[Layout('layouts.app')] class extends Component
         $values = [
             'kind' => $data['kind'], 'title' => $data['title'], 'day' => $data['day'] ?: null,
             'time' => $data['time'] ?: null, 'end_time' => $data['end_time'] ?: null, 'location' => $data['location'] ?: null,
+            'lat' => $data['lat'] !== '' && $data['lat'] !== null ? (float) $data['lat'] : null,
+            'lng' => $data['lng'] !== '' && $data['lng'] !== null ? (float) $data['lng'] : null,
             'cost' => $data['cost'] !== '' ? $data['cost'] : null, 'notes' => $data['notes'] ?: null,
         ];
+        $previous = $this->editingStopId ? $this->findStop($this->editingStopId) : null;
+
+        // A new or changed address gets its position on the map (unless it was picked on the map).
+        if ($values['location'] && ($previous === null ? $values['lat'] === null : ($previous->location !== $values['location'] && $previous->lat === $values['lat']))) {
+            $position = $this->limited(fn () => PlaceFinder::locate($values['location']));
+            $values['lat'] = $position['lat'] ?? null;
+            $values['lng'] = $position['lng'] ?? null;
+        } elseif (! $values['location'] && $previous?->location) {
+            $values['lat'] = $values['lng'] = null;
+        }
 
         if ($this->editingStopId) {
             $stop = $this->findStop($this->editingStopId);
@@ -273,6 +291,112 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->findStop($id)->delete();
         $this->closeStop();
+    }
+
+    /**
+     * Calls OpenStreetMap at most 40 times a minute per person; null when over the limit.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T|null
+     */
+    private function limited(callable $callback): mixed
+    {
+        $key = 'places:'.Auth::id();
+
+        if (RateLimiter::tooManyAttempts($key, 40)) {
+            return null;
+        }
+
+        RateLimiter::hit($key, 60);
+
+        return $callback();
+    }
+
+    /**
+     * Place search on the map (results in the visible area first).
+     *
+     * @param  list<float>  $bounds  south, west, north, east
+     * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
+     */
+    public function searchPlaces(string $query, array $bounds = []): array
+    {
+        return $this->limited(fn () => PlaceFinder::search($query, count($bounds) === 4 ? array_map('floatval', array_values($bounds)) : null)) ?? [];
+    }
+
+    /**
+     * What is at a point tapped on the map.
+     *
+     * @return ?array{name: string, address: string, lat: float, lng: float, kind: string}
+     */
+    public function placeAt(float $lat, float $lng): ?array
+    {
+        abort_unless(abs($lat) <= 90 && abs($lng) <= 180, 422);
+
+        return $this->limited(fn () => PlaceFinder::reverse($lat, $lng));
+    }
+
+    /**
+     * Sights and restaurants in the visible map area.
+     *
+     * @param  list<float>  $bounds  south, west, north, east
+     * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
+     */
+    public function placesNearby(array $bounds): array
+    {
+        abort_unless(count($bounds) === 4, 422);
+
+        return $this->limited(fn () => PlaceFinder::nearby(array_map('floatval', array_values($bounds)))) ?? [];
+    }
+
+    /**
+     * Adds a place chosen on the map to a day ("ideas" for none).
+     *
+     * @param  array{name?: mixed, address?: mixed, lat?: mixed, lng?: mixed, kind?: mixed}  $place
+     */
+    public function addPlace(array $place, string $day = 'ideas'): void
+    {
+        $data = validator(['place' => $place, 'day' => $day], [
+            'place.name' => ['required', 'string', 'max:150'],
+            'place.address' => ['nullable', 'string', 'max:255'],
+            'place.lat' => ['required', 'numeric', 'between:-90,90'],
+            'place.lng' => ['required', 'numeric', 'between:-180,180'],
+            'place.kind' => ['nullable', Rule::in(TripStop::KINDS)],
+            'day' => ['required', 'string'],
+        ])->validate();
+
+        $trip = $this->findTrip();
+        $targetDay = preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['day']) ? $data['day'] : null;
+        $trip->stops()->create([
+            'kind' => $data['place']['kind'] ?? 'sight', 'title' => $data['place']['name'], 'day' => $targetDay,
+            'location' => ($data['place']['address'] ?? null) ?: null, 'lat' => (float) $data['place']['lat'], 'lng' => (float) $data['place']['lng'],
+            'position' => $this->nextPosition($trip, $targetDay), 'created_by' => Auth::id(),
+        ]);
+        $this->dispatch('toast', message: __(':place added to the plan.', ['place' => $data['place']['name']]));
+    }
+
+    /**
+     * Finds the map position of entries that only have an address (a few at a time).
+     */
+    public function locateMissing(): void
+    {
+        $found = 0;
+
+        foreach ($this->findTrip()->stops()->whereNull('lat')->whereNotNull('location')->limit(5)->get() as $index => $stop) {
+            if ($index > 0) {
+                usleep(1_000_000); // OpenStreetMap allows one search per second.
+            }
+
+            $position = $this->limited(fn () => PlaceFinder::locate((string) $stop->location));
+
+            if ($position) {
+                $stop->update($position);
+                $found++;
+            }
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count place found on the map.|:count places found on the map.', $found));
     }
 
     /**
@@ -396,7 +520,10 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'trip' => $trip,
-            'itinerary' => TripItinerary::build($trip),
+            'itinerary' => $itinerary = TripItinerary::build($trip),
+            'mapGroups' => $this->tab === 'map' ? TripItinerary::mapGroups($itinerary) : [],
+            'mapCenter' => $this->tab === 'map' && $trip->destination ? Cache::remember('places:center:'.md5($trip->destination), now()->addDays(30), fn () => PlaceFinder::locate((string) $trip->destination)) : null,
+            'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => $stop->location && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
             'colors' => Trip::colorSchemes(),
             'overview' => TripPlanner::overview($trip, $this->currentUser()),
@@ -670,15 +797,53 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endforeach
             @elseif ($tab === 'map')
-                @php($mappedDays = collect($itinerary['days'])->filter(fn ($day) => $day['route'] !== null))
-                @php($mappedIdeas = $itinerary['ideas']->filter(fn ($entry) => $entry->mapsUrl() !== null))
-                @if ($mappedDays->isEmpty() && $mappedIdeas->isEmpty())
-                    <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
-                        <p class="text-4xl" aria-hidden="true">🗺️</p>
-                        <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No places on the map yet.') }}</p>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Add a place or address to entries in the itinerary – then you get the route for each day here.') }}</p>
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="tripMap(@js($mapTexts), @js($mapCenter))" wire:key="trip-map-{{ $trip->id }}">
+                    <div x-ref="data" class="hidden" data-groups="{{ json_encode($mapGroups) }}"></div>
+                    <div class="relative z-[500] flex flex-wrap gap-2 p-3">
+                        <div class="relative min-w-0 flex-1 basis-full sm:basis-0">
+                            <input type="search" x-model="query" x-on:input.debounce.500ms="search()" x-on:keydown.escape="results = []" placeholder="🔎 {{ __('Search a place, sight or restaurant …') }}" aria-label="{{ __('Search a place') }}" class="block w-full rounded-xl border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                            <ul x-show="results.length > 0" x-cloak class="absolute inset-x-0 top-full z-[1000] mt-1 max-h-72 overflow-y-auto rounded-xl bg-white py-1 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                <template x-for="place in results" :key="place.lat + ',' + place.lng">
+                                    <li><button type="button" x-on:click="choose(place)" class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"><span class="block font-medium text-gray-900 dark:text-gray-100" x-text="place.name"></span><span class="block truncate text-xs text-gray-500 dark:text-gray-400" x-text="place.address"></span></button></li>
+                                </template>
+                            </ul>
+                            <span x-show="searching" x-cloak class="absolute end-3 top-2.5 text-xs text-gray-400">…</span>
+                        </div>
+                        <button type="button" x-on:click="nearby()" x-bind:disabled="loadingNearby" class="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 sm:flex-none dark:bg-gray-700 dark:text-gray-100"><span x-show="! loadingNearby">📍 {{ __('Places nearby') }}</span><span x-show="loadingNearby" x-cloak>⏳ {{ __('Searching …') }}</span></button>
+                        <button type="button" x-on:click="fitAll()" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('Show all') }}" aria-label="{{ __('Show all') }}">⤢</button>
+                    </div>
+                    <div wire:ignore class="relative z-0">
+                        <div x-ref="map" class="h-[58vh] min-h-80 w-full bg-gray-100 dark:bg-gray-900"></div>
+                        <p x-show="! ready" class="absolute inset-0 flex items-center justify-center text-sm text-gray-500">{{ __('Loading map …') }}</p>
+                    </div>
+                    <p class="px-3 pt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Tap the map or search to add a place to a day.') }}</p>
+                    <div class="p-3">
+                        <h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('Day plan') }}</h3>
+                        <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <template x-for="group in groups" :key="group.key">
+                                <li>
+                                    <button type="button" x-on:click="toggle(group.key)" class="flex w-full items-center gap-3 py-2 text-left">
+                                        <span class="h-5 w-5 shrink-0 rounded-full ring-2 ring-white dark:ring-gray-800" x-bind:style="'background:' + group.color" x-bind:class="hidden.includes(group.key) && 'opacity-30'"></span>
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block text-sm font-medium text-gray-900 dark:text-gray-100" x-text="group.label"></span>
+                                            <span class="block text-xs text-gray-500 dark:text-gray-400" x-text="group.pins.length + ' / ' + group.count + ' {{ __('on the map') }}'"></span>
+                                        </span>
+                                        <span class="text-lg" x-bind:class="hidden.includes(group.key) ? 'text-gray-300 dark:text-gray-600' : 'text-emerald-500'" aria-hidden="true">✓</span>
+                                    </button>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </section>
+                @if ($missingPositions > 0)
+                    <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-100 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-900/40">
+                        <span class="min-w-0 flex-1">{{ trans_choice(':count entry has an address but no place on the map yet.|:count entries have an address but no place on the map yet.', $missingPositions) }}</span>
+                        <button type="button" wire:click="locateMissing" wire:loading.attr="disabled" class="rounded-full bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500"><span wire:loading.remove wire:target="locateMissing">📍 {{ __('Find on the map') }}</span><span wire:loading wire:target="locateMissing">⏳</span></button>
                     </section>
                 @endif
+                @php($mappedDays = collect($itinerary['days'])->filter(fn ($day) => $day['route'] !== null))
+                @php($mappedIdeas = $itinerary['ideas']->filter(fn ($entry) => $entry->mapsUrl() !== null))
                 @foreach ($mappedDays as $day)
                     <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="map-day-{{ $day['number'] }}">
                         <div class="flex items-center justify-between gap-3">

@@ -540,6 +540,7 @@ new #[Layout('layouts.app')] class extends Component
             'periods' => FinancePeriod::options(),
             'categories' => FinanceCategories::all(),
             'aiAvailable' => FinanceAi::isConfigured(),
+            'receiptAiAvailable' => FinanceReceiptAi::isConfigured(),
         ];
 
         if ($this->tab === 'transactions') {

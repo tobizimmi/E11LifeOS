@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use App\Support\Recurrence;
 use Database\Factories\CollectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +17,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A Notion-style database: entries (items) with typed properties, shown as
  * table or board. Tasks are the built-in collection with system_key "tasks".
  */
-#[Fillable(['household_id', 'name', 'icon', 'default_view', 'visibility', 'created_by', 'system_key'])]
+#[Fillable(['public_expires_at', 'household_id', 'name', 'icon', 'default_view', 'visibility', 'created_by', 'system_key'])]
+#[Hidden(['public_token', 'public_token_encrypted'])]
 class Collection extends Model
 {
     /** @use HasFactory<CollectionFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens;
 
     public const SYSTEM_TASKS = 'tasks';
 
@@ -171,5 +174,18 @@ class Collection extends Model
         ]);
 
         return $collection;
+    }
+
+    protected function casts(): array
+    {
+        return ['public_expires_at' => 'datetime'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['public_token'];
     }
 }

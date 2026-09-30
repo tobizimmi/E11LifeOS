@@ -65,6 +65,25 @@ class MobileApiTest extends TestCase
         $this->assertSame(0, ApiToken::count());
     }
 
+    public function test_app_tokens_expire_after_90_days_without_use(): void
+    {
+        [$user, $token] = $this->signedInInvestor();
+
+        $this->travel(80)->days();
+        $this->withToken($token)->getJson('/api/v1/auth/me')->assertOk();
+        $this->actingAs($user);
+        Volt::test('profile.app-devices-form')->assertSee('läuft ohne Nutzung am '.now()->addDays(90)->format('d.m.Y').' ab');
+
+        $this->travel(91)->days();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->getJson('/api/v1/auth/me')->assertUnauthorized();
+        $this->assertSame(0, ApiToken::count());
+
+        [, $second] = $this->signedInInvestor();
+        $this->travel(91)->days();
+        $this->assertSame(1, ApiToken::pruneExpired());
+    }
+
     public function test_the_app_reads_portfolios_positions_and_watchlist(): void
     {
         [$user, $token] = $this->signedInInvestor();

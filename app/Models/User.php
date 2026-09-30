@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Support\Addons;
 use Database\Factories\UserFactory;
@@ -15,11 +16,11 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options'])]
-#[Hidden(['password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
+#[Hidden(['calendar_token_encrypted', 'password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasShareTokens, Notifiable;
 
     /**
      * Shared items outlive their creator (created_by is nulled), but private ones
@@ -158,5 +159,13 @@ class User extends Authenticatable
     public function hasTwoFactor(): bool
     {
         return $this->two_factor_confirmed_at !== null && filled($this->two_factor_secret);
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['calendar_token'];
     }
 }

@@ -44,7 +44,7 @@ class PublicRecipeController extends Controller
      */
     private function findRecipe(string $token): Recipe
     {
-        $recipe = Recipe::with('household')->where('public_token', $token)->first();
+        $recipe = Recipe::with('household')->whereShareToken('public_token', $token, 'public_expires_at')->first();
 
         abort_unless($recipe && strlen($token) >= 32 && $recipe->household?->hasAddon(Addons::RECIPES), 404);
 

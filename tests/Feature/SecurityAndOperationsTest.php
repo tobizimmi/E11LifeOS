@@ -154,13 +154,13 @@ class SecurityAndOperationsTest extends TestCase
         PaperlessInstance::create(['user_id' => $user->id, 'household_id' => $household->id, 'name' => 'Archiv', 'url' => 'https://p.test', 'token' => 'geheim-token']);
         ExternalLink::create(['household_id' => $household->id, 'created_by' => $user->id, 'linkable_type' => 'real_estate', 'linkable_id' => $private->id, 'kind' => 'mail', 'url' => 'message://x', 'title' => 'Mail']);
 
-        $export = $this->actingAs($user)->get(route('profile.export'))->assertOk()->json();
+        $export = $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get(route('profile.export'))->assertOk()->json();
         $this->assertSame(['Gemeinsames Haus', 'Meine Wohnung'], collect($export['real_estate'])->pluck('name')->sort()->values()->all());
         $this->assertSame('Archiv', $export['paperless_instances'][0]['name']);
         $this->assertArrayNotHasKey('token', $export['paperless_instances'][0]);
         $this->assertCount(1, $export['documents_and_mail_links']);
 
-        $partnerExport = $this->actingAs($partner)->get(route('profile.export'))->json();
+        $partnerExport = $this->actingAs($partner)->withSession(['auth.password_confirmed_at' => time()])->get(route('profile.export'))->json();
         $this->assertSame(['Gemeinsames Haus'], collect($partnerExport['real_estate'])->pluck('name')->all());
 
         $user->delete();

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -42,5 +43,36 @@ class ApiToken extends Model
     public static function findByPlain(string $plain): ?self
     {
         return self::with('user')->firstWhere('token', hash('sha256', $plain));
+    }
+
+    /**
+     * When the token stops working without use; null if tokens never expire.
+     */
+    public function expiresAt(): ?Carbon
+    {
+        $days = (int) config('security.api_token_idle_days');
+
+        return $days > 0 ? ($this->last_used_at ?? $this->created_at)->copy()->addDays($days) : null;
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expiresAt()?->isPast() ?? false;
+    }
+
+    /**
+     * Deletes the tokens that were not used for the configured number of days; returns how many.
+     */
+    public static function pruneExpired(): int
+    {
+        $days = (int) config('security.api_token_idle_days');
+
+        if ($days <= 0) {
+            return 0;
+        }
+
+        $cutoff = now()->subDays($days);
+
+        return self::where(fn ($query) => $query->where('last_used_at', '<', $cutoff)->orWhere(fn ($query) => $query->whereNull('last_used_at')->where('created_at', '<', $cutoff)))->delete();
     }
 }

@@ -3,7 +3,9 @@
 use App\Jobs\RunAdminCommand;
 use App\Models\User;
 use App\Support\AppSettings;
-use App\Support\BrainAi;
+use App\Support\AiFeatures;
+use App\Support\Portfolio\InstagramAi;
+use App\Support\StructuredAi;
 use App\Support\Vpn;
 use App\Support\WebPush;
 use Illuminate\Support\Carbon;
@@ -31,6 +33,13 @@ new #[Layout('layouts.app')] class extends Component
      * @var array<string, bool>
      */
     public array $clear = [];
+
+    /**
+     * AI functions that stay switched on (AiFeatures keys).
+     *
+     * @var list<string>
+     */
+    public array $aiFeatures = [];
 
     public string $testRecipient = '';
 
@@ -87,6 +96,7 @@ new #[Layout('layouts.app')] class extends Component
             ->map(fn (array $field, string $key) => $field['secret'] ? '' : ($stored[$key] ?? ''))
             ->all();
         $this->clear = [];
+        $this->aiFeatures = array_values(array_diff(array_keys(AiFeatures::all()), AiFeatures::disabled()));
     }
 
     public function save(): void
@@ -105,6 +115,7 @@ new #[Layout('layouts.app')] class extends Component
             'form.error_report_email' => ['nullable', 'email'],
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
+            'aiFeatures.*' => ['in:'.implode(',', array_keys(AiFeatures::all()))],
             'form.reverb_publish_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.vpn_enabled' => ['nullable', 'in:0,1'],
             'form.vpn_socks_port' => ['nullable', 'integer', 'between:1024,65535'],
@@ -113,6 +124,8 @@ new #[Layout('layouts.app')] class extends Component
             'form.*' => ['nullable', 'string', fn ($attribute, $value, $fail) => mb_strlen((string) $value) > 2000 ? $fail(__('validation.max.string', ['attribute' => $attribute, 'max' => 2000])) : null],
         ], attributes: ['form.mail_from_address' => __('Sender address'), 'form.vapid_subject' => __('Contact')]);
 
+        // "none" (instead of empty) so that "all switched on" also overrides AI_DISABLED_FEATURES in .env.
+        $this->form['ai_disabled_features'] = implode(',', array_diff(array_keys(AiFeatures::all()), $this->aiFeatures)) ?: 'none';
         $values = [];
 
         foreach (AppSettings::FIELDS as $key => $field) {
@@ -309,11 +322,11 @@ new #[Layout('layouts.app')] class extends Component
             'vpnTunnel' => Vpn::isRunning() ? Vpn::tunnelState() : null,
             'vpnNetworks' => Vpn::networks(),
             'status' => [
-                __('AI (Claude)') => BrainAi::isConfigured(),
+                __('AI (Claude)') => StructuredAi::isConfigured(),
                 __('Sending e-mails') => config('mail.default') !== 'log' && config('mail.default') !== 'array',
                 __('Web push') => filled(config('services.webpush.public_key')) && filled(config('services.webpush.private_key')),
                 __('Bank sync (FinTS)') => filled(config('services.fints.product_id')),
-                __('Instagram analysis') => filled(config('services.instagram.apify_key')) && BrainAi::isConfigured(),
+                __('Instagram analysis') => filled(config('services.instagram.apify_key')) && InstagramAi::isConfigured(),
                 __('Encrypted backup off the server') => filled(config('backup.remote_url')) && filled(config('backup.encryption_password')),
                 __('Error reports by e-mail') => filled(config('security.error_report_email')),
                 __('Two-factor authentication required') => (bool) config('security.require_two_factor'),
@@ -339,6 +352,7 @@ new #[Layout('layouts.app')] class extends Component
     $labels = [
         'anthropic_api_key' => [__('API key'), 'sk-ant-…'],
         'anthropic_model' => [__('Model (optional)'), 'claude-opus-5'],
+        'ai_disabled_features' => [__('AI functions in use'), ''],
         'mail_host' => [__('SMTP server'), 'zimmimail.de'],
         'mail_port' => [__('Port'), '587'],
         'mail_scheme' => [__('Encryption'), ''],
@@ -446,7 +460,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="mt-4 grid gap-4 sm:grid-cols-2">
                             @foreach (AppSettings::FIELDS as $key => $field)
                                 @continue($field['group'] !== $group)
-                                <div wire:key="field-{{ $key }}" @class(['sm:col-span-2' => $field['type'] === 'textarea'])>
+                                <div wire:key="field-{{ $key }}" @class(['sm:col-span-2' => in_array($field['type'], ['textarea', 'features'], true)])>
                                     <x-input-label :for="'setting-'.$key" :value="$labels[$key][0]" />
                                     @if ($field['type'] === 'select')
                                         <select id="setting-{{ $key }}" wire:model="form.{{ $key }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
@@ -458,6 +472,16 @@ new #[Layout('layouts.app')] class extends Component
                                             <option value="">{{ __('No') }}</option>
                                             <option value="1">{{ __('Yes') }}</option>
                                         </select>
+                                    @elseif ($field['type'] === 'features')
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Only ticked functions send data to the AI service; everything else keeps working without AI.') }}</p>
+                                        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                            @foreach (AiFeatures::all() as $feature => $meta)
+                                                <label wire:key="ai-feature-{{ $feature }}" class="flex items-start gap-2 rounded-lg border border-gray-200 p-2 text-sm dark:border-gray-700">
+                                                    <input type="checkbox" wire:model="aiFeatures" value="{{ $feature }}" class="mt-0.5 rounded border-gray-300 text-indigo-600" />
+                                                    <span><span class="block text-gray-900 dark:text-gray-100">{{ $meta['label'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $meta['text'] }}</span></span>
+                                                </label>
+                                            @endforeach
+                                        </div>
                                     @elseif ($field['type'] === 'textarea')
                                         <textarea id="setting-{{ $key }}" rows="8" wire:model="form.{{ $key }}" spellcheck="false" autocomplete="off" class="mt-1 block w-full rounded-lg border-gray-300 font-mono text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ isset($stored[$key]) ? '•••••••• '.__('(saved – paste a new configuration to replace it)') : $labels[$key][1] }}"></textarea>
                                         @if (isset($stored[$key]))

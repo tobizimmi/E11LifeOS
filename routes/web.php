@@ -40,8 +40,12 @@ Route::view('profile', 'profile')
     ->name('profile');
 
 Route::get('profile/export', DataExportController::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', Security::SENSITIVE])
     ->name('profile.export');
+
+Route::post('profile/export', [DataExportController::class, 'encrypted'])
+    ->middleware(['auth', 'throttle:6,1'])
+    ->name('profile.export.encrypted');
 
 Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');

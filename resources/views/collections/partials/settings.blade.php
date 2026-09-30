@@ -37,6 +37,7 @@
                                     <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from(route('collections.public', $collection->public_token)) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></x-secondary-button>
                                     <button type="button" wire:click="revokeCollectionLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Turn off link') }}</button>
                                 </div>
+                                <x-share-expiry :expires="$collection->public_expires_at" action="setCollectionLinkExpiry" class="mt-2" />
                             @else
                                 <button type="button" wire:click="createCollectionLink" class="text-emerald-700 underline dark:text-emerald-300">🔗 {{ __('Share read-only via link') }}</button>
                             @endif

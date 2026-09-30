@@ -22,7 +22,7 @@ class DataExportTest extends TestCase
         Item::create(['household_id' => $household->id, 'type' => Item::TYPE_TODO, 'title' => 'Aufgabe', 'created_by' => $user->id]);
         ShoppingListEntry::create(['household_id' => $household->id, 'label' => 'Milch', 'created_by' => $user->id]);
 
-        $response = $this->actingAs($user)->get('/profile/export');
+        $response = $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get('/profile/export');
 
         $response->assertOk();
         $response->assertHeader('Content-Disposition');
@@ -49,13 +49,50 @@ class DataExportTest extends TestCase
         Invoice::factory()->for($household)->for($user)->create(['recipient' => 'Mein Kunde']);
         Invoice::factory()->for($household)->for($partner)->create(['recipient' => 'Partner Kunde']);
 
-        $data = $this->actingAs($user)->get('/profile/export')->assertOk()->json();
+        $data = $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get('/profile/export')->assertOk()->json();
 
         $this->assertSame(['Mein Tagebuch'], array_column($data['notes'], 'title'));
         $this->assertSame(['privat'], $data['notes'][0]['tags']);
         $this->assertSame(['Gemeinsame Idee'], array_column($data['inbox'], 'title'));
         $this->assertSame(['Mein Giro'], array_column($data['bank_accounts'], 'name'));
         $this->assertSame(['Mein Kunde'], array_column($data['business']['invoices'], 'recipient'));
+    }
+
+    public function test_the_export_requires_a_recent_password_confirmation(): void
+    {
+        [$user] = $this->memberWithHousehold();
+
+        $this->actingAs($user)->get('/profile/export')->assertRedirect(route('password.confirm'));
+    }
+
+    public function test_the_encrypted_export_is_a_password_protected_zip(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        Item::create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'title' => 'Geheime Notiz', 'created_by' => $user->id]);
+
+        $response = $this->actingAs($user)->post(route('profile.export.encrypted'), ['current_password' => 'password', 'export_password' => 'zip-geheim-123', 'export_password_confirmation' => 'zip-geheim-123']);
+
+        $response->assertOk()->assertDownload();
+        $path = $response->baseResponse->getFile()->getPathname();
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($path) === true);
+        $name = $zip->getNameIndex(0);
+        $this->assertSame(\ZipArchive::EM_AES_256, $zip->statIndex(0)['encryption_method']);
+        $this->assertFalse($zip->getFromName($name));
+        $zip->setPassword('zip-geheim-123');
+        $this->assertSame('Geheime Notiz', json_decode($zip->getFromName($name), true)['notes'][0]['title']);
+        $zip->close();
+        unlink($path);
+        $this->assertDatabaseHas('security_events', ['user_id' => $user->id, 'event' => 'export']);
+    }
+
+    public function test_the_encrypted_export_rejects_a_wrong_account_password(): void
+    {
+        [$user] = $this->memberWithHousehold();
+
+        $this->actingAs($user)->from(route('profile'))->post(route('profile.export.encrypted'), ['current_password' => 'falsch', 'export_password' => 'zip-geheim-123', 'export_password_confirmation' => 'zip-geheim-123'])
+            ->assertRedirect(route('profile'))->assertSessionHasErrors(['current_password' => 'Das Passwort ist falsch.']);
+        $this->assertDatabaseHas('security_events', ['user_id' => $user->id, 'event' => 'login_failed']);
     }
 
     public function test_guests_cannot_export_data(): void

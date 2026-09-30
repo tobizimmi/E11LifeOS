@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\RunAdminCommand;
 use App\Models\AppSetting;
 use App\Models\User;
+use App\Support\AiFeatures;
 use App\Support\AppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -74,6 +75,23 @@ class AdminSettingsTest extends TestCase
         $this->assertFalse(AppSetting::where('key', 'anthropic_api_key')->exists());
 
         Volt::test('admin.settings')->set('form.mail_from_address', 'kein-mail')->call('save')->assertHasErrors('form.mail_from_address');
+    }
+
+    public function test_ai_functions_can_be_switched_off_one_by_one(): void
+    {
+        $this->admin();
+        config(['services.anthropic.key' => 'test-key']);
+
+        Volt::test('admin.settings')->assertSee('Rezept-Import & Nährwerte')->assertSet('aiFeatures', array_keys(AiFeatures::all()))
+            ->set('aiFeatures', ['brain', 'receipts'])->call('save')->assertHasNoErrors();
+
+        $this->assertSame(['documents', 'finance', 'paperless', 'recipes', 'statements', 'instagram'], AiFeatures::disabled());
+        $this->assertTrue(AiFeatures::enabled('brain'));
+        $this->assertSame('documents,finance,paperless,recipes,statements,instagram', AppSetting::where('key', 'ai_disabled_features')->value('value'));
+
+        Volt::test('admin.settings')->assertSet('aiFeatures', ['brain', 'receipts'])->set('aiFeatures', array_keys(AiFeatures::all()))->call('save');
+        $this->assertSame([], AiFeatures::disabled());
+        $this->assertSame('none', AppSetting::where('key', 'ai_disabled_features')->value('value'));
     }
 
     public function test_push_keys_are_created_once_and_a_test_mail_is_sent(): void

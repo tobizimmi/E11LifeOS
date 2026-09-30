@@ -9,6 +9,8 @@ use App\Models\ShoppingListEntry;
 use App\Support\AiException;
 use App\Support\BrainAi;
 use App\Support\BrainSearch;
+use App\Support\Finance\FinanceAi;
+use App\Support\RecipeAi;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 use Mockery\MockInterface;
@@ -98,6 +100,21 @@ class SecondBrainAiTest extends TestCase
         $this->actingAs($user)->get(route('brain.ask'))
             ->assertOk()
             ->assertSee('ANTHROPIC_API_KEY');
+    }
+
+    public function test_a_switched_off_ai_function_hides_its_buttons_and_refuses_calls(): void
+    {
+        config(['services.anthropic.disabled_features' => 'brain,recipes']);
+        [$user] = $this->memberWithHousehold();
+
+        $this->assertFalse(BrainAi::isConfigured());
+        $this->assertFalse(RecipeAi::isConfigured());
+        $this->assertTrue(FinanceAi::isConfigured());
+        $this->actingAs($user)->get(route('brain.ask'))->assertOk()->assertSee('Diese KI-Funktion wurde vom Administrator abgeschaltet.');
+
+        $this->expectException(AiException::class);
+        $this->expectExceptionMessage('Diese KI-Funktion wurde vom Administrator abgeschaltet.');
+        app(BrainAi::class)->suggestTags('Reifenwechsel', '', []);
     }
 
     public function test_suggested_tags_can_be_added_to_pages_and_entries(): void

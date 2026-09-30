@@ -188,7 +188,7 @@ class RecipeCookingRatingsAndPhotosTest extends TestCase
         $shared = MealPlan::factory()->for($household)->create(['title' => 'Suppe', 'recipe_id' => $recipe->id, 'created_by' => $user->id]);
         $private = MealPlan::factory()->for($household)->create(['title' => 'Nur ich', 'created_by' => $user->id, 'visibility' => 'private']);
 
-        $export = $this->actingAs($user)->get('/profile/export')->assertOk()->json();
+        $export = $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get('/profile/export')->assertOk()->json();
         $this->assertSame(4, $export['recipes'][0]['my_rating']['rating']);
         $this->assertSame(['Suppe', 'Nur ich'], collect($export['meal_plan'])->pluck('title')->all());
 

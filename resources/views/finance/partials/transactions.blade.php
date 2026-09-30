@@ -1,4 +1,4 @@
-{{-- Finance bookings tab (variables from finance/index: $transactions, $transactionCount, $rules, $categories, $euro, $aiAvailable). --}}
+{{-- Finance bookings tab (variables from finance/index: $transactions, $transactionCount, $rules, $categories, $euro, $aiAvailable, $receiptAiAvailable). --}}
 @php
     $groupLabels = ['income' => __('Income'), 'needs' => __('Needs'), 'wants' => __('Wishes & lifestyle'), 'savings' => __('Saving'), 'transfer' => __('Transfers')];
     $groupedCategories = collect($categories)->groupBy('group', preserveKeys: true);
@@ -42,7 +42,7 @@
                 <button type="button" wire:click="closeManual" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
             </div>
 
-            @if ($aiAvailable)
+            @if ($receiptAiAvailable)
                 <div class="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-indigo-50/60 p-3 dark:bg-indigo-900/20">
                     <label class="cursor-pointer rounded-lg bg-white px-3 py-1.5 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-900 dark:ring-gray-600">
                         📷 {{ $receiptPhoto ? __('Other photo') : __('Photo of the receipt') }}

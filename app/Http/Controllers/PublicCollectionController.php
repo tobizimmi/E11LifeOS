@@ -18,7 +18,7 @@ class PublicCollectionController extends Controller
 {
     public function __invoke(string $token): View
     {
-        $collection = strlen($token) >= 32 ? Collection::with('properties')->where('public_token', $token)->first() : null;
+        $collection = strlen($token) >= 32 ? Collection::with('properties')->whereShareToken('public_token', $token, 'public_expires_at')->first() : null;
 
         abort_unless($collection && ! $collection->isTasks(), 404);
 

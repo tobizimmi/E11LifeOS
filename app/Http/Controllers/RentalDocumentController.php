@@ -106,7 +106,7 @@ class RentalDocumentController extends Controller
 
     private function portalTenant(string $token): RealEstateTenant
     {
-        return (strlen($token) >= 32 ? RealEstateTenant::where('portal_token', $token)->first() : null) ?? abort(404);
+        return (strlen($token) >= 32 ? RealEstateTenant::whereShareToken('portal_token', $token)->first() : null) ?? abort(404);
     }
 
     private function authorizeFor(Request $request, int $realEstateId): void

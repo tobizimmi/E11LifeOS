@@ -49,6 +49,11 @@ use App\Support\Security\SecurityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use ZipArchive;
 
 class DataExportController extends Controller
 {
@@ -59,6 +64,52 @@ class DataExportController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         SecurityLog::record($request->user(), 'export');
+
+        return response()->json($this->data($request), 200, [
+            'Content-Disposition' => 'attachment; filename="e11lifeos-export-'.$request->user()->id.'.json"',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * The same export as a ZIP archive encrypted with AES-256 and a password of the user's choice,
+     * so the downloaded copy stays protected on the device or in a cloud folder. Asks for the account
+     * password again (re-authentication) instead of relying on an earlier confirmation.
+     */
+    public function encrypted(Request $request): BinaryFileResponse
+    {
+        $key = 'export-password:'.$request->user()->id;
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            throw ValidationException::withMessages(['current_password' => __('auth.throttle', ['seconds' => RateLimiter::availableIn($key), 'minutes' => ceil(RateLimiter::availableIn($key) / 60)])]);
+        }
+
+        if (! Hash::check((string) $request->input('current_password'), $request->user()->password)) {
+            RateLimiter::hit($key, 300);
+            SecurityLog::record($request->user(), 'login_failed', $request, 'export');
+
+            throw ValidationException::withMessages(['current_password' => __('The password is incorrect.')]);
+        }
+
+        RateLimiter::clear($key);
+        $validated = $request->validate(['export_password' => ['required', 'string', 'min:8', 'max:128', 'confirmed']], attributes: ['export_password' => __('Password for the file')]);
+        SecurityLog::record($request->user(), 'export', $request, 'zip');
+
+        $name = 'e11lifeos-export-'.$request->user()->id.'.json';
+        $path = tempnam(sys_get_temp_dir(), 'e11export');
+        $zip = new ZipArchive;
+        abort_unless($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true, 500);
+        $zip->addFromString($name, json_encode($this->data($request), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $zip->setEncryptionName($name, ZipArchive::EM_AES_256, $validated['export_password']);
+        $zip->close();
+
+        return response()->download($path, 'e11lifeos-export-'.now()->format('Y-m-d').'.zip', ['Content-Type' => 'application/zip'])->deleteFileAfterSend();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function data(Request $request): array
+    {
         $user = $request->user();
         $household = $user->currentHousehold();
 
@@ -191,9 +242,7 @@ class DataExportController extends Controller
             ],
         ];
 
-        return response()->json($data, 200, [
-            'Content-Disposition' => 'attachment; filename="e11lifeos-export-'.$user->id.'.json"',
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        return $data;
     }
 
     /**

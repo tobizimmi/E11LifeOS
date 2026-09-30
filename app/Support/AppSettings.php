@@ -19,6 +19,7 @@ class AppSettings
     public const FIELDS = [
         'anthropic_api_key' => ['group' => 'ai', 'config' => ['services.anthropic.key'], 'secret' => true, 'type' => 'text'],
         'anthropic_model' => ['group' => 'ai', 'config' => ['services.anthropic.model'], 'secret' => false, 'type' => 'text'],
+        'ai_disabled_features' => ['group' => 'ai', 'config' => ['services.anthropic.disabled_features'], 'secret' => false, 'type' => 'features'],
 
         'mail_host' => ['group' => 'mail', 'config' => ['mail.mailers.smtp.host'], 'secret' => false, 'type' => 'text'],
         'mail_port' => ['group' => 'mail', 'config' => ['mail.mailers.smtp.port'], 'secret' => false, 'type' => 'number'],

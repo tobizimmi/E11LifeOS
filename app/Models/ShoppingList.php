@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use Database\Factories\ShoppingListFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,11 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * One of the household's shopping lists (weekly shop, drugstore, party …), optionally tied to
  * a store whose section order it uses, shareable by link.
  */
-#[Fillable(['household_id', 'name', 'icon', 'store_id', 'share_token', 'position', 'created_by'])]
+#[Fillable(['share_expires_at', 'household_id', 'name', 'icon', 'store_id', 'share_token', 'position', 'created_by'])]
+#[Hidden(['share_token', 'share_token_encrypted'])]
 class ShoppingList extends Model
 {
     /** @use HasFactory<ShoppingListFactory> */
-    use HasFactory;
+    use HasFactory, HasShareTokens;
 
     public const ICONS = ['🛒', '🥦', '🧴', '💊', '🎉', '🏠', '🐾', '👶', '🍷', '🔧'];
 
@@ -43,5 +46,18 @@ class ShoppingList extends Model
     public function entries(): HasMany
     {
         return $this->hasMany(ShoppingListEntry::class);
+    }
+
+    protected function casts(): array
+    {
+        return ['share_expires_at' => 'datetime'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['share_token'];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Support\Portfolio;
 
 use App\Models\InstagramPost;
+use App\Support\AiFeatures;
 use App\Support\StructuredAi;
 
 /**
@@ -11,6 +12,8 @@ use App\Support\StructuredAi;
  */
 class InstagramAi extends StructuredAi
 {
+    protected const FEATURE = AiFeatures::INSTAGRAM;
+
     /**
      * @return array<string, mixed> attributes for InstagramPost
      */

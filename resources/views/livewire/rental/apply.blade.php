@@ -42,7 +42,7 @@ new #[Layout('layouts.guest')] class extends Component
 
     private function realEstate(): RealEstate
     {
-        $realEstate = strlen($this->token) >= 32 ? RealEstate::where('applicant_token', $this->token)->first() : null;
+        $realEstate = strlen($this->token) >= 32 ? RealEstate::whereShareToken('applicant_token', $this->token)->first() : null;
 
         abort_unless($realEstate, 404);
 

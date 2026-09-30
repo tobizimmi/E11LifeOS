@@ -14,7 +14,7 @@ class CalendarFeedController extends Controller
 {
     public function __invoke(string $token): Response
     {
-        $user = strlen($token) === 40 ? User::where('calendar_token', $token)->first() : null;
+        $user = strlen($token) === 40 ? User::whereShareToken('calendar_token', $token)->first() : null;
 
         abort_unless($user, 404);
 

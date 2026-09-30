@@ -335,9 +335,18 @@ new #[Layout('layouts.app')] class extends Component
         $this->sharing = true;
     }
 
+    /**
+     * Validity of the share link in days from now; empty = unlimited.
+     */
+    public function setShareLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->currentList()->forceFill(['share_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
     public function revokeShareLink(): void
     {
-        $this->currentList()->update(['share_token' => null]);
+        $this->currentList()->update(['share_token' => null, 'share_expires_at' => null]);
         $this->sharing = false;
         $this->dispatch('toast', message: __('The public link no longer works.'));
     }
@@ -522,6 +531,7 @@ new #[Layout('layouts.app')] class extends Component
                             <x-secondary-button type="button" x-show="navigator.share" x-cloak x-on:click="navigator.share({ title: {{ \Illuminate\Support\Js::from($list->name) }}, url: {{ \Illuminate\Support\Js::from($shareUrl) }} })">↗ {{ __('Share') }}</x-secondary-button>
                             <button type="button" wire:click="revokeShareLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Turn off link') }}</button>
                         </div>
+                        <x-share-expiry :expires="$list->share_expires_at" action="setShareLinkExpiry" class="mt-2" />
                     </div>
                 @endif
 

@@ -201,9 +201,18 @@ new #[Layout('layouts.app')] class extends Component
         $this->sharing = true;
     }
 
+    /**
+     * Validity of the share link in days from now; empty = unlimited.
+     */
+    public function setPublicLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->findRecipe()->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
     public function revokePublicLink(): void
     {
-        $this->findRecipe()->update(['public_token' => null]);
+        $this->findRecipe()->update(['public_token' => null, 'public_expires_at' => null]);
         $this->dispatch('toast', message: __('The public link no longer works.'));
     }
 
@@ -327,6 +336,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" x-on:click="navigator.clipboard.writeText(@js($recipe->publicUrl())).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700" x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></button>
                                     <button type="button" wire:click="revokePublicLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 dark:text-red-400 underline">{{ __('Turn off link') }}</button>
                                 </div>
+                                <x-share-expiry :expires="$recipe->public_expires_at" action="setPublicLinkExpiry" class="mt-2" />
                             @else
                                 <p class="text-gray-700 dark:text-gray-300">{{ __('Share the recipe with people outside the household via a link. You can turn it off at any time.') }}</p>
                                 <button type="button" wire:click="createPublicLink" class="rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700">🔗 {{ __('Create public link') }}</button>

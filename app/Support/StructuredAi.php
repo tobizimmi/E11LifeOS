@@ -10,11 +10,17 @@ use Throwable;
  */
 abstract class StructuredAi
 {
+    /** The AiFeatures switch of the subclass; '' for none. */
+    protected const FEATURE = '';
+
     public function __construct(private ?Client $client = null) {}
 
+    /**
+     * Whether the API key is set and the function of the subclass is not switched off.
+     */
     public static function isConfigured(): bool
     {
-        return filled(config('services.anthropic.key'));
+        return filled(config('services.anthropic.key')) && (static::FEATURE === '' || AiFeatures::enabled(static::FEATURE));
     }
 
     /**
@@ -24,8 +30,12 @@ abstract class StructuredAi
      */
     protected function ask(array $content, array $schema, int $maxTokens, ?string $system = null): array
     {
-        if (! self::isConfigured()) {
+        if (! filled(config('services.anthropic.key'))) {
             $this->fail(__('The AI is not set up on this server (ANTHROPIC_API_KEY).'));
+        }
+
+        if (! static::isConfigured()) {
+            $this->fail(__('This AI function has been switched off by the administrator.'));
         }
 
         try {

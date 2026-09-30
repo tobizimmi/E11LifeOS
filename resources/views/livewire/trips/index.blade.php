@@ -62,7 +62,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $trips = Trip::query()->visibleTo(Auth::user(), (int) $this->householdId)->withSum('bookings', 'cost')->withCount(['packingItems', 'packingItems as packed_count' => fn ($query) => $query->where('packed', true)])->orderBy('starts_on')->get();
+        $trips = Trip::query()->visibleTo(Auth::user(), (int) $this->householdId)->with('shareGroups')->withSum('bookings', 'cost')->withCount(['packingItems', 'packingItems as packed_count' => fn ($query) => $query->where('packed', true)])->orderBy('starts_on')->get();
 
         return [
             'upcoming' => $trips->reject->isPast()->values(),
@@ -117,7 +117,7 @@ new #[Layout('layouts.app')] class extends Component
                 <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="trip-{{ $plannedTrip->id }}" class="block rounded-2xl bg-white p-5 shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">✈️ {{ $plannedTrip->title }}</p>
+                            <p class="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">✈️ {{ $plannedTrip->title }} <x-audience-badge :model="$plannedTrip" /></p>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ collect([$plannedTrip->destination, $plannedTrip->starts_on->format('d.m.').' – '.$plannedTrip->ends_on->format('d.m.Y'), $plannedTrip->travelers])->filter()->implode(' · ') }}</p>
                         </div>
                         <span @class(['rounded-full px-3 py-1 text-sm font-medium', 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' => $plannedTrip->isOngoing(), 'bg-indigo-50 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200' => ! $plannedTrip->isOngoing()])>

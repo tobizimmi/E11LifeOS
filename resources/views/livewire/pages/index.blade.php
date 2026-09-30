@@ -338,7 +338,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         if ($this->selectedId) {
-            $page = $this->visibleItems(Item::TYPE_NOTE)->with('tags', 'creator')->find($this->selectedId);
+            $page = $this->visibleItems(Item::TYPE_NOTE)->with('tags', 'creator', 'shareGroups')->find($this->selectedId);
 
             return [
                 'selectedPage' => $page,
@@ -523,9 +523,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-3">
                                     <span aria-hidden="true">{{ $selectedPage->displayIcon() }}</span>
                                     {{ $selectedPage->title }}
-                                    @if ($selectedPage->isPrivate())
-                                        <x-private-badge />
-                                    @endif
+                                    <x-audience-badge :model="$selectedPage" class="text-sm" />
                                 </h1>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                     @if ($pageSpace = $spaces->get($selectedPage->space_id))
@@ -606,6 +604,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
 
                         <div class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                            <livewire:sharing.panel type="page" :id="$selectedPage->id" :wire:key="'share-page-'.$selectedPage->id" />
                             <livewire:documents-panel type="item" :id="$selectedPage->id" :wire:key="'documents-page-'.$selectedPage->id" />
                             <livewire:links-panel type="item" :id="$selectedPage->id" :wire:key="'links-page-'.$selectedPage->id" />
                         </div>

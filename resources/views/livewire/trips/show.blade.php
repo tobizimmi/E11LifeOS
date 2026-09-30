@@ -110,7 +110,10 @@ new #[Layout('layouts.app')] class extends Component
 
     public function deleteTrip(): void
     {
-        $this->findTrip()->delete();
+        $trip = $this->findTrip();
+        // Group members from other households may edit, but not delete.
+        abort_unless($trip->household_id === $this->householdId, 403);
+        $trip->delete();
         $this->redirectRoute('trips.index', navigate: true);
     }
 
@@ -238,7 +241,7 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('trips.index') }}" wire:navigate class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">← {{ __('Trips') }}</a>
-            <h2 class="w-full font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✈️ {{ $trip->title }}</h2>
+            <h2 class="flex w-full flex-wrap items-center gap-2 font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✈️ {{ $trip->title }} <x-audience-badge :model="$trip" /></h2>
         </div>
     </x-slot>
 
@@ -252,6 +255,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($tab === 'overview')
+                <livewire:sharing.panel type="trip" :id="$trip->id" :wire:key="'share-trip-'.$trip->id" />
                 <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
                     <span class="text-2xl" aria-hidden="true">🧾</span>
                     <p class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Share costs on the trip: who paid what and who owes whom.') }}</p>
@@ -346,7 +350,9 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Save') }}</x-primary-button>
-                        <button type="button" wire:click="deleteTrip" wire:confirm="{{ __('Delete this trip with all bookings and the packing list?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">{{ __('Delete trip') }}</button>
+                        @if ($trip->household_id === $householdId)
+                            <button type="button" wire:click="deleteTrip" wire:confirm="{{ __('Delete this trip with all bookings and the packing list?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">{{ __('Delete trip') }}</button>
+                        @endif
                     </div>
                 </form>
             @elseif ($tab === 'bookings')

@@ -195,7 +195,10 @@ new #[Layout('layouts.app')] class extends Component
 
     public function deleteGroup(): void
     {
-        $this->findGroup()->delete();
+        $group = $this->findGroup();
+        // Group members from other households may edit, but not delete.
+        abort_unless($group->household_id === $this->householdId, 403);
+        $group->delete();
         $this->redirectRoute('splits.index', navigate: true);
     }
 
@@ -243,12 +246,14 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('splits.index') }}" wire:navigate class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">← {{ __('Split costs') }}</a>
-            <h2 class="w-full font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $group->icon }} {{ $group->title }}</h2>
+            <h2 class="flex w-full flex-wrap items-center gap-2 font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $group->icon }} {{ $group->title }} <x-audience-badge :model="$group" /></h2>
         </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
+            <livewire:sharing.panel type="split" :id="$group->id" :wire:key="'share-split-'.$group->id" />
+
             <section class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Spent in total') }}</p>
@@ -458,7 +463,9 @@ new #[Layout('layouts.app')] class extends Component
                     <a href="{{ route('splits.export', [$group, 'csv']) }}" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">⬇️ {{ __('Export CSV') }}</a>
                     <a href="{{ route('splits.export', [$group, 'pdf']) }}" target="_blank" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">📄 {{ __('Summary as PDF') }}</a>
                     <button type="button" wire:click="toggleArchive" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">{{ $group->archived_at ? __('Restore') : __('Archive') }}</button>
-                    <button type="button" wire:click="deleteGroup" wire:confirm="{{ __('Delete the group with all expenses?') }}" class="ml-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete group') }}</button>
+                    @if ($group->household_id === $householdId)
+                        <button type="button" wire:click="deleteGroup" wire:confirm="{{ __('Delete the group with all expenses?') }}" class="ml-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete group') }}</button>
+                    @endif
                 </section>
             @endif
         </div>

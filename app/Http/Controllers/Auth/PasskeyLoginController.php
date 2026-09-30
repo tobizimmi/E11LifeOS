@@ -56,7 +56,7 @@ class PasskeyLoginController extends Controller
         Session::regenerate();
         SecurityLog::login($user, $request, 'login_passkey');
 
-        return response()->json(['redirect' => redirect()->intended(route('dashboard', absolute: false))->getTargetUrl()]);
+        return response()->json(['redirect' => redirect()->intended(route('dashboard'))->getTargetUrl()]);
     }
 
     /**

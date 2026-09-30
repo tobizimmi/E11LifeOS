@@ -34,7 +34,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
-Route::view('/', 'welcome');
+// The address without a path leads straight into the app (overview) or to the login.
+Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
 Volt::route('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])

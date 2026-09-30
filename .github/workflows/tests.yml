@@ -78,9 +78,8 @@ jobs:
       - name: Generate baseline (temporary)
         run: |
           vendor/bin/phpstan analyse --no-progress --memory-limit=2G --generate-baseline --allow-empty-baseline || true
-          echo '=====BASELINE-START====='
-          cat phpstan-baseline.neon
-          echo '=====BASELINE-END====='
+          grep -c 'count:' phpstan-baseline.neon || true
+          echo "BASELINE:$(gzip -9c phpstan-baseline.neon | base64 -w0)"
 
   # Same tests against MySQL (as on the server), so SQL differences show up before a deploy.
   tests-mysql:

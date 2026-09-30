@@ -815,7 +815,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <div wire:ignore class="relative z-0">
                         <div x-ref="map" class="h-[58vh] min-h-80 w-full bg-gray-100 dark:bg-gray-900"></div>
-                        <p x-show="! ready" class="absolute inset-0 flex items-center justify-center text-sm text-gray-500">{{ __('Loading map …') }}</p>
+                        <p x-show="! ready" class="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-gray-500"><span x-show="! failed">{{ __('Loading map …') }}</span><span x-show="failed" x-cloak>{{ __('The map could not be loaded. Please reload the page.') }}</span></p>
                     </div>
                     <p class="px-3 pt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Tap the map or search to add a place to a day.') }}</p>
                     <div class="p-3">

@@ -154,9 +154,12 @@ new #[Layout('layouts.app')] class extends Component
     $size = fn (?int $bytes) => $bytes === null ? '' : ($bytes >= 1048576 ? number_format($bytes / 1048576, 1, ',', '.').' MB' : number_format(max(1, $bytes / 1024), 0, ',', '.').' KB');
 @endphp
 
-<div>
+<div x-on:page-primary.window="$wire.create()">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🗄️ {{ __('Network drives') }}</h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Network drives') }}</h2>
+            <x-primary-button type="button" x-on:click="$dispatch('page-primary')" class="shrink-0">+ {{ __('Add drive') }}</x-primary-button>
+        </div>
     </x-slot>
 
     <div class="py-6">
@@ -165,12 +168,9 @@ new #[Layout('layouts.app')] class extends Component
                 @foreach ($drives as $item)
                     <button type="button" wire:click="open({{ $item->id }})" wire:key="drive-{{ $item->id }}" @class(['rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $current?->id === $item->id, 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $current?->id !== $item->id])>🗄️ {{ $item->name }}@if ($item->last_error) <span class="text-red-500" title="{{ $item->last_error }}">●</span>@endif</button>
                 @endforeach
-                <div class="ms-auto flex flex-wrap gap-2">
-                    @if ($googleReady && ! $drives->contains(fn ($item) => $item->isGoogle()))
-                        <a href="{{ route('drives.google.connect') }}" class="inline-flex items-center rounded-md bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 shadow-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-600">+ {{ __('Connect Google Drive') }}</a>
-                    @endif
-                    <x-secondary-button type="button" wire:click="create">+ {{ __('Add drive') }}</x-secondary-button>
-                </div>
+                @if ($googleReady && ! $drives->contains(fn ($item) => $item->isGoogle()))
+                    <a href="{{ route('drives.google.connect') }}" class="ms-auto inline-flex items-center rounded-full bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600">+ {{ __('Connect Google Drive') }}</a>
+                @endif
             </div>
 
             @if (session('error'))

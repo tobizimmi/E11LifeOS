@@ -237,17 +237,19 @@ new #[Layout('layouts.app')] class extends Component
     $kindLabels = ['allowance' => '💰 '.__('Pocket money'), 'chore' => '⭐ '.__('Chore'), 'bonus' => '🎁 '.__('Bonus'), 'gift' => '🎀 '.__('Gift'), 'spend' => '🛍️ '.__('Spent')];
 @endphp
 
-<div>
+<div x-on:page-primary.window="$event.detail === 'chore' ? $wire.editChore() : $wire.editKid()">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">⭐ {{ __('Kids & pocket money') }}</h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Kids & pocket money') }}</h2>
+            <div class="flex shrink-0 gap-2">
+                <x-secondary-button type="button" x-on:click="$dispatch('page-primary', 'chore')">+ {{ __('Chore') }}</x-secondary-button>
+                <x-primary-button type="button" x-on:click="$dispatch('page-primary', 'kid')">+ {{ __('Child') }}</x-primary-button>
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap justify-end gap-2">
-                <x-secondary-button type="button" wire:click="editChore">+ {{ __('Chore') }}</x-secondary-button>
-                <x-primary-button type="button" wire:click="editKid">+ {{ __('Child') }}</x-primary-button>
-            </div>
 
             @if ($pending->isNotEmpty())
                 <section class="rounded-2xl bg-amber-50 p-5 shadow-sm ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800">

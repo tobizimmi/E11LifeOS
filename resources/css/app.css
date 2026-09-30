@@ -498,3 +498,39 @@ h1, h2, h3,
         line-height: 1.15;
     }
 }
+
+/* Pull to refresh in the installed app (app.js): a small circle that fills while pulling. */
+.e11-pull {
+    --pull: 0;
+    background: rgb(255 255 255 / 0.9);
+    border: 2px solid rgb(99 102 241 / calc(0.25 + var(--pull) * 0.75));
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+    height: 2.25rem;
+    left: 50%;
+    opacity: var(--pull);
+    pointer-events: none;
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 0.75rem);
+    transform: translate(-50%, calc(var(--pull) * 2.5rem)) rotate(calc(var(--pull) * 270deg));
+    width: 2.25rem;
+    z-index: 60;
+}
+
+.e11-pull::after {
+    color: rgb(79 70 229);
+    content: '↻';
+    font-size: 1.1rem;
+    inset: 0;
+    line-height: 2rem;
+    position: absolute;
+    text-align: center;
+}
+
+.e11-pull.is-ready {
+    background: rgb(79 70 229);
+}
+
+.e11-pull.is-ready::after {
+    color: white;
+}

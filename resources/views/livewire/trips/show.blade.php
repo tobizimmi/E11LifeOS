@@ -241,7 +241,7 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('trips.index') }}" wire:navigate class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">← {{ __('Trips') }}</a>
-            <h2 class="flex w-full flex-wrap items-center gap-2 font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✈️ {{ $trip->title }} <x-audience-badge :model="$trip" /></h2>
+            <h2 class="flex w-full flex-wrap items-center gap-2 font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $trip->title }} <x-audience-badge :model="$trip" /></h2>
         </div>
     </x-slot>
 

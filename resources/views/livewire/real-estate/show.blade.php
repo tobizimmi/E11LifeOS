@@ -652,7 +652,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="min-w-0">
                 <a href="{{ route('real-estate.index') }}" wire:navigate class="text-sm text-gray-500 hover:underline dark:text-gray-400">← {{ __('Real estate') }}</a>
-                <h2 class="truncate font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🏠 {{ $model->name }} @if ($model->isPrivate())<span title="{{ __('Only for me') }}">🔒</span>@endif</h2>
+                <h2 class="truncate font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $model->name }} @if ($model->isPrivate())<span title="{{ __('Only for me') }}">🔒</span>@endif</h2>
             </div>
             <span class="rounded-full bg-indigo-50 px-3 py-1 text-sm text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{{ \App\Models\RealEstate::statusLabels()[$model->status] ?? $model->status }} · {{ \App\Models\RealEstate::usageLabels()[$model->usage] }}</span>
         </div>

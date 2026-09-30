@@ -158,7 +158,7 @@ new #[Layout('layouts.app')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🎓 {{ __('Lessons learned') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Lessons learned') }}</h2>
     </x-slot>
 
     <div class="py-6">
@@ -173,7 +173,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($showForm)
-                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" @if (! $editingId) data-draft="learning" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('What did you learn?') }}<input type="text" wire:model="learning.title" class="{{ $input }}" placeholder="{{ __('e.g. Never sign a contract on the same day') }}" autofocus><x-input-error :messages="$errors->get('learning.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('What happened, and what will you do differently?') }}<textarea wire:model="learning.body" rows="4" class="{{ $input }}" placeholder="{{ __('Situation – what I did – what came of it – what I take away') }}"></textarea></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}

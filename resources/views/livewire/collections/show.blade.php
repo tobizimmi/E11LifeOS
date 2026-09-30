@@ -1389,7 +1389,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            🗂️ {{ __('Collections') }}
+            {{ __('Collections') }}
         </h2>
     </x-slot>
 
@@ -2207,7 +2207,7 @@ new #[Layout('layouts.app')] class extends Component
                 <span class="truncate">{{ $collection->name }} · <strong class="text-gray-800 dark:text-gray-100">{{ $formEntryId ? __('Edit entry') : ($collection->isTasks() ? __('New task') : __('New entry')) }}</strong></span>
             </x-slot:header>
 
-            <form id="entry-form" wire:submit="saveEntryForm" class="space-y-5">
+            <form id="entry-form" wire:submit="saveEntryForm" @if (! $formEntryId) data-draft="entry-{{ $collection->id }}" data-draft-restored="{{ __('Draft restored') }}" @endif class="space-y-5">
                 <div>
                     <label for="form-title" class="sr-only">{{ __('Title') }}</label>
                     <div class="flex gap-2">

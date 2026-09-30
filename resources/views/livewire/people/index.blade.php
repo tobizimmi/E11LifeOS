@@ -217,7 +217,7 @@ new #[Layout('layouts.app')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🎂 {{ __('People & occasions') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('People & occasions') }}</h2>
     </x-slot>
 
     <div class="py-6">
@@ -347,7 +347,7 @@ new #[Layout('layouts.app')] class extends Component
     @if ($showForm)
         <x-sheet close="closeForm" :label="__('Person')" size="md">
             <x-slot name="header"><h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $editingId ? __('Edit person') : __('New person') }}</h3></x-slot>
-            <form wire:submit="save" id="person-form" class="grid gap-3 p-5 sm:grid-cols-2">
+            <form wire:submit="save" id="person-form" @if (! $editingId) data-draft="person" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 p-5 sm:grid-cols-2">
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="contact.name" class="{{ $input }}"><x-input-error :messages="$errors->get('contact.name')" /></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Relationship') }}<input type="text" wire:model="contact.relation" class="{{ $input }}" placeholder="{{ __('e.g. Sister, friend') }}"></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Birthday') }}<input type="date" wire:model="contact.birthday" class="{{ $input }}"><x-input-error :messages="$errors->get('contact.birthday')" /></label>

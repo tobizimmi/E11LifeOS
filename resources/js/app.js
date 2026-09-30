@@ -125,7 +125,10 @@ document.addEventListener('alpine:init', () => {
                         markdown: this.$wire.body ?? '',
                         pageTitles,
                         translations,
-                        onChange: (markdown) => this.$wire.$set('body', markdown, false),
+                        onChange: (markdown) => {
+                            this.$wire.$set('body', markdown, false);
+                            this.scheduleAutosave();
+                        },
                         onFiles: (files) => this.uploadFiles(files),
                         onPickFile: () => this.pickFile(),
                         searchLinks: (term) => this.$wire.linkTargets(term),
@@ -141,8 +144,34 @@ document.addEventListener('alpine:init', () => {
             },
 
             destroy() {
+                clearTimeout(this.autosaveTimer);
                 editor?.destroy();
                 editor = null;
+            },
+
+            autosaveTimer: null,
+
+            /**
+             * Existing pages save title and text a moment after typing stops; the status line
+             * next to the save button listens to "page-autosave".
+             */
+            scheduleAutosave() {
+                if (!this.$wire.editingId) {
+                    return;
+                }
+
+                clearTimeout(this.autosaveTimer);
+                this.autosaveTimer = setTimeout(async () => {
+                    const report = (detail) => window.dispatchEvent(new CustomEvent('page-autosave', { detail }));
+                    report({ state: 'saving' });
+
+                    try {
+                        const at = await this.$wire.autosave(this.$wire.title ?? '', this.$wire.body ?? '');
+                        report(at ? { state: 'saved', at } : { state: '' });
+                    } catch (error) {
+                        report({ state: 'error' });
+                    }
+                }, 1200);
             },
 
             toggleMode() {
@@ -1300,3 +1329,172 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+// Ctrl/⌘ + Enter in a text field sends its form (like in mail apps).
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || !event.target.matches?.('textarea, input')) {
+        return;
+    }
+
+    const form = event.target.closest('form');
+
+    if (form) {
+        event.preventDefault();
+        form.requestSubmit();
+    }
+});
+
+/*
+ * Drafts: forms with data-draft="key" keep what was typed in the browser (localStorage) until
+ * they are sent, so a closed tab, a crash or a lost connection does not cost the text. Only
+ * text fields bound with wire:model are kept; nothing leaves the device.
+ */
+const E11Drafts = (() => {
+    const prefix = 'e11-draft:';
+    const fields = (form) => Array.from(form.querySelectorAll('input[wire\\:model]:not([type=password]):not([type=file]):not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea[wire\\:model]'));
+    const storage = () => {
+        try {
+            return window.localStorage;
+        } catch (error) {
+            return null;
+        }
+    };
+
+    const bind = (form) => {
+        if (form.dataset.draftBound) {
+            return;
+        }
+
+        form.dataset.draftBound = '1';
+        const key = prefix + form.dataset.draft;
+        const store = storage();
+
+        if (!store) {
+            return;
+        }
+
+        // Restore only into empty fields, then tell Livewire about the values.
+        const saved = JSON.parse(store.getItem(key) || 'null');
+
+        if (saved && Date.now() - saved.at < 7 * 24 * 3600 * 1000) {
+            let restored = false;
+
+            fields(form).forEach((field) => {
+                const name = field.getAttribute('wire:model');
+
+                if (saved.values[name] && !field.value) {
+                    field.value = saved.values[name];
+                    field.dispatchEvent(new Event('input', { bubbles: true }));
+                    restored = true;
+                }
+            });
+
+            if (restored) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: form.dataset.draftRestored || 'Draft restored' } }));
+            }
+        }
+
+        form.addEventListener('input', () => {
+            const values = {};
+            fields(form).forEach((field) => {
+                if (field.value.trim() !== '') {
+                    values[field.getAttribute('wire:model')] = field.value;
+                }
+            });
+            Object.keys(values).length ? store.setItem(key, JSON.stringify({ at: Date.now(), values })) : store.removeItem(key);
+        });
+
+        form.addEventListener('submit', () => store.removeItem(key));
+    };
+
+    const scan = () => document.querySelectorAll('form[data-draft]').forEach(bind);
+
+    return { scan };
+})();
+
+document.addEventListener('livewire:navigated', E11Drafts.scan);
+document.addEventListener('livewire:init', () => {
+    window.Livewire.hook('morph.updated', () => E11Drafts.scan());
+});
+
+// Installed app on a phone (no browser reload button): pull down at the top to refresh.
+(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+    if (!standalone || !('ontouchstart' in window)) {
+        return;
+    }
+
+    let startY = null;
+    let indicator = null;
+
+    document.addEventListener('touchstart', (event) => {
+        startY = window.scrollY <= 0 && !event.target.closest('[role=dialog], .ProseMirror, textarea') ? event.touches[0].clientY : null;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (event) => {
+        if (startY === null) {
+            return;
+        }
+
+        const distance = event.touches[0].clientY - startY;
+
+        if (distance > 10) {
+            indicator ??= Object.assign(document.body.appendChild(document.createElement('div')), { className: 'e11-pull' });
+            indicator.style.setProperty('--pull', Math.min(distance, 120) / 120);
+            indicator.classList.toggle('is-ready', distance > 80);
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+        if (indicator?.classList.contains('is-ready')) {
+            window.location.reload();
+        }
+
+        indicator?.remove();
+        indicator = null;
+        startY = null;
+    });
+})();
+
+// Recently opened pages for the search palette (this browser only, max. 8).
+window.E11Recent = (() => {
+    const key = 'e11-recent';
+    const read = () => {
+        try {
+            return JSON.parse(window.localStorage.getItem(key) || '[]');
+        } catch (error) {
+            return [];
+        }
+    };
+
+    return {
+        list: () => read().filter((item) => item.url !== window.location.pathname + window.location.search).slice(0, 6),
+        remember() {
+            const title = document.querySelector('header[data-page-header] h2')?.textContent.replace(/\s+/g, ' ').trim();
+
+            if (!title || window.location.pathname === '/dashboard') {
+                return;
+            }
+
+            const url = window.location.pathname + window.location.search;
+
+            try {
+                window.localStorage.setItem(key, JSON.stringify([{ url, title }, ...read().filter((item) => item.url !== url)].slice(0, 8)));
+            } catch (error) {
+                // Private mode or full storage: no recent list.
+            }
+        },
+    };
+})();
+
+document.addEventListener('livewire:navigated', () => window.E11Recent.remember());
+
+// After signing out (login page): forget recent pages and drafts kept in this browser.
+if (window.location.pathname === '/login') {
+    try {
+        Object.keys(window.localStorage).filter((name) => name === 'e11-recent' || name.startsWith('e11-draft:')).forEach((name) => window.localStorage.removeItem(name));
+    } catch (error) {
+        // Storage not available.
+    }
+}

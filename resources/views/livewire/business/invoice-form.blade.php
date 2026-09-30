@@ -309,7 +309,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $type === 'quote' ? '📝' : ($type === 'credit_note' ? '↩' : '🧾') }} {{ $typeTitle }}</h2>
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $typeTitle }}</h2>
             <a href="{{ route('business.index', ['type' => $type === 'invoice' ? null : $type]) }}" wire:navigate class="text-sm text-indigo-600 hover:underline dark:text-indigo-300">← {{ __('Back to documents') }}</a>
         </div>
     </x-slot>

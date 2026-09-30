@@ -162,9 +162,12 @@ new #[Layout('layouts.app')] class extends Component
     $categories = \App\Models\WishlistItem::categories();
 @endphp
 
-<div>
+<div x-on:page-primary.window="$wire.create()">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🎁 {{ __('Wishlist') }}</h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Wishlist') }}</h2>
+            <x-primary-button type="button" x-on:click="$dispatch('page-primary')" class="shrink-0">+ {{ __('New wish') }}</x-primary-button>
+        </div>
     </x-slot>
 
     <div class="py-6">
@@ -186,12 +189,9 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-            <div class="flex justify-end">
-                <x-primary-button type="button" wire:click="create">+ {{ __('New wish') }}</x-primary-button>
-            </div>
 
             @if ($showForm)
-                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" @if (! $editingId) data-draft="wish" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('What do you want?') }}<input type="text" wire:model="wish.title" class="{{ $input }}" placeholder="{{ __('e.g. road bike, new sofa, weekend in Vienna') }}" autofocus><x-input-error :messages="$errors->get('wish.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('What does it cost?') }}<input type="text" inputmode="decimal" wire:model="wish.price" class="{{ $input }}" placeholder="0,00"><x-input-error :messages="$errors->get('wish.price')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Why do you want it?') }}<textarea wire:model="wish.reason" rows="2" class="{{ $input }}" placeholder="{{ __('e.g. old one is broken, want to ride to work') }}"></textarea></label>

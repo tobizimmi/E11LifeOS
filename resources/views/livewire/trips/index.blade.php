@@ -77,16 +77,17 @@ new #[Layout('layouts.app')] class extends Component
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
 @endphp
 
-<div>
+<div x-on:page-primary.window="$wire.set('showForm', true)">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">✈️ {{ __('Trips') }}</h2>
+        {{-- The header lives outside the component: the button sends page-primary, the page listens. --}}
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Trips') }}</h2>
+            <x-primary-button type="button" x-on:click="$dispatch('page-primary')" class="shrink-0">+ {{ __('Plan trip') }}</x-primary-button>
+        </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-end">
-                <x-primary-button type="button" wire:click="$set('showForm', true)">+ {{ __('Plan trip') }}</x-primary-button>
-            </div>
 
             @if ($showForm)
                 <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">

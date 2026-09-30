@@ -169,7 +169,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
                 <a href="{{ route('shopping-list.index', ['list' => $listId]) }}" wire:navigate class="text-sm text-gray-500 hover:underline dark:text-gray-400">← {{ __('Shopping List') }}</a>
-                <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🏷️ {{ __('Offers') }}</h2>
+                <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Offers') }}</h2>
             </div>
         </div>
     </x-slot>

@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">💼 {{ $profile?->company_name ?: __('Small business') }}</h2>
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ $profile?->company_name ?: __('Small business') }}</h2>
             <span class="text-xs text-gray-500 dark:text-gray-400">🔒 {{ __('Only you can see your business data.') }}</span>
         </div>
     </x-slot>

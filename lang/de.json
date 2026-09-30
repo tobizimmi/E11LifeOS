@@ -1,4 +1,13 @@
 {
+    "Saved": "Gespeichert",
+    "All details": "Alle Details",
+    "Saving …": "Speichert …",
+    "Draft restored": "Entwurf wiederhergestellt",
+    "Recently opened": "Zuletzt geöffnet",
+    "Saved automatically": "Automatisch gespeichert",
+    "Changes save automatically": "Änderungen werden automatisch gespeichert",
+    "Could not save automatically": "Automatisches Speichern fehlgeschlagen",
+    "Add notes … (saves automatically)": "Notizen … (werden automatisch gespeichert)",
     ":count day before|:count days before": ":count Tag vorher|:count Tage vorher",
     ":count entry in the inbox|:count entries in the inbox": ":count Eintrag in der Inbox|:count Einträge in der Inbox",
     ":count entry|:count entries": ":count Eintrag|:count Einträge",

@@ -10,6 +10,7 @@ use App\Support\TaskLists;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Volt\Component;
 
 /**
@@ -18,6 +19,12 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+
+    /**
+     * A task changed in the task window (tasks.quick-sheet): render again.
+     */
+    #[On('task-updated')]
+    public function refreshAfterTaskChange(): void {}
 
     #[Locked]
     public int $spaceId;
@@ -133,7 +140,7 @@ new #[Layout('layouts.app')] class extends Component
                             @php($due = $lists->due($task))
                             <li wire:key="space-task-{{ $task->id }}-{{ $task->done ? 1 : 0 }}" class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                 <input type="checkbox" wire:click="toggleTask({{ $task->id }})" @checked($task->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $task->title }}">
-                                <a href="{{ route('tasks.index', ['task' => $task->id]) }}" wire:navigate @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $task->done, 'text-gray-400 line-through' => $task->done])>{{ $task->title }}</a>
+                                <a href="{{ route('tasks.index', ['task' => $task->id]) }}" x-on:click.prevent="$dispatch('open-task', { id: {{ $task->id }} })" @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $task->done, 'text-gray-400 line-through' => $task->done])>{{ $task->title }}</a>
                                 @if ($due !== '')
                                     <span @class(['shrink-0 text-xs', 'text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-gray-500 dark:text-gray-400' => ! $lists->isOverdue($task)])>{{ \App\Support\TaskInput::dueLabel($due) }}</span>
                                 @endif

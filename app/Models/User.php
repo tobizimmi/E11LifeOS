@@ -67,6 +67,7 @@ class User extends Authenticatable implements HasPasskeys
 
             // Private trips (with their document links), vehicles and people.
             Trip::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->get()->each->delete();
+            ExpenseGroup::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Vehicle::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Contact::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
 

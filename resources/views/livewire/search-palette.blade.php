@@ -179,6 +179,7 @@ new class extends Component
             ['❤️ '.__('Health'), route('health.index'), 'gesundheit arzt vorsorge impfung medikamente notfallkarte blutgruppe allergie u-untersuchung'],
             ['🎂 '.__('People & occasions'), route('people.index'), 'geburtstag geburtstage jahrestag kontakte personen geschenk geschenkideen freunde familie'],
             ['✈️ '.__('Trips'), route('trips.index'), 'reise reisen urlaub packliste flug hotel buchung koffer ferien'],
+            ['🧾 '.__('Split costs'), route('splits.index'), 'kosten teilen splid tricount abrechnung gruppe wg urlaub schulden ausgleich'],
             ['⭐ '.__('Kids & pocket money'), route('kids.index'), 'kinder kind taschengeld aufgaben ämtchen belohnung sparziel familie'],
         ];
 

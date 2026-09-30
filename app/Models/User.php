@@ -70,6 +70,7 @@ class User extends Authenticatable implements HasPasskeys
             ExpenseGroup::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             WishlistItem::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Place::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
+            Learning::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Space::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Vehicle::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Contact::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();

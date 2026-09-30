@@ -70,12 +70,15 @@
                 @if ($invoice->isQuote() && $invoice->status === 'open' && ! $invoice->isExpired())
                     <form method="POST" action="{{ route('documents.public.accept', $invoice->public_token) }}" class="mt-5">
                         @csrf
-                        <button type="submit" class="w-full rounded-lg px-4 py-3 text-sm font-semibold text-white sm:w-auto" style="background: {{ $accent }}" onclick="return confirm(@js(__('Accept this quote with binding effect?')))">✓ {{ __('Accept quote') }}</button>
+                        <button type="submit" class="w-full rounded-lg px-4 py-3 text-sm font-semibold text-white sm:w-auto" style="background: {{ $accent }}" data-confirm="{{ __('Accept this quote with binding effect?') }}">✓ {{ __('Accept quote') }}</button>
                     </form>
                 @endif
             </section>
 
             <footer class="text-center text-xs text-gray-500 dark:text-gray-400">{{ $profile->senderLine() }}@if ($profile->email) · {{ $profile->email }}@endif</footer>
         </main>
-    </body>
+        <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+        document.querySelectorAll('[data-confirm]').forEach((button) => button.addEventListener('click', (event) => { if (! confirm(button.dataset.confirm)) event.preventDefault(); }));
+    </script>
+</body>
 </html>

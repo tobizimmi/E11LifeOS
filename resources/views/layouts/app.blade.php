@@ -140,22 +140,8 @@
         </div>
         @auth
             @if (config('security.idle_minutes') > 0)
-                {{-- Signs this browser out after the idle time; activity in any tab counts (security.idle_minutes). --}}
-                <form id="idle-logout" method="POST" action="{{ route('logout.idle') }}" class="hidden" data-navigate-once>@csrf</form>
-                <script data-navigate-once>
-                    (() => {
-                        const limit = {{ (int) config('security.idle_minutes') }} * 60000;
-                        const key = 'e11-last-activity';
-                        let written = 0;
-                        const touch = () => { const now = Date.now(); if (now - written < 5000) return; written = now; try { localStorage.setItem(key, String(now)); } catch (e) {} };
-                        const last = () => { try { return Number(localStorage.getItem(key)) || written; } catch (e) { return written; } };
-                        const check = () => { if (Date.now() - last() > limit) document.getElementById('idle-logout')?.submit(); };
-                        touch();
-                        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((name) => window.addEventListener(name, touch, { passive: true }));
-                        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
-                        setInterval(check, 30000);
-                    })();
-                </script>
+                {{-- Signs this browser out after the idle time (security.idle_minutes); the timer lives in app.js. --}}
+                <form id="idle-logout" method="POST" action="{{ route('logout.idle') }}" class="hidden" data-idle-minutes="{{ (int) config('security.idle_minutes') }}" data-navigate-once>@csrf</form>
             @endif
         @endauth
     </body>

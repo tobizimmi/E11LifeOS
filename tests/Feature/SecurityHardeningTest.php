@@ -51,6 +51,21 @@ class SecurityHardeningTest extends TestCase
         $this->withSession(['auth.password_confirmed_at' => time() - 1000])->get(route('emergency.index'))->assertRedirect(route('password.confirm'));
     }
 
+    public function test_scripts_only_run_with_the_nonce_of_the_response(): void
+    {
+        [$user] = $this->memberWithHousehold();
+
+        $response = $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $policy = (string) $response->headers->get('Content-Security-Policy');
+
+        $this->assertMatchesRegularExpression("/script-src 'self' 'nonce-([A-Za-z0-9]+)' 'unsafe-eval'/", $policy);
+        $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", $policy);
+        $this->assertStringContainsString("object-src 'none'", $policy);
+        preg_match("/'nonce-([A-Za-z0-9]+)'/", $policy, $match);
+        $this->assertStringContainsString('nonce="'.$match[1].'"', $response->getContent());
+        $this->assertStringNotContainsString(' onclick="', $response->getContent());
+    }
+
     public function test_what_a_health_entry_is_about_is_stored_encrypted(): void
     {
         [$user] = $this->memberWithHousehold();

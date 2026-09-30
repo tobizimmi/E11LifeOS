@@ -1498,3 +1498,27 @@ if (window.location.pathname === '/login') {
         // Storage not available.
     }
 }
+
+// Task links (data-open-task="id") open the task window in place. If the window does not
+// confirm within two seconds (slow connection, error), the link opens the task list instead.
+document.addEventListener('click', (event) => {
+    const link = event.target.closest?.('a[data-open-task]');
+
+    if (! link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+    }
+
+    event.preventDefault();
+    const id = Number(link.dataset.openTask);
+    let shown = false;
+    const confirm = (e) => { if (Number(e.detail?.id) === id) { shown = true; } };
+    window.addEventListener('task-sheet-shown', confirm);
+    window.dispatchEvent(new CustomEvent('open-task', { detail: { id } }));
+
+    setTimeout(() => {
+        window.removeEventListener('task-sheet-shown', confirm);
+        if (! shown) {
+            window.Livewire?.navigate ? window.Livewire.navigate(link.href) : (window.location.href = link.href);
+        }
+    }, 2000);
+});

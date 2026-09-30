@@ -13,7 +13,8 @@ use Livewire\Volt\Component;
 /**
  * A task opened in place from anywhere (overview, calendar, search): the essentials to edit it
  * without leaving the page. Changes save as you go; "All details" leads to the task list.
- * Opened with the browser event open-task, e.g. $dispatch('open-task', { id: 5 }).
+ * Opened by links with data-open-task="5" (see app.js) or the browser event open-task, e.g. $dispatch('open-task', { id: 5 }).
+ * Confirms with task-sheet-shown; without that confirmation the link falls back to the task list.
  */
 new class extends Component
 {
@@ -52,6 +53,7 @@ new class extends Component
     {
         $this->taskId = $id;
         $this->task();
+        $this->dispatch('task-sheet-shown', id: $id);
     }
 
     public function close(): void

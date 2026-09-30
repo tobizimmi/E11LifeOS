@@ -22,9 +22,9 @@ class QuickTaskAndAutosaveTest extends TestCase
         $task = Item::factory()->todo()->create(['household_id' => $household->id, 'collection_id' => $tasks->id, 'title' => 'Steuererklärung', 'created_by' => $user->id]);
 
         $this->actingAs($user);
-        $this->get(route('dashboard'))->assertOk()->assertSee("open-task', { id: {$task->id} }", false);
+        $this->get(route('dashboard'))->assertOk()->assertSee('data-open-task="'.$task->id.'"', false);
 
-        $sheet = Volt::test('tasks.quick-sheet')->dispatch('open-task', id: $task->id)->assertSee('Steuererklärung');
+        $sheet = Volt::test('tasks.quick-sheet')->dispatch('open-task', id: $task->id)->assertSee('Steuererklärung')->assertDispatched('task-sheet-shown', id: $task->id);
         $sheet->call('setDue', 'tomorrow')->call('setPriority', 'high')->call('saveNotes', 'Belege sammeln')->call('addSubtask', 'Lohnsteuerbescheinigung')
             ->call('updateTitle', 'Steuererklärung 2025')->assertDispatched('task-updated');
 

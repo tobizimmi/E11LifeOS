@@ -601,7 +601,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @foreach ($pageTasks as $pageTask)
                                         <li wire:key="page-task-{{ $pageTask->id }}" class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                             <input type="checkbox" wire:click="togglePageTask({{ $pageTask->id }})" @checked($pageTask->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $pageTask->title }}">
-                                            <a href="{{ route('tasks.index', ['task' => $pageTask->id]) }}" x-on:click.prevent="$dispatch('open-task', { id: {{ $pageTask->id }} })" @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $pageTask->done, 'text-gray-400 line-through' => $pageTask->done])>{{ $pageTask->title }}</a>
+                                            <a href="{{ route('tasks.index', ['task' => $pageTask->id]) }}" data-open-task="{{ $pageTask->id }}" @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $pageTask->done, 'text-gray-400 line-through' => $pageTask->done])>{{ $pageTask->title }}</a>
                                         </li>
                                     @endforeach
                                 </ul>

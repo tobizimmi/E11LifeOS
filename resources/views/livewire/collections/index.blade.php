@@ -110,21 +110,17 @@ new #[Layout('layouts.app')] class extends Component
     }
 }; ?>
 
-<div>
+<div x-on:page-primary.window="$wire.set('showForm', true)">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            🗂️ {{ __('Collections') }}
-        </h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Collections') }}</h2>
+            <x-primary-button type="button" x-on:click="$dispatch('page-primary')" class="shrink-0">+ {{ __('New collection') }}</x-primary-button>
+        </div>
     </x-slot>
 
     <div class="py-6 sm:py-10">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            <div class="flex items-center justify-between gap-3">
-                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Collections are lists with your own properties – as a table or a board.') }}</p>
-                @unless ($showForm)
-                    <x-primary-button type="button" wire:click="$set('showForm', true)">{{ __('New collection') }}</x-primary-button>
-                @endunless
-            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Collections are lists with your own properties – as a table or a board.') }}</p>
 
             @if ($showForm)
                 <form wire:submit="create" class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 space-y-4">

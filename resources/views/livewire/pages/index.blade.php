@@ -17,12 +17,19 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\On;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+
+    /**
+     * A task changed in the task window (tasks.quick-sheet): render again.
+     */
+    #[On('task-updated')]
+    public function refreshAfterTaskChange(): void {}
     use ProvidesLinkTargets;
     use StoresAttachments;
     use SuggestsTags;
@@ -134,6 +141,25 @@ new #[Layout('layouts.app')] class extends Component
     private function findSpace(?int $id): ?Space
     {
         return $id ? Space::query()->visibleTo(Auth::user(), (int) $this->householdId)->find($id) : null;
+    }
+
+    /**
+     * Saves title and text of an existing page in the background while typing – the full save
+     * (parent, space, tags, visibility) stays with the button.
+     *
+     * @return string time of the save (H:i), empty if nothing was saved
+     */
+    public function autosave(string $title, string $body): string
+    {
+        if (! $this->editingId || trim($title) === '' || mb_strlen($body) > 100000) {
+            return '';
+        }
+
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId);
+        $page->update(['title' => mb_substr(trim($title), 0, 255), 'content' => ['body' => $body] + ($page->content ?? [])]);
+        Attachment::attachReferencedTo($page, Auth::user());
+
+        return now()->format('H:i');
     }
 
     public function save(): void
@@ -368,7 +394,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            📄 {{ __('Pages') }}
+            {{ __('Pages') }}
         </h2>
     </x-slot>
 
@@ -390,7 +416,7 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             <div class="flex-1">
                                 <x-input-label for="title" :value="__('Title')" />
-                                <x-text-input wire:model="title" id="title" class="block mt-1 w-full" type="text" required autofocus />
+                                <x-text-input wire:model="title" id="title" class="block mt-1 w-full" type="text" required autofocus x-on:input="$dispatch('page-title-typed')" />
                             </div>
                         </div>
                         <x-input-error :messages="$errors->get('icon')" />
@@ -460,7 +486,7 @@ new #[Layout('layouts.app')] class extends Component
                             <p x-show="hasUnsupportedContent && mode === 'markdown'" x-cloak class="mt-1 rounded-md bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
                                 {{ __('This page contains HTML that the editor cannot show, so it opens as Markdown to keep it intact.') }}
                             </p>
-                            <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm"></textarea>
+                            <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" x-on:input="scheduleAutosave()" x-on:page-title-typed.window="scheduleAutosave()" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm"></textarea>
 
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
@@ -501,6 +527,14 @@ new #[Layout('layouts.app')] class extends Component
                             <button type="button" wire:click="cancelEdit" class="text-sm text-gray-500 dark:text-gray-400 underline">
                                 {{ __('Cancel') }}
                             </button>
+
+                            @if ($editingId)
+                                {{-- Existing pages save themselves while you type (see pageEditor in app.js). --}}
+                                <span class="ms-auto text-xs text-gray-500 dark:text-gray-400" role="status" aria-live="polite"
+                                    x-data="{ state: '', at: '' }"
+                                    x-on:page-autosave.window="state = $event.detail.state; at = $event.detail.at ?? at"
+                                    x-text="state === 'saving' ? @js(__('Saving …')) : (state === 'saved' ? @js(__('Saved automatically')) + ' · ' + at : (state === 'error' ? @js(__('Could not save automatically')) : @js(__('Changes save automatically'))))"></span>
+                            @endif
                         </div>
                     </form>
                 </div>
@@ -567,7 +601,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @foreach ($pageTasks as $pageTask)
                                         <li wire:key="page-task-{{ $pageTask->id }}" class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                             <input type="checkbox" wire:click="togglePageTask({{ $pageTask->id }})" @checked($pageTask->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $pageTask->title }}">
-                                            <a href="{{ route('tasks.index', ['task' => $pageTask->id]) }}" wire:navigate @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $pageTask->done, 'text-gray-400 line-through' => $pageTask->done])>{{ $pageTask->title }}</a>
+                                            <a href="{{ route('tasks.index', ['task' => $pageTask->id]) }}" x-on:click.prevent="$dispatch('open-task', { id: {{ $pageTask->id }} })" @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $pageTask->done, 'text-gray-400 line-through' => $pageTask->done])>{{ $pageTask->title }}</a>
                                         </li>
                                     @endforeach
                                 </ul>

@@ -10,11 +10,18 @@ use App\Support\DashboardWidgets;
 use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+
+    /**
+     * A task changed in the task window (tasks.quick-sheet): render again.
+     */
+    #[On('task-updated')]
+    public function refreshAfterTaskChange(): void {}
 
     private const LIST_LIMIT = 5;
 
@@ -319,7 +326,7 @@ new #[Layout('layouts.app')] class extends Component
                                         aria-label="{{ __('Mark as done') }}"
                                         class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500"
                                     />
-                                    <a href="{{ route('tasks.index', ['task' => $todo->id]) }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100 hover:underline">{{ $todo->title }}</a>
+                                    <a href="{{ route('tasks.index', ['task' => $todo->id]) }}" x-on:click.prevent="$dispatch('open-task', { id: {{ $todo->id }} })" class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100 hover:underline">{{ $todo->title }}</a>
                                     @if ($todo->isPrivate())
                                         <x-private-badge />
                                     @endif

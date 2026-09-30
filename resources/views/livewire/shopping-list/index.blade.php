@@ -456,7 +456,7 @@ new #[Layout('layouts.app')] class extends Component
 >
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🛒 {{ __('Shopping List') }}</h2>
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Shopping List') }}</h2>
         </div>
     </x-slot>
 

@@ -106,17 +106,17 @@ new #[Layout('layouts.app')] class extends Component
     $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
 @endphp
 
-<div>
+<div x-on:page-primary.window="$wire.create()">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🗂️ {{ __('Spaces') }}</h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Spaces') }}</h2>
+            <x-primary-button type="button" x-on:click="$dispatch('page-primary')" class="shrink-0">+ {{ __('New space') }}</x-primary-button>
+        </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between gap-3">
-                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('A space groups pages and tasks that belong together, e.g. Work, Home or Club.') }}</p>
-                <x-primary-button type="button" wire:click="create" class="shrink-0">+ {{ __('New space') }}</x-primary-button>
-            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('A space groups pages and tasks that belong together, e.g. Work, Home or Club.') }}</p>
 
             @if ($showForm)
                 <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">

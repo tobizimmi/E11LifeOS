@@ -283,6 +283,17 @@ new class extends Component
             />
 
             <div x-ref="results" class="max-h-[60vh] overflow-y-auto">
+                @if ($typed === '')
+                    {{-- Recently opened pages, kept in this browser only (see e11-recent in app.js). --}}
+                    <div class="py-2" x-data="{ recent: window.E11Recent?.list() ?? [] }" x-on:open-search.window="recent = window.E11Recent?.list() ?? []" x-show="recent.length">
+                        <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Recently opened') }}</h4>
+                        <template x-for="item in recent" :key="item.url">
+                            <a :href="item.url" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                                <span class="text-gray-400" aria-hidden="true">↺</span> <span class="truncate" x-text="item.title"></span>
+                            </a>
+                        </template>
+                    </div>
+                @endif
                 @if ($typed !== '')
                     <div class="py-2">
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Create') }}</h4>

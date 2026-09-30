@@ -372,12 +372,12 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            🍲 {{ __('Recipes') }}
+            {{ __('Recipes') }}
         </h2>
     </x-slot>
 
     <div class="py-6 sm:py-8">
-        <form wire:submit="save" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <form wire:submit="save" @if (! $recipeId) data-draft="recipe" data-draft-restored="{{ __('Draft restored') }}" @endif class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $recipeId ? __('Edit recipe') : __('New recipe') }}</h1>
                 <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>

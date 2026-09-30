@@ -459,7 +459,7 @@ new #[Layout('layouts.app')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">⚙️ {{ __('Server settings') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Server settings') }}</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Only visible to administrators. Values are stored encrypted and take precedence over the .env file.') }}</p>
     </x-slot>
 

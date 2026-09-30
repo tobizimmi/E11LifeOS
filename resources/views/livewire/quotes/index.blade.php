@@ -107,19 +107,17 @@ new #[Layout('layouts.app')] class extends Component
     $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
 @endphp
 
-<div>
+<div x-on:page-primary.window="$wire.set('showForm', true)">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">⚖️ {{ __('Quote comparisons') }}</h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Quote comparisons') }}</h2>
+            <x-primary-button type="button" x-on:click="$dispatch('page-primary')" class="shrink-0">+ {{ __('New comparison') }}</x-primary-button>
+        </div>
     </x-slot>
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Collect several quotes for a purchase, compare them side by side and pick the best one.') }}</p>
-                @unless ($showForm)
-                    <x-primary-button type="button" wire:click="$set('showForm', true)">+ {{ __('New comparison') }}</x-primary-button>
-                @endunless
-            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Collect several quotes for a purchase, compare them side by side and pick the best one.') }}</p>
 
             @if ($showForm)
                 <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">

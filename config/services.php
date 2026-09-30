@@ -69,6 +69,9 @@ return [
     'maps' => [
         'nominatim_url' => env('MAPS_NOMINATIM_URL', 'https://nominatim.openstreetmap.org'),
         'overpass_url' => env('MAPS_OVERPASS_URL', 'https://overpass-api.de/api/interpreter'),
+        // Search as you type (Photon by Komoot) and walking/cycling/driving routes (OSRM of FOSSGIS).
+        'photon_url' => env('MAPS_PHOTON_URL', 'https://photon.komoot.io'),
+        'routing_url' => env('MAPS_ROUTING_URL', 'https://routing.openstreetmap.de'),
         // Map tiles in the browser; empty = OpenStreetMap. May contain a key, e.g. from MapTiler.
         'tile_url' => env('MAPS_TILE_URL'),
     ],

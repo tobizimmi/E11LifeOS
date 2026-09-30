@@ -87,6 +87,48 @@ class TripItinerary
     }
 
     /**
+     * Routes through the places of each day (days with at least two places on the map). "legs" holds the
+     * way to each place from the one before, keyed by entry id; "failed" is set when no route was found.
+     * Without $fetch only remembered routes are used, "pending" then lists the days still to calculate.
+     *
+     * @param  array{days: list<array{date: Carbon, stops: Collection<int, TripStop>}>}  $plan
+     * @return array{days: array<string, array{duration: float, distance: float, line: list<array{0: float, 1: float}>, legs: array<int, array{duration: float, distance: float}>}>, failed: list<string>, pending: list<string>}
+     */
+    public static function dayRoutes(array $plan, string $mode, bool $fetch = false): array
+    {
+        $result = ['days' => [], 'failed' => [], 'pending' => []];
+
+        foreach ($plan['days'] as $day) {
+            $stops = $day['stops']->filter->hasPosition()->values();
+
+            if ($stops->count() < 2) {
+                continue;
+            }
+
+            $key = $day['date']->toDateString();
+            $route = TripRoutes::route($stops->map(fn (TripStop $stop) => ['lat' => (float) $stop->lat, 'lng' => (float) $stop->lng])->all(), $mode, $fetch);
+
+            if ($route === null) {
+                $result['pending'][] = $key;
+            } elseif ($route === false) {
+                $result['failed'][] = $key;
+            } else {
+                $legs = [];
+
+                foreach ($route['legs'] as $index => $leg) {
+                    if ($stops->has($index + 1)) {
+                        $legs[$stops[$index + 1]->id] = $leg;
+                    }
+                }
+
+                $result['days'][$key] = ['duration' => $route['duration'], 'distance' => $route['distance'], 'line' => $route['line'], 'legs' => $legs];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * @param  Collection<int, TripBooking>  $bookings
      * @return list<array{booking: TripBooking, time: string, label: string}>
      */

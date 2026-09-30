@@ -6,6 +6,9 @@
     @endif
     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg {{ $stopKinds[$entry->kind]['color'] ?? 'bg-gray-100' }}" aria-hidden="true">{{ $stopKinds[$entry->kind]['icon'] ?? '📍' }}</span>
     <button type="button" wire:click="editStop({{ $entry->id }})" class="min-w-0 flex-1 text-left">
+        @if ($leg ?? null)
+            <span class="mb-0.5 block text-[11px] font-medium text-indigo-600 dark:text-indigo-300">↓ {{ $leg }}</span>
+        @endif
         <span @class(['line-clamp-2 block font-medium leading-snug', 'text-gray-400 line-through dark:text-gray-500' => $entry->done, 'text-gray-900 dark:text-gray-100' => ! $entry->done])>{{ $entry->title }}</span>
         @if ($entry->location || $entry->cost !== null)
             <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ collect([$entry->location ? '📍 '.$entry->location : null, $entry->cost !== null ? $euro($entry->cost) : null])->filter()->implode(' · ') }}</span>

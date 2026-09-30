@@ -53,10 +53,10 @@ Plesk → `zimmimail.de` → **Apache & nginx-Einstellungen** → **Zusätzliche
 Dort müssen die vier **Live**-Zeilen stehen, **unter** den Staging-Zeilen:
 
 ```apache
-ProxyPass /E11LifeOS/app ws://127.0.0.1:3011/app
-ProxyPassReverse /E11LifeOS/app ws://127.0.0.1:3011/app
-ProxyPass /E11LifeOS http://127.0.0.1:3010
-ProxyPassReverse /E11LifeOS http://127.0.0.1:3010
+ProxyPass /E11LifeOS/app ws://127.0.0.1:3013/app
+ProxyPassReverse /E11LifeOS/app ws://127.0.0.1:3013/app
+ProxyPass /E11LifeOS http://127.0.0.1:3012
+ProxyPassReverse /E11LifeOS http://127.0.0.1:3012
 ```
 
 Fehlen sie, ergänzen und speichern (Details: [deployment.md](deployment.md), Abschnitt 5).
@@ -136,7 +136,7 @@ REVERB_HOST=zimmimail.de
 REVERB_PORT=443
 REVERB_SCHEME=https
 REVERB_PUBLISH_HOST=127.0.0.1
-REVERB_PUBLISH_PORT=3011
+REVERB_PUBLISH_PORT=3013
 REVERB_PUBLISH_SCHEME=http
 ```
 

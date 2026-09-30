@@ -1,0 +1,65 @@
+name: Server-Status
+
+# Read-only check of Live or Staging: PM2 processes, whether the app answers on its internal
+# port, and the latest errors. Changes nothing. Started from deploy.yml (action "status").
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+
+    env:
+      APP_PATH_DEPLOY: ${{ inputs.environment == 'live' && secrets.APP_PATH_LIVE || secrets.APP_PATH_STAGING }}
+      SSH_HOST_DEPLOY: ${{ inputs.environment == 'live' && secrets.SSH_HOST_LIVE || secrets.SSH_HOST_STAGING }}
+      SUFFIX: ${{ inputs.environment == 'live' && 'none' || '-staging' }}
+      APP_PORT: ${{ inputs.environment == 'live' && '3012' || '3020' }}
+      REVERB_PORT: ${{ inputs.environment == 'live' && '3013' || '3021' }}
+
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ env.SSH_HOST_DEPLOY }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Show status
+        run: |
+          ssh -i ~/.ssh/id_rsa -o BatchMode=yes ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- "${{ env.APP_PATH_DEPLOY }}" "${{ env.SUFFIX }}" "${{ env.APP_PORT }}" "${{ env.REVERB_PORT }}" << 'EOF'
+            export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+            APP_PATH="$1"; SUFFIX="$2"; APP_PORT="$3"; REVERB_PORT="$4"
+            [ "$SUFFIX" = none ] && SUFFIX=""
+            echo "== App folder: artisan / .env / vendor present?"
+            for f in artisan .env vendor public/index.php; do [ -e "$APP_PATH/$f" ] && echo "  $f: yes" || echo "  $f: MISSING"; done
+            echo "== PM2 processes"
+            pm2 jlist 2>/dev/null | php -r '
+              $app = $argv[1];
+              foreach (json_decode(stream_get_contents(STDIN), true) ?: [] as $p) {
+                  if (! str_starts_with($p["name"] ?? "", "e11lifeos")) { continue; }
+                  $e = $p["pm2_env"] ?? [];
+                  printf("  %-30s %-8s restarts=%-4s cwd=%s args=%s\n", $p["name"], $e["status"] ?? "?", $e["restart_time"] ?? "?",
+                      realpath($e["pm_cwd"] ?? "") === realpath($app) ? "app folder" : "OTHER FOLDER", implode(" ", (array) ($e["args"] ?? [])));
+              }' "$APP_PATH"
+            echo "== Who listens on the ports $APP_PORT / $REVERB_PORT"
+            (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep -E ":($APP_PORT|$REVERB_PORT)\b" || echo "  nobody"
+            echo "== Programs on these ports"
+            for pid in $( (ss -ltnp 2>/dev/null) | grep -E ":($APP_PORT|$REVERB_PORT)\b" | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u); do
+              echo "  pid $pid: $(ps -o args= -p "$pid" 2>/dev/null | cut -c1-160) (cwd: $(readlink "/proc/$pid/cwd" 2>/dev/null | sed 's#.*/httpdocs/#httpdocs/#'))"
+            done
+            echo "== Web server forwarding for /E11LifeOS (Plesk config, if readable)"
+            grep -rhs "ProxyPass" /var/www/vhosts/system/*/conf/ 2>/dev/null | grep -i "E11LifeOS" | sort -u || true
+            echo "== Earlier PM2 start commands for e11lifeos-app (pm2.log)"
+            grep -hs "e11lifeos-app" ~/.pm2/pm2.log 2>/dev/null | grep -iE "start|port|-S" | tail -n 8 | cut -c1-200 || true
+            echo "== App answers on 127.0.0.1:$APP_PORT?"
+            curl -s -o /dev/null -m 15 -w "  /login → HTTP %{http_code}\n" "http://127.0.0.1:$APP_PORT/login" || echo "  no answer"
+            echo "== PM2 error log (app, last 30 lines)"
+            pm2 logs "e11lifeos-app$SUFFIX" --err --lines 30 --nostream --raw 2>/dev/null | tail -n 30 | cut -c1-300
+            echo "== Laravel errors (last 10)"
+            grep -hE '\.(ERROR|CRITICAL|EMERGENCY):' "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 10 | cut -c1-300 || true
+          EOF

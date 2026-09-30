@@ -879,7 +879,8 @@ new #[Layout('layouts.app')] class extends Component
                         "
                         class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm"
                     >
-                        <div class="flex gap-2">
+                        {{-- Phones: the field gets the full width, the buttons go below it. --}}
+                        <div class="flex flex-wrap gap-2 sm:flex-nowrap">
                             <label for="new-task" class="sr-only">{{ __('New task') }}</label>
                             <input
                                 id="new-task"
@@ -889,12 +890,12 @@ new #[Layout('layouts.app')] class extends Component
                                 autocomplete="off"
                                 enterkeyhint="done"
                                 placeholder="{{ __('New task … e.g. “Call dentist tomorrow !high #health”') }}"
-                                class="min-w-0 flex-1 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500"
+                                class="min-w-0 basis-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-indigo-500 sm:basis-auto sm:flex-1"
                             />
                             <x-voice-button for="new-task" submit />
                             <button type="button" x-on:click="const input = $refs.input; if (! input.value.trim()) { input.focus(); return } $wire.addTaskWithDetails(input.value).then((added) => { if (added) { input.value = '' } })" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('Add and fill in details') }}" aria-label="{{ __('Add and fill in details') }}">⤢</button>
                             <button type="button" wire:click="openTemplates" class="shrink-0 rounded-lg px-3 text-sm text-gray-600 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-700" title="{{ __('From a checklist template') }}" aria-label="{{ __('From a checklist template') }}">📋</button>
-                            <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700" aria-label="{{ __('Add task') }}">＋</button>
+                            <button type="submit" class="min-h-10 flex-1 shrink-0 rounded-lg bg-indigo-600 px-4 text-white text-lg leading-none hover:bg-indigo-700 sm:flex-none" aria-label="{{ __('Add task') }}">＋</button>
                         </div>
                         <x-input-error :messages="$errors->get('newTask')" class="mt-1" />
                         @if ($preview && $preview['tokens'] !== [])

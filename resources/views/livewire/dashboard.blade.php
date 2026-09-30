@@ -212,9 +212,9 @@ new #[Layout('layouts.app')] class extends Component
     </x-slot>
 
     <div class="py-8 sm:py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             @if ($householdId === null)
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-700 dark:text-gray-300">
+                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 text-gray-700 dark:text-gray-300">
                     {{ __('You are not a member of a household yet. Ask a household member for an invite code.') }}
                 </div>
             @else
@@ -253,7 +253,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                     <div class="flex items-center justify-between gap-3 mb-3">
                         <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ __('Quick capture') }}</h3>
                         <a href="{{ route('inbox.index') }}" wire:navigate class="text-sm text-indigo-600 dark:text-indigo-400 underline">
@@ -305,7 +305,7 @@ new #[Layout('layouts.app')] class extends Component
                         @else
                         @switch($widget)
                             @case('tasks')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Open tasks')" :count="$openTodoCount" :href="route('tasks.index')" />
                         @if ($overdueCount > 0)
                             <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ trans_choice(':count task is overdue|:count tasks are overdue', $overdueCount) }}</p>
@@ -341,7 +341,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('shopping')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Shopping List')" :count="$openShoppingCount" :href="route('shopping-list.index')" />
                         <ul class="mt-3 space-y-1">
                             @forelse ($openShopping as $entry)
@@ -358,7 +358,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('pages')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Recent pages')" :href="route('pages.index')" />
                         <ul class="mt-3 space-y-2">
                             @forelse ($recentNotes as $note)
@@ -377,7 +377,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('meals')
-                        <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                             <x-dashboard-card-header :title="__('Today on the meal plan')" :href="route('recipes.plan')" />
                             <ul class="mt-3 space-y-2">
                                 @forelse ($todaysMeals as $meal)
@@ -399,7 +399,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                                 @break
                             @case('inbox')
-                        <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                             <x-dashboard-card-header :title="__('Inbox')" :count="$inboxCount" :href="route('inbox.index')" />
                             <ul class="mt-3 space-y-1">
                                 @forelse ($inboxEntries as $entry)
@@ -411,7 +411,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                                 @break
                             @case('weather')
-                        <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                             <x-dashboard-card-header :title="__('Weather today')" />
                             @if ($weather)
                                 <div class="mt-3 flex items-center gap-4">
@@ -433,7 +433,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                                 @break
                             @case('deadlines')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Deadlines (next 30 days)')" :count="count($deadlines) ?: null" />
                         <ul class="mt-3 space-y-2">
                             @forelse ($deadlines as $row)
@@ -457,7 +457,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('portfolio')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Portfolio')" :href="route('portfolio.index')" />
                         @php($tone = fn (?float $value) => $value > 0 ? 'text-emerald-700 dark:text-emerald-400' : ($value < 0 ? 'text-orange-700 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'))
                         @if ($portfolio === null)
@@ -494,7 +494,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('real_estate')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Real estate')" :href="route('real-estate.index')" />
                         @forelse ($realEstates as $row)
                             <a href="{{ route('real-estate.show', $row['model']) }}" wire:navigate wire:key="dashboard-real-estate-{{ $row['model']->id }}" class="mt-3 block rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700/40">
@@ -520,7 +520,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('tax')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Tax :year', ['year' => now()->year])" :href="route('finance.index', ['tab' => 'tax'])" />
                         @if ($taxYear)
                             <p @class(['mt-2 text-3xl font-semibold', 'text-green-700 dark:text-green-400' => $taxYear['effect'] >= 0, 'text-red-700 dark:text-red-400' => $taxYear['effect'] < 0])>≈ {{ number_format(abs($taxYear['effect']), 0, ',', '.') }} €</p>
@@ -530,7 +530,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('costs')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Fixed costs per month')" />
                         @if ($monthlyCosts['collections'] === [])
                             <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Add contracts with a monthly cost to see your fixed costs here.') }}</p>
@@ -549,7 +549,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('life')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Life & provisions: next dates')" :href="route('emergency.index')" />
                         @if ($lifeDates === [])
                             <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No dates in the next 60 days – documents, vehicles and maintenance are all fine.') }}</p>
@@ -566,7 +566,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('freedom')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Financial freedom')" :href="route('cashflow.index')" />
                         @if ($freedom && $freedom['has_data'])
                             @php($freedomPercent = (int) round(min(1, $freedom['freedom']) * 100))

@@ -281,7 +281,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Recipes') }}
+            🍲 {{ __('Recipes') }}
         </h2>
     </x-slot>
 
@@ -321,13 +321,13 @@ new #[Layout('layouts.app')] class extends Component
                             @if ($steps !== [])
                                 <a href="{{ route('recipes.cook', ['recipe' => $recipe, 'servings' => $servings]) }}" wire:navigate class="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700">👩‍🍳 {{ __('Cooking mode') }}</a>
                             @endif
-                            <button type="button" wire:click="$toggle('planning')" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-expanded="{{ $planning ? 'true' : 'false' }}">📅 {{ __('Plan') }}</button>
-                            <button type="button" wire:click="toggleFavorite" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}">{{ $isFavorite ? '♥' : '♡' }} {{ __('Favorite') }}</button>
+                            <button type="button" wire:click="$toggle('planning')" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-expanded="{{ $planning ? 'true' : 'false' }}">📅 {{ __('Plan') }}</button>
+                            <button type="button" wire:click="toggleFavorite" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}">{{ $isFavorite ? '♥' : '♡' }} {{ __('Favorite') }}</button>
                             @unless ($foreign)
-                                <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5">✎ {{ __('Edit') }}</a>
+                                <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200">✎ {{ __('Edit') }}</a>
                             @endunless
                             <div x-data="{ open: false }" class="relative">
-                                <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5" aria-label="{{ __('More') }}">⋯</button>
+                                <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="{{ __('More') }}">⋯</button>
                                 <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
                                     <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📄 {{ __('Download as PDF') }}</a>
                                     @if ($foreign)

@@ -113,7 +113,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Collections') }}
+            🗂️ {{ __('Collections') }}
         </h2>
     </x-slot>
 
@@ -127,7 +127,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($showForm)
-                <form wire:submit="create" class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 space-y-4">
+                <form wire:submit="create" class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 space-y-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('New collection') }}</h3>
 
                     <div class="flex gap-3">

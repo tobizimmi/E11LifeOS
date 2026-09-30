@@ -1,7 +1,7 @@
 {{-- Collection settings: details, properties and form builder (variables from collections/show). --}}
             {{-- Settings: collection details + properties --}}
             @if ($showSettings)
-                <section class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-5 space-y-5">
+                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-5 space-y-5">
                     <form wire:submit="saveCollectionDetails" class="flex flex-wrap items-end gap-3">
                         <div class="w-20">
                             <x-input-label for="collectionIcon" :value="__('Icon')" />

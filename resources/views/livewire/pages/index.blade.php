@@ -368,7 +368,7 @@ new #[Layout('layouts.app')] class extends Component
 <div>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Pages') }}
+            📄 {{ __('Pages') }}
         </h2>
     </x-slot>
 
@@ -377,7 +377,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($showForm)
                 {{-- Create / edit --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                         {{ $editingId ? __('Edit page') : __('New page') }}
                     </h3>
@@ -507,7 +507,7 @@ new #[Layout('layouts.app')] class extends Component
             @elseif ($selectedId)
                 {{-- Single page --}}
                 @if ($selectedPage)
-                    <article class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 sm:p-8 space-y-6">
+                    <article class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 sm:p-8 space-y-6">
                         <nav aria-label="{{ __('Breadcrumb') }}" class="flex flex-wrap items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                             <a href="{{ route('pages.index') }}" wire:navigate class="hover:underline">{{ __('Pages') }}</a>
                             @foreach ($breadcrumbs as $ancestor)
@@ -610,14 +610,14 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     </article>
                 @else
-                    <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 text-gray-600 dark:text-gray-400">
+                    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 text-gray-600 dark:text-gray-400">
                         {{ __('This page no longer exists.') }}
                         <a href="{{ route('pages.index') }}" wire:navigate class="underline">{{ __('All pages') }}</a>
                     </div>
                 @endif
             @else
                 {{-- Overview --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-4 space-y-3">
+                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-4 space-y-3">
                     <div class="flex gap-3">
                         <x-text-input wire:model.live.debounce.300ms="search" class="block w-full" type="search" placeholder="{{ __('Search pages...') }}" />
                         <x-primary-button type="button" wire:click="create" class="shrink-0">{{ __('New page') }}</x-primary-button>
@@ -650,7 +650,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
 
-                <ul class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg divide-y divide-gray-100 dark:divide-gray-700" wire:loading.class="opacity-50">
+                <ul class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl divide-y divide-gray-100 dark:divide-gray-700" wire:loading.class="opacity-50">
                     @forelse ($pages as $page)
                         <li wire:key="page-{{ $page->id }}">
                             <a href="{{ route('pages.index', ['item' => $page->id]) }}" wire:navigate class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">

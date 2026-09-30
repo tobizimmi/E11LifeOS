@@ -62,20 +62,21 @@ new class extends Component
             ])>{{ $label }}</button>
         @endforeach
     </div>
-    <div class="flex gap-3">
+    {{-- Phones: the field gets the full width, the buttons go below it. --}}
+    <div class="flex flex-wrap gap-2 sm:flex-nowrap sm:gap-3">
         <x-text-input
             id="quick-capture-title"
             wire:model="title"
-            class="block w-full"
+            class="block w-full min-w-0 basis-full sm:basis-auto sm:flex-1"
             type="text"
             placeholder="{{ $target === 'task' ? __('New task … e.g. “Call dentist tomorrow 6 pm !high”') : __('What is on your mind? (#tags optional)') }}"
             aria-label="{{ __('Quick capture') }}"
         />
         <x-voice-button for="quick-capture-title" :submit="true" />
-        <x-primary-button type="submit">{{ __('Capture') }}</x-primary-button>
+        <x-primary-button type="submit" class="flex-1 justify-center sm:flex-none">{{ __('Capture') }}</x-primary-button>
     </div>
     <x-input-error :messages="$errors->get('title')" />
-    <div class="flex items-center justify-between gap-3">
+    <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <x-private-checkbox id="quick-capture-private" wire:model="isPrivate" />
         <span class="text-xs text-gray-400">{{ $target === 'task' ? __('Dates, times, !priority, @name and #tags are recognised.') : __('Sort it into tasks, pages or the shopping list later.') }}</span>
     </div>

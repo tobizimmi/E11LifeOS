@@ -73,6 +73,9 @@ class AppSettings
         'vpn_networks' => ['group' => 'vpn', 'config' => ['vpn.networks'], 'secret' => false, 'type' => 'text'],
         'vpn_wireguard_config' => ['group' => 'vpn', 'config' => ['vpn.wireguard_config'], 'secret' => true, 'type' => 'textarea'],
 
+        'google_client_id' => ['group' => 'google', 'config' => ['services.google_drive.client_id'], 'secret' => false, 'type' => 'text'],
+        'google_client_secret' => ['group' => 'google', 'config' => ['services.google_drive.client_secret'], 'secret' => true, 'type' => 'text'],
+
         'legacy_db_host' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.host'], 'secret' => false, 'type' => 'text'],
         'legacy_db_port' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.port'], 'secret' => false, 'type' => 'number'],
         'legacy_db_database' => ['group' => 'import_portfolio', 'config' => ['database.connections.portfolio_legacy.database'], 'secret' => false, 'type' => 'text'],

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasShareTokens;
 use App\Models\Concerns\SharedWithGroups;
+use App\Support\Life\TripCovers;
 use Database\Factories\TripFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -30,8 +31,10 @@ use Illuminate\Support\Carbon;
  * @property ?string $meeting_point
  * @property ?string $organizer_contact
  * @property ?string $group_info
+ * @property ?string $cover_path
+ * @property ?string $color
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'travelers', 'packing_templates', 'notes', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
 #[Hidden(['share_token', 'share_token_encrypted', 'share_password'])]
 class Trip extends Model
 {
@@ -40,7 +43,10 @@ class Trip extends Model
 
     protected static function booted(): void
     {
-        static::deleting(fn (Trip $trip) => ExternalLink::where('linkable_type', 'trip')->where('linkable_id', $trip->id)->get()->each->delete());
+        static::deleting(function (Trip $trip): void {
+            ExternalLink::where('linkable_type', 'trip')->where('linkable_id', $trip->id)->get()->each->delete();
+            TripCovers::delete($trip->cover_path);
+        });
     }
 
     protected function casts(): array
@@ -80,6 +86,62 @@ class Trip extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(TripBooking::class)->orderByRaw('starts_at IS NULL')->orderBy('starts_at')->orderBy('id');
+    }
+
+    /**
+     * Entries of the trip plan: by day (ideas without a day first), then in the chosen order.
+     *
+     * @return HasMany<TripStop, $this>
+     */
+    public function stops(): HasMany
+    {
+        return $this->hasMany(TripStop::class)->orderByRaw('day IS NOT NULL')->orderBy('day')->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * Header colour of the trip (chosen or derived from its id).
+     *
+     * @return array{from: string, to: string}
+     */
+    public function colorScheme(): array
+    {
+        $schemes = self::colorSchemes();
+
+        return $schemes[$this->color] ?? array_values($schemes)[$this->id % count($schemes)];
+    }
+
+    /**
+     * @return array<string, array{from: string, to: string}>
+     */
+    public static function colorSchemes(): array
+    {
+        return [
+            'ocean' => ['from' => '#0ea5e9', 'to' => '#4f46e5'],
+            'sunset' => ['from' => '#fb923c', 'to' => '#db2777'],
+            'forest' => ['from' => '#10b981', 'to' => '#0f766e'],
+            'desert' => ['from' => '#f59e0b', 'to' => '#c2410c'],
+            'berry' => ['from' => '#d946ef', 'to' => '#7c3aed'],
+            'night' => ['from' => '#475569', 'to' => '#1e1b4b'],
+        ];
+    }
+
+    public function coverUrl(): ?string
+    {
+        return $this->cover_path ? route('trips.cover', ['trip' => $this->id, 'v' => substr(md5($this->cover_path), 0, 8)]) : null;
+    }
+
+    /**
+     * Names of the travellers: participants of a group trip, otherwise the "travellers" text.
+     *
+     * @return list<string>
+     */
+    public function travellerNames(): array
+    {
+        $names = $this->relationLoaded('participants') && $this->participants->isNotEmpty()
+            ? $this->participants->pluck('name')->all()
+            : preg_split('/\s*(?:,|;|\bund\b|&|\+)\s*/u', (string) $this->travelers, -1, PREG_SPLIT_NO_EMPTY);
+
+        return array_values(array_filter(array_map('trim', $names ?: [])));
     }
 
     public function packingItems(): HasMany

@@ -25,6 +25,7 @@ use App\Http\Controllers\RealEstateReceiptController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
+use App\Http\Controllers\TripCoverController;
 use App\Http\Controllers\XRechnungController;
 use App\Models\Collection;
 use App\Support\Security\Security;
@@ -89,6 +90,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('splits/{group}/export/{format}', [ExpenseGroupController::class, 'export'])->whereNumber('group')->whereIn('format', ['csv', 'pdf'])->name('splits.export');
     Volt::route('trips/{trip}', 'trips.show')->whereNumber('trip')->name('trips.show');
     Volt::route('trips/{trip}/group', 'trips.group')->whereNumber('trip')->name('trips.group');
+    Route::get('trips/{trip}/cover', TripCoverController::class)->whereNumber('trip')->name('trips.cover');
     Volt::route('vehicles/{vehicle}', 'vehicles.show')->whereNumber('vehicle')->name('vehicles.show');
     Route::get('emergency/pdf', [EmergencyFolderController::class, 'pdf'])->middleware([Security::SENSITIVE, 'sensitive.log:emergency'])->name('emergency.pdf');
     Volt::route('quotes', 'quotes.index')->name('quotes.index');

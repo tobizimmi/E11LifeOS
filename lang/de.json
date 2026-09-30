@@ -4882,12 +4882,14 @@
     "Tap the map or search to add a place to a day.": "Tippe auf die Karte oder suche einen Ort, um ihn einem Tag hinzuzufügen.",
     "Day plan": "Tagesplan",
     "on the map": "auf der Karte",
-    ":count entry has an address but no place on the map yet.|:count entries have an address but no place on the map yet.": ":count Eintrag hat eine Adresse, aber noch keinen Punkt auf der Karte.|:count Einträge haben eine Adresse, aber noch keinen Punkt auf der Karte.",
     "Find on the map": "Auf der Karte suchen",
     ":place added to the plan.": ":place zum Reiseplan hinzugefügt.",
     ":count place found on the map.|:count places found on the map.": ":count Ort auf der Karte gefunden.|:count Orte auf der Karte gefunden.",
     "The map could not be loaded. Please reload the page.": "Die Karte konnte nicht geladen werden. Bitte lade die Seite neu.",
     "Trip map": "Reisekarte",
     "Without an entry the map shows OpenStreetMap. For another map style enter the tile address of a map service, e.g. from MapTiler or Stadia Maps, with {z}, {x} and {y} and your key.": "Ohne Eintrag zeigt die Karte OpenStreetMap. Für einen anderen Kartenstil trage die Kachel-Adresse eines Kartendienstes ein, z. B. von MapTiler oder Stadia Maps, mit {z}, {x} und {y} und deinem Schlüssel.",
-    "Tile address (optional)": "Kachel-Adresse (optional)"
+    "Tile address (optional)": "Kachel-Adresse (optional)",
+    "The place search (OpenStreetMap) cannot be reached right now. Please try again later.": "Die Ortssuche (OpenStreetMap) ist gerade nicht erreichbar. Bitte versuche es später noch einmal.",
+    ":count not found – add an address or pick it on the map.|:count not found – add an address or pick them on the map.": ":count nicht gefunden – ergänze eine Adresse oder wähle den Ort auf der Karte.|:count nicht gefunden – ergänze eine Adresse oder wähle die Orte auf der Karte.",
+    ":count entry has no place on the map yet.|:count entries have no place on the map yet.": ":count Eintrag hat noch keinen Ort auf der Karte.|:count Einträge haben noch keinen Ort auf der Karte."
 }

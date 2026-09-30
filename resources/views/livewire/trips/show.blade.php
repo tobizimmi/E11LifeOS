@@ -11,6 +11,7 @@ use App\Support\Life\TripCovers;
 use App\Support\Life\PlaceFinder;
 use App\Support\Life\TripItinerary;
 use App\Support\Life\TripPlanner;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -221,9 +222,9 @@ new #[Layout('layouts.app')] class extends Component
         ];
         $previous = $this->editingStopId ? $this->findStop($this->editingStopId) : null;
 
-        // A new or changed address gets its position on the map (unless it was picked on the map).
-        if ($values['location'] && ($previous === null ? $values['lat'] === null : ($previous->location !== $values['location'] && $previous->lat === $values['lat']))) {
-            $position = $this->limited(fn () => PlaceFinder::locate($values['location']));
+        // A new entry or a changed address gets its position on the map (unless it was picked on the map).
+        if ($previous === null ? $values['lat'] === null : ($values['location'] && $previous->location !== $values['location'] && $previous->lat === $values['lat'])) {
+            $position = $this->positionFor($trip, $values['title'], $values['location']);
             $values['lat'] = $position['lat'] ?? null;
             $values['lng'] = $position['lng'] ?? null;
         } elseif (! $values['location'] && $previous?->location) {
@@ -254,8 +255,27 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $trip = $this->findTrip();
-        $trip->stops()->create(['kind' => 'sight', 'title' => mb_substr($title, 0, 150), 'position' => $this->nextPosition($trip, null), 'created_by' => Auth::id()]);
+        $title = mb_substr($title, 0, 150);
+        $trip->stops()->create(['kind' => 'sight', 'title' => $title, 'position' => $this->nextPosition($trip, null), 'created_by' => Auth::id()] + ($this->positionFor($trip, $title, null) ?? []));
         $this->idea = '';
+    }
+
+    /**
+     * Map position of an entry: its address, or without one its title at the trip destination.
+     *
+     * @return ?array{lat: float, lng: float}
+     */
+    private function positionFor(Trip $trip, string $title, ?string $location): ?array
+    {
+        if ($location) {
+            return $this->limited(fn () => PlaceFinder::locate($location, $trip->destination));
+        }
+
+        if (! $trip->destination) {
+            return null;
+        }
+
+        return $this->limited(fn () => PlaceFinder::locate($title.', '.$trip->destination));
     }
 
     private function nextPosition(Trip $trip, ?string $day): int
@@ -381,22 +401,59 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function locateMissing(): void
     {
+        $trip = $this->findTrip();
         $found = 0;
+        $missing = $this->withoutPosition($trip)->take(5)->values();
 
-        foreach ($this->findTrip()->stops()->whereNull('lat')->whereNotNull('location')->limit(5)->get() as $index => $stop) {
+        foreach ($missing as $index => $stop) {
             if ($index > 0) {
                 usleep(1_000_000); // OpenStreetMap allows one search per second.
             }
 
-            $position = $this->limited(fn () => PlaceFinder::locate((string) $stop->location));
+            $position = $this->positionFor($trip, $stop->title, $stop->location);
 
             if ($position) {
                 $stop->update($position);
                 $found++;
+            } elseif (PlaceFinder::$failed) {
+                $this->dispatch('toast', message: __('The place search (OpenStreetMap) cannot be reached right now. Please try again later.'));
+
+                return;
             }
         }
 
-        $this->dispatch('toast', message: trans_choice(':count place found on the map.|:count places found on the map.', $found));
+        $notFound = $missing->count() - $found;
+        $this->dispatch('toast', message: trans_choice(':count place found on the map.|:count places found on the map.', $found).($notFound > 0 ? ' '.trans_choice(':count not found – add an address or pick it on the map.|:count not found – add an address or pick them on the map.', $notFound) : ''));
+    }
+
+    /**
+     * Where the map starts without pins; "not found" is remembered briefly so each click does not wait for OpenStreetMap.
+     *
+     * @return ?array{lat: float, lng: float}
+     */
+    private function mapCenter(string $destination): ?array
+    {
+        $key = 'places:center:'.md5($destination);
+        $cached = Cache::get($key);
+
+        if ($cached !== null) {
+            return $cached ?: null;
+        }
+
+        $center = PlaceFinder::locate($destination);
+        Cache::put($key, $center ?? false, $center ? now()->addDays(30) : now()->addMinutes(10));
+
+        return $center;
+    }
+
+    /**
+     * Entries that could get a map position (with an address, or a title and a trip destination).
+     *
+     * @return Collection<int, TripStop>
+     */
+    private function withoutPosition(Trip $trip): Collection
+    {
+        return $trip->stops()->whereNull('lat')->get()->filter(fn (TripStop $stop) => $stop->location || $trip->destination);
     }
 
     /**
@@ -522,8 +579,8 @@ new #[Layout('layouts.app')] class extends Component
             'trip' => $trip,
             'itinerary' => $itinerary = TripItinerary::build($trip),
             'mapGroups' => $this->tab === 'map' ? TripItinerary::mapGroups($itinerary) : [],
-            'mapCenter' => $this->tab === 'map' && $trip->destination ? Cache::remember('places:center:'.md5($trip->destination), now()->addDays(30), fn () => PlaceFinder::locate((string) $trip->destination)) : null,
-            'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => $stop->location && ! $stop->hasPosition())->count(),
+            'mapCenter' => $this->tab === 'map' && $trip->destination ? $this->mapCenter((string) $trip->destination) : null,
+            'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => ($stop->location || $trip->destination) && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
             'colors' => Trip::colorSchemes(),
             'overview' => TripPlanner::overview($trip, $this->currentUser()),
@@ -838,7 +895,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
                 @if ($missingPositions > 0)
                     <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-100 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-900/40">
-                        <span class="min-w-0 flex-1">{{ trans_choice(':count entry has an address but no place on the map yet.|:count entries have an address but no place on the map yet.', $missingPositions) }}</span>
+                        <span class="min-w-0 flex-1">{{ trans_choice(':count entry has no place on the map yet.|:count entries have no place on the map yet.', $missingPositions) }}</span>
                         <button type="button" wire:click="locateMissing" wire:loading.attr="disabled" class="rounded-full bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500"><span wire:loading.remove wire:target="locateMissing">📍 {{ __('Find on the map') }}</span><span wire:loading wire:target="locateMissing">⏳</span></button>
                     </section>
                 @endif

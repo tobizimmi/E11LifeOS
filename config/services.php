@@ -37,6 +37,11 @@ return [
     ],
 
     // FinTS/HBCI online banking: product ID registered at https://www.hbci-zka.de (Registrierung).
+    'google_drive' => [
+        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID', ''),
+        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET', ''),
+    ],
+
     'fints' => [
         'product_id' => env('FINTS_PRODUCT_ID', ''),
     ],

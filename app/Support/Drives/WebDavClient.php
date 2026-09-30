@@ -18,7 +18,7 @@ use RuntimeException;
  * Minimal WebDAV client for browsing, downloading and uploading on a network drive. Paths are
  * relative to the drive's base address; ".." is refused. Home-network addresses go through the VPN.
  */
-class WebDavClient
+class WebDavClient implements DriveClient
 {
     private string $baseUrl;
 

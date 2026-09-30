@@ -4714,5 +4714,21 @@
     "File to upload": "Datei zum Hochladen",
     "Upload here": "Hierher hochladen",
     "No network drive yet.": "Noch kein Netzlaufwerk.",
-    "Connect your NAS (Synology, QNAP), a Nextcloud or a storage box via WebDAV to browse, download and upload documents – at home securely through the VPN.": "Verbinde dein NAS (Synology, QNAP), eine Nextcloud oder eine Storage Box per WebDAV, um Dokumente zu durchsuchen, herunter- und hochzuladen – zu Hause sicher über das VPN."
+    "Connect your NAS (Synology, QNAP), a Nextcloud or a storage box via WebDAV to browse, download and upload documents – at home securely through the VPN.": "Verbinde dein NAS (Synology, QNAP), eine Nextcloud oder eine Storage Box per WebDAV, um Dokumente zu durchsuchen, herunter- und hochzuladen – zu Hause sicher über das VPN.",
+    "Google Drive did not accept the upload.": "Google Drive hat den Upload nicht angenommen.",
+    "Not found on Google Drive: :name": "Nicht in Google Drive gefunden: :name",
+    "The connection to Google Drive has expired. Connect it again.": "Die Verbindung zu Google Drive ist abgelaufen. Verbinde es erneut.",
+    "Google Drive answered with HTTP :status.": "Google Drive antwortete mit HTTP :status.",
+    "Google Drive was not connected.": "Google Drive wurde nicht verbunden.",
+    "Connect Google Drive": "Google Drive verbinden",
+    "Connected via the Google sign-in.": "Über die Google-Anmeldung verbunden.",
+    "Connect again": "Erneut verbinden",
+    "Google Drive and iCloud?": "Google Drive und iCloud?",
+    "Google Drive is connected with your Google sign-in. You can revoke the access at any time in your Google account under Security → Third-party apps.": "Google Drive wird über deine Google-Anmeldung verbunden. Den Zugriff kannst du jederzeit in deinem Google-Konto unter Sicherheit → Drittanbieter-Apps widerrufen.",
+    "Google Drive can be connected as soon as the admin has entered a Google client under Admin → Settings → Google Drive.": "Google Drive lässt sich verbinden, sobald unter Admin → Einstellungen → Google Drive ein Google-Client eingetragen ist.",
+    "iCloud Drive has no interface for other apps, so it cannot be connected directly. Ways that work: sync the iCloud Drive folder on a Mac to your NAS (e.g. with Synology Drive Client) and connect the NAS here, or save files from the Files app on the iPhone to the NAS or Google Drive.": "iCloud Drive hat keine Schnittstelle für andere Apps und lässt sich daher nicht direkt verbinden. Was funktioniert: den iCloud-Drive-Ordner auf einem Mac mit dem NAS synchronisieren (z. B. mit Synology Drive Client) und das NAS hier verbinden, oder Dateien aus der Dateien-App auf dem iPhone auf dem NAS oder in Google Drive sichern.",
+    "Google Drive": "Google Drive",
+    "Lets members connect their Google Drive under “Network drives”. In the Google Cloud Console create a project, enable the “Google Drive API”, set up the OAuth consent screen (publishing status “In production”, otherwise the connection expires after 7 days) and create an OAuth client of type “Web application” with this redirect URI: :uri": "Damit können Mitglieder ihr Google Drive unter „Netzlaufwerke“ verbinden. In der Google Cloud Console ein Projekt anlegen, die „Google Drive API“ aktivieren, den OAuth-Zustimmungsbildschirm einrichten (Veröffentlichungsstatus „In Produktion“, sonst läuft die Verbindung nach 7 Tagen ab) und einen OAuth-Client vom Typ „Webanwendung“ mit dieser Weiterleitungs-URI anlegen: :uri",
+    "Client ID": "Client-ID",
+    "Client secret": "Clientschlüssel"
 }

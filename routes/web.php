@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseGroupController;
 use App\Http\Controllers\ExternalDocumentController;
 use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
+use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\GroupTripController;
 use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
@@ -71,6 +72,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('learnings', 'learnings.index')->name('learnings.index');
     Volt::route('drives', 'drives.index')->name('drives.index');
     Route::get('drives/{drive}/download', [NetworkDriveController::class, 'download'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.download');
+    Route::get('drives/google/connect', [GoogleDriveController::class, 'connect'])->middleware('throttle:10,1')->name('drives.google.connect');
+    Route::get('drives/google/callback', [GoogleDriveController::class, 'callback'])->middleware('throttle:10,1')->name('drives.google.callback');
     Volt::route('work', 'work.index')->name('work.index');
     Volt::route('trips', 'trips.index')->name('trips.index');
     Volt::route('kids', 'kids.index')->name('kids.index');

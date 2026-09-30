@@ -85,4 +85,61 @@ class NetworkDrivesTest extends TestCase
         $response->assertOk()->assertHeader('Content-Type', 'application/octet-stream');
         $this->assertSame('<html>hi</html>', $response->streamedContent());
     }
+
+    public function test_google_drive_is_connected_with_the_google_sign_in(): void
+    {
+        config(['services.google_drive.client_id' => 'client', 'services.google_drive.client_secret' => 'secret']);
+        Http::fake(['oauth2.googleapis.com/token' => Http::response(['access_token' => 'access-1', 'refresh_token' => 'refresh-1', 'expires_in' => 3600])]);
+        $user = User::factory()->create();
+
+        $redirect = $this->actingAs($user)->get(route('drives.google.connect'));
+        $redirect->assertRedirectContains('accounts.google.com');
+        parse_str((string) parse_url((string) $redirect->headers->get('Location'), PHP_URL_QUERY), $query);
+
+        $this->get(route('drives.google.callback', ['state' => 'forged', 'code' => 'abc']))->assertForbidden();
+
+        $this->withSession(['google_drive_state' => $query['state']])
+            ->get(route('drives.google.callback', ['state' => $query['state'], 'code' => 'abc']))
+            ->assertRedirect();
+
+        $drive = NetworkDrive::where('user_id', $user->id)->sole();
+        $this->assertTrue($drive->isGoogle());
+        $this->assertSame('refresh-1', $drive->token['refresh_token']);
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://oauth2.googleapis.com/token' && $request['code'] === 'abc' && $request['grant_type'] === 'authorization_code');
+    }
+
+    public function test_google_drive_folders_are_browsed_by_name_and_expired_tokens_are_renewed(): void
+    {
+        config(['services.google_drive.client_id' => 'client', 'services.google_drive.client_secret' => 'secret']);
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response(['access_token' => 'fresh', 'expires_in' => 3600]),
+            'www.googleapis.com/drive/v3/files/doc-1/export*' => Http::response('%PDF'),
+            'www.googleapis.com/drive/v3/files*' => function (Request $request) {
+                $q = $request->data()['q'] ?? '';
+
+                return match (true) {
+                    str_contains($q, "name = 'Steuer'") => Http::response(['files' => [['id' => 'folder-1', 'mimeType' => 'application/vnd.google-apps.folder']]]),
+                    str_contains($q, "name = 'Notizen'") => Http::response(['files' => [['id' => 'doc-1', 'mimeType' => 'application/vnd.google-apps.document']]]),
+                    str_contains($q, "'folder-1' in parents") => Http::response(['files' => [
+                        ['id' => 'doc-1', 'name' => 'Notizen', 'mimeType' => 'application/vnd.google-apps.document', 'modifiedTime' => '2026-09-01T10:00:00Z'],
+                        ['id' => 'folder-2', 'name' => 'Belege', 'mimeType' => 'application/vnd.google-apps.folder'],
+                    ]]),
+                    default => Http::response(['files' => []]),
+                };
+            },
+        ]);
+        $drive = NetworkDrive::factory()->create(['type' => 'google', 'url' => 'https://drive.google.com/', 'username' => null, 'password' => null,
+            'token' => ['access_token' => 'old', 'refresh_token' => 'refresh-1', 'expires_at' => now()->subMinute()->getTimestamp()]]);
+
+        $entries = $drive->client()->list('Steuer');
+
+        $this->assertSame(['Belege', 'Notizen'], array_column($entries, 'name'));
+        $this->assertSame('Steuer/Notizen', $entries[1]['path']);
+        $this->assertSame('fresh', $drive->fresh()->token['access_token']);
+        $this->assertSame('refresh-1', $drive->fresh()->token['refresh_token']);
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'drive/v3/files') && $request->hasHeader('Authorization', 'Bearer fresh'));
+
+        $this->actingAs($drive->user)->get(route('drives.download', ['drive' => $drive, 'path' => 'Steuer/Notizen']))->assertOk();
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'files/doc-1/export') && str_contains($request->url(), 'mimeType=application%2Fpdf'));
+    }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\NetworkDrive;
+use App\Support\Drives\GoogleDriveClient;
 use App\Support\Drives\WebDavClient;
 use App\Support\Security\VirusScanner;
 use App\Support\Vpn;
@@ -60,6 +61,15 @@ new #[Layout('layouts.app')] class extends Component
 
     public function save(): void
     {
+        if ($this->editingId && $this->findDrive($this->editingId)->isGoogle()) {
+            $name = $this->validate(['form.name' => ['required', 'string', 'max:100']])['form']['name'];
+            $this->findDrive($this->editingId)->update(['name' => $name]);
+            $this->open($this->editingId);
+            $this->reset(['editingId', 'form', 'showForm']);
+
+            return;
+        }
+
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:100'],
             'form.url' => ['required', 'url:http,https', 'max:500', fn ($attribute, $value, $fail) => WebDavClient::isAllowedUrl((string) $value) ? null : $fail(__('This address is not allowed. Use an address in the home network that goes through the VPN, or a public address.'))],
@@ -133,6 +143,8 @@ new #[Layout('layouts.app')] class extends Component
             'entries' => $entries,
             'crumbs' => collect(explode('/', $this->path))->filter()->values(),
             'vpnReady' => Vpn::isConfigured(),
+            'googleReady' => GoogleDriveClient::isConfigured(),
+            'editingGoogle' => $this->editingId !== null && (bool) $drives->firstWhere('id', $this->editingId)?->isGoogle(),
         ];
     }
 }; ?>
@@ -153,16 +165,29 @@ new #[Layout('layouts.app')] class extends Component
                 @foreach ($drives as $item)
                     <button type="button" wire:click="open({{ $item->id }})" wire:key="drive-{{ $item->id }}" @class(['rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $current?->id === $item->id, 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $current?->id !== $item->id])>🗄️ {{ $item->name }}@if ($item->last_error) <span class="text-red-500" title="{{ $item->last_error }}">●</span>@endif</button>
                 @endforeach
-                <x-secondary-button type="button" wire:click="create" class="ms-auto">+ {{ __('Add drive') }}</x-secondary-button>
+                <div class="ms-auto flex flex-wrap gap-2">
+                    @if ($googleReady && ! $drives->contains(fn ($item) => $item->isGoogle()))
+                        <a href="{{ route('drives.google.connect') }}" class="inline-flex items-center rounded-md bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 shadow-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-600">+ {{ __('Connect Google Drive') }}</a>
+                    @endif
+                    <x-secondary-button type="button" wire:click="create">+ {{ __('Add drive') }}</x-secondary-button>
+                </div>
             </div>
+
+            @if (session('error'))
+                <p class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">⚠️ {{ session('error') }}</p>
+            @endif
 
             @if ($showForm)
                 <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="form.name" class="{{ $input }}" placeholder="{{ __('e.g. Synology at home') }}"><x-input-error :messages="$errors->get('form.name')" /></label>
+                    @if ($editingGoogle)
+                    <p class="text-sm text-gray-600 sm:col-span-4 dark:text-gray-300">{{ __('Connected via the Google sign-in.') }} <a href="{{ route('drives.google.connect') }}" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Connect again') }}</a></p>
+                    @else
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('WebDAV address') }}<input type="url" wire:model="form.url" class="{{ $input }}" placeholder="https://192.168.1.10:5006/home/"><x-input-error :messages="$errors->get('form.url')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('User name') }}<input type="text" wire:model="form.username" class="{{ $input }}" autocomplete="off"></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Password') }}<input type="password" wire:model="form.password" class="{{ $input }}" autocomplete="new-password" placeholder="{{ $editingId ? __('unchanged') : '' }}"></label>
                     <p class="text-xs text-gray-500 sm:col-span-6 dark:text-gray-400">{{ __('Synology: enable “WebDAV Server” in the Package Center (HTTPS port 5006). QNAP: Control Panel → Network services → WebDAV. Nextcloud: address from Files → Settings → WebDAV. Use a separate user with access to the shared folders you need only.') }}</p>
+                    @endif
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Save and connect') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -172,6 +197,12 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </form>
             @endif
+
+            <details class="rounded-xl bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
+                <summary class="cursor-pointer font-medium text-gray-800 dark:text-gray-100">{{ __('Google Drive and iCloud?') }}</summary>
+                <p class="mt-2">{{ $googleReady ? __('Google Drive is connected with your Google sign-in. You can revoke the access at any time in your Google account under Security → Third-party apps.') : __('Google Drive can be connected as soon as the admin has entered a Google client under Admin → Settings → Google Drive.') }}</p>
+                <p class="mt-2">{{ __('iCloud Drive has no interface for other apps, so it cannot be connected directly. Ways that work: sync the iCloud Drive folder on a Mac to your NAS (e.g. with Synology Drive Client) and connect the NAS here, or save files from the Files app on the iPhone to the NAS or Google Drive.') }}</p>
+            </details>
 
             @if (! $vpnReady)
                 <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">🔐 {{ __('For a NAS at home the VPN must be set up (Admin → Settings → VPN, WireGuard configuration from your router, e.g. FRITZ!Box). Public addresses such as a Nextcloud or storage box work without it.') }}</p>

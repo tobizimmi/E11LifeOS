@@ -1175,3 +1175,35 @@ document.addEventListener('livewire:navigating', () => {
         chrome.title = '';
     }
 });
+
+// Signs the browser out after the idle time set on the #idle-logout form; activity in any tab
+// counts (shared through localStorage). Lives here instead of an inline script so it also
+// starts after signing in with wire:navigate under the Content-Security-Policy.
+(() => {
+    const key = 'e11-last-activity';
+    let written = 0;
+    let started = false;
+    const form = () => document.getElementById('idle-logout');
+    const touch = () => {
+        const now = Date.now();
+        if (now - written < 5000) return;
+        written = now;
+        try { localStorage.setItem(key, String(now)); } catch (e) {}
+    };
+    const last = () => { try { return Number(localStorage.getItem(key)) || written; } catch (e) { return written; } };
+    const check = () => {
+        const limit = Number(form()?.dataset.idleMinutes || 0) * 60000;
+        if (limit > 0 && Date.now() - last() > limit) form().submit();
+    };
+    const start = () => {
+        if (started || !form()) return;
+        started = true;
+        written = 0;
+        touch();
+        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((name) => window.addEventListener(name, touch, { passive: true }));
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+        setInterval(check, 30000);
+    };
+    document.addEventListener('DOMContentLoaded', start);
+    document.addEventListener('livewire:navigated', start);
+})();

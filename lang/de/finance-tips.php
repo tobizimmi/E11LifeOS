@@ -13,6 +13,9 @@ return [
         'taxes' => ['label' => 'Steuern', 'icon' => '🧾'],
         'wealth' => ['label' => 'Vermögen & Cashflow', 'icon' => '💡'],
         'richdad' => ['label' => 'Aus den Rich-Dad-Büchern', 'icon' => '📚'],
+        'strategies' => ['label' => 'Anlagestrategien', 'icon' => '🧭'],
+        'metrics' => ['label' => 'Kennzahlen verstehen', 'icon' => '🔎'],
+        'books' => ['label' => 'Aus Anleger-Büchern', 'icon' => '📖'],
     ],
 
     'items' => [
@@ -351,6 +354,190 @@ return [
             'summary' => 'Kinder lernen den Umgang mit Geld am besten zu Hause – mit Taschengeld, eigenen Zielen und Gesprächen.',
             'body' => [
                 'In „Rich Kid Smart Kid“ empfiehlt Kiyosaki, Kinder früh mit Geld spielen zu lassen: Taschengeld aufteilen (ausgeben, sparen, spenden), ein erstes Sparziel verfolgen, das Brettspiel „Cashflow“ spielen und Fragen stellen wie „Ist das ein Vermögenswert oder eine Verbindlichkeit?“.',
+            ],
+        ],
+
+        'strategy-etf-savings' => [
+            'category' => 'strategies',
+            'title' => 'ETF-Sparplan: breit, günstig, automatisch',
+            'summary' => 'Ein monatlicher Sparplan auf einen weltweiten Index-ETF ist für die meisten Anleger die solide Basis.',
+            'body' => [
+                'Ein MSCI-World- oder FTSE-All-World-ETF streut über tausende Unternehmen. Laufende Kosten (TER) von 0,1 bis 0,3 % sind deutlich günstiger als die meisten aktiven Fonds.',
+                'Der Sparplan kauft automatisch zu hohen und niedrigen Kursen (Cost-Average-Effekt) und nimmt dir das Markt-Timing ab. Wichtig ist, ihn auch in Krisen weiterlaufen zu lassen.',
+                'Thesaurierend oder ausschüttend ist vor allem eine Frage der Vorliebe – den Sparerpauschbetrag von 1.000 € (Paare 2.000 €) nutzt die Vorabpauschale bzw. Ausschüttung automatisch.',
+            ],
+        ],
+        'strategy-core-satellite' => [
+            'category' => 'strategies',
+            'title' => 'Core-Satellite: Basis plus Beimischung',
+            'summary' => 'Etwa 70 bis 90 % in breite ETFs (Core), der Rest in Einzelaktien, Themen oder Regionen (Satelliten).',
+            'body' => [
+                'Der Kern sorgt für Marktrendite und Streuung, die Satelliten erlauben eigene Ideen, ohne dass ein Fehlgriff das ganze Depot gefährdet.',
+                'Lege vorher fest, wie groß der Satelliten-Anteil höchstens sein darf, und prüfe einmal im Jahr, ob er aus dem Ruder gelaufen ist (Rebalancing).',
+            ],
+        ],
+        'strategy-dividends' => [
+            'category' => 'strategies',
+            'title' => 'Dividendenstrategie: Einkommen aus Aktien',
+            'summary' => 'Unternehmen mit langer Historie steigender Dividenden liefern planbaren Cashflow – aber Dividende ist kein Geschenk.',
+            'body' => [
+                'Achte weniger auf eine hohe Dividendenrendite als auf die Ausschüttungsquote (unter etwa 60 bis 70 % des Gewinns bzw. freien Cashflows) und auf steigende Gewinne. Sehr hohe Renditen sind oft ein Warnsignal.',
+                'Dividenden werden beim Auszahlen versteuert; bei ausländischen Aktien kommt Quellensteuer hinzu, die sich nur teilweise anrechnen lässt.',
+                'Im Sinne von Kiyosaki ist das ein Vermögenswert, der Geld in die Tasche bringt – die Cashflow-Analyse zeigt, welchen Teil deiner Ausgaben Dividenden und Mieten schon decken.',
+            ],
+        ],
+        'strategy-value' => [
+            'category' => 'strategies',
+            'title' => 'Value Investing: Qualität mit Sicherheitsmarge',
+            'summary' => 'Kaufe gute Unternehmen, wenn ihr Preis deutlich unter dem inneren Wert liegt – und warte geduldig.',
+            'body' => [
+                'Benjamin Graham nannte den Abstand zwischen Preis und geschätztem Wert „Margin of Safety“. Er schützt vor eigenen Fehleinschätzungen.',
+                'Warren Buffett ergänzte: lieber ein großartiges Unternehmen zu einem fairen Preis als ein mittelmäßiges zu einem Schnäppchenpreis. Achte auf dauerhafte Wettbewerbsvorteile (Marke, Netzwerkeffekte, Kostenvorteile, Wechselkosten).',
+            ],
+        ],
+        'strategy-growth' => [
+            'category' => 'strategies',
+            'title' => 'Wachstumsaktien: Chance mit Schwankung',
+            'summary' => 'Stark wachsende Unternehmen können sich vervielfachen – ihre hohen Bewertungen reagieren aber empfindlich auf Enttäuschungen und Zinsen.',
+            'body' => [
+                'Wichtiger als das KGV sind hier Umsatzwachstum, Bruttomarge, der Weg zur Profitabilität und ob das Wachstum ohne ständige Kapitalerhöhungen gelingt.',
+                'Streue über mehrere Titel und rechne mit Rückgängen von 50 % und mehr – nur investieren, was du lange liegen lassen kannst.',
+            ],
+        ],
+        'strategy-rebalancing' => [
+            'category' => 'strategies',
+            'title' => 'Rebalancing und Risikoaufteilung',
+            'summary' => 'Lege eine Zielaufteilung fest (z. B. 70 % Aktien, 30 % sichere Anlagen) und stelle sie regelmäßig wieder her.',
+            'body' => [
+                'Rebalancing verkauft automatisch, was gut gelaufen ist, und kauft nach, was günstig geworden ist – ganz ohne Prognose.',
+                'Steuerschonend geht es über neue Sparraten: Das Untergewichtete bekommt mehr, statt dass du verkaufst. Die Rebalancing-Ansicht im Portfolio rechnet das für dich aus.',
+                'Faustregel für den Aktienanteil: so hoch, dass du einen Rückgang von 40 % aussitzen würdest, ohne zu verkaufen.',
+            ],
+        ],
+        'strategy-emergency-first' => [
+            'category' => 'strategies',
+            'title' => 'Reihenfolge: Notgroschen, Schulden, dann Anlage',
+            'summary' => 'Erst drei bis sechs Monatsausgaben auf dem Tagesgeld, teure Kredite tilgen – danach langfristig investieren.',
+            'body' => [
+                'Ohne Rücklage musst du bei der nächsten Reparatur womöglich im Crash verkaufen. Dispo- oder Ratenkredite mit 8 bis 15 % Zinsen zu tilgen ist eine sichere „Rendite“, die kaum eine Anlage schlägt.',
+            ],
+        ],
+        'metric-pe' => [
+            'category' => 'metrics',
+            'title' => 'KGV (Kurs-Gewinn-Verhältnis)',
+            'summary' => 'Wie viele Jahresgewinne du für eine Aktie bezahlst. Niedrig kann günstig sein – oder ein Zeichen für Probleme.',
+            'body' => [
+                'KGV = Aktienkurs ÷ Gewinn je Aktie. Der langfristige Marktdurchschnitt liegt grob bei 15 bis 20; Wachstumsbranchen sind oft teurer, Versorger und Banken günstiger.',
+                'Das „Forward-KGV“ nutzt die erwarteten Gewinne. Vergleiche nur innerhalb einer Branche und mit der eigenen Historie des Unternehmens.',
+                'Das PEG (KGV ÷ Gewinnwachstum in %) setzt beides ins Verhältnis – Werte um 1 gelten als fair.',
+            ],
+        ],
+        'metric-pb-ps' => [
+            'category' => 'metrics',
+            'title' => 'KBV und KUV',
+            'summary' => 'Kurs im Verhältnis zum Buchwert bzw. zum Umsatz – nützlich, wenn Gewinne schwanken oder fehlen.',
+            'body' => [
+                'Das KBV (Kurs-Buchwert-Verhältnis) ist bei Banken, Versicherern und kapitalintensiven Firmen aussagekräftig; unter 1 bedeutet, der Markt bewertet das Unternehmen unter seinem bilanziellen Eigenkapital.',
+                'Das KUV (Kurs-Umsatz-Verhältnis) hilft bei jungen Wachstumsfirmen ohne Gewinn – aber Umsatz ohne Marge ist wenig wert.',
+            ],
+        ],
+        'metric-roe-margin' => [
+            'category' => 'metrics',
+            'title' => 'Eigenkapitalrendite und Margen',
+            'summary' => 'Wie profitabel ein Unternehmen arbeitet: dauerhaft hohe Werte deuten auf einen Wettbewerbsvorteil hin.',
+            'body' => [
+                'Eigenkapitalrendite (ROE) = Gewinn ÷ Eigenkapital. Über 15 % gelten als stark – prüfe aber, ob sie nur durch hohe Schulden zustande kommt.',
+                'Die operative Marge (EBIT ÷ Umsatz) zeigt, wie viel vom Umsatz als Betriebsergebnis bleibt. Stabile oder steigende Margen über viele Jahre sind ein Qualitätsmerkmal.',
+            ],
+        ],
+        'metric-debt' => [
+            'category' => 'metrics',
+            'title' => 'Verschuldung und Zinslast',
+            'summary' => 'Schulden verstärken Gewinne und Verluste – in Krisen und bei steigenden Zinsen werden sie zum Risiko.',
+            'body' => [
+                'Das Verhältnis Fremd- zu Eigenkapital (Debt/Equity) unter etwa 1 gilt bei Industrieunternehmen als solide. Aussagekräftiger ist oft Nettoverschuldung ÷ EBITDA: unter 2 bis 3 ist meist unkritisch.',
+                'Banken und Versicherer haben andere Bilanzen – hier helfen diese Kennzahlen kaum.',
+            ],
+        ],
+        'metric-fcf-dividend' => [
+            'category' => 'metrics',
+            'title' => 'Free Cashflow und Ausschüttungsquote',
+            'summary' => 'Dividenden werden aus Geld bezahlt, nicht aus Buchgewinnen – der freie Cashflow zeigt, was wirklich übrig bleibt.',
+            'body' => [
+                'Free Cashflow = operativer Cashflow minus Investitionen. Liegt die Dividende dauerhaft über dem freien Cashflow, wird sie aus Substanz oder Schulden bezahlt.',
+                'Die Dividendenrendite (Dividende ÷ Kurs) steigt, wenn der Kurs fällt – eine plötzlich sehr hohe Rendite kann eine drohende Kürzung ankündigen.',
+            ],
+        ],
+        'metric-etf' => [
+            'category' => 'metrics',
+            'title' => 'ETF-Kennzahlen: TER, Tracking Difference, Größe',
+            'summary' => 'Bei ETFs zählen Kosten, Nähe zum Index und Fondsgröße mehr als die Vergangenheitsrendite.',
+            'body' => [
+                'Die TER nennt die laufenden Kosten pro Jahr. Die Tracking Difference zeigt, wie weit der ETF tatsächlich hinter (oder vor) seinem Index lag – sie ist die ehrlichere Kostenzahl.',
+                'Fondsvolumen über etwa 100 bis 500 Mio. € verringert das Risiko einer Schließung. Physisch replizierend oder per Swap ist für Privatanleger meist zweitrangig.',
+            ],
+        ],
+        'metric-risk' => [
+            'category' => 'metrics',
+            'title' => 'Volatilität, Drawdown und Sharpe Ratio',
+            'summary' => 'Rendite allein sagt wenig – wichtig ist auch, wie holprig der Weg dorthin war.',
+            'body' => [
+                'Volatilität misst die Schwankungsbreite, der maximale Drawdown den größten Verlust vom Hoch zum Tief. Frag dich ehrlich, welchen Drawdown du aushalten würdest.',
+                'Die Sharpe Ratio setzt die Überrendite ins Verhältnis zur Schwankung: Werte über 1 gelten über lange Zeiträume als gut.',
+            ],
+        ],
+        'book-intelligent-investor' => [
+            'category' => 'books',
+            'title' => 'Benjamin Graham – „Intelligent investieren“',
+            'summary' => 'Mr. Market ist launisch: Nutze seine Stimmungen, statt dich von ihnen treiben zu lassen.',
+            'body' => [
+                'Graham vergleicht die Börse mit einem Geschäftspartner, der dir täglich einen Preis nennt – mal euphorisch, mal panisch. Du musst sein Angebot nicht annehmen, kannst es aber nutzen.',
+                'Er unterscheidet den defensiven Anleger (breit gestreut, wenig Aufwand) vom aktiven, der viel Zeit investiert. Beides funktioniert – das Mittelding meist nicht.',
+            ],
+        ],
+        'book-one-up' => [
+            'category' => 'books',
+            'title' => 'Peter Lynch – „Der Börse einen Schritt voraus“',
+            'summary' => 'Investiere in das, was du verstehst – Alltagsbeobachtungen können der Anfang einer guten Idee sein.',
+            'body' => [
+                'Lynch ordnet Aktien in Typen ein: langsame Wachstumswerte, solide Standardwerte, schnelle Wachstumswerte, Zykliker, Turnarounds und Substanzwerte. Jeder Typ braucht andere Erwartungen.',
+                'Seine Regel: Du solltest in zwei Minuten erklären können, warum du eine Aktie besitzt – genau dafür ist die Anlage-These auf der Wertpapierseite gedacht.',
+            ],
+        ],
+        'book-common-sense' => [
+            'category' => 'books',
+            'title' => 'John C. Bogle – „Das kleine Handbuch des vernünftigen Investierens“',
+            'summary' => 'Kosten sind der sicherste Renditekiller – den Markt zu kaufen schlägt die meisten, die ihn schlagen wollen.',
+            'body' => [
+                'Bogle zeigt, dass aktive Fonds nach Kosten im Schnitt hinter ihrem Index zurückbleiben. Über 30 Jahre machen 1,5 % Kostenunterschied leicht ein Drittel des Endvermögens aus.',
+                'Seine Empfehlung: breit streuen, Kosten minimieren, lange durchhalten, nicht hin und her handeln.',
+            ],
+        ],
+        'book-random-walk' => [
+            'category' => 'books',
+            'title' => 'Burton Malkiel – „Börsenerfolg ist kein Zufall“',
+            'summary' => 'Kurse sind kurzfristig kaum vorhersagbar – wer streut und lange dabeibleibt, hat die Statistik auf seiner Seite.',
+            'body' => [
+                'Malkiel beschreibt Blasen von der Tulpenmanie bis zur Dotcom-Zeit und warnt vor Trends, die „diesmal anders“ sein sollen.',
+                'Sein Lebenszyklus-Ansatz: in jungen Jahren mehr Aktien, mit zunehmendem Alter und kürzerem Anlagehorizont mehr sichere Anlagen.',
+            ],
+        ],
+        'book-psychology-money' => [
+            'category' => 'books',
+            'title' => 'Morgan Housel – „Über die Psychologie des Geldes“',
+            'summary' => 'Beim Vermögensaufbau zählt Verhalten mehr als Wissen – und Genug haben ist eine Fähigkeit.',
+            'body' => [
+                'Housel betont den Zinseszins über lange Zeit: Buffetts Vermögen entstand zum Großteil nach seinem 65. Geburtstag. Durchhalten ist wichtiger als die perfekte Rendite.',
+                'Reichtum ist das Geld, das du nicht ausgibst – Freiheit über die eigene Zeit ist die höchste Dividende.',
+            ],
+        ],
+        'book-common-stocks' => [
+            'category' => 'books',
+            'title' => 'Philip Fisher – „Common Stocks and Uncommon Profits“',
+            'summary' => 'Wenige herausragende Unternehmen gründlich verstehen und sehr lange halten.',
+            'body' => [
+                'Fisher prüfte Unternehmen mit 15 Fragen – unter anderem nach Umsatzpotenzial, Forschung, Margen, Management-Ehrlichkeit und Mitarbeiterbeziehungen. Informationen holte er sich auch bei Kunden, Lieferanten und Wettbewerbern („Scuttlebutt“).',
+                'Sein Rat zum Verkaufen: nur wenn die ursprüngliche These falsch war, sich das Unternehmen verschlechtert hat oder es eine deutlich bessere Gelegenheit gibt – nicht wegen kurzfristiger Kursbewegungen.',
             ],
         ],
 

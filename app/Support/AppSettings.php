@@ -62,6 +62,10 @@ class AppSettings
         'session_driver' => ['group' => 'security', 'config' => ['session.driver'], 'secret' => false, 'type' => 'select'],
         'session_encrypt' => ['group' => 'security', 'config' => ['session.encrypt'], 'secret' => false, 'type' => 'yesno'],
 
+        'clamav_enabled' => ['group' => 'virus', 'config' => ['security.clamav.enabled'], 'secret' => false, 'type' => 'yesno'],
+        'clamav_socket' => ['group' => 'virus', 'config' => ['security.clamav.socket'], 'secret' => false, 'type' => 'text'],
+        'clamav_fail_closed' => ['group' => 'virus', 'config' => ['security.clamav.fail_closed'], 'secret' => false, 'type' => 'yesno'],
+
         'reverb_publish_port' => ['group' => 'realtime', 'config' => ['broadcasting.connections.reverb.options.port'], 'secret' => false, 'type' => 'number'],
 
         'vpn_enabled' => ['group' => 'vpn', 'config' => ['vpn.enabled'], 'secret' => false, 'type' => 'yesno'],

@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Support\AppSettings;
 use App\Support\AiFeatures;
 use App\Support\Portfolio\InstagramAi;
+use App\Support\Security\VirusScanner;
 use App\Support\StructuredAi;
 use App\Support\Vpn;
 use App\Support\WebPush;
@@ -119,6 +120,9 @@ new #[Layout('layouts.app')] class extends Component
             'form.log_days' => ['nullable', 'integer', 'between:30,3650'],
             'form.session_driver' => ['nullable', 'in:database,file'],
             'form.session_encrypt' => ['nullable', 'in:0,1'],
+            'form.clamav_enabled' => ['nullable', 'in:0,1'],
+            'form.clamav_fail_closed' => ['nullable', 'in:0,1'],
+            'form.clamav_socket' => ['nullable', 'regex:/^(\/|unix:\/\/\/|tcp:\/\/)[^\s]+$/'],
             'form.backup_remote_keep' => ['nullable', 'integer', 'between:1,365'],
             'form.legacy_db_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.rezepteapp_db_port' => ['nullable', 'integer', 'between:1,65535'],
@@ -187,6 +191,27 @@ new #[Layout('layouts.app')] class extends Component
         } catch (\Throwable $exception) {
             $this->addError('testRecipient', __('Sending failed: :message', ['message' => mb_substr($exception->getMessage(), 0, 300)]));
         }
+    }
+
+    /**
+     * Asks clamd for its version and lets it scan the harmless EICAR test string.
+     */
+    public function testVirusScanner(VirusScanner $scanner): void
+    {
+        $this->authorize('admin');
+
+        $version = $scanner->version();
+
+        if ($version === null) {
+            $this->dispatch('toast', message: __('The virus scanner is not reachable at :socket.', ['socket' => config('security.clamav.socket')]));
+
+            return;
+        }
+
+        $result = $scanner->scanString(VirusScanner::EICAR);
+        $this->dispatch('toast', message: $result['status'] === VirusScanner::INFECTED
+            ? __(':version works – the test file was recognised.', ['version' => $version])
+            : __(':version answers, but did not recognise the test file.', ['version' => $version]));
     }
 
     /**
@@ -337,6 +362,7 @@ new #[Layout('layouts.app')] class extends Component
                 __('Encrypted backup off the server') => filled(config('backup.remote_url')) && filled(config('backup.encryption_password')),
                 __('Error reports by e-mail') => filled(config('security.error_report_email')),
                 __('Two-factor authentication required') => (bool) config('security.require_two_factor'),
+                __('Virus scan of uploads') => VirusScanner::isEnabled(),
                 __('VPN connected') => Vpn::isRunning(),
             ],
         ];
@@ -353,6 +379,7 @@ new #[Layout('layouts.app')] class extends Component
         'realtime' => ['title' => __('Live updates (Reverb)'), 'text' => __('Open pages update themselves when someone else changes something. The server sends these updates to the Reverb process; behind the path-based proxy it has to reach it directly. Enter the port Reverb was started with (PM2 process “reverb”, e.g. 3021 for staging and 3011 for live).')],
         'vpn' => ['title' => __('VPN (WireGuard)'), 'text' => __('Connects the server with a private network, e.g. your home network, so paperless or a NAS there can be reached. Create a WireGuard connection in your router (FritzBox: Internet → Permit Access → VPN (WireGuard) → “Connect a single device”) and paste the configuration file here. Only addresses in the listed networks go through the VPN. Staging and live need a connection and a port of their own.')],
         'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).').' '.__('Sign-out after inactivity, session length and storage, expiry of app sign-ins and how long the security log is kept.')],
+        'virus' => ['title' => __('Virus scan (ClamAV)'), 'text' => __('Checks every uploaded file with the ClamAV virus scanner on the server before it is stored. The server needs the ClamAV daemon (package “clamav-daemon”); enter its socket, e.g. /var/run/clamav/clamd.ctl or tcp://127.0.0.1:3310.')],
         'shopping' => ['title' => __('Shopping list'), 'text' => __('Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
@@ -396,6 +423,9 @@ new #[Layout('layouts.app')] class extends Component
         'log_days' => [__('Keep security log (days)'), '365'],
         'session_driver' => [__('Where sessions are stored'), ''],
         'session_encrypt' => [__('Encrypt session data'), ''],
+        'clamav_enabled' => [__('Scan uploads for viruses'), ''],
+        'clamav_socket' => [__('ClamAV socket'), '/var/run/clamav/clamd.ctl'],
+        'clamav_fail_closed' => [__('Block uploads while the scanner is unreachable'), ''],
         'reverb_publish_port' => [__('Port of the local Reverb process'), '3021'],
         'vpn_enabled' => [__('VPN switched on'), ''],
         'vpn_socks_port' => [__('Local port (optional)'), '25344'],
@@ -535,6 +565,11 @@ new #[Layout('layouts.app')] class extends Component
                                 <x-secondary-button type="button" wire:click="sendTestMail">{{ __('Send test e-mail') }}</x-secondary-button>
                             </div>
                             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }} {{ __('Current mailer: :mailer', ['mailer' => $mailer]) }}</p>
+                        @elseif ($group === 'virus')
+                            <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
+                                <x-secondary-button type="button" wire:click="testVirusScanner" wire:loading.attr="disabled" wire:target="testVirusScanner">{{ __('Test virus scanner') }}</x-secondary-button>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }}</span>
+                            </div>
                         @elseif ($group === 'realtime')
                             <div class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Currently sent to: :address', ['address' => config('broadcasting.connections.reverb.options.scheme').'://'.config('broadcasting.connections.reverb.options.host').':'.config('broadcasting.connections.reverb.options.port')]) }}</p>

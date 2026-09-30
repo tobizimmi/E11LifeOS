@@ -75,11 +75,8 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Generate baseline (temporary)
-        run: |
-          vendor/bin/phpstan analyse --no-progress --memory-limit=2G --generate-baseline --allow-empty-baseline || true
-          grep -c 'count:' phpstan-baseline.neon || true
-          echo "BASELINE:$(gzip -9c phpstan-baseline.neon | base64 -w0)"
+      - name: Static analysis (Larastan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G --error-format=github
 
   # Same tests against MySQL (as on the server), so SQL differences show up before a deploy.
   tests-mysql:

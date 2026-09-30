@@ -4,6 +4,7 @@ use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAddonEnabled;
 use App\Http\Middleware\LogSensitiveAccess;
 use App\Http\Middleware\RequireTwoFactor;
+use App\Http\Middleware\ScanUploads;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\ErrorReporter;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -30,7 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'sensitive.log' => LogSensitiveAccess::class,
         ]);
 
-        $middleware->web(append: [RequireTwoFactor::class]);
+        // Uploads are checked for viruses after the session started, so errors reach the form.
+        $middleware->web(append: [RequireTwoFactor::class, ScanUploads::class]);
+        $middleware->api(append: [ScanUploads::class]);
         $middleware->append(SecurityHeaders::class);
 
         // Sign in before route model binding, so unknown tokens get 401 instead of 404.

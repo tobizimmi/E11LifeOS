@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Collection;
+use App\Models\HealthEntry;
+use App\Models\HealthProfile;
 use App\Models\Item;
+use App\Models\Trip;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Volt\Volt;
@@ -88,5 +91,30 @@ class CalendarFeedTest extends TestCase
         Volt::test('profile.calendar-feed-form')->call('disableLink');
         $this->get(route('calendar.feed', ['token' => $current]))->assertNotFound();
         $this->assertArrayNotHasKey('calendar_token', $user->fresh()->toArray());
+    }
+
+    public function test_the_member_chooses_what_the_feed_contains(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $tasks = Collection::tasksFor($household->id);
+        $this->task($tasks, 'Steuererklärung', '2026-10-02', ['content' => ['body' => 'Belege von der Bank']]);
+        Trip::factory()->create(['household_id' => $household->id, 'created_by' => $user->id, 'destination' => 'Wien', 'starts_on' => '2026-10-10', 'ends_on' => '2026-10-12']);
+        $profile = HealthProfile::factory()->create(['user_id' => $user->id, 'name' => 'Tobi']);
+        HealthEntry::factory()->create(['health_profile_id' => $profile->id, 'title' => 'Hautarzt', 'next_due_on' => '2026-10-20']);
+        $user->forceFill(['calendar_token' => str_repeat('a', 40)])->save();
+        $feed = fn () => $this->get(route('calendar.feed', ['token' => str_repeat('a', 40)]))->assertOk()->getContent();
+
+        $ics = $feed();
+        $this->assertStringContainsString('Reise nach Wien beginnt', $ics);
+        $this->assertStringContainsString('Belege von der Bank', $ics);
+        $this->assertStringNotContainsString('Hautarzt', $ics);
+
+        $this->actingAs($user);
+        Volt::test('profile.calendar-feed-form')->set('sections', ['life', 'health'])->set('details', false)->call('saveOptions')->assertHasNoErrors();
+
+        $ics = $feed();
+        $this->assertStringContainsString('Hautarzt', $ics);
+        $this->assertStringNotContainsString('Steuererklärung', $ics);
+        $this->assertStringNotContainsString('URL:', $ics);
     }
 }

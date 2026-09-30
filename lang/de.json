@@ -4078,5 +4078,16 @@
     "e.g. Good school report, birthday money": "z. B. gutes Zeugnis, Geburtstagsgeld",
     "Book": "Buchen",
     ":name has done \":chore\"": ":name hat „:chore“ erledigt",
-    "Please confirm so the reward is credited.": "Bitte bestätigen, damit die Belohnung gutgeschrieben wird."
+    "Please confirm so the reward is credited.": "Bitte bestätigen, damit die Belohnung gutgeschrieben wird.",
+    "Trips, birthdays, vehicles, home & documents": "Reisen, Geburtstage, Fahrzeuge, Zuhause & Dokumente",
+    "Health appointments & check-ups": "Gesundheitstermine & Vorsorge",
+    "Portfolio (savings plans, dividends)": "Depot (Sparpläne, Dividenden)",
+    "iPhone: Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar, paste the link. Google Calendar: “Other calendars” → “From URL”. Proton Calendar: “Other calendars” → “Add calendar from URL”. Keep the link private – anyone who has it can see these dates.": "iPhone: Einstellungen → Kalender → Accounts → Account hinzufügen → Andere → Kalenderabo hinzufügen, Link einfügen. Google Kalender: „Weitere Kalender“ → „Per URL“. Proton Kalender: „Andere Kalender“ → „Kalender über URL hinzufügen“. Halte den Link geheim – wer ihn hat, sieht diese Termine.",
+    "What the subscription contains": "Was das Abo enthält",
+    "Include notes, amounts and links (off: titles and dates only)": "Notizen, Beträge und Links mitsenden (aus: nur Titel und Datum)",
+    "Only you see this calendar – click to share it with the household": "Nur du siehst diesen Kalender – klicken, um ihn mit dem Haushalt zu teilen",
+    "The household sees this calendar – click to make it private": "Der Haushalt sieht diesen Kalender – klicken, um ihn privat zu machen",
+    "Shared": "Geteilt",
+    "Share with the household (otherwise only you see it)": "Mit dem Haushalt teilen (sonst siehst nur du ihn)",
+    "Google: calendar settings → “Secret address in iCal format”. iCloud: share calendar → public calendar. Outlook: settings → shared calendars → publish (ICS). Proton: share calendar → “Share with anyone” → copy link. Updated hourly.": "Google: Kalendereinstellungen → „Privatadresse im iCal-Format“. iCloud: Kalender teilen → öffentlicher Kalender. Outlook: Einstellungen → Freigegebene Kalender → Veröffentlichen (ICS). Proton: Kalender teilen → „Mit allen teilen“ → Link kopieren. Aktualisierung stündlich."
 }

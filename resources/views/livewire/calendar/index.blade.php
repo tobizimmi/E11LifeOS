@@ -49,6 +49,9 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $subscriptionUrl = '';
 
+    /** New calendars are private unless the member shares them with the household. */
+    public bool $subscriptionShared = false;
+
     public function mount(): void
     {
         $this->view = in_array($this->view, self::VIEWS, true) ? $this->view : 'month';
@@ -153,15 +156,33 @@ new #[Layout('layouts.app')] class extends Component
             'subscriptionUrl' => ['required', 'string', 'max:2000', fn ($attribute, $value, $fail) => IcsCalendar::validUrl((string) $value) ? null : $fail(__('Enter the calendar address (ICS link, starts with https:// or webcal://).'))],
         ], attributes: ['subscriptionName' => __('Name'), 'subscriptionUrl' => __('Calendar address')]);
 
-        $subscription = CalendarSubscription::create(['user_id' => Auth::id(), 'name' => trim($this->subscriptionName), 'url' => trim($this->subscriptionUrl)]);
+        $subscription = CalendarSubscription::create([
+            'user_id' => Auth::id(),
+            'household_id' => $this->householdId,
+            'name' => trim($this->subscriptionName),
+            'url' => trim($this->subscriptionUrl),
+            'visibility' => $this->subscriptionShared ? Item::VISIBILITY_SHARED : Item::VISIBILITY_PRIVATE,
+        ]);
         IcsCalendar::fetch($subscription);
-        $this->reset('subscriptionName', 'subscriptionUrl');
+        $this->reset('subscriptionName', 'subscriptionUrl', 'subscriptionShared');
         $this->dispatch('toast', message: $subscription->fresh()->error ? __('Saved, but the calendar could not be loaded yet.') : __('Calendar added'));
     }
 
     public function deleteSubscription(int $id): void
     {
-        CalendarSubscription::where('user_id', Auth::id())->findOrFail($id)->delete();
+        (CalendarSubscription::where('user_id', Auth::id())->find($id) ?? abort(404))->delete();
+    }
+
+    /**
+     * Switches one of the member's own calendars between private and shared with the household.
+     */
+    public function toggleSubscriptionVisibility(int $id): void
+    {
+        $subscription = CalendarSubscription::where('user_id', Auth::id())->find($id) ?? abort(404);
+        $subscription->update([
+            'household_id' => $this->householdId,
+            'visibility' => $subscription->isPrivate() ? Item::VISIBILITY_SHARED : Item::VISIBILITY_PRIVATE,
+        ]);
     }
 
     /**
@@ -202,7 +223,7 @@ new #[Layout('layouts.app')] class extends Component
                 default => $from->translatedFormat('j. M').' – '.$until->translatedFormat('j. M Y'),
             },
             'month' => $anchor->month,
-            'subscriptions' => CalendarSubscription::where('user_id', Auth::id())->orderBy('name')->get(),
+            'subscriptions' => CalendarSubscription::query()->visibleTo(Auth::user(), (int) $this->householdId)->with('user')->orderBy('name')->get(),
             'colors' => [
                 'indigo' => 'bg-indigo-50 text-indigo-900 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-100 dark:ring-indigo-800',
                 'amber' => 'bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-800',
@@ -375,7 +396,12 @@ new #[Layout('layouts.app')] class extends Component
                                             <span class="block text-xs text-gray-400">{{ __('Updated :time', ['time' => $subscription->fetched_at->diffForHumans()]) }}</span>
                                         @endif
                                     </span>
-                                    <button type="button" wire:click="deleteSubscription({{ $subscription->id }})" wire:confirm="{{ __('Remove this calendar?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                                    @if ($subscription->user_id === auth()->id())
+                                        <button type="button" wire:click="toggleSubscriptionVisibility({{ $subscription->id }})" class="shrink-0 rounded-full px-2 py-0.5 text-xs ring-1 {{ $subscription->isPrivate() ? 'text-gray-600 ring-gray-200 dark:text-gray-300 dark:ring-gray-600' : 'text-indigo-700 ring-indigo-200 dark:text-indigo-300 dark:ring-indigo-800' }}" title="{{ $subscription->isPrivate() ? __('Only you see this calendar – click to share it with the household') : __('The household sees this calendar – click to make it private') }}">{{ $subscription->isPrivate() ? '🔒 '.__('Private') : '👥 '.__('Shared') }}</button>
+                                        <button type="button" wire:click="deleteSubscription({{ $subscription->id }})" wire:confirm="{{ __('Remove this calendar?') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
+                                    @else
+                                        <span class="shrink-0 text-xs text-gray-400">👥 {{ $subscription->user?->name }}</span>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>
@@ -384,8 +410,9 @@ new #[Layout('layouts.app')] class extends Component
                             <x-input-error :messages="$errors->get('subscriptionName')" />
                             <x-text-input wire:model="subscriptionUrl" class="block w-full text-sm" placeholder="https://calendar.google.com/…/basic.ics" aria-label="{{ __('Calendar address') }}" />
                             <x-input-error :messages="$errors->get('subscriptionUrl')" />
+                            <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="subscriptionShared" class="rounded border-gray-300 text-indigo-600"> {{ __('Share with the household (otherwise only you see it)') }}</label>
                             <x-secondary-button type="submit">＋ {{ __('Add calendar') }}</x-secondary-button>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Google: calendar settings → “Secret address in iCal format”. iCloud: share calendar → public calendar. Outlook: settings → shared calendars → publish (ICS). Updated hourly, only visible to you.') }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Google: calendar settings → “Secret address in iCal format”. iCloud: share calendar → public calendar. Outlook: settings → shared calendars → publish (ICS). Proton: share calendar → “Share with anyone” → copy link. Updated hourly.') }}</p>
                         </form>
                     </details>
                 </aside>

@@ -92,4 +92,29 @@ class SavingsGoalsAndCalendarImportTest extends TestCase
         Volt::test('calendar.index')->set('subscriptionName', 'X')->set('subscriptionUrl', 'file:///etc/passwd')->call('addSubscription')->assertHasErrors('subscriptionUrl');
         $this->assertSame(0, CalendarSubscription::count());
     }
+
+    public function test_subscribed_calendars_are_private_unless_shared_with_the_household(): void
+    {
+        Http::fake(['calendar.proton.me/*' => Http::response(self::ICS)]);
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
+        $this->actingAs($user);
+
+        Volt::test('calendar.index')
+            ->set('subscriptionName', 'Proton')->set('subscriptionUrl', 'https://calendar.proton.me/api/calendar/v1/url/abc/calendar.ics?CacheKey=x&PassphraseKey=y')
+            ->call('addSubscription')->assertHasNoErrors();
+        $subscription = CalendarSubscription::sole();
+        $this->assertTrue($subscription->isPrivate());
+
+        $this->actingAs($partner);
+        Volt::test('calendar.index', ['anchor' => '2026-10-01'])->set('anchor', '2026-10-01')->assertDontSee('Geburtstag Oma');
+        Volt::test('calendar.index')->call('toggleSubscriptionVisibility', $subscription->id)->assertNotFound();
+
+        $this->actingAs($user);
+        Volt::test('calendar.index')->call('toggleSubscriptionVisibility', $subscription->id);
+        $this->assertFalse($subscription->fresh()->isPrivate());
+
+        $this->actingAs($partner);
+        Volt::test('calendar.index', ['anchor' => '2026-10-01'])->set('anchor', '2026-10-01')->assertSee('Geburtstag Oma · Proton ('.$user->name.')');
+    }
 }

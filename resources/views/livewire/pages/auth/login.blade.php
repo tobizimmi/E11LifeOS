@@ -72,4 +72,8 @@ new #[Layout('layouts.guest')] class extends Component
             </x-primary-button>
         </div>
     </form>
+
+    <div class="mt-6 border-t border-gray-100 pt-5 dark:border-gray-700">
+        <x-passkey-login />
+    </div>
 </div>

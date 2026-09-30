@@ -67,14 +67,32 @@ new #[Layout('layouts.guest')] class extends Component
 
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
     }
+
+    public function with(): array
+    {
+        $user = $this->pendingUser();
+
+        return ['hasCode' => (bool) $user?->hasTwoFactor(), 'hasPasskeys' => (bool) $user?->passkeys()->exists()];
+    }
 }; ?>
 
 <div>
     <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🔐 {{ __('Two-factor authentication') }}</h1>
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        {{ $useRecovery ? __('Enter one of your recovery codes.') : __('Enter the 6-digit code from your authenticator app.') }}
+        @if (! $hasCode)
+            {{ __('Confirm the sign-in with your passkey.') }}
+        @elseif ($useRecovery)
+            {{ __('Enter one of your recovery codes.') }}
+        @else
+            {{ $hasPasskeys ? __('Confirm with your passkey or enter the 6-digit code from your authenticator app.') : __('Enter the 6-digit code from your authenticator app.') }}
+        @endif
     </p>
 
+    @if ($hasPasskeys)
+        <x-passkey-login class="mt-4 space-y-2" :label="__('Confirm with a passkey')" />
+    @endif
+
+    @if ($hasCode)
     <form wire:submit="verify" class="mt-4 space-y-4">
         <div>
             <x-input-label for="code" :value="$useRecovery ? __('Recovery code') : __('Code')" />
@@ -89,4 +107,5 @@ new #[Layout('layouts.guest')] class extends Component
             <x-primary-button>{{ __('Log in') }}</x-primary-button>
         </div>
     </form>
+    @endif
 </div>

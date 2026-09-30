@@ -1,4 +1,5 @@
 import sort from '@alpinejs/sort';
+import { browserSupportsWebAuthn, startAuthentication, startRegistration } from '@simplewebauthn/browser';
 
 import './echo';
 
@@ -1207,3 +1208,74 @@ document.addEventListener('livewire:navigating', () => {
     document.addEventListener('DOMContentLoaded', start);
     document.addEventListener('livewire:navigated', start);
 })();
+
+/**
+ * Passkeys: registration in the profile (options and storage through the Livewire component)
+ * and sign-in on the login / second-step page (options and check through JSON endpoints).
+ * Texts come from data attributes of the element.
+ */
+document.addEventListener('alpine:init', () => {
+    const passkeyError = (error, texts) => (error?.name === 'NotAllowedError' || error?.name === 'AbortError' ? texts.cancelled : texts.failed);
+
+    window.Alpine.data('passkeyRegister', () => ({
+        supported: browserSupportsWebAuthn(),
+        busy: false,
+        error: '',
+
+        async register() {
+            this.error = '';
+            this.busy = true;
+
+            try {
+                const options = await this.$wire.prepare();
+
+                if (!options) {
+                    return;
+                }
+
+                const credential = await startRegistration({ optionsJSON: JSON.parse(options) });
+                await this.$wire.store(JSON.stringify(credential));
+            } catch (error) {
+                this.error = passkeyError(error, this.$root.dataset);
+            } finally {
+                this.busy = false;
+            }
+        },
+    }));
+
+    window.Alpine.data('passkeyLogin', () => ({
+        supported: browserSupportsWebAuthn(),
+        busy: false,
+        error: '',
+
+        async signIn() {
+            const texts = this.$root.dataset;
+            this.error = '';
+            this.busy = true;
+
+            try {
+                const optionsResponse = await fetch(texts.optionsUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                const credential = await startAuthentication({ optionsJSON: await optionsResponse.json() });
+                const response = await fetch(texts.loginUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+                    body: JSON.stringify({ credential: JSON.stringify(credential), remember: !!document.getElementById('remember')?.checked }),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    this.error = data.message || texts.failed;
+
+                    return;
+                }
+
+                window.location.href = data.redirect;
+            } catch (error) {
+                this.error = passkeyError(error, texts);
+            } finally {
+                this.busy = false;
+            }
+        },
+    }));
+});

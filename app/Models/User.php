@@ -14,13 +14,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Spatie\LaravelPasskeys\Models\Concerns\HasPasskeys;
+use Spatie\LaravelPasskeys\Models\Concerns\InteractsWithPasskeys;
 
 #[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options'])]
 #[Hidden(['calendar_token_encrypted', 'password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
-class User extends Authenticatable
+class User extends Authenticatable implements HasPasskeys
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasShareTokens, Notifiable;
+    use HasFactory, HasShareTokens, InteractsWithPasskeys, Notifiable;
 
     /**
      * Shared items outlive their creator (created_by is nulled), but private ones
@@ -154,6 +156,14 @@ class User extends Authenticatable
     public function hasPaperless(): bool
     {
         return PaperlessInstance::query()->availableTo($this)->exists();
+    }
+
+    /**
+     * Signing in needs a second step: an authenticator code or a passkey.
+     */
+    public function hasSecondFactor(): bool
+    {
+        return $this->hasTwoFactor() || $this->passkeys()->exists();
     }
 
     public function hasTwoFactor(): bool

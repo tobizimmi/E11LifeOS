@@ -7,7 +7,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('two-factor-required') || (config('security.require_two_factor') && ! auth()->user()->hasTwoFactor()))
+            @if (session('two-factor-required') || (config('security.require_two_factor') && ! auth()->user()->hasSecondFactor()))
                 <p class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100" role="alert">🔐 {{ __('Please set up two-factor authentication below – it is required on this server.') }}</p>
             @endif
             <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
@@ -25,6 +25,12 @@
             <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
                 <div class="max-w-xl">
                     <livewire:profile.two-factor-form />
+                </div>
+            </div>
+
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                <div class="max-w-xl">
+                    <livewire:profile.passkeys-form />
                 </div>
             </div>
 

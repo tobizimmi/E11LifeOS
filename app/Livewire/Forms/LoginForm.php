@@ -45,7 +45,7 @@ class LoginForm extends Form
         RateLimiter::clear($this->throttleKey());
         $user = User::where('email', $this->email)->firstOrFail();
 
-        if ($user->hasTwoFactor()) {
+        if ($user->hasSecondFactor()) {
             session()->put('login.id', $user->id);
             session()->put('login.remember', $this->remember);
             session()->put('login.expires', now()->addMinutes(10)->timestamp);

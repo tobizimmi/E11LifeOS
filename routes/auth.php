@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\PasskeyLoginController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\IdleLogoutController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,14 @@ Route::middleware('guest')->group(function () {
 
     Volt::route('reset-password/{token}', 'pages.auth.reset-password')
         ->name('password.reset');
+
+    Route::get('passkeys/options', [PasskeyLoginController::class, 'options'])
+        ->middleware('throttle:30,1')
+        ->name('passkeys.options');
+
+    Route::post('passkeys/login', [PasskeyLoginController::class, 'login'])
+        ->middleware('throttle:20,1')
+        ->name('passkeys.login');
 });
 
 Route::middleware('auth')->group(function () {

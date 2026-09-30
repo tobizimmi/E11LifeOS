@@ -30,8 +30,8 @@ class VirusScanTest extends TestCase
 
     public function test_the_instream_protocol_is_spoken_with_clamd(): void
     {
-        if (! function_exists('pcntl_fork')) {
-            $this->markTestSkipped('pcntl is not available.');
+        if (! function_exists('pcntl_fork') || ! function_exists('posix_kill')) {
+            $this->markTestSkipped('pcntl/posix are not available.');
         }
 
         $socket = sys_get_temp_dir().'/clamd-test-'.getmypid().'.sock';
@@ -61,7 +61,8 @@ class VirusScanTest extends TestCase
 
             fwrite($client, $command === "zINSTREAM\0" && str_contains($data, 'EICAR') ? "stream: Eicar-Test-Signature FOUND\0" : "stream: OK\0");
             fclose($client);
-            exit(0);
+            // Ends without shutdown handlers, which would close the database connection shared with the parent.
+            posix_kill(getmypid(), SIGKILL);
         }
 
         fclose($server);

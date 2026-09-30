@@ -22,6 +22,23 @@ deiner Freigabe.
 
 ---
 
+## Vorab: Läuft Live schon?
+
+Auf dem Server laufen bereits die Live-Prozesse `e11lifeos-app` und `e11lifeos-reverb` mit einer
+älteren Version. Die `.env` und die Datenbank von Live gibt es also schon. Dann gilt:
+
+- **Schritte 1 bis 5 entfallen.** Weiter mit **Schritt 6** (Freigabe).
+- Der Deploy auf Live erstellt **vor** dem Aktualisieren der Datenbank automatisch ein Backup
+  (Datenbank und Dateien). Schlägt das fehl, bricht er ab, bevor etwas geändert wird.
+- Vorhandene Konten und Daten bleiben erhalten. Es wird kein neuer Einladungslink erzeugt.
+- Fehlen der Live-`.env` Werte, zeigt die Checkliste im Deploy-Log das an. Nachtragen kannst du sie
+  in der App (Servereinstellungen) oder über Schritt 4c/5 mit einem Secret, das nur die fehlenden
+  Zeilen enthält. Bestehende Werte bleiben dabei unverändert.
+- „Server einrichten“ für Live erst **nach** der Freigabe verwenden. Die alte Version auf dem Server
+  kennt `app:install` noch nicht.
+
+Nur für eine **komplett neue** Live-Installation gelten die Schritte 1 bis 5.
+
 ## Schritt 1 – Datenbank anlegen (Plesk)
 
 1. In Plesk anmelden → **Websites & Domains** → `zimmimail.de` → **Datenbanken** → **Datenbank hinzufügen**.

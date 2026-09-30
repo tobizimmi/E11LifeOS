@@ -150,13 +150,13 @@ jobs:
       - name: Run server-side deployment tasks
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} bash -s -- \
-            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" "${{ env.PM2_SCHEDULER_NAME }}" "${{ env.PM2_QUEUE_NAME }}" "${{ env.PM2_VPN_NAME }}" "${{ env.APP_PORT }}" "${{ env.REVERB_PORT }}" << 'EOF'
+            "${{ env.APP_PATH_DEPLOY }}" "${{ env.PM2_APP_NAME }}" "${{ env.PM2_REVERB_NAME }}" "${{ env.PM2_SCHEDULER_NAME }}" "${{ env.PM2_QUEUE_NAME }}" "${{ env.PM2_VPN_NAME }}" "${{ env.APP_PORT }}" "${{ env.REVERB_PORT }}" "${{ env.DEPLOY_ENV }}" << 'EOF'
             set -e
             # Server default `php`/composer resolve to the OS-packaged PHP 8.2 (via
             # /usr/bin/php), but this app needs PHP >=8.3 (Laravel 13) — Plesk also has
             # PHP 8.4 installed under /opt/plesk/php/8.4, just not on the default PATH.
             export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"; PM2_SCHEDULER_NAME="$4"; PM2_QUEUE_NAME="$5"; PM2_VPN_NAME="$6"; APP_PORT="$7"; REVERB_PORT="$8"
+            APP_PATH="$1"; PM2_APP_NAME="$2"; PM2_REVERB_NAME="$3"; PM2_SCHEDULER_NAME="$4"; PM2_QUEUE_NAME="$5"; PM2_VPN_NAME="$6"; APP_PORT="$7"; REVERB_PORT="$8"; DEPLOY_ENV="$9"
 
             cd "$APP_PATH"
 
@@ -167,6 +167,12 @@ jobs:
 
             composer install --no-dev --optimize-autoloader --no-scripts
             php artisan package:discover --ansi
+
+            # Live: back up database and files before migrating (stops the deploy if the backup fails)
+            # (skipped on a fresh installation without tables yet).
+            if [ "$DEPLOY_ENV" = live ] && php artisan migrate:status > /dev/null 2>&1; then
+              php artisan backup:run
+            fi
 
             # Migrations, push keys and – on a fresh installation – the invite code for the first account
             php artisan app:install --no-interaction

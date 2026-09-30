@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasShareTokens;
+use App\Models\Concerns\SharedWithGroups;
 use Database\Factories\ExpenseGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -31,7 +32,7 @@ use Illuminate\Support\Carbon;
 class ExpenseGroup extends Model
 {
     /** @use HasFactory<ExpenseGroupFactory> */
-    use HasFactory, HasShareTokens;
+    use HasFactory, HasShareTokens, SharedWithGroups;
 
     public const ICONS = ['🧾', '✈️', '🏖️', '🏠', '🍻', '⛺', '🎉', '⚽', '🚗', '🎿'];
 
@@ -68,12 +69,22 @@ class ExpenseGroup extends Model
     }
 
     /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
      * Shared groups of the household and the member's private ones.
      */
     public function scopeVisibleTo(Builder $query, User $user, int $householdId): void
     {
-        $query->where('household_id', $householdId)
-            ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id));
+        $query->where(fn (Builder $query) => $query
+            ->where(fn (Builder $query) => $query->where('household_id', $householdId)
+                ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id)))
+            ->orWhereIn($this->getQualifiedKeyName(), static::sharedIdsFor($user)));
     }
 
     /**

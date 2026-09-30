@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SharedWithGroups;
 use App\Observers\ItemObserver;
 use App\Support\Recurrence;
 use Database\Factories\ItemFactory;
@@ -20,7 +21,7 @@ use Illuminate\Support\Carbon;
 class Item extends Model
 {
     /** @use HasFactory<ItemFactory> */
-    use HasFactory;
+    use HasFactory, SharedWithGroups;
 
     public const TYPE_NOTE = 'note';
 
@@ -248,6 +249,9 @@ class Item extends Model
         return $this->belongsTo(Household::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

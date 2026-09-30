@@ -2149,12 +2149,6 @@ parameters:
 			path: app/Support/Life/YearReview.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/Links.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2169,12 +2163,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:displayIcon\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: app/Support/Links.php
-
-		-
-			message: '#^Parameter \#3 \$author of static method App\\Support\\Links\:\:refsInText\(\) expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Support/Links.php
 

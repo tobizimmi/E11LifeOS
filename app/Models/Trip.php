@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasShareTokens;
+use App\Models\Concerns\SharedWithGroups;
 use Database\Factories\TripFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -34,7 +36,7 @@ use Illuminate\Support\Carbon;
 class Trip extends Model
 {
     /** @use HasFactory<TripFactory> */
-    use HasFactory, HasShareTokens;
+    use HasFactory, HasShareTokens, SharedWithGroups;
 
     protected static function booted(): void
     {
@@ -86,12 +88,22 @@ class Trip extends Model
     }
 
     /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
      * Shared trips of the household and the member's private ones.
      */
     public function scopeVisibleTo(Builder $query, User $user, int $householdId): void
     {
-        $query->where('household_id', $householdId)
-            ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id));
+        $query->where(fn (Builder $query) => $query
+            ->where(fn (Builder $query) => $query->where('household_id', $householdId)
+                ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id)))
+            ->orWhereIn($this->getQualifiedKeyName(), static::sharedIdsFor($user)));
     }
 
     public function nights(): int

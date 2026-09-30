@@ -70,7 +70,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $groups = ExpenseGroup::query()->visibleTo(Auth::user(), (int) $this->householdId)->with(['members', 'expenses.shares'])->latest()->get();
+        $groups = ExpenseGroup::query()->visibleTo(Auth::user(), (int) $this->householdId)->with(['members', 'expenses.shares', 'shareGroups'])->latest()->get();
         $me = fn (ExpenseGroup $group) => $group->members->firstWhere('user_id', Auth::id());
 
         return [
@@ -133,7 +133,7 @@ new #[Layout('layouts.app')] class extends Component
                 <a href="{{ route('splits.show', $expenseGroup) }}" wire:navigate wire:key="group-{{ $expenseGroup->id }}" class="block rounded-2xl bg-white p-5 shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $expenseGroup->icon }} {{ $expenseGroup->title }}</p>
+                            <p class="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $expenseGroup->icon }} {{ $expenseGroup->title }} <x-audience-badge :model="$expenseGroup" /></p>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ $expenseGroup->members->pluck('name')->implode(', ') }}</p>
                         </div>
                         @if ($balance !== null && abs($balance) >= 0.01)

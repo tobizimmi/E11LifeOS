@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Item;
 use App\Models\Trip;
 use App\Models\TripParticipant;
 use App\Support\Life\GroupTrip;
@@ -38,12 +39,80 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $password = '';
 
+    /**
+     * @var array{plan: bool, ideas: bool, notes: bool}
+     */
+    public array $folderShows = ['plan' => true, 'ideas' => true, 'notes' => false];
+
+    public string $pageSearch = '';
+
+    /**
+     * @var array{title: string, url: string}
+     */
+    public array $newLink = ['title' => '', 'url' => ''];
+
     public function mount(Trip $trip): void
     {
         $this->resolveHousehold();
         $trip = $this->findTrip($trip->id);
         $this->tripId = $trip->id;
         $this->folder = ['meeting_point' => (string) $trip->meeting_point, 'organizer_contact' => (string) $trip->organizer_contact, 'group_info' => (string) $trip->group_info, 'share_references' => $trip->share_references];
+        $options = GroupTrip::folderOptions($trip);
+        $this->folderShows = ['plan' => $options['plan'], 'ideas' => $options['ideas'], 'notes' => $options['notes']];
+    }
+
+    /**
+     * @param  array<string, mixed>  $changes
+     */
+    private function updateFolderOptions(array $changes): void
+    {
+        $trip = $this->findTrip();
+        $trip->update(['folder_options' => array_merge(GroupTrip::folderOptions($trip), $changes)]);
+    }
+
+    public function updatedFolderShows(): void
+    {
+        $this->updateFolderOptions(array_map('boolval', $this->folderShows));
+    }
+
+    /**
+     * Puts a shared page of the household into the trip folder.
+     */
+    public function addPage(int $pageId): void
+    {
+        $page = Item::query()->forHousehold((int) $this->householdId)->visibleTo(Auth::user())->ofType(Item::TYPE_NOTE)
+            ->where('items.visibility', Item::VISIBILITY_SHARED)->find($pageId) ?? abort(404);
+        $pages = GroupTrip::folderOptions($this->findTrip())['pages'];
+
+        if (! in_array($page->id, $pages, true)) {
+            $this->updateFolderOptions(['pages' => array_slice([...$pages, $page->id], 0, 30)]);
+        }
+
+        $this->reset('pageSearch');
+    }
+
+    public function removePage(int $pageId): void
+    {
+        $this->updateFolderOptions(['pages' => array_values(array_diff(GroupTrip::folderOptions($this->findTrip())['pages'], [$pageId]))]);
+    }
+
+    public function addLink(): void
+    {
+        $data = $this->validate([
+            'newLink.title' => ['nullable', 'string', 'max:150'],
+            'newLink.url' => ['required', 'url:http,https', 'max:1000'],
+        ], attributes: ['newLink.url' => __('Address')])['newLink'];
+        $links = GroupTrip::folderOptions($this->findTrip())['links'];
+        $links[] = ['title' => trim((string) $data['title']) ?: (parse_url($data['url'], PHP_URL_HOST) ?: $data['url']), 'url' => $data['url']];
+        $this->updateFolderOptions(['links' => array_slice($links, 0, 30)]);
+        $this->reset('newLink');
+    }
+
+    public function removeLink(int $index): void
+    {
+        $links = GroupTrip::folderOptions($this->findTrip())['links'];
+        unset($links[$index]);
+        $this->updateFolderOptions(['links' => array_values($links)]);
     }
 
     private function findTrip(?int $id = null): Trip
@@ -189,6 +258,11 @@ new #[Layout('layouts.app')] class extends Component
             'counts' => $trip->participants->countBy('status'),
             'costs' => GroupTrip::costs($trip),
             'files' => GroupTrip::files($trip),
+            'folderPages' => GroupTrip::folderPages($trip),
+            'folderLinks' => GroupTrip::folderOptions($trip)['links'],
+            'pageResults' => trim($this->pageSearch) === '' ? collect() : Item::query()->forHousehold((int) $this->householdId)->visibleTo(Auth::user())->ofType(Item::TYPE_NOTE)
+                ->where('items.visibility', Item::VISIBILITY_SHARED)->whereRaw('LOWER(items.title) LIKE ?', ['%'.mb_strtolower(trim($this->pageSearch)).'%'])
+                ->orderBy('title')->limit(8)->get(['id', 'title', 'icon']),
         ];
     }
 }; ?>
@@ -296,6 +370,59 @@ new #[Layout('layouts.app')] class extends Component
             <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="folder">
                 <h3 id="folder" class="font-semibold text-gray-900 dark:text-gray-100">🔒 {{ __('Trip folder for external people') }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Shows information, programme, documents (:count files) and the participant list – protected by a link and a password.', ['count' => $files->count()]) }}</p>
+
+                <fieldset class="mt-3">
+                    <legend class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Also show in the folder') }}</legend>
+                    <div class="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.plan" class="rounded border-gray-300 text-indigo-600"> 🗓️ {{ __('Day plan') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.ideas" class="rounded border-gray-300 text-indigo-600"> 💡 {{ __('Ideas') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.notes" class="rounded border-gray-300 text-indigo-600"> 📝 {{ __('Notes of the entries') }}</label>
+                    </div>
+                </fieldset>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">📄 {{ __('Pages with more information') }}</h4>
+                        <ul class="mt-1 space-y-1 text-sm">
+                            @foreach ($folderPages as $page)
+                                <li wire:key="folder-page-{{ $page->id }}" class="flex items-center gap-2">
+                                    <a href="{{ route('items.show', $page) }}" wire:navigate class="min-w-0 flex-1 truncate text-indigo-600 hover:underline dark:text-indigo-400">{{ $page->icon ?: \App\Models\Item::DEFAULT_PAGE_ICON }} {{ $page->title }}</a>
+                                    <button type="button" wire:click="removePage({{ $page->id }})" class="text-xs text-gray-500 underline dark:text-gray-400" aria-label="{{ __('Remove') }}">✕</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <div class="relative mt-2">
+                            <input type="search" wire:model.live.debounce.250ms="pageSearch" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="{{ __('Search page to add …') }}" aria-label="{{ __('Add page') }}">
+                            @if ($pageResults->isNotEmpty())
+                                <ul class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg bg-white text-sm shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                    @foreach ($pageResults as $result)
+                                        <li><button type="button" wire:click="addPage({{ $result->id }})" class="block w-full px-3 py-2 text-start hover:bg-gray-50 dark:hover:bg-gray-700">{{ $result->icon ?: \App\Models\Item::DEFAULT_PAGE_ICON }} {{ $result->title }}</button></li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Only shared pages; private pages never appear in the folder.') }}</p>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">🔗 {{ __('Web links') }}</h4>
+                        <ul class="mt-1 space-y-1 text-sm">
+                            @foreach ($folderLinks as $index => $link)
+                                <li wire:key="folder-link-{{ $index }}" class="flex items-center gap-2">
+                                    <a href="{{ $link['url'] }}" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 truncate text-indigo-600 hover:underline dark:text-indigo-400">{{ $link['title'] }} ↗</a>
+                                    <button type="button" wire:click="removeLink({{ $index }})" class="text-xs text-gray-500 underline dark:text-gray-400" aria-label="{{ __('Remove') }}">✕</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <form wire:submit="addLink" class="mt-2 grid gap-2">
+                            <input type="text" wire:model="newLink.title" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="{{ __('Title, e.g. Hotel website') }}" aria-label="{{ __('Title') }}">
+                            <div class="flex gap-2">
+                                <input type="url" wire:model="newLink.url" class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://…" aria-label="{{ __('Address') }}">
+                                <x-secondary-button type="submit">+ {{ __('Add') }}</x-secondary-button>
+                            </div>
+                            <x-input-error :messages="$errors->get('newLink.url')" />
+                        </form>
+                    </div>
+                </div>
 
                 <form wire:submit="saveFolder" class="mt-3 grid gap-3 sm:grid-cols-6">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Meeting point') }}<input type="text" wire:model="folder.meeting_point" class="{{ $input }}" placeholder="{{ __('e.g. Saturday 7:30 at the club house') }}"></label>

@@ -87,6 +87,48 @@
                 </section>
             @endif
 
+            @if ($plan['days'] !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="day-plan">
+                    <h2 id="day-plan" class="font-semibold">🧭 {{ __('Day plan') }}</h2>
+                    <div class="mt-3 space-y-4">
+                        @foreach ($plan['days'] as $day)
+                            <div>
+                                <h3 class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{{ $day['label'] }}</h3>
+                                @include('trips.partials.folder-entries', ['entries' => $day['entries']])
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            @if ($plan['ideas'] !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="ideas">
+                    <h2 id="ideas" class="font-semibold">💡 {{ __('Further ideas') }}</h2>
+                    @include('trips.partials.folder-entries', ['entries' => $plan['ideas']])
+                </section>
+            @endif
+
+            @foreach ($pages as $page)
+                <details class="group rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold">
+                        <span>{{ $page->icon ?: \App\Models\Item::DEFAULT_PAGE_ICON }} {{ $page->title }}</span>
+                        <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                    </summary>
+                    <div class="prose prose-sm mt-3 max-w-none dark:prose-invert">{!! \App\Support\Life\GroupTrip::pageHtml($page) !!}</div>
+                </details>
+            @endforeach
+
+            @if ($links !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="links">
+                    <h2 id="links" class="font-semibold">🔗 {{ __('Web links') }}</h2>
+                    <ul class="mt-2 space-y-1 text-sm">
+                        @foreach ($links as $link)
+                            <li><a href="{{ $link['url'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline dark:text-indigo-400">{{ $link['title'] }} ↗</a></li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
             @if ($files->isNotEmpty())
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <h2 class="font-semibold">📎 {{ __('Documents') }}</h2>

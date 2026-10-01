@@ -104,6 +104,9 @@ class GroupTripController extends Controller
             'program' => GroupTrip::program($trip, $trip->share_references),
             'files' => GroupTrip::files($trip),
             'costs' => GroupTrip::costs($trip),
+            'plan' => GroupTrip::folderPlan($trip),
+            'pages' => GroupTrip::folderPages($trip),
+            'links' => GroupTrip::folderOptions($trip)['links'],
         ];
     }
 

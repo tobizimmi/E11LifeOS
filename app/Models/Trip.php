@@ -38,8 +38,9 @@ use Illuminate\Support\Carbon;
  * @property ?array<int, float> $map_area south, west, north, east
  * @property ?Carbon $places_loaded_at
  * @property ?list<string> $visited_places
+ * @property ?array<string, mixed> $folder_options plan, ideas, notes (bool), pages (ids), links (title + url)
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'currency', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'visited_places', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'currency', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'visited_places', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info', 'folder_options'])]
 #[Hidden(['share_token', 'share_token_encrypted', 'share_password'])]
 class Trip extends Model
 {
@@ -69,6 +70,7 @@ class Trip extends Model
             'map_area' => 'array',
             'places_loaded_at' => 'datetime',
             'visited_places' => 'array',
+            'folder_options' => 'array',
         ];
     }
 

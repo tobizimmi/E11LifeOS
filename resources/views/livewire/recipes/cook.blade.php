@@ -2,6 +2,7 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Recipe;
+use App\Support\Pantry;
 use App\Support\StepTimers;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -23,6 +24,14 @@ new #[Layout('layouts.app')] class extends Component
     public ?int $servings = null;
 
     public bool $finished = false;
+
+    /**
+     * What the cooking takes from the pantry (confirmed on the last screen).
+     *
+     * @var list<array{item_id: int, name: string, ingredient: string, before: float, used: float, after: float, unit: string, low: bool}>
+     */
+    #[Locked]
+    public array $pantryUsage = [];
 
     public int $rating = 0;
 
@@ -49,9 +58,18 @@ new #[Layout('layouts.app')] class extends Component
     public function finish(): void
     {
         if (! $this->finished) {
-            $this->findRecipe()->increment('cooked_count');
+            $recipe = $this->findRecipe();
+            $recipe->increment('cooked_count');
+            $this->pantryUsage = Pantry::usage($recipe, $this->servings ?: max(1, (int) $recipe->servings), Auth::user(), (int) $this->householdId);
             $this->finished = true;
         }
+    }
+
+    public function takeFromPantry(): void
+    {
+        Pantry::take($this->pantryUsage, (int) $this->householdId);
+        $this->pantryUsage = [];
+        $this->dispatch('toast', message: __('The pantry is updated.'));
     }
 
     public function rate(): void
@@ -104,6 +122,17 @@ new #[Layout('layouts.app')] class extends Component
             <form wire:submit="rate" class="w-full max-w-md space-y-5 text-center">
                 <p class="text-5xl" aria-hidden="true">🎉</p>
                 <h2 class="text-2xl font-bold">{{ __('Enjoy your meal!') }}</h2>
+                @if ($pantryUsage !== [])
+                    <div class="rounded-2xl bg-gray-900 p-4 text-left ring-1 ring-gray-700">
+                        <p class="text-sm font-semibold">🥫 {{ __('Take from the pantry?') }}</p>
+                        <ul class="mt-2 space-y-1 text-sm text-gray-300">
+                            @foreach ($pantryUsage as $use)
+                                <li class="flex justify-between gap-2" wire:key="cook-pantry-{{ $use['item_id'] }}"><span>{{ $use['name'] }}</span><span class="tabular-nums">{{ \App\Support\IngredientAmount::format($use['before']) }} → {{ \App\Support\IngredientAmount::format($use['after']) }} {{ $use['unit'] }}</span></li>
+                            @endforeach
+                        </ul>
+                        <button type="button" wire:click="takeFromPantry" class="mt-3 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500">{{ __('Take from the pantry') }}</button>
+                    </div>
+                @endif
                 <p class="text-gray-400">{{ __('How did it turn out?') }}</p>
                 <div class="flex justify-center gap-2" role="radiogroup" aria-label="{{ __('Rating') }}">
                     @for ($star = 1; $star <= 5; $star++)

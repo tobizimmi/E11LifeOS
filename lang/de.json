@@ -4919,5 +4919,16 @@
     "Trip area saved – its places are loading in the background.": "Reisegebiet gespeichert – die Orte werden im Hintergrund geladen.",
     "Click into the map to zoom with the mouse wheel – or use + / −.": "Zum Zoomen mit dem Mausrad erst in die Karte klicken – oder + / − nutzen.",
     "As set for the trip (:mode)": "Wie für die Reise eingestellt (:mode)",
-    "Tap to change: on foot, by bike, by car": "Antippen zum Wechseln: zu Fuß, Rad, Auto"
+    "Tap to change: on foot, by bike, by car": "Antippen zum Wechseln: zu Fuß, Rad, Auto",
+    "in the pantry": "im Vorrat",
+    "Take from the pantry?": "Aus dem Vorrat abziehen?",
+    "low": "knapp",
+    "Take from the pantry": "Aus dem Vorrat abziehen",
+    "Take and put low items on the list": "Abziehen und Knappes auf die Liste",
+    "Not now": "Jetzt nicht",
+    "The pantry is updated.": "Der Vorrat ist aktualisiert.",
+    ":count item is on the shopping list.|:count items are on the shopping list.": ":count Eintrag steht auf der Einkaufsliste.|:count Einträge stehen auf der Einkaufsliste.",
+    "Expires soon": "Läuft bald ab",
+    "Matching recipes": "Passende Rezepte",
+    "Use my pantry": "Aus meinem Vorrat"
 }

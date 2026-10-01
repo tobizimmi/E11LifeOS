@@ -2,6 +2,7 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Recipe;
+use App\Support\Pantry;
 use App\Models\RecipeCategory;
 use App\Models\Tag;
 use Illuminate\Support\Facades\Auth;
@@ -83,6 +84,26 @@ new #[Layout('layouts.app')] class extends Component
             ->all();
     }
 
+    /**
+     * "What can I cook?" with everything in the pantry.
+     */
+    public function fillFromPantry(): void
+    {
+        $this->pantry = Pantry::stock(Auth::user(), $this->householdId)
+            ->filter(fn (array $entry) => $entry['quantity'] === null || $entry['quantity'] > 0)
+            ->pluck('name')->take(40)->implode(', ');
+        $this->pantryMode = true;
+    }
+
+    /**
+     * "What can I cook?" with what expires soon.
+     */
+    public function useExpiring(): void
+    {
+        $this->pantry = Pantry::expiring(Auth::user(), $this->householdId)->pluck('name')->implode(', ');
+        $this->pantryMode = true;
+    }
+
     public function toggleFavorite(int $recipeId): void
     {
         $recipe = Recipe::query()->visibleTo(Auth::user(), $this->householdId)->findOrFail($recipeId);
@@ -127,6 +148,8 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'recipes' => $recipes,
             'pantryMatches' => $pantryMatches,
+            'expiring' => Pantry::expiring($user, $this->householdId)->take(6),
+            'hasPantry' => Pantry::collectionFor($this->householdId) !== null,
             'categories' => RecipeCategory::where('household_id', $this->householdId)->orderBy('position')->orderBy('name')->get(),
             'tags' => Tag::where('household_id', $this->householdId)
                 ->whereHas('recipes', fn ($query) => $query->visibleTo($user, $this->householdId))
@@ -181,8 +204,18 @@ new #[Layout('layouts.app')] class extends Component
                 </label>
             </div>
 
+            @if ($expiring->isNotEmpty())
+                <div class="flex flex-wrap items-center gap-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-100 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-900/40">
+                    <span class="min-w-0 flex-1">⏳ {{ __('Expires soon') }}: {{ $expiring->map(fn ($entry) => $entry['name'].' ('.($entry['best_before']->isPast() && ! $entry['best_before']->isToday() ? __('expired') : $entry['best_before']->locale(app()->getLocale())->diffForHumans(today(), ['syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW, 'parts' => 1])).')')->implode(', ') }}</span>
+                    <button type="button" wire:click="useExpiring" class="rounded-full bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-500">🍳 {{ __('Matching recipes') }}</button>
+                </div>
+            @endif
+
             @if ($pantryMode)
                 <div class="rounded-lg bg-emerald-50 dark:bg-emerald-900/30 p-3">
+                    @if ($hasPantry)
+                        <button type="button" wire:click="fillFromPantry" class="float-end rounded-full bg-white px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50 dark:bg-gray-800 dark:text-emerald-300 dark:ring-emerald-800">🥫 {{ __('Use my pantry') }}</button>
+                    @endif
                     <x-input-label for="pantry" :value="__('Which ingredients do you have at home?')" />
                     <x-text-input wire:model.live.debounce.400ms="pantry" id="pantry" class="mt-1 block w-full" placeholder="{{ __('e.g. potatoes, eggs, spinach') }}" autofocus />
                     <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{{ __('Separate with commas. Recipes using the most of them come first.') }}</p>

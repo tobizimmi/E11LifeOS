@@ -6,6 +6,8 @@ use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
+use App\Support\IngredientUnits;
+use App\Support\Pantry;
 use App\Support\ShoppingLists;
 use App\Support\RecipeAi;
 use App\Support\RecipeAiException;
@@ -37,6 +39,21 @@ new #[Layout('layouts.app')] class extends Component
     public array $selectedIngredients = [];
 
     public bool $choosingIngredients = false;
+
+    /**
+     * What cooking takes from the pantry (shown for confirmation after "Cooked it").
+     *
+     * @var list<array{item_id: int, name: string, ingredient: string, before: float, used: float, after: float, unit: string, low: bool}>
+     */
+    #[Locked]
+    public array $pantryUsage = [];
+
+    /**
+     * Ingredients covered by the pantry (indexes), shown in the shopping choice.
+     *
+     * @var list<int>
+     */
+    public array $inPantry = [];
 
     public ?int $shoppingListId = null;
 
@@ -96,9 +113,11 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->shoppingListId ??= ShoppingList::defaultFor((int) $this->householdId)->id;
         $onList = $this->openOnList();
-        // Items already open on the list start unticked.
-        $this->selectedIngredients = collect($this->findRecipe()->scaledIngredients($this->servings))
-            ->reject(fn (array $ingredient) => $ingredient['isSection'] || in_array(mb_strtolower(trim($ingredient['name'])), $onList, true))
+        $recipe = $this->findRecipe();
+        $this->inPantry = Pantry::covered($recipe, $this->servings, Auth::user(), (int) $this->householdId);
+        // Items already open on the list or enough in the pantry start unticked.
+        $this->selectedIngredients = collect($recipe->scaledIngredients($this->servings))
+            ->reject(fn (array $ingredient, int $index) => $ingredient['isSection'] || in_array(IngredientUnits::nameKey($ingredient['name']), $onList, true) || in_array($index, $this->inPantry, true))
             ->keys()
             ->all();
         $this->choosingIngredients = true;
@@ -112,7 +131,7 @@ new #[Layout('layouts.app')] class extends Component
     private function openOnList(): array
     {
         return ShoppingListEntry::where('household_id', $this->householdId)->where('shopping_list_id', $this->shoppingListId)->where('checked', false)
-            ->pluck('label')->map(fn (string $label) => mb_strtolower(trim($label)))->all();
+            ->pluck('label')->map(fn (string $label) => IngredientUnits::nameKey($label))->all();
     }
 
     /**
@@ -236,8 +255,38 @@ new #[Layout('layouts.app')] class extends Component
 
     public function markCooked(): void
     {
-        $this->findRecipe()->increment('cooked_count');
-        $this->dispatch('toast', message: __('Enjoy your meal!'));
+        $recipe = $this->findRecipe();
+        $recipe->increment('cooked_count');
+        // Ingredients from the pantry: shown for confirmation, nothing is taken without it.
+        $this->pantryUsage = Pantry::usage($recipe, $this->servings, Auth::user(), (int) $this->householdId);
+
+        if ($this->pantryUsage === []) {
+            $this->dispatch('toast', message: __('Enjoy your meal!'));
+        }
+    }
+
+    public function skipPantry(): void
+    {
+        $this->pantryUsage = [];
+    }
+
+    /**
+     * Takes the ingredients of the cooked recipe out of the pantry; items now low go onto the shopping list on request.
+     */
+    public function takeFromPantry(bool $addLowToList = false): void
+    {
+        $low = Pantry::take($this->pantryUsage, (int) $this->householdId);
+        $this->pantryUsage = [];
+
+        if ($addLowToList && $low !== []) {
+            $list = ShoppingList::defaultFor((int) $this->householdId);
+
+            foreach ($low as $name) {
+                ShoppingLists::add($list, $name, null, Auth::id(), ['note' => __('Pantry')]);
+            }
+        }
+
+        $this->dispatch('toast', message: __('Enjoy your meal!').' '.__('The pantry is updated.').($addLowToList && $low !== [] ? ' '.trans_choice(':count item is on the shopping list.|:count items are on the shopping list.', count($low)) : ''));
     }
 
     public function toggleArchive(): void
@@ -434,7 +483,7 @@ new #[Layout('layouts.app')] class extends Component
                             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Which ingredients do you need?') }}</p>
                             @php
                                 $shoppingLists = \App\Models\ShoppingList::where('household_id', $this->householdId)->orderBy('position')->orderBy('id')->get();
-                                $alreadyOnList = \App\Models\ShoppingListEntry::where('shopping_list_id', $shoppingListId)->where('checked', false)->pluck('label')->map(fn ($label) => mb_strtolower(trim($label)))->all();
+                                $alreadyOnList = \App\Models\ShoppingListEntry::where('shopping_list_id', $shoppingListId)->where('checked', false)->pluck('label')->map(fn ($label) => \App\Support\IngredientUnits::nameKey($label))->all();
                             @endphp
                             @if ($shoppingLists->count() > 1)
                                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -453,8 +502,10 @@ new #[Layout('layouts.app')] class extends Component
                                     <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="choose-{{ $index }}">
                                         <input type="checkbox" wire:model="selectedIngredients" value="{{ $index }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
                                         <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}
-                                            @if (in_array(mb_strtolower(trim($ingredient['name'])), $alreadyOnList, true))
+                                            @if (in_array(\App\Support\IngredientUnits::nameKey($ingredient['name']), $alreadyOnList, true))
                                                 <span class="ms-1 rounded bg-indigo-50 px-1 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">🛒 {{ __('already on the list') }}</span>
+                                            @elseif (in_array($index, $inPantry, true))
+                                                <span class="ms-1 rounded bg-emerald-50 px-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">🥫 {{ __('in the pantry') }}</span>
                                             @endif
                                         </span>
                                     </label>
@@ -503,6 +554,26 @@ new #[Layout('layouts.app')] class extends Component
                         @endforelse
                     </ol>
                     <button type="button" wire:click="markCooked" class="mt-6 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm">✅ {{ __('Cooked it') }}</button>
+                    @if ($pantryUsage !== [])
+                        <div class="mt-4 rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100 dark:bg-emerald-900/20 dark:ring-emerald-900/40">
+                            <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">🥫 {{ __('Take from the pantry?') }}</p>
+                            <ul class="mt-2 space-y-1 text-sm text-emerald-900 dark:text-emerald-100">
+                                @foreach ($pantryUsage as $use)
+                                    <li class="flex flex-wrap justify-between gap-2" wire:key="pantry-use-{{ $use['item_id'] }}">
+                                        <span>{{ $use['name'] }}</span>
+                                        <span class="tabular-nums">{{ \App\Support\IngredientAmount::format($use['before']) }} → <strong>{{ \App\Support\IngredientAmount::format($use['after']) }}</strong> {{ $use['unit'] }} @if ($use['low'])<span class="ms-1 rounded bg-amber-100 px-1 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">{{ __('low') }}</span>@endif</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <x-primary-button type="button" wire:click="takeFromPantry">{{ __('Take from the pantry') }}</x-primary-button>
+                                @if (collect($pantryUsage)->contains('low', true))
+                                    <x-secondary-button type="button" wire:click="takeFromPantry(true)">{{ __('Take and put low items on the list') }}</x-secondary-button>
+                                @endif
+                                <button type="button" wire:click="skipPantry" class="text-sm text-gray-500 underline">{{ __('Not now') }}</button>
+                            </div>
+                        </div>
+                    @endif
                 </section>
             </div>
 

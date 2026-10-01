@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.14.0] – 2026-10-01
+
+### Neu
+- Reisen: Tab „Entdecken“ mit Kategorien (Sehenswürdigkeiten, Museen, Restaurants, Cafés, Bars, Natur, Aktivitäten, Shopping), Bildern, Links zu Speisekarte, Fotos und Website.
+- Reisen: Orte als besucht abhaken – sie verschwinden aus der Liste und lassen sich wieder einblenden; Orte direkt einem Tag zuplanen.
+
 ## [1.13.0] – 2026-10-01
 
 ### Neu

@@ -134,7 +134,43 @@ class Vpn
      */
     public static function proxyFor(string $url): ?string
     {
-        return self::routes($url) ? 'socks5h://127.0.0.1:'.(int) config('vpn.socks_port') : null;
+        return self::routes($url) ? 'socks5h://127.0.0.1:'.self::socksPort() : null;
+    }
+
+    /**
+     * The local SOCKS port wireproxy listens on: the one "vpn:run" reported (it moves to the
+     * installation's own port when the configured one is taken, e.g. by live and staging on one
+     * server), otherwise the configured one.
+     */
+    public static function socksPort(): int
+    {
+        $status = self::status();
+
+        return isset($status['port']) && now()->subMinutes(2)->lt($status['at']) ? (int) $status['port'] : (int) config('vpn.socks_port');
+    }
+
+    /**
+     * A port of its own per installation folder, so live and staging on one server never collide.
+     */
+    public static function defaultSocksPort(): int
+    {
+        return 25000 + crc32(base_path()) % 1000;
+    }
+
+    /**
+     * Whether something already listens on this local port.
+     */
+    public static function portInUse(int $port): bool
+    {
+        $socket = @fsockopen('127.0.0.1', $port, $errorCode, $errorMessage, 0.3);
+
+        if ($socket === false) {
+            return false;
+        }
+
+        fclose($socket);
+
+        return true;
     }
 
     /**
@@ -152,7 +188,7 @@ class Vpn
     /**
      * Last state reported by "php artisan vpn:run".
      *
-     * @return array{state: string, message: ?string, at: string}|null
+     * @return array{state: string, message: ?string, port?: ?int, at: string}|null
      */
     public static function status(): ?array
     {
@@ -171,7 +207,7 @@ class Vpn
      *
      * @return array{wireguard: string, wireproxy: string}
      */
-    public static function writeFiles(string $directory): array
+    public static function writeFiles(string $directory, ?int $port = null): array
     {
         if (! is_dir($directory)) {
             mkdir($directory, 0700, true);
@@ -179,12 +215,29 @@ class Vpn
 
         $wireguard = $directory.'/wg.conf';
         $wireproxy = $directory.'/wireproxy.conf';
-        file_put_contents($wireguard, trim((string) config('vpn.wireguard_config'))."\n");
-        file_put_contents($wireproxy, 'WGConfig = '.$wireguard."\n\n[Socks5]\nBindAddress = 127.0.0.1:".(int) config('vpn.socks_port')."\n");
+        file_put_contents($wireguard, self::withKeepalive(trim((string) config('vpn.wireguard_config')))."\n");
+        file_put_contents($wireproxy, 'WGConfig = '.$wireguard."\n\n[Socks5]\nBindAddress = 127.0.0.1:".($port ?? (int) config('vpn.socks_port'))."\n");
         chmod($wireguard, 0600);
         chmod($wireproxy, 0600);
 
         return ['wireguard' => $wireguard, 'wireproxy' => $wireproxy];
+    }
+
+    /**
+     * Adds "PersistentKeepalive = 25" to every [Peer] without it: the server sends a small packet
+     * every 25 seconds, so routers and firewalls on the way keep the connection open.
+     */
+    public static function withKeepalive(string $config): string
+    {
+        $sections = preg_split('/(?=^\s*\[(?:interface|peer)\]\s*$)/mi', $config) ?: [$config];
+
+        return implode('', array_map(function (string $section) {
+            if (! preg_match('/^\s*\[peer\]/i', $section) || preg_match('/^\s*persistentkeepalive\s*=/mi', $section)) {
+                return $section;
+            }
+
+            return rtrim($section)."\nPersistentKeepalive = 25\n\n";
+        }, $sections));
     }
 
     /**
@@ -198,7 +251,7 @@ class Vpn
             return ['ok' => false, 'message' => __('The VPN is switched off or the WireGuard configuration is incomplete.')];
         }
 
-        $proxy = 'socks5h://127.0.0.1:'.(int) config('vpn.socks_port');
+        $proxy = 'socks5h://127.0.0.1:'.self::socksPort();
 
         try {
             $response = Http::withOptions(['proxy' => $proxy])->timeout(10)->withoutRedirecting()->get($url);
@@ -303,15 +356,17 @@ class Vpn
         if ($tunnel !== null && $tunnel['handshake_at'] === null) {
             $hints[] = __('No WireGuard handshake yet – the tunnel is not up. Check the Endpoint (public address and port of your router), that the router forwards this UDP port, that the router knows this connection (its public key), and that the server may send UDP traffic.');
         } elseif ($brokenOff) {
-            $hints[] = __('The last WireGuard handshake was :time – the connection has broken off. Check whether the router is reachable and add “PersistentKeepalive = 25” to the [Peer] section.', ['time' => Carbon::createFromTimestamp($tunnel['handshake_at'])->diffForHumans()]);
+            $hints[] = __('The last WireGuard handshake was :time – the connection has broken off. Check whether the router is reachable; the app reconnects by itself.', ['time' => Carbon::createFromTimestamp($tunnel['handshake_at'])->diffForHumans()]);
         } elseif ($tunnel === null) {
             $hints[] = __('The state of the tunnel is unknown. Check the Endpoint and keys of the WireGuard configuration, that the router forwards the UDP port and knows this connection, and that it lets the VPN connection into the home network.');
         } else {
             $hints[] = __('The tunnel is up (last handshake :time), but the address does not answer. Check that the router lets the VPN connection into the home network, that the service runs on this port and that the firewall of the target device allows access from the VPN network.', ['time' => Carbon::createFromTimestamp($tunnel['handshake_at'])->diffForHumans()]);
         }
 
-        if ($parsed && ! $brokenOff && collect($parsed['peers'])->every(fn (array $peer) => blank($peer['persistentkeepalive'] ?? null))) {
-            $hints[] = __('Tip: “PersistentKeepalive = 25” in the [Peer] section keeps the connection open behind routers and firewalls.');
+        $fixedAddress = collect($parsed['peers'] ?? [])->first(fn (array $peer) => filter_var(preg_replace('/:\d+$/', '', trim($peer['endpoint'], '[]')), FILTER_VALIDATE_IP) !== false);
+
+        if ($fixedAddress && ($tunnel === null || $tunnel['handshake_at'] === null || $brokenOff)) {
+            $hints[] = __('The Endpoint is a fixed IP address (:endpoint). Home connections usually get a new address now and then – use the DynDNS name of your router instead (e.g. from MyFRITZ!).', ['endpoint' => $fixedAddress['endpoint']]);
         }
 
         return $hints;

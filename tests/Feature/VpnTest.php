@@ -54,6 +54,30 @@ class VpnTest extends TestCase
         $this->assertStringContainsString('BindAddress = 127.0.0.1:25111', file_get_contents($files['wireproxy']));
         $this->assertStringContainsString('Endpoint = abc123.myfritz.net:51820', file_get_contents($files['wireguard']));
         $this->assertSame('0600', substr(sprintf('%o', fileperms($files['wireguard'])), -4));
+        // Keepalive is added so routers keep the UDP connection open.
+        $this->assertStringContainsString("Endpoint = abc123.myfritz.net:51820\nPersistentKeepalive = 25", file_get_contents($files['wireguard']));
+        $this->assertSame(1, substr_count(Vpn::withKeepalive(self::CONFIG."\nPersistentKeepalive = 15"), 'PersistentKeepalive'));
+    }
+
+    public function test_a_port_taken_by_the_other_installation_is_avoided(): void
+    {
+        $taken = stream_socket_server('tcp://127.0.0.1:0');
+        $port = (int) substr(strrchr((string) stream_socket_get_name($taken, false), ':'), 1);
+        $script = storage_path('framework/testing/fake-wireproxy');
+        @mkdir(dirname($script), 0777, true);
+        // Stands in for wireproxy: listens on the port from its configuration.
+        file_put_contents($script, "#!/usr/bin/env php\n<?php \$c = file_get_contents(\$argv[2]); preg_match('/:(\\d+)/', \$c, \$m); \$s = stream_socket_server('tcp://127.0.0.1:'.\$m[1]); sleep(5);\n");
+        chmod($script, 0755);
+        config(['vpn.enabled' => true, 'vpn.wireguard_config' => self::CONFIG, 'vpn.socks_port' => $port, 'vpn.binary' => $script, 'vpn.info_port' => 1]);
+
+        $this->artisan('vpn:run', ['--once' => true])->assertSuccessful();
+
+        $status = Vpn::status();
+        $this->assertSame('running', $status['state']);
+        $this->assertSame(Vpn::defaultSocksPort(), $status['port']);
+        $this->assertStringContainsString((string) $port, (string) $status['message']);
+        $this->assertSame('socks5h://127.0.0.1:'.Vpn::defaultSocksPort(), Vpn::proxyFor('http://192.168.178.20'));
+        fclose($taken);
     }
 
     public function test_the_vpn_is_set_up_on_the_admin_page_and_the_runner_reports_its_state(): void
@@ -87,7 +111,7 @@ class VpnTest extends TestCase
 
     public function test_a_failed_connection_test_names_the_likely_cause(): void
     {
-        config(['vpn.enabled' => true, 'vpn.socks_port' => 25111, 'vpn.info_port' => 26111, 'vpn.wireguard_config' => str_replace('192.168.178.0/24, 0.0.0.0/0', '10.8.0.0/24', self::CONFIG)]);
+        config(['vpn.enabled' => true, 'vpn.socks_port' => 25111, 'vpn.info_port' => 26111, 'vpn.wireguard_config' => str_replace(['192.168.178.0/24, 0.0.0.0/0', 'abc123.myfritz.net'], ['10.8.0.0/24', '92.217.95.163'], self::CONFIG)]);
         $handshake = 0;
         $timeout = Http::failedConnection('cURL error 28: Connection timed out after 10001 milliseconds');
         Http::fake(function (Request $request) use (&$handshake, $timeout) {
@@ -103,10 +127,10 @@ class VpnTest extends TestCase
         $this->assertStringContainsString('192.168.10.210 ist in AllowedIPs', $hints);
         $this->assertStringContainsString('192.168.10.0/24', $hints);
         $this->assertStringContainsString('Noch kein WireGuard-Handshake', $hints);
-        $this->assertStringContainsString('PersistentKeepalive', $hints);
+        $this->assertStringContainsString('feste IP-Adresse', $hints);
 
         // Tunnel up and the network covered: the problem lies behind the router.
-        config(['vpn.wireguard_config' => str_replace('10.8.0.0/24', '192.168.10.0/24', config('vpn.wireguard_config'))."\nPersistentKeepalive = 25\n"]);
+        config(['vpn.wireguard_config' => str_replace(['10.8.0.0/24', '92.217.95.163'], ['192.168.10.0/24', 'abc123.myfritz.net'], config('vpn.wireguard_config'))]);
         $handshake = now()->subSeconds(40)->getTimestamp();
 
         $hints = Vpn::test('http://192.168.10.210:2212')['hints'];

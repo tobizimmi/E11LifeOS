@@ -432,7 +432,7 @@ new #[Layout('layouts.app')] class extends Component
         'clamav_fail_closed' => [__('Block uploads while the scanner is unreachable'), ''],
         'reverb_publish_port' => [__('Port of the local Reverb process'), '3021'],
         'vpn_enabled' => [__('VPN switched on'), ''],
-        'vpn_socks_port' => [__('Local port (optional)'), '25344'],
+        'vpn_socks_port' => [__('Local port (optional)'), __('empty = own port per installation')],
         'vpn_networks' => [__('Networks through the VPN (empty = AllowedIPs)'), '192.168.178.0/24, fritz.box'],
         'vpn_wireguard_config' => [__('WireGuard configuration'), "[Interface]\nPrivateKey = …\nAddress = 192.168.178.201/24\nDNS = 192.168.178.1\n\n[Peer]\nPublicKey = …\nEndpoint = xyz.myfritz.net:51820\nAllowedIPs = 192.168.178.0/24"],
         'google_client_id' => [__('Client ID'), '1234-abc.apps.googleusercontent.com'],

@@ -9,6 +9,7 @@ use App\Models\WatchlistItem;
 use App\Support\Portfolio\KeyFigureCheck;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\PortfolioLink;
+use App\Support\Portfolio\StockInsights;
 use App\Support\Portfolio\Valuation;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -138,6 +139,11 @@ new #[Layout('layouts.app')] class extends Component
             'recommendation' => \App\Models\PortfolioRecommendation::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->first(),
             'mentions' => PortfolioLink::mentions($this->currentUser(), (int) $this->householdId, $this->symbol, $security?->name),
             'checks' => KeyFigureCheck::assess($security->fundamentals ?? []),
+            'insider' => StockInsights::insiderBarometer($security->fundamentals ?? []),
+            'consensus' => StockInsights::consensus($security->fundamentals ?? [], $security->last_price),
+            'financials' => StockInsights::financials($security->fundamentals ?? []),
+            'plans' => StockInsights::plans(\App\Models\NewsArticle::where('symbol', $this->symbol)->orderByDesc('published_at')->limit(40)->get())->take(5),
+            'reportUrl' => StockInsights::reportUrl($security),
             'savedThesis' => $this->currentThesis(),
         ];
     }
@@ -271,6 +277,111 @@ new #[Layout('layouts.app')] class extends Component
                     @else
                         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Key figures are loaded with the daily market scan.') }}</p>
                     @endif
+                </section>
+            @endunless
+
+            @unless (str_starts_with($security->symbol, '^') || str_contains($security->symbol, '=') || $security->asset_type === 'etf')
+                @php($big = fn ($value) => $value === null ? '—' : (abs($value) >= 1e9 ? number_format($value / 1e9, 1, ',', '.').' '.__('bn') : number_format($value / 1e6, 0, ',', '.').' '.__('m')))
+                @php($maxRevenue = collect($financials['years'])->max(fn ($year) => abs((float) ($year['revenue'] ?? 0))) ?: 1)
+                @php($levelClasses = ['strong_buy' => 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100', 'buy' => 'bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100', 'hold' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100', 'neutral' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100', 'sell' => 'bg-orange-100 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100', 'strong_sell' => 'bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-100'])
+                <section class="grid gap-5 lg:grid-cols-2">
+                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Revenue & profit') }}</h3>
+                        @if ($financials['years'] !== [])
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($financials['years'] as $year)
+                                    <li wire:key="fin-{{ $year['year'] }}" class="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-2 text-xs">
+                                        <span class="tabular-nums text-gray-500 dark:text-gray-400">{{ $year['year'] }}</span>
+                                        <span class="space-y-0.5">
+                                            <span class="block h-2 rounded-full bg-indigo-500" style="width: {{ max(2, abs((float) $year['revenue']) / $maxRevenue * 100) }}%" title="{{ __('Revenue') }}"></span>
+                                            <span @class(['block h-2 rounded-full', 'bg-emerald-500' => ($year['earnings'] ?? 0) >= 0, 'bg-orange-500' => ($year['earnings'] ?? 0) < 0]) style="width: {{ max(2, abs((float) $year['earnings']) / $maxRevenue * 100) }}%" title="{{ __('Profit') }}"></span>
+                                        </span>
+                                        <span class="text-end tabular-nums text-gray-700 dark:text-gray-300">{{ $big($year['revenue']) }}<br><span @class(['text-emerald-700 dark:text-emerald-400' => ($year['earnings'] ?? 0) >= 0, 'text-orange-700 dark:text-orange-400' => ($year['earnings'] ?? 0) < 0])>{{ $big($year['earnings']) }}</span></span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                <span class="me-2 inline-flex items-center gap-1"><span class="h-2 w-3 rounded-full bg-indigo-500"></span>{{ __('Revenue') }}</span>
+                                <span class="me-2 inline-flex items-center gap-1"><span class="h-2 w-3 rounded-full bg-emerald-500"></span>{{ __('Profit') }}</span>
+                                @if ($financials['revenue_cagr'] !== null) · {{ __('Revenue :growth per year', ['growth' => ($financials['revenue_cagr'] >= 0 ? '+' : '').number_format($financials['revenue_cagr'], 1, ',', '.').' %']) }}@endif
+                                @if ($financials['earnings_cagr'] !== null) · {{ __('Profit :growth per year', ['growth' => ($financials['earnings_cagr'] >= 0 ? '+' : '').number_format($financials['earnings_cagr'], 1, ',', '.').' %']) }}@endif
+                            </p>
+                        @else
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Loaded with the key figures.') }}</p>
+                        @endif
+                        <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                            <a href="{{ $reportUrl }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">📄 {{ __('Annual report & investor relations') }} ↗</a>
+                            @if ($figures['next_earnings'] ?? null)
+                                <span class="text-gray-600 dark:text-gray-300">📅 {{ __('Next figures: :date', ['date' => \Illuminate\Support\Carbon::parse($figures['next_earnings'])->format('d.m.Y')]) }}</span>
+                            @endif
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎯 {{ __('Analysts') }}</h3>
+                        @if ($consensus)
+                            <p class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                                <span class="rounded-full px-2.5 py-0.5 font-medium {{ $levelClasses[$consensus['level']] }}">{{ $consensus['label'] }}</span>
+                                @if ($consensus['total'] > 0)<span class="text-gray-500 dark:text-gray-400">{{ trans_choice(':count analyst|:count analysts', $consensus['total']) }}</span>@endif
+                                @if ($consensus['upside'] !== null)<span class="text-gray-700 dark:text-gray-300">{{ __('Price target :price (:upside)', ['price' => number_format((float) $figures['analyst_target'], 2, ',', '.'), 'upside' => ($consensus['upside'] >= 0 ? '+' : '').number_format($consensus['upside'], 1, ',', '.').' %']) }}</span>@endif
+                            </p>
+                            @if ($consensus['buy'] + $consensus['hold'] + $consensus['sell'] > 0)
+                                @php($votes = $consensus['buy'] + $consensus['hold'] + $consensus['sell'])
+                                <div class="mt-3 flex h-3 overflow-hidden rounded-full" role="img" aria-label="{{ __(':buy buy, :hold hold, :sell sell', ['buy' => $consensus['buy'], 'hold' => $consensus['hold'], 'sell' => $consensus['sell']]) }}">
+                                    <span class="bg-emerald-500" style="width: {{ $consensus['buy'] / $votes * 100 }}%"></span>
+                                    <span class="bg-gray-300 dark:bg-gray-600" style="width: {{ $consensus['hold'] / $votes * 100 }}%"></span>
+                                    <span class="bg-orange-500" style="width: {{ $consensus['sell'] / $votes * 100 }}%"></span>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __(':buy buy, :hold hold, :sell sell', ['buy' => $consensus['buy'], 'hold' => $consensus['hold'], 'sell' => $consensus['sell']]) }}</p>
+                            @endif
+                        @else
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No analyst votes known.') }}</p>
+                        @endif
+                        @if (($figures['rating_changes'] ?? []) !== [])
+                            <ul class="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                                @foreach ($figures['rating_changes'] as $change)
+                                    <li>{{ \Illuminate\Support\Carbon::parse($change['date'])->format('d.m.y') }} · <strong>{{ $change['firm'] }}</strong>: {{ $change['from'] !== '' && $change['from'] !== $change['to'] ? $change['from'].' → ' : '' }}{{ $change['to'] }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+
+                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">🕵️ {{ __('Insider barometer') }}</h3>
+                        @if ($insider)
+                            <p class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                                <span class="rounded-full px-2.5 py-0.5 font-medium {{ $levelClasses[$insider['level']] }}">{{ $insider['label'] }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ __(':buys purchases, :sells sales in the last months', ['buys' => $insider['buys'], 'sells' => $insider['sells']]) }}</span>
+                            </p>
+                            @if (($figures['insider']['transactions'] ?? []) !== [])
+                                <ul class="mt-3 divide-y divide-gray-100 text-xs dark:divide-gray-700">
+                                    @foreach (array_slice($figures['insider']['transactions'], 0, 6) as $trade)
+                                        <li class="py-1.5 text-gray-700 dark:text-gray-300">
+                                            <span class="tabular-nums text-gray-500 dark:text-gray-400">{{ $trade['date'] ? \Illuminate\Support\Carbon::parse($trade['date'])->format('d.m.y') : '' }}</span>
+                                            · <strong>{{ $trade['name'] }}</strong>@if ($trade['relation']) ({{ $trade['relation'] }})@endif
+                                            @if ($trade['text']) – {{ $trade['text'] }}@elseif ($trade['shares']) – {{ number_format($trade['shares'], 0, ',', '.') }} {{ __('shares') }}@endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @else
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No insider trades known (often only reported for US companies).') }}</p>
+                        @endif
+                    </div>
+
+                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Plans, products & deals') }}</h3>
+                        @if ($plans->isNotEmpty())
+                            <ul class="mt-2 space-y-1.5 text-sm">
+                                @foreach ($plans as $plan)
+                                    <li wire:key="plan-{{ $plan->id }}"><a href="{{ $plan->url }}" target="_blank" rel="noopener noreferrer" class="text-gray-900 hover:underline dark:text-gray-100">{{ $plan->title }}</a> <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $plan->published_at?->format('d.m.y') }}</span></li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No news about plans or new products yet.') }}</p>
+                        @endif
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Headlines about new products, investments, takeovers and partnerships. The company describes its strategy in the annual report.') }}</p>
+                    </div>
                 </section>
             @endunless
 

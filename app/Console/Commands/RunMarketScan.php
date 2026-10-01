@@ -40,7 +40,9 @@ class RunMarketScan extends Command
             }
         }
 
-        $stale = $universe->filter(fn (Security $security) => ! $security->fundamentals_updated_at || $security->fundamentals_updated_at->lt(now()->subWeek()))
+        // Key figures loaded before insider trades and analyst votes were added count as stale too.
+        $stale = $universe->filter(fn (Security $security) => ! $security->fundamentals_updated_at || $security->fundamentals_updated_at->lt(now()->subWeek())
+            || ($security->fundamentals !== null && ! array_key_exists('analyst_votes', $security->fundamentals)))
             ->sortBy(fn (Security $security) => $security->fundamentals_updated_at?->timestamp ?? 0)
             ->take((int) $this->option('fundamentals'));
 

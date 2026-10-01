@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'addons', 'offers_zip', 'offers_chains'])]
+#[Fillable(['name', 'mail_address', 'addons', 'offers_zip', 'offers_chains'])]
 class Household extends Model
 {
     /** @use HasFactory<HouseholdFactory> */

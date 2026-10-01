@@ -66,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('cashflow', 'cashflow.index')->name('cashflow.index');
     Volt::route('wishlist', 'wishlist.index')->name('wishlist.index');
     Volt::route('pantry', 'pantry.index')->name('pantry.index');
+    Volt::route('changelog', 'changelog.index')->name('changelog');
     Volt::route('knowledge', 'knowledge.index')->name('knowledge.index');
     Volt::route('emergency', 'emergency.index')->middleware([Security::SENSITIVE, 'sensitive.log:emergency'])->name('emergency.index');
     Volt::route('vehicles', 'vehicles.index')->name('vehicles.index');

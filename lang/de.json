@@ -5226,5 +5226,10 @@
     "Insurances not recognised": "Nicht erkannte Versicherungen",
     "These contracts look like an insurance, but the check could not tell which one. Say what it is – or reject it.": "Diese Verträge sehen nach einer Versicherung aus, der Check kann sie aber nicht zuordnen. Sag, was es ist – oder lehne sie ab.",
     "This is a …": "Das ist eine …",
-    "No insurance": "Keine Versicherung"
+    "No insurance": "Keine Versicherung",
+    "Build :number": "Build :number",
+    "Installed version": "Installierte Version",
+    "deployed :time": "ausgeliefert :time",
+    "Local installation (no deploy)": "Lokale Installation (kein Deploy)",
+    "current": "aktuell"
 }

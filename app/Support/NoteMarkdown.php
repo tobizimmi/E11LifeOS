@@ -54,9 +54,10 @@ class NoteMarkdown
      * the note, missing ones offer to create a note with that title.
      *
      * With $interactiveTasks, checklist boxes become clickable and call the
-     * Livewire action toggleTask(n), n being the box's position in the page.
+     * Livewire action toggleTask(n), n being the box's position in the page. With $taskButtons,
+     * each item also gets a button for checklistToTask(n).
      */
-    public static function toHtml(Item $note, User $viewer, bool $interactiveTasks = false): string
+    public static function toHtml(Item $note, User $viewer, bool $interactiveTasks = false, bool $taskButtons = false): string
     {
         $noteIdsByTitle = self::visibleNoteIdsByTitle($note->household_id, $viewer);
         $links = [];
@@ -88,24 +89,31 @@ class NoteMarkdown
         $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks);
         $html = strtr(self::highlight(self::renderBlocks((string) $markdown, $embed)), $links);
 
+        $html = self::decorateChecklists($html, $note, $viewer);
+
         if ($interactiveTasks) {
             // Only the task-list renderer emits <input> tags: raw HTML from the note is stripped.
             $taskIndex = 0;
             $html = (string) preg_replace_callback(
                 '/<input (checked="" )?disabled="" type="checkbox">/',
-                function (array $match) use (&$taskIndex) {
+                function (array $match) use (&$taskIndex, $taskButtons) {
                     $isChecked = ($match[1] ?? '') !== '';
                     $index = $taskIndex++;
 
                     // The key changes with the state, so Livewire replaces the box instead of
                     // morphing it (a prevented click leaves the old checked state on screen).
+                    $button = $taskButtons
+                        ? sprintf('<button type="button" class="checklist-to-task" wire:click="checklistToTask(%d)" title="%s" aria-label="%s">↗</button>', $index, e(__('Make it a task')), e(__('Make it a task')))
+                        : '';
+
                     return sprintf(
-                        '<input %stype="checkbox" wire:key="task-%d-%s" wire:click.prevent="toggleTask(%d)" aria-label="%s">',
+                        '<input %stype="checkbox" wire:key="task-%d-%s" wire:click.prevent="toggleTask(%d)" aria-label="%s">%s',
                         $isChecked ? 'checked="" ' : '',
                         $index,
                         $isChecked ? 'done' : 'open',
                         $index,
                         e(__('Tick off')),
+                        $button,
                     );
                 },
                 $html,
@@ -113,6 +121,119 @@ class NoteMarkdown
         }
 
         return $html;
+    }
+
+    /** "//15.10.2026", "//15.10." or "//2026-10-15" after a space: the due date of a checklist item. */
+    public const DUE_PATTERN = '/(?<=^|\s|>)\/\/(\d{1,2}\.\d{1,2}\.(?:\d{2,4})?|\d{4}-\d{2}-\d{2})(?=$|[\s<,.;!?])/u';
+
+    /** "@Anna" after a space: who is responsible. */
+    public const PERSON_PATTERN = '/(?<=^|\s|>)@([\p{L}][\p{L}\-]{1,30})/u';
+
+    /** "{task:123}": the task made from a checklist item. */
+    public const TASK_LINK_PATTERN = '/\{task:(\d+)\}/';
+
+    /**
+     * Due dates, people and linked tasks of checklist items as small chips (like in Confluence).
+     */
+    private static function decorateChecklists(string $html, Item $note, User $viewer): string
+    {
+        preg_match_all(self::TASK_LINK_PATTERN, $html, $ids);
+        $tasks = $ids[1] === [] ? collect() : Item::query()->forHousehold($note->household_id)->visibleTo($viewer)
+            ->where('type', Item::TYPE_TODO)->whereIn('id', array_map('intval', $ids[1]))->get()->keyBy('id');
+
+        // Only text between tags is decorated, never attributes or code.
+        $parts = preg_split('/(<[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$html];
+        $inCode = 0;
+
+        foreach ($parts as $position => $part) {
+            if (str_starts_with($part, '<')) {
+                if (preg_match('#^<(/?)(code|pre)\b#i', $part, $tag)) {
+                    $inCode = max(0, $inCode + ($tag[1] === '/' ? -1 : 1));
+                }
+
+                continue;
+            }
+
+            if ($inCode > 0 || $part === '' || ! preg_match('/\/\/|@|\{task:/', $part)) {
+                continue;
+            }
+
+            $part = (string) preg_replace_callback(self::DUE_PATTERN, function (array $match) {
+                $date = self::parseDue($match[1]);
+                $overdue = $date?->lt(today()) ? ' checklist-due-overdue' : '';
+
+                return '<span class="checklist-due'.$overdue.'">📅 '.e($date ? $date->format('d.m.Y') : $match[1]).'</span>';
+            }, $part);
+            $part = (string) preg_replace(self::PERSON_PATTERN, '<span class="checklist-person">@$1</span>', $part);
+            $parts[$position] = (string) preg_replace_callback(self::TASK_LINK_PATTERN, function (array $match) use ($tasks) {
+                $task = $tasks->get((int) $match[1]);
+
+                return $task
+                    ? '<a href="'.e(route('tasks.index', ['task' => $task->id])).'" class="checklist-task'.($task->done ? ' checklist-task-done' : '').'" title="'.e($task->title).'">'.($task->done ? '✓ ' : '✅ ').e(__('Task')).'</a>'
+                    : '';
+            }, $part);
+        }
+
+        return implode('', $parts);
+    }
+
+    public static function parseDue(string $value): ?Carbon
+    {
+        try {
+            if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})?$/', $value, $parts)) {
+                $year = isset($parts[3]) ? (int) $parts[3] : (int) now()->year;
+                $year = $year < 100 ? 2000 + $year : $year;
+
+                return checkdate((int) $parts[2], (int) $parts[1], $year) ? Carbon::create($year, (int) $parts[2], (int) $parts[1])->startOfDay() : null;
+            }
+
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * The text of the n-th checklist item (counted like toggleTask), or null.
+     *
+     * @return ?array{line: int, text: string, done: bool}
+     */
+    public static function taskLine(string $markdown, int $index): ?array
+    {
+        $lines = preg_split('/\r\n|\n|\r/', $markdown) ?: [];
+        $fence = null;
+        $taskIndex = 0;
+
+        foreach ($lines as $number => $line) {
+            if (preg_match('/^\s*(`{3,}|~{3,})/', $line, $match)) {
+                $fence = $fence === null ? $match[1][0] : ($match[1][0] === $fence ? null : $fence);
+
+                continue;
+            }
+
+            if ($fence === null && preg_match(self::TASK_MARKER, $line, $match) && $taskIndex++ === $index) {
+                return ['line' => $number, 'text' => trim(substr($line, strlen($match[0]) + 1)), 'done' => $match[2] !== ' '];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Appends text to the n-th checklist item (e.g. the link to the task made from it).
+     */
+    public static function appendToTask(string $markdown, int $index, string $suffix): ?string
+    {
+        $found = self::taskLine($markdown, $index);
+
+        if (! $found) {
+            return null;
+        }
+
+        $lines = preg_split('/\r\n|\n|\r/', $markdown) ?: [];
+        $lines[$found['line']] = rtrim($lines[$found['line']]).' '.$suffix;
+
+        return implode("\n", $lines);
     }
 
     /**

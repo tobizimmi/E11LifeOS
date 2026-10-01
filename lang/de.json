@@ -5111,5 +5111,9 @@
     "Your template": "Deine Vorlage",
     "from": "von",
     "paperless (full text)": "paperless (Volltext)",
-    "to": "bis"
+    "to": "bis",
+    "Make it a task": "Als Aufgabe anlegen",
+    "This item is already a task.": "Dieser Punkt ist schon eine Aufgabe.",
+    "Task created and linked.": "Aufgabe angelegt und verknüpft.",
+    "In checklists, “//15.10.” adds a due date and “@Name” a person; ↗ makes an item a task.": "In Checklisten setzt „//15.10.“ ein Enddatum und „@Name“ einen Verantwortlichen; ↗ macht aus einem Punkt eine Aufgabe."
 }

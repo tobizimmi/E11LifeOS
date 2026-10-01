@@ -269,6 +269,11 @@ class PlaceFinder
                 'website' => isset($tags['website']) && str_starts_with((string) $tags['website'], 'http') ? mb_substr((string) $tags['website'], 0, 255) : null,
                 'cuisine' => isset($tags['cuisine']) ? str_replace(['_', ';'], [' ', ', '], mb_substr((string) $tags['cuisine'], 0, 80)) : null,
                 'wikipedia' => isset($tags['wikipedia']) ? mb_substr((string) $tags['wikipedia'], 0, 150) : null,
+                'menu' => collect(['website:menu', 'menu:url', 'contact:menu'])->map(fn (string $key) => (string) ($tags[$key] ?? ''))->first(fn (string $url) => str_starts_with($url, 'http')) ?: null,
+                'image' => isset($tags['image']) && str_starts_with((string) $tags['image'], 'https://') ? mb_substr((string) $tags['image'], 0, 255) : null,
+                'commons' => isset($tags['wikimedia_commons']) && str_starts_with((string) $tags['wikimedia_commons'], 'File:') ? mb_substr((string) $tags['wikimedia_commons'], 0, 200) : null,
+                'phone' => isset($tags['phone']) || isset($tags['contact:phone']) ? mb_substr((string) ($tags['phone'] ?? $tags['contact:phone']), 0, 40) : null,
+                'wheelchair' => isset($tags['wheelchair']) ? mb_substr((string) $tags['wheelchair'], 0, 10) : null,
             ]);
 
             $places[] = [

@@ -37,8 +37,9 @@ use Illuminate\Support\Carbon;
  * @property ?string $currency local currency at the destination (null = euros)
  * @property ?array<int, float> $map_area south, west, north, east
  * @property ?Carbon $places_loaded_at
+ * @property ?list<string> $visited_places
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'currency', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'currency', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'visited_places', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
 #[Hidden(['share_token', 'share_token_encrypted', 'share_password'])]
 class Trip extends Model
 {
@@ -67,6 +68,7 @@ class Trip extends Model
             'group_info' => 'encrypted',
             'map_area' => 'array',
             'places_loaded_at' => 'datetime',
+            'visited_places' => 'array',
         ];
     }
 

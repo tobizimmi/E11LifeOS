@@ -8,6 +8,7 @@ use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripPlace;
+use App\Support\Life\TripDiscover;
 use App\Models\TripStop;
 use App\Models\InboundMail;
 use App\Support\Life\BookingMail;
@@ -40,7 +41,7 @@ new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold, WithFileUploads;
 
-    private const TABS = ['overview', 'plan', 'map', 'bookings', 'costs', 'packing'];
+    private const TABS = ['overview', 'plan', 'map', 'discover', 'bookings', 'costs', 'packing'];
 
     #[Locked]
     public int $tripId;
@@ -64,6 +65,16 @@ new #[Layout('layouts.app')] class extends Component
     public string $template = 'beach';
 
     public string $templatePerson = '';
+
+    /** Discover: category of places shown (see TripDiscover::categories()). */
+    #[Url(as: 'what', except: 'restaurants')]
+    public string $discoverCategory = 'restaurants';
+
+    public string $discoverSearch = '';
+
+    public int $discoverLimit = 24;
+
+    public bool $showVisited = false;
 
     /**
      * @var array<string, mixed>
@@ -470,6 +481,60 @@ new #[Layout('layouts.app')] class extends Component
      *
      * @return array{name: string, address: string, lat: float, lng: float, kind: string, info: array<string, string>}
      */
+    /**
+     * Marks a place of the trip area as visited (hidden from the lists) or not visited again.
+     */
+    public function toggleVisited(int $placeId): void
+    {
+        $trip = $this->findTrip();
+        $place = $trip->places()->find($placeId) ?? abort(404);
+        $visited = TripDiscover::toggleVisited($trip, $place->osm_id);
+        $this->dispatch('toast', message: $visited ? __(':place marked as visited.', ['place' => $place->name]) : __(':place is open again.', ['place' => $place->name]));
+    }
+
+    /**
+     * Puts a discovered place on the plan (as an idea or on a day).
+     */
+    public function planDiscovered(int $placeId, string $day = 'ideas'): void
+    {
+        $place = $this->findTrip()->places()->find($placeId) ?? abort(404);
+        $this->addPlace($this->placeData($place), $day);
+    }
+
+    public function updatedDiscoverCategory(): void
+    {
+        $this->discoverLimit = 24;
+    }
+
+    /**
+     * Places of the chosen category (not yet visited ones unless asked), the best described first.
+     *
+     * @return array{places: \Illuminate\Support\Collection<int, TripPlace>, more: bool, counts: array<string, int>, visitedCount: int}
+     */
+    private function discoverData(Trip $trip): array
+    {
+        $categories = TripDiscover::categories();
+        $category = $categories[$this->discoverCategory] ?? $categories['restaurants'];
+        $visited = $trip->visited_places ?? [];
+        $byType = $trip->places()->when($visited !== [], fn ($query) => $query->whereNotIn('osm_id', $visited))
+            ->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
+        $search = mb_strtolower(trim($this->discoverSearch));
+
+        $places = $trip->places()->whereIn('category', $category['types'])
+            ->when(! $this->showVisited && $visited !== [], fn ($query) => $query->whereNotIn('osm_id', $visited))
+            ->when($search !== '', fn ($query) => $query->whereRaw('LOWER(name) LIKE ?', ['%'.addcslashes($search, '%_\\').'%']))
+            ->get()
+            ->sortBy(fn (TripPlace $place) => [-TripDiscover::richness($place), mb_strtolower($place->name)])
+            ->values();
+
+        return [
+            'places' => $places->take($this->discoverLimit),
+            'more' => $places->count() > $this->discoverLimit,
+            'counts' => collect($categories)->map(fn (array $entry) => (int) collect($entry['types'])->sum(fn (string $type) => $byType[$type] ?? 0))->all(),
+            'visitedCount' => count($visited),
+        ];
+    }
+
     private function placeData(TripPlace $place): array
     {
         return ['name' => $place->name, 'address' => (string) $place->address, 'lat' => $place->lat, 'lng' => $place->lng, 'kind' => $place->kind, 'info' => $place->info ?? []];
@@ -917,7 +982,7 @@ new #[Layout('layouts.app')] class extends Component
         $itinerary = TripItinerary::build($trip);
 
         // The places of the trip area are loaded once in the background when the map is first used.
-        if ($this->tab === 'map' && $trip->places_loaded_at === null && ($trip->destination || $trip->stops->contains(fn (TripStop $stop) => $stop->hasPosition()))) {
+        if (in_array($this->tab, ['map', 'discover'], true) && $trip->places_loaded_at === null && ($trip->destination || $trip->stops->contains(fn (TripStop $stop) => $stop->hasPosition()))) {
             LoadTripPlaces::start($trip);
         }
         $routes = in_array($this->tab, ['plan', 'map'], true) ? TripItinerary::dayRoutes($itinerary, $trip->travel_mode ?: 'foot') : ['days' => [], 'failed' => [], 'pending' => []];
@@ -929,8 +994,9 @@ new #[Layout('layouts.app')] class extends Component
             'travelModes' => TripRoutes::modes(),
             'mapGroups' => $this->tab === 'map' ? $this->withRoutes(TripItinerary::mapGroups($itinerary), $routes['days'], $trip->travel_mode ?: 'foot') : [],
             'mapCenter' => $this->tab === 'map' && $trip->destination ? $this->mapCenter((string) $trip->destination) : null,
-            'placesCount' => $this->tab === 'map' ? $trip->places()->count() : 0,
-            'placesLoading' => $this->tab === 'map' && Cache::has(LoadTripPlaces::lockKey($trip->id)),
+            'placesCount' => in_array($this->tab, ['map', 'discover'], true) ? $trip->places()->count() : 0,
+            'discover' => $this->tab === 'discover' ? $this->discoverData($trip) : null,
+            'placesLoading' => in_array($this->tab, ['map', 'discover'], true) && Cache::has(LoadTripPlaces::lockKey($trip->id)),
             'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => ($stop->location || $trip->destination) && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
             'colors' => Trip::colorSchemes(),
@@ -1029,7 +1095,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             <div class="sticky top-14 z-10 -mx-1 flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/90 p-1 shadow-sm ring-1 ring-gray-200 backdrop-blur lg:top-2 dark:bg-gray-800/90 dark:ring-gray-700" role="tablist">
-                @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
+                @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'discover' => ['🔎', __('Discover')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])><span class="text-base" aria-hidden="true">{{ $icon }}</span>{{ $label }}</button>
                 @endforeach
                 <a href="{{ route('trips.group', $trip) }}" wire:navigate class="flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 sm:flex-row sm:gap-1.5 sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700"><span class="text-base" aria-hidden="true">👥</span>{{ __('Group') }}</a>
@@ -1279,6 +1345,74 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
                 @endforeach
+            @elseif ($tab === 'discover')
+                @php($discoverCategories = \App\Support\Life\TripDiscover::categories())
+                <section class="space-y-4">
+                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <div class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="{{ __('Categories') }}">
+                            @foreach ($discoverCategories as $categoryKey => $category)
+                                <button type="button" role="tab" wire:click="$set('discoverCategory', '{{ $categoryKey }}')" aria-selected="{{ $discoverCategory === $categoryKey ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $discoverCategory === $categoryKey, 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' => $discoverCategory !== $categoryKey])>
+                                    {{ $category['icon'] }} {{ $category['label'] }} <span class="opacity-70">{{ $discover['counts'][$categoryKey] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div class="mt-3 flex flex-wrap items-center gap-3">
+                            <input type="search" wire:model.live.debounce.300ms="discoverSearch" placeholder="🔎 {{ __('Search by name') }}" aria-label="{{ __('Search by name') }}" class="min-w-0 flex-1 rounded-full border-gray-300 px-4 py-1.5 text-sm dark:border-gray-700">
+                            @if ($discover['visitedCount'] > 0)
+                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showVisited" class="rounded border-gray-300 text-indigo-600"> {{ trans_choice('Show :count visited|Show :count visited', $discover['visitedCount']) }}</label>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($placesCount === 0)
+                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ $placesLoading ? __('The places of the trip area are loading …') : __('Open the map once – the places of the trip area are loaded from there.') }}</p>
+                    @elseif ($discover['places']->isEmpty())
+                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('Nothing here – try another category.') }}</p>
+                    @else
+                        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            @foreach ($discover['places'] as $place)
+                                @php($image = \App\Support\Life\TripDiscover::imageUrl($place))
+                                @php($links = \App\Support\Life\TripDiscover::links($place, $trip->destination))
+                                @php($visited = \App\Support\Life\TripDiscover::isVisited($trip, $place))
+                                <li wire:key="discover-{{ $place->id }}" @class(['flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800', 'opacity-60' => $visited])>
+                                    <div class="relative aspect-[16/9] bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40">
+                                        <span class="absolute inset-0 flex items-center justify-center text-4xl" aria-hidden="true">{{ $discoverCategories[\App\Support\Life\TripDiscover::categoryOf($place)]['icon'] }}</span>
+                                        @if ($image)
+                                            <img src="{{ $image }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full object-cover" x-data x-on:error="$el.remove()">
+                                        @endif
+                                        @if ($visited)
+                                            <span class="absolute start-2 top-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">✓ {{ __('visited') }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-1 flex-col gap-1 p-4">
+                                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">{{ $place->name }}</h4>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ collect([($place->info['cuisine'] ?? null) ? ucfirst($place->info['cuisine']) : null, $place->address])->filter()->implode(' · ') }}
+                                        </p>
+                                        @if ($place->info['opening_hours'] ?? null)
+                                            <p class="text-xs text-gray-600 dark:text-gray-300">🕒 {{ $place->info['opening_hours'] }}</p>
+                                        @endif
+                                        <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                            @if ($links['menu'])<a href="{{ $links['menu'] }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">📜 {{ __('Menu') }}</a>@endif
+                                            @if ($links['menu_search'])<a href="{{ $links['menu_search'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">📜 {{ __('Find the menu') }}</a>@endif
+                                            @if ($links['website'])<a href="{{ $links['website'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">🌐 {{ __('Website') }}</a>@endif
+                                            <a href="{{ $links['photos'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">📷 {{ __('Photos & reviews') }}</a>
+                                            @if ($place->info['phone'] ?? null)<a href="tel:{{ preg_replace('/[^+0-9]/', '', $place->info['phone']) }}" class="text-indigo-600 hover:underline dark:text-indigo-400">📞 {{ $place->info['phone'] }}</a>@endif
+                                        </p>
+                                        <div class="mt-auto flex flex-wrap gap-2 pt-3">
+                                            <button type="button" wire:click="planDiscovered({{ $place->id }})" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">＋ {{ __('Add to plan') }}</button>
+                                            <button type="button" wire:click="toggleVisited({{ $place->id }})" class="rounded-lg px-3 py-1.5 text-xs text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">{{ $visited ? '↺ '.__('Not visited') : '✓ '.__('Visited') }}</button>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($discover['more'])
+                            <div class="text-center"><x-secondary-button type="button" wire:click="$set('discoverLimit', {{ $discoverLimit + 24 }})">{{ __('Show more') }}</x-secondary-button></div>
+                        @endif
+                        <p class="text-center text-xs text-gray-500 dark:text-gray-400">{{ __('Places and details from OpenStreetMap, pictures from Wikipedia/Wikimedia. Menus, photos and reviews open on the website or in Google Maps.') }}</p>
+                    @endif
+                </section>
             @elseif ($tab === 'map')
                 @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
                 <div class="flex flex-wrap items-center gap-2 text-sm">

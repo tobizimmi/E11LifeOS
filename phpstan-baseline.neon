@@ -1999,12 +1999,6 @@ parameters:
 			path: app/Support/Life/PocketMoney.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(lowercase\-string&non\-falsy\-string\), Closure\(App\\Models\\TripPackingItem\)\: \(lowercase\-string&non\-falsy\-string\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Life/TripPlanner.php
-
-		-
 			message: '#^Cannot access property \$year on string\.$#'
 			identifier: property.nonObject
 			count: 1

@@ -185,7 +185,7 @@ class DataExportController extends Controller
                     ->map(fn (Kid $kid) => $kid->makeHidden(['household_id'])->toArray())
                 : [],
             'trips' => $household
-                ? Trip::query()->where('household_id', $household->id)->where('created_by', $user->id)->with(['bookings', 'packingItems'])->orderBy('starts_on')->get()
+                ? Trip::query()->where('household_id', $household->id)->where('created_by', $user->id)->with(['bookings', 'packingItems' => fn ($query) => $query->visibleTo($user)])->orderBy('starts_on')->get()
                     ->map(fn (Trip $trip) => $trip->makeHidden(['household_id', 'created_by'])->toArray())
                 : [],
             'home' => $household

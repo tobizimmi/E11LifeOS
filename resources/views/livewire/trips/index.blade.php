@@ -67,7 +67,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $trips = Trip::query()->visibleTo(Auth::user(), (int) $this->householdId)->with(['shareGroups', 'participants'])->withSum('bookings', 'cost')->withCount(['packingItems', 'packingItems as packed_count' => fn ($query) => $query->where('packed', true)])->orderBy('starts_on')->get();
+        $trips = Trip::query()->visibleTo(Auth::user(), (int) $this->householdId)->with(['shareGroups', 'participants'])->withSum('bookings', 'cost')->withCount(['packingItems' => fn ($query) => $query->whereNull('owner_id'), 'packingItems as packed_count' => fn ($query) => $query->whereNull('owner_id')->where('packed', true)])->orderBy('starts_on')->get();
 
         return [
             'upcoming' => $trips->reject->isPast()->values(),

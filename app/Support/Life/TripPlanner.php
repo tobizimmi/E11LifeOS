@@ -2,7 +2,9 @@
 
 namespace App\Support\Life;
 
+use App\Models\ChecklistTemplate;
 use App\Models\EmergencyEntry;
+use App\Models\Item;
 use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripPackingItem;
@@ -90,25 +92,61 @@ class TripPlanner
     /**
      * Adds the items of a template that are not on the list yet; returns how many were added.
      */
-    public static function applyTemplate(Trip $trip, string $template, ?string $person = null): int
+    public static function applyTemplate(Trip $trip, string $template, ?string $person = null, ?int $ownerId = null): int
     {
-        $person = $person !== null && trim($person) !== '' ? trim($person) : null;
-        $existing = $trip->packingItems()->get()->map(fn (TripPackingItem $item) => mb_strtolower($item->label).'|'.mb_strtolower((string) $item->person))->all();
-        $position = (int) $trip->packingItems()->max('position');
-        $added = 0;
-
-        foreach (self::templates()[$template]['items'] ?? [] as [$label, $category]) {
-            if (in_array(mb_strtolower($label).'|'.mb_strtolower((string) $person), $existing, true)) {
-                continue;
-            }
-
-            $trip->packingItems()->create(['label' => $label, 'category' => $category, 'person' => $person, 'position' => ++$position]);
-            $added++;
-        }
-
+        $added = self::addItems($trip, self::templates()[$template]['items'] ?? [], $person, $ownerId);
         $trip->update(['packing_templates' => array_values(array_unique([...$trip->packing_templates ?? [], $template]))]);
 
         return $added;
+    }
+
+    /**
+     * Adds items (label, category) to the shared list or a personal one, skipping what is already on it.
+     *
+     * @param  list<array{0: string, 1: string}>  $items
+     */
+    public static function addItems(Trip $trip, array $items, ?string $person = null, ?int $ownerId = null): int
+    {
+        $person = $person !== null && trim($person) !== '' ? trim($person) : null;
+        $list = $trip->packingItems()->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId), fn ($query) => $query->whereNull('owner_id'));
+        $existing = $list->get()->map(fn (TripPackingItem $item) => mb_strtolower($item->label).'|'.mb_strtolower((string) $item->person))->all();
+        $position = (int) $trip->packingItems()->max('position');
+        $categories = self::categories();
+        $added = 0;
+
+        foreach ($items as [$label, $category]) {
+            $label = mb_substr(trim($label), 0, 150);
+
+            if ($label === '' || in_array(mb_strtolower($label).'|'.mb_strtolower((string) $person), $existing, true)) {
+                continue;
+            }
+
+            $trip->packingItems()->create(['owner_id' => $ownerId, 'label' => $label, 'category' => isset($categories[$category]) ? $category : 'other', 'person' => $person, 'position' => ++$position]);
+            $existing[] = mb_strtolower($label).'|'.mb_strtolower((string) $person);
+            $added++;
+        }
+
+        return $added;
+    }
+
+    /**
+     * Saves the shared or the user's personal list as an own template (packing list, task, checklist page).
+     */
+    public static function saveAsTemplate(Trip $trip, User $user, string $name, bool $private, bool $personalList): ChecklistTemplate
+    {
+        $items = $trip->packingItems()->when($personalList, fn ($query) => $query->where('owner_id', $user->id), fn ($query) => $query->whereNull('owner_id'))
+            ->get()->unique(fn (TripPackingItem $item) => mb_strtolower($item->label))->values();
+        $name = mb_substr(trim($name), 0, 255);
+
+        return ChecklistTemplate::create([
+            'household_id' => $trip->household_id,
+            'created_by' => $user->id,
+            'name' => $name,
+            'icon' => '🧳',
+            'visibility' => $private ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+            'tasks' => [['title' => $name, 'offset' => -1, 'subtasks' => $items->pluck('label')->all()]],
+            'packing' => $items->map(fn (TripPackingItem $item) => [$item->label, $item->category])->all(),
+        ]);
     }
 
     /**
@@ -124,7 +162,7 @@ class TripPlanner
         $bookingCosts = round((float) $bookings->sum('cost'), 2);
         $costs = round($bookingCosts + $stopCosts, 2);
         $paid = round((float) $bookings->where('paid', true)->sum('cost'), 2);
-        $items = $trip->packingItems;
+        $items = $trip->packingItems->filter(fn (TripPackingItem $item) => $item->owner_id === null || $item->owner_id === $user->id);
 
         return [
             'days_until' => (int) today()->diffInDays($trip->starts_on, false),

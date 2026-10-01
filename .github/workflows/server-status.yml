@@ -67,6 +67,14 @@ jobs:
             done
             echo "== Map warnings (last 10)"
             grep -hE 'WARNING: (Place search|Places nearby|Route)' "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 10 | cut -c1-250 || true
+            echo "== DNS servers of the server (first one should answer quickly)"
+            grep -E "^(nameserver|options)" /etc/resolv.conf 2>/dev/null | sed 's/^/  /' || echo "  not readable"
+            echo "== Severe PHP errors (memory, time limit, fatal) – last 5"
+            grep -hE "Allowed memory size|Maximum execution time|FatalError|PHP Fatal" "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 5 | cut -c1-300 || true
+            echo "== Errors around the market scan and medication reminders – last 6"
+            grep -hE "market-scan|medication-reminders|MarketData|RunMarketScan" "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 6 | cut -c1-400 || true
+            echo "== PHP memory limit (CLI)"
+            php -r 'echo "  ".ini_get("memory_limit")."\n";'
             echo "== Laravel errors (last 10)"
             grep -hE '\.(ERROR|CRITICAL|EMERGENCY):' "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 10 | cut -c1-300 || true
           EOF

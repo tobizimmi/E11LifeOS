@@ -142,6 +142,12 @@ jobs:
           echo "Directories created"
           DIRSEOF
 
+      - name: Pause scheduler and queue during the update
+        # Jobs started while the files are being replaced fail half-way (e.g. reminders at a deploy);
+        # both are started again at the end of the deployment.
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} "export PATH=/usr/local/bin:/usr/bin:/bin:\$PATH; pm2 stop '${{ env.PM2_SCHEDULER_NAME }}' '${{ env.PM2_QUEUE_NAME }}' > /dev/null 2>&1 || true"
+
       - name: Deploy application code
         run: |
           # .env is fully SERVER-MANAGED and intentionally never touched by CI —
@@ -226,3 +232,8 @@ jobs:
 
             echo "Deployment complete (PM2: $PM2_APP_NAME, $PM2_REVERB_NAME)."
           EOF
+
+      - name: Start scheduler and queue again after a failed update
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} "export PATH=/usr/local/bin:/usr/bin:/bin:\$PATH; pm2 restart '${{ env.PM2_SCHEDULER_NAME }}' '${{ env.PM2_QUEUE_NAME }}' > /dev/null 2>&1 || true"

@@ -114,5 +114,7 @@ class TripPlacesTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === 'https://photon.komoot.io/api/');
         $this->assertSame('192.0.2.10', MapHttp::address('photon.komoot.io'));
         $this->assertNull(MapHttp::address('127.0.0.1'));
+        $this->assertNull(MapHttp::address('fritz.box'));
+        $this->assertNull(MapHttp::address('nas'));
     }
 }

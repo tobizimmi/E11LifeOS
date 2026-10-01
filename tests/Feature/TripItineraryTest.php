@@ -94,6 +94,7 @@ class TripItineraryTest extends TestCase
 
     public function test_places_are_found_on_the_map_and_added_to_a_day_with_their_position(): void
     {
+        Queue::fake(); // The places of the trip area have their own test (TripPlacesTest).
         Http::fake([
             'photon.komoot.io/*' => Http::response(['features' => [
                 ['geometry' => ['coordinates' => [19.0457, 47.5071]], 'properties' => ['name' => 'Parlament', 'street' => 'Kossuth Lajos tér', 'housenumber' => '1-3', 'city' => 'Budapest', 'country' => 'Ungarn', 'osm_key' => 'tourism', 'osm_value' => 'attraction']],
@@ -186,6 +187,7 @@ class TripItineraryTest extends TestCase
 
     public function test_the_route_of_a_day_shows_the_way_between_the_places_and_follows_the_travel_mode(): void
     {
+        Queue::fake();
         Http::fake(['routing.openstreetmap.de/*' => Http::response(['routes' => [[
             'duration' => 1500, 'distance' => 2100,
             'legs' => [['duration' => 600, 'distance' => 800], ['duration' => 900, 'distance' => 1300]],

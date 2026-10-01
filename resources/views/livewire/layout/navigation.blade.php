@@ -215,7 +215,7 @@ new class extends Component
                     <x-sidebar-link icon="gift" :href="route('wishlist.index')" :active="request()->routeIs('wishlist.*')" wire:navigate>{{ __('Wishlist') }}</x-sidebar-link>
                     <x-sidebar-link icon="light-bulb" :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')" wire:navigate>{{ __('Money knowledge') }}</x-sidebar-link>
                 </x-sidebar-group>
-                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*')">
+                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*', 'career.*')">
                     <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>
                     @if ($hasRealEstate)
                         <x-sidebar-link icon="building-office-2" :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>{{ __('Real estate') }}</x-sidebar-link>
@@ -225,6 +225,7 @@ new class extends Component
                     <x-sidebar-link icon="cake" :href="route('people.index')" :active="request()->routeIs('people.*')" wire:navigate>{{ __('People & occasions') }}</x-sidebar-link>
                     <x-sidebar-link icon="star" :href="route('kids.index')" :active="request()->routeIs('kids.*')" wire:navigate>{{ __('Kids & pocket money') }}</x-sidebar-link>
                     <x-sidebar-link icon="clock" :href="route('work.index')" :active="request()->routeIs('work.*')" wire:navigate>{{ __('Working time & leave') }}</x-sidebar-link>
+                    <x-sidebar-link icon="briefcase" :href="route('career.index')" :active="request()->routeIs('career.*')" wire:navigate>{{ __('Career') }}</x-sidebar-link>
                 </x-sidebar-group>
                 <x-sidebar-group :title="__('Travel & leisure')" section="travel" :active="request()->routeIs('trips.*', 'places.*', 'splits.*', 'review.*')">
                     <x-sidebar-link icon="paper-airplane" :href="route('trips.index')" :active="request()->routeIs('trips.*')" wire:navigate>{{ __('Trips') }}</x-sidebar-link>

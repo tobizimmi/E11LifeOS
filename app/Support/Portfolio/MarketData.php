@@ -574,7 +574,7 @@ class MarketData
      */
     public function fundamentals(Security $security, bool $refresh = false): ?array
     {
-        $complete = $security->fundamentals === null || array_key_exists('analyst_votes', $security->fundamentals);
+        $complete = $security->fundamentals === null || array_key_exists('price_to_cashflow', $security->fundamentals);
 
         if (! $refresh && $complete && $security->fundamentals_updated_at?->gt(now()->subWeek())) {
             return $security->fundamentals;
@@ -619,7 +619,8 @@ class MarketData
             'website' => $profile['website'] ?? null,
             'description' => isset($profile['longBusinessSummary']) ? mb_substr((string) $profile['longBusinessSummary'], 0, 2000) : null,
             'ir_website' => isset($profile['irWebsite']) && str_starts_with((string) $profile['irWebsite'], 'http') ? mb_substr((string) $profile['irWebsite'], 0, 255) : null,
-        ] + self::insightsFrom($result, $raw);
+        ] + self::cashFigures($summary, $financial, $statistics, $raw) + self::insightsFrom($result, $raw);
+        $fundamentals['history'] = self::figureHistory((array) ($security->fundamentals['history'] ?? []), $fundamentals, $security->last_price);
 
         $security->fill(array_filter([
             'sector' => $profile['sector'] ?? null,
@@ -630,6 +631,58 @@ class MarketData
         ], fn ($value) => $value !== null))->forceFill(['fundamentals' => $fundamentals, 'fundamentals_updated_at' => now()])->save();
 
         return $fundamentals;
+    }
+
+    /**
+     * EBIT, EBITDA, cash flows and the valuation by them (price/cash flow, EV/EBITDA, free cash flow yield).
+     *
+     * @param  array<string, mixed>  $summary
+     * @param  array<string, mixed>  $financial
+     * @param  array<string, mixed>  $statistics
+     * @param  callable(mixed): ?float  $raw
+     * @return array{total_revenue: ?float, ebitda: ?float, ebit: ?float, operating_cashflow: ?float, free_cashflow: ?float, ev_to_ebitda: ?float, price_to_cashflow: ?float, free_cashflow_yield: ?float}
+     */
+    public static function cashFigures(array $summary, array $financial, array $statistics, callable $raw): array
+    {
+        $revenue = $raw($financial['totalRevenue'] ?? null);
+        $margin = $raw($financial['operatingMargins'] ?? null);
+        $cashflow = $raw($financial['operatingCashflow'] ?? null);
+        $free = $raw($financial['freeCashflow'] ?? null);
+        $cap = $raw($summary['marketCap'] ?? null);
+
+        return [
+            'total_revenue' => $revenue,
+            'ebitda' => $raw($financial['ebitda'] ?? null),
+            'ebit' => $revenue !== null && $margin !== null ? round($revenue * $margin) : null,
+            'operating_cashflow' => $cashflow,
+            'free_cashflow' => $free,
+            'ev_to_ebitda' => $raw($statistics['enterpriseToEbitda'] ?? null),
+            'price_to_cashflow' => $cap && $cashflow && $cashflow > 0 ? round($cap / $cashflow, 2) : null,
+            'free_cashflow_yield' => $cap && $free !== null ? round($free / $cap, 4) : null,
+        ];
+    }
+
+    /**
+     * Keeps the valuation figures over time: one point per week, the last five years.
+     *
+     * @param  array<int, mixed>  $history
+     * @param  array<string, mixed>  $figures
+     * @return list<array{date: string, price: ?float, pe_ratio: ?float, price_to_cashflow: ?float, ev_to_ebitda: ?float, dividend_yield: ?float}>
+     */
+    public static function figureHistory(array $history, array $figures, ?float $price): array
+    {
+        $week = today()->startOfWeek()->toDateString();
+        $points = collect($history)->filter(fn ($point) => is_array($point) && isset($point['date']) && $point['date'] < $week)->values();
+        $points->push([
+            'date' => today()->toDateString(),
+            'price' => $price,
+            'pe_ratio' => $figures['pe_ratio'] ?? null,
+            'price_to_cashflow' => $figures['price_to_cashflow'] ?? null,
+            'ev_to_ebitda' => $figures['ev_to_ebitda'] ?? null,
+            'dividend_yield' => $figures['dividend_yield'] ?? null,
+        ]);
+
+        return $points->take(-260)->values()->all();
     }
 
     /**

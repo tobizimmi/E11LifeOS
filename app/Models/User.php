@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelPasskeys\Models\Concerns\HasPasskeys;
 use Spatie\LaravelPasskeys\Models\Concerns\InteractsWithPasskeys;
 
-#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options', 'push_quiet_from', 'push_quiet_until', 'push_bundle'])]
+#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'cashflow_categories', 'career_profile', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options', 'push_quiet_from', 'push_quiet_until', 'push_bundle'])]
 #[Hidden(['calendar_token_encrypted', 'password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements HasPasskeys
 {
@@ -49,6 +49,7 @@ class User extends Authenticatable implements HasPasskeys
 
             // Mail copies attached to the user's bank bookings (the bookings go with the foreign key cascade).
             ExternalLink::where('linkable_type', 'transaction')->whereIn('linkable_id', Transaction::where('user_id', $user->id)->select('id'))->get()->each->delete();
+            ExternalLink::where('linkable_type', 'career_entry')->whereIn('linkable_id', CareerEntry::where('user_id', $user->id)->select('id'))->get()->each->delete();
 
             // Private recipes too (one by one, so their photos are removed as well).
             Recipe::where('created_by', $user->id)
@@ -101,6 +102,8 @@ class User extends Authenticatable implements HasPasskeys
             'calendar_feed_options' => 'array',
             'retirement_plan' => 'array',
             'cashflow_manual_only' => 'boolean',
+            'cashflow_categories' => 'array',
+            'career_profile' => 'encrypted:array',
             'is_admin' => 'boolean',
             'weekly_digest_day' => 'integer',
             'weekly_digest_hour' => 'integer',

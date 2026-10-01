@@ -75,7 +75,9 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function payment(string $key): array
     {
-        return collect(SubscriptionMatcher::for(Auth::user(), $this->householdId())['unmatched'])->firstWhere('key', $key) ?? abort(404);
+        return collect(SubscriptionMatcher::for(Auth::user(), $this->householdId())['unmatched'])->firstWhere('key', $key)
+            ?? collect(SubscriptionMatcher::payees(Auth::user(), $this->householdId(), PHP_INT_MAX))->firstWhere('key', $key)
+            ?? abort(404);
     }
 
     public function startCreate(string $type): void
@@ -100,7 +102,8 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['insurance.monthly' => __('Premium per month')]);
 
         $payment = $data['insurance']['payment'] ? $this->payment($data['insurance']['payment']) : null;
-        $monthly = $data['insurance']['monthly'] !== '' && $data['insurance']['monthly'] !== null ? (float) $data['insurance']['monthly'] : ($payment['monthly'] ?? null);
+        // A payment seen only once (e.g. a yearly premium) gives no monthly amount – then it stays as entered.
+        $monthly = $data['insurance']['monthly'] !== '' && $data['insurance']['monthly'] !== null ? (float) $data['insurance']['monthly'] : (($payment['frequency'] ?? null) ? $payment['monthly'] : null);
         $item = InsuranceCheck::create(Auth::user(), $this->householdId(), (string) $this->creating, trim((string) $data['insurance']['provider']), $monthly, $payment['key'] ?? null);
 
         $this->creating = null;
@@ -188,6 +191,40 @@ new #[Layout('layouts.app')] class extends Component
         return $payment['category'] === 'insurance' || (bool) preg_match('/versicher|insurance|allianz|huk|ergo|axa|debeka|signal iduna|r\+v|generali|zurich|gothaer|lvm|provinzial|devk|cosmos|wwk|hdi|barmenia|hanse ?merkur|nürnberger|continentale|alte leipziger/i', (string) $payment['name']);
     }
 
+    /**
+     * The debit shown at each contract: the matched regular payment, otherwise the payee linked by hand
+     * (also one paid only once so far, e.g. a yearly premium).
+     *
+     * @param  ?array{matched: list<array<string, mixed>>}  $matching
+     * @param  list<array<string, mixed>>  $payees
+     * @return array<int, array<string, mixed>>
+     */
+    private function linkedPayments(?array $matching, array $payees): array
+    {
+        $linked = collect($matching['matched'] ?? [])->mapWithKeys(fn (array $match) => [$match['contract']['item']->id => $match['payment']])->all();
+
+        if ($matching === null) {
+            return $linked;
+        }
+
+        $byKey = collect($payees)->keyBy('key');
+
+        foreach (ContractOverview::for(Auth::user(), $this->householdId())['contracts'] as $contract) {
+            if (isset($linked[$contract['item']->id])) {
+                continue;
+            }
+
+            foreach (SubscriptionMatcher::linkedKeys($contract['item']) as $key) {
+                if ($payee = $byKey->get($key)) {
+                    $linked[$contract['item']->id] = $payee;
+                    break;
+                }
+            }
+        }
+
+        return $linked;
+    }
+
     public function with(): array
     {
         $user = Auth::user();
@@ -196,12 +233,14 @@ new #[Layout('layouts.app')] class extends Component
         $matching = $this->tab === 'insurance' && $household ? SubscriptionMatcher::for($user, $household->id) : null;
         // Insurance payments first: those are the ones that belong here.
         $unmatched = collect($matching['unmatched'] ?? [])->sortBy(fn (array $payment) => self::looksLikeInsurance($payment) ? 0 : 1)->values();
+        $payees = $matching ? SubscriptionMatcher::payees($user, $household->id) : [];
 
         return [
             'check' => $this->tab === 'insurance' ? InsuranceCheck::for($user) : null,
             'unmatchedPayments' => $unmatched,
             'insurancePayments' => $unmatched->filter(fn (array $payment) => self::looksLikeInsurance($payment))->values(),
-            'linkedPayments' => collect($matching['matched'] ?? [])->mapWithKeys(fn (array $match) => [$match['contract']['item']->id => $match['payment']])->all(),
+            'linkedPayments' => $this->linkedPayments($matching, $payees),
+            'otherPayments' => collect($payees)->reject(fn (array $payee) => $unmatched->contains('key', $payee['key']))->values(),
             'answers' => is_array($user->insurance_answers) ? $user->insurance_answers : [],
             'result' => $this->tab === 'retirement' ? RetirementPlan::calculate(RetirementPlan::inputs($user)) : null,
         ];
@@ -274,16 +313,14 @@ new #[Layout('layouts.app')] class extends Component
                                             <div class="flex justify-between gap-3"><a href="{{ $contract['url'] }}" wire:navigate class="min-w-0 text-gray-800 hover:underline dark:text-gray-100">{{ $contract['title'] }}{{ $contract['provider'] && ! str_contains($contract['title'], $contract['provider']) ? ' · '.$contract['provider'] : '' }}</a><span class="tabular-nums text-gray-500 dark:text-gray-400">{{ number_format($contract['monthly'], 2, ',', '.') }} €</span></div>
                                             <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                                                 @if ($linked)
-                                                    <span class="text-emerald-700 dark:text-emerald-300">🔗 {{ __('Debit: :name, :amount € per month', ['name' => $linked['name'], 'amount' => number_format($linked['monthly'], 2, ',', '.')]) }}</span>
+                                                    <span class="text-emerald-700 dark:text-emerald-300">🔗 {{ ($linked['frequency'] ?? null) ? __('Debit: :name, :amount € per month', ['name' => $linked['name'], 'amount' => number_format($linked['monthly'], 2, ',', '.')]) : __('Debit: :name, :amount € on :date', ['name' => $linked['name'], 'amount' => number_format($linked['amount'], 2, ',', '.'), 'date' => $linked['lastDate']->format('d.m.Y')]) }}</span>
                                                     @if (in_array($linked['key'], $contract['payments'], true))
                                                         <button type="button" wire:click="unlinkPayment({{ $contract['item_id'] }}, @js($linked['key']))" class="text-gray-500 hover:underline dark:text-gray-400">{{ __('Remove link') }}</button>
                                                     @endif
-                                                @elseif ($unmatchedPayments->isNotEmpty())
-                                                    <select x-on:change="$event.target.value && $wire.linkPayment({{ $contract['item_id'] }}, $event.target.value)" class="rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Link a payment from the bank bookings') }}">
+                                                @elseif ($unmatchedPayments->isNotEmpty() || $otherPayments->isNotEmpty())
+                                                    <select x-on:change="$event.target.value && $wire.linkPayment({{ $contract['item_id'] }}, $event.target.value)" class="max-w-full rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Link a payment from the bank bookings') }}">
                                                         <option value="">🔗 {{ __('Link a payment from the bank bookings …') }}</option>
-                                                        @foreach ($unmatchedPayments as $payment)
-                                                            <option value="{{ $payment['key'] }}">{{ $payment['name'] }} · {{ number_format($payment['monthly'], 2, ',', '.') }} €</option>
-                                                        @endforeach
+                                                        @include('provision.partials.payment-options')
                                                     </select>
                                                 @endif
                                                 <select x-on:change="$wire.assignContract({{ $contract['item_id'] }}, $event.target.value)" class="ms-auto rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Kind of insurance') }}">
@@ -320,10 +357,8 @@ new #[Layout('layouts.app')] class extends Component
                                     <label class="text-gray-700 dark:text-gray-300">{{ __('Premium per month') }}<input type="text" inputmode="decimal" wire:model="insurance.monthly" class="{{ $input }}" placeholder="{{ __('from the payment') }}"><x-input-error :messages="$errors->get('insurance.monthly')" /></label>
                                     <label class="text-gray-700 dark:text-gray-300">{{ __('Payment from Finances') }}
                                         <select wire:model="insurance.payment" class="{{ $input }}">
-                                            <option value="">{{ $unmatchedPayments->isEmpty() ? __('No open payments') : '–' }}</option>
-                                            @foreach ($unmatchedPayments as $payment)
-                                                <option value="{{ $payment['key'] }}">{{ $payment['name'] }} · {{ number_format($payment['monthly'], 2, ',', '.') }} €</option>
-                                            @endforeach
+                                            <option value="">{{ $unmatchedPayments->isEmpty() && $otherPayments->isEmpty() ? __('No payments in Finances') : '–' }}</option>
+                                            @include('provision.partials.payment-options')
                                         </select>
                                     </label>
                                     <div class="flex flex-wrap gap-2 sm:col-span-3">

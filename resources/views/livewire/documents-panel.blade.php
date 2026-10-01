@@ -3,6 +3,8 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ExternalLink;
 use App\Models\PaperlessInstance;
+use App\Models\Transaction;
+use App\Support\Finance\TransactionDocuments;
 use App\Support\ExternalLinks;
 use App\Support\Paperless\PaperlessClient;
 use Illuminate\Support\Facades\Auth;
@@ -106,6 +108,63 @@ new class extends Component
         $this->resetValidation();
         $this->reset('query', 'mailUrl', 'mailTitle', 'upload', 'uploadTitle', 'message', 'editingDocumentId');
         $this->mode = $this->mode === $mode ? '' : $mode;
+
+        // For a booking the search starts with the payee, so the matching invoice is usually first.
+        if ($this->mode === 'paperless' && ($transaction = $this->transaction())) {
+            $this->query = mb_substr(trim((string) $transaction->counterparty), 0, 60);
+        }
+    }
+
+    /**
+     * The bank booking the panel belongs to (only for type "transaction").
+     */
+    private function transaction(): ?Transaction
+    {
+        $target = $this->type === 'transaction' ? ExternalLinks::resolve(Auth::user(), (int) $this->householdId, $this->type, $this->targetId) : null;
+
+        return $target instanceof Transaction ? $target : null;
+    }
+
+    /**
+     * Tags the linked invoice "Paid" in paperless and notes the booking there.
+     */
+    public function markPaid(int $linkId): void
+    {
+        $transaction = $this->transaction() ?? abort(404);
+        $link = $this->links()->where('kind', ExternalLink::PAPERLESS)->whereNotNull('paperless_document_id')->findOrFail($linkId);
+        abort_unless($link->paperless_instance_id && $link->paperlessInstance?->isAvailableTo(Auth::user()), 404);
+
+        try {
+            TransactionDocuments::markPaid($this->client($link->paperless_instance_id), (int) $link->paperless_document_id, $transaction);
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->message = __('paperless is not reachable.');
+
+            return;
+        }
+
+        $this->message = __('Marked as paid in paperless.');
+    }
+
+    /**
+     * No invoice: sends a receipt of the booking to paperless and links it.
+     */
+    public function sendBookingToPaperless(): void
+    {
+        $transaction = $this->transaction() ?? abort(404);
+        abort_unless($this->instanceId, 422);
+
+        try {
+            $taskId = TransactionDocuments::sendReceipt($this->client(), $transaction);
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->message = __('paperless is not reachable.');
+
+            return;
+        }
+
+        $this->create(['kind' => ExternalLink::PAPERLESS, 'paperless_instance_id' => $this->instanceId, 'paperless_task_id' => mb_substr($taskId, 0, 64), 'title' => TransactionDocuments::title($transaction)]);
+        $this->message = __('Sent to paperless – it appears here as soon as paperless has processed it.');
     }
 
     public function linkPaperless(int $documentId, string $title): void
@@ -311,6 +370,9 @@ new class extends Component
             @endif
             <button type="button" wire:click="open('mail')" class="text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('Mail link') }}</button>
             <button type="button" wire:click="open('upload')" class="text-indigo-600 hover:underline dark:text-indigo-400">+ {{ $hasPaperless ? __('Upload to paperless') : __('Upload file') }}</button>
+            @if ($type === 'transaction' && $hasPaperless && $instanceId)
+                <button type="button" wire:click="sendBookingToPaperless" wire:loading.attr="disabled" class="text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400" title="{{ __('Creates a receipt of this booking in paperless – useful when there is no invoice.') }}">⇪ {{ __('Booking to paperless') }}</button>
+            @endif
         </div>
     </div>
 
@@ -407,6 +469,9 @@ new class extends Component
                                 <span class="text-xs text-gray-500">{{ $document->paperlessInstance?->name ?? 'paperless' }} #{{ $document->paperless_document_id }}@if ($document->paperlessInstance) · <a href="{{ $document->paperlessInstance->baseUrl() }}/documents/{{ $document->paperless_document_id }}/details" target="_blank" rel="noopener" class="underline">{{ __('open in paperless') }}</a>@endif @unless ($viewable) · {{ __('no access') }}@endunless</span>
                             @endif
                         </div>
+                        @if ($viewable && $type === 'transaction')
+                            <button type="button" wire:click="markPaid({{ $document->id }})" class="shrink-0 rounded-md px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50 dark:text-emerald-300 dark:ring-emerald-800 dark:hover:bg-emerald-900/30" title="{{ __('Tags the document “Paid” in paperless and notes this booking.') }}">✓ {{ __('Mark paid') }}</button>
+                        @endif
                         @if ($viewable)
                             <button type="button" wire:click="editDocument({{ $document->id }})" class="text-gray-400 hover:text-indigo-600" title="{{ __('Title, tag or note in paperless') }}" aria-label="{{ __('Edit in paperless') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         @endif

@@ -343,12 +343,6 @@ parameters:
 			path: app/Http/Controllers/FinanceReportPdfController.php
 
 		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/FinanceTaxExportController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\StatefulGuard\:\:logoutCurrentDevice\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -1081,12 +1075,6 @@ parameters:
 			path: app/Support/Addons.php
 
 		-
-			message: '#^Cannot call method lt\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Banking/BankAlerts.php
-
-		-
 			message: '#^Negated boolean expression is always true\.$#'
 			identifier: booleanNot.alwaysTrue
 			count: 1
@@ -1621,12 +1609,6 @@ parameters:
 			path: app/Support/EntryAi.php
 
 		-
-			message: '#^Cannot call method gte\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Finance/BalanceForecast.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\Transaction\)\: mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1675,12 +1657,6 @@ parameters:
 			path: app/Support/Finance/CashflowStatement.php
 
 		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Finance/CashflowStatement.php
-
-		-
 			message: '#^Cannot call method isFuture\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1709,24 +1685,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Support/Finance/CashflowStatement.php
-
-		-
-			message: '#^Cannot call method diffInDays\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Finance/FinanceReport.php
-
-		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Finance/FinanceReport.php
-
-		-
-			message: '#^Parameter \#1 \$array of function sort contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Support/Finance/FinanceReport.php
 
 		-
 			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
@@ -1999,12 +1957,6 @@ parameters:
 			path: app/Support/Life/PocketMoney.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(lowercase\-string&non\-falsy\-string\), Closure\(App\\Models\\TripPackingItem\)\: \(lowercase\-string&non\-falsy\-string\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Life/TripPlanner.php
-
-		-
 			message: '#^Cannot access property \$year on string\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -2073,12 +2025,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Support/Life/YearReview.php
-
-		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
 			count: 1
 			path: app/Support/Life/YearReview.php
 
@@ -2715,7 +2661,7 @@ parameters:
 		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 2
+			count: 1
 			path: app/Support/RealEstate/RentalAccounting.php
 
 		-
@@ -2825,9 +2771,3 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Support/WeeklyDigest.php
-
-		-
-			message: '#^Cannot call method gt\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/WeeklyInsights.php

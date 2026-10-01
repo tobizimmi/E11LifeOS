@@ -3,6 +3,8 @@
 use App\Models\CashflowEntry;
 use App\Support\Addons;
 use App\Models\SavingTipState;
+use App\Models\Transaction;
+use App\Support\Finance\CashflowCategories;
 use App\Support\Finance\CashflowStatement;
 use App\Support\Finance\SavingTips;
 use Illuminate\Support\Facades\Auth;
@@ -117,6 +119,15 @@ new #[Layout('layouts.app')] class extends Component
         $user->update(['cashflow_manual_only' => ! $user->cashflow_manual_only]);
     }
 
+    /**
+     * How a finance category counts here (salary, expense, passive income …).
+     */
+    public function setCategoryRole(string $category, string $role): void
+    {
+        abort_unless(Auth::user()->canUseAddon(Addons::FINANCE), 403);
+        CashflowCategories::set(Auth::user(), $category, $role);
+    }
+
     private function findEntry(int $id): CashflowEntry
     {
         return CashflowEntry::where('user_id', Auth::id())->find($id) ?? abort(404);
@@ -142,7 +153,14 @@ new #[Layout('layouts.app')] class extends Component
     {
         $statement = CashflowStatement::for(Auth::user());
 
-        return ['statement' => $statement, 'history' => CashflowStatement::history(Auth::user()), 'categories' => CashflowEntry::categories(), 'tips' => SavingTips::for(Auth::user(), $statement)];
+        $user = Auth::user();
+        $household = $user->currentHousehold();
+        $financeCategories = $household && $user->canUseAddon(Addons::FINANCE)
+            ? CashflowCategories::overview($user, Transaction::where('user_id', $user->id)->where('household_id', $household->id)
+                ->whereBetween('booked_on', [today()->subMonthsNoOverflow(CashflowStatement::MONTHS - 1)->startOfMonth(), today()])->get(['amount', 'category']), CashflowStatement::MONTHS)
+            : [];
+
+        return ['statement' => $statement, 'history' => CashflowStatement::history($user), 'categories' => CashflowEntry::categories(), 'tips' => SavingTips::for($user, $statement), 'financeCategories' => $financeCategories, 'categoryRoles' => CashflowCategories::roles()];
     }
 }; ?>
 
@@ -212,6 +230,32 @@ new #[Layout('layouts.app')] class extends Component
                 <input type="checkbox" wire:click="toggleManualOnly" @checked($statement['manual_only']) class="rounded border-gray-300 text-indigo-600">
                 {{ __('Only use my own entries (ignore bank transactions, portfolio and properties)') }}
             </label>
+
+            @if ($financeCategories !== [])
+                <details class="group rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+                        <span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">🏦 {{ __('Values from Finances') }}</span>
+                            <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $statement['manual_only'] ? __('Choose which finance categories are added to your own entries.') : __('Choose how each finance category counts – e.g. a category as salary or as passive income.') }}</span>
+                        </span>
+                        <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                    </summary>
+                    <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach ($financeCategories as $row)
+                            <li wire:key="cashflow-category-{{ $row['category'] }}" class="flex flex-wrap items-center gap-3 py-2 text-sm">
+                                <span class="min-w-0 flex-1 text-gray-900 dark:text-gray-100">{{ $row['icon'] }} {{ $row['label'] }}</span>
+                                <span @class(['w-28 text-end tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $row['monthly'] > 0, 'text-gray-700 dark:text-gray-300' => $row['monthly'] <= 0])>{{ $euro($row['monthly']) }} / {{ __('month') }}</span>
+                                <select wire:change="setCategoryRole('{{ $row['category'] }}', $event.target.value)" aria-label="{{ __('Counts as') }}" @class(['rounded-lg py-1 text-xs dark:bg-gray-900 dark:text-gray-200', 'border-indigo-300 bg-indigo-50 dark:border-indigo-700' => $row['changed'], 'border-gray-200 dark:border-gray-600' => ! $row['changed']])>
+                                    @foreach ($categoryRoles as $roleKey => $roleLabel)
+                                        <option value="{{ $roleKey }}" @selected($row['role'] === $roleKey)>{{ $roleLabel }}</option>
+                                    @endforeach
+                                </select>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Average of the last 12 months from your bank bookings. Rent from your tenants is counted with the property.') }}</p>
+                </details>
+            @endif
 
             {{-- Hamster wheel + flow diagram --}}
             <section class="grid gap-5 rounded-2xl bg-white p-5 shadow-sm lg:grid-cols-2 dark:bg-gray-800">

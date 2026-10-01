@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\ExpenseGroup;
+use App\Models\Item;
 use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripParticipant;
+use App\Models\TripStop;
 use App\Support\Life\ExpenseSplitter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -87,5 +89,36 @@ class GroupTripTest extends TestCase
 
         $trip->fresh()->update(['share_expires_at' => now()->subDay()]);
         $this->get(route('trips.folder', $token))->assertNotFound();
+    }
+
+    public function test_the_trip_folder_shows_the_day_plan_ideas_pages_and_links(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = $this->trip($household->id);
+        TripStop::create(['trip_id' => $trip->id, 'day' => '2026-10-10', 'time' => '10:00', 'kind' => 'sight', 'title' => 'Hafen Lindau', 'location' => 'Seepromenade', 'notes' => 'Treffpunkt am Löwen']);
+        TripStop::create(['trip_id' => $trip->id, 'kind' => 'food', 'title' => 'Eis am See']);
+        $page = Item::factory()->note()->create(['household_id' => $household->id, 'created_by' => $user->id, 'title' => 'Packtipps', 'content' => ['body' => "Bitte **Regenjacke** und [[Proviant]] mitnehmen\n:::callout {type=\"tip\"}\nHinweis\n:::"]]);
+        $private = Item::factory()->note()->privateTo($user)->create(['household_id' => $household->id, 'title' => 'Geheime Notiz']);
+        $trip->update(['share_token' => 'foldertoken1234567890']);
+        $this->actingAs($user);
+
+        Volt::test('trips.group', ['trip' => $trip->id])
+            ->set('pageSearch', 'Pack')->assertSee('Packtipps')
+            ->call('addPage', $page->id)
+            ->set('newLink.url', 'kein-link')->call('addLink')->assertHasErrors(['newLink.url'])
+            ->set('newLink.title', 'Hotel')->set('newLink.url', 'https://hotel.example')->call('addLink')->assertHasNoErrors()
+            ->set('folderShows.ideas', false);
+
+        Volt::test('trips.group', ['trip' => $trip->id])->call('addPage', $private->id)->assertNotFound();
+
+        $this->get(route('trips.folder', 'foldertoken1234567890'))->assertOk()
+            ->assertSee('Tagesplan')->assertSee('Hafen Lindau')->assertSee('10:00')->assertDontSee('Treffpunkt am Löwen')
+            ->assertDontSee('Eis am See')
+            ->assertSee('<strong>Regenjacke</strong>', false)->assertSee('Proviant mitnehmen')->assertDontSee(':::')
+            ->assertDontSee('Geheime Notiz')
+            ->assertSee('https://hotel.example');
+
+        Volt::test('trips.group', ['trip' => $trip->id])->set('folderShows.notes', true)->set('folderShows.ideas', true);
+        $this->get(route('trips.folder', 'foldertoken1234567890'))->assertSee('Treffpunkt am Löwen')->assertSee('Weitere Ideen')->assertSee('Eis am See');
     }
 }

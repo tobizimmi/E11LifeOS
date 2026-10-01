@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Support\CollectionTemplates;
 use App\Support\ContractOverview;
+use Illuminate\Support\Carbon;
 
 /**
  * Compares recurring payments from the bank bookings with the contracts: payments without a
@@ -76,6 +77,41 @@ class SubscriptionMatcher
         $withoutPayment = array_values(array_filter($contracts, fn (array $contract, int $index) => $contract['monthly'] > 0 && ! isset($matchedContracts[$index]), ARRAY_FILTER_USE_BOTH));
 
         return ['matched' => $matched, 'unmatched' => $unmatched, 'without_payment' => $withoutPayment, 'has_bookings' => $transactions->isNotEmpty()];
+    }
+
+    /**
+     * Every payee of the debits in the last months, not only the regular ones: the newest first.
+     * Regular payments carry their monthly amount; for the others "monthly" is the last amount
+     * and "frequency" is null (e.g. a yearly premium paid only once so far).
+     *
+     * @return list<array{key: string, name: string, category: ?string, frequency: ?string, amount: float, monthly: float, lastDate: Carbon, count: int}>
+     */
+    public static function payees(User $user, int $householdId, int $limit = 150): array
+    {
+        $transactions = Transaction::where('user_id', $user->id)->where('household_id', $householdId)
+            ->where('booked_on', '>=', today()->subDays(self::HISTORY_DAYS)->toDateString())
+            ->where('amount', '<', 0)->whereNotIn('category', self::IGNORED_CATEGORIES)->get();
+        $recurring = collect(FinanceReport::recurring($transactions))->keyBy('key');
+
+        return $transactions->groupBy(fn (Transaction $transaction) => FinanceReport::payeeKey($transaction->counterparty, $transaction->purpose))
+            ->map(function ($group, string $key) use ($recurring) {
+                $last = $group->sortBy('booked_on')->last();
+                $regular = $recurring->get($key);
+
+                return [
+                    'key' => $key,
+                    'name' => (string) ($last->counterparty ?: $last->purpose ?: $key),
+                    'category' => $last->category,
+                    'frequency' => $regular['frequency'] ?? null,
+                    'amount' => round(-$last->amount, 2),
+                    'monthly' => (float) ($regular['monthly'] ?? round(-$last->amount, 2)),
+                    'lastDate' => $last->booked_on,
+                    'count' => $group->count(),
+                ];
+            })
+            ->filter(fn (array $payee, string $key) => $key !== '')
+            ->sortByDesc(fn (array $payee) => $payee['lastDate']->toDateString())
+            ->take($limit)->values()->all();
     }
 
     /**

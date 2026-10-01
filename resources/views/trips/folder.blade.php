@@ -87,6 +87,48 @@
                 </section>
             @endif
 
+            @if ($plan['days'] !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="day-plan">
+                    <h2 id="day-plan" class="font-semibold">🧭 {{ __('Day plan') }}</h2>
+                    <div class="mt-3 space-y-4">
+                        @foreach ($plan['days'] as $day)
+                            <div>
+                                <h3 class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{{ $day['label'] }}</h3>
+                                @include('trips.partials.folder-entries', ['entries' => $day['entries']])
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            @if ($plan['ideas'] !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="ideas">
+                    <h2 id="ideas" class="font-semibold">💡 {{ __('Further ideas') }}</h2>
+                    @include('trips.partials.folder-entries', ['entries' => $plan['ideas']])
+                </section>
+            @endif
+
+            @foreach ($pages as $page)
+                <details class="group rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold">
+                        <span>{{ $page->icon ?: \App\Models\Item::DEFAULT_PAGE_ICON }} {{ $page->title }}</span>
+                        <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                    </summary>
+                    <div class="prose prose-sm mt-3 max-w-none dark:prose-invert">{!! \App\Support\Life\GroupTrip::pageHtml($page) !!}</div>
+                </details>
+            @endforeach
+
+            @if ($links !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="links">
+                    <h2 id="links" class="font-semibold">🔗 {{ __('Web links') }}</h2>
+                    <ul class="mt-2 space-y-1 text-sm">
+                        @foreach ($links as $link)
+                            <li><a href="{{ $link['url'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline dark:text-indigo-400">{{ $link['title'] }} ↗</a></li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
             @if ($files->isNotEmpty())
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <h2 class="font-semibold">📎 {{ __('Documents') }}</h2>
@@ -97,6 +139,99 @@
                     </ul>
                 </section>
             @endif
+
+            <section id="feedback" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="feedback-title">
+                <h2 id="feedback-title" class="font-semibold">💬 {{ __('Feedback & suggestions') }}</h2>
+                @if (session('status') && ! $participant)
+                    <p class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" role="status">✓ {{ session('status') }}</p>
+                @endif
+
+                @if ($comments->get(0, collect())->isNotEmpty())
+                    <ul class="mt-3 space-y-2 text-sm">
+                        @foreach ($comments->get(0)->take(30) as $comment)
+                            <li class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/50">
+                                <span class="font-medium">{{ $comment->author_name }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">· {{ $comment->created_at->diffForHumans() }}</span>
+                                <span class="block whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $comment->body }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                @if ($suggestions->isNotEmpty())
+                    <h3 class="mt-4 text-sm font-semibold">💡 {{ __('Suggestions') }}</h3>
+                    <ul class="mt-1 space-y-1 text-sm">
+                        @foreach ($suggestions as $suggestion)
+                            <li class="flex flex-wrap items-baseline gap-x-2">
+                                <span class="font-medium">{{ $suggestion->title }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('from :name', ['name' => $suggestion->author_name]) }}</span>
+                                <span @class(['rounded-full px-2 text-xs', 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200' => $suggestion->status === 'pending', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' => $suggestion->status === 'approved', 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' => $suggestion->status === 'declined'])>
+                                    {{ ['pending' => __('waiting for approval'), 'approved' => __('in the plan'), 'declined' => __('not taken')][$suggestion->status] ?? '' }}
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                @if ($errors->hasAny(['name', 'body', 'title', 'type']))
+                    <p class="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{{ $errors->first() }}</p>
+                @endif
+
+                <form method="POST" action="{{ $participant ? route('trips.participant.feedback', $participantToken) : route('trips.folder.feedback', $token) }}" class="mt-4 space-y-3 border-t border-gray-100 pt-4 dark:border-gray-700">
+                    @csrf
+                    <input type="hidden" name="type" value="comment">
+                    @unless ($participant)
+                        <label class="block text-sm">{{ __('Your name') }}
+                            <input type="text" name="name" value="{{ old('name', session('trip_folder.name')) }}" maxlength="100" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        </label>
+                    @endunless
+                    @if ($feedbackStops !== [])
+                        <label class="block text-sm">{{ __('About') }}
+                            <select name="stop" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                                <option value="">{{ __('The trip in general') }}</option>
+                                @foreach ($feedbackStops as $stop)
+                                    <option value="{{ $stop['id'] }}">{{ $stop['title'] }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
+                    <label class="block text-sm">{{ __('Comment') }}
+                        <textarea name="body" rows="2" maxlength="2000" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900"></textarea>
+                    </label>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">💬 {{ __('Send comment') }}</button>
+                </form>
+
+                <details class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700" @if (old('type') === 'suggestion') open @endif>
+                    <summary class="cursor-pointer text-sm font-semibold text-indigo-700 dark:text-indigo-300">💡 {{ __('Suggest something for the plan') }}</summary>
+                    <form method="POST" action="{{ $participant ? route('trips.participant.feedback', $participantToken) : route('trips.folder.feedback', $token) }}" class="mt-3 grid gap-3 sm:grid-cols-2">
+                        @csrf
+                        <input type="hidden" name="type" value="suggestion">
+                        <div class="sm:col-span-2">
+                    @unless ($participant)
+                        <label class="block text-sm">{{ __('Your name') }}
+                            <input type="text" name="name" value="{{ old('name', session('trip_folder.name')) }}" maxlength="100" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        </label>
+                    @endunless
+                        </div>
+                        <label class="block text-sm sm:col-span-2">{{ __('What do you suggest?') }}
+                            <input type="text" name="title" value="{{ old('title') }}" maxlength="255" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900" placeholder="{{ __('e.g. boat trip to the island') }}">
+                        </label>
+                        <label class="block text-sm">{{ __('Day (optional)') }}
+                            <input type="date" name="day" value="{{ old('day') }}" min="{{ $trip->starts_on->toDateString() }}" max="{{ $trip->ends_on->toDateString() }}" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        </label>
+                        <label class="block text-sm">{{ __('Place (optional)') }}
+                            <input type="text" name="location" value="{{ old('location') }}" maxlength="255" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        </label>
+                        <label class="block text-sm sm:col-span-2">{{ __('Why? (optional)') }}
+                            <textarea name="body" rows="2" maxlength="2000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">{{ old('type') === 'suggestion' ? old('body') : '' }}</textarea>
+                        </label>
+                        <div class="sm:col-span-2">
+                            <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('Send suggestion') }}</button>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Suggestions are added to the plan once the organisers approve them.') }}</p>
+                        </div>
+                    </form>
+                </details>
+            </section>
 
             @if ($trip->participants->isNotEmpty())
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">

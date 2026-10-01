@@ -121,6 +121,6 @@ class TripExportController extends Controller
     {
         $household = $request->user()->currentHousehold();
 
-        return Trip::query()->visibleTo($request->user(), (int) $household?->id)->with(['bookings', 'stops', 'packingItems'])->find($trip->id) ?? abort(404);
+        return Trip::query()->visibleTo($request->user(), (int) $household?->id)->with(['bookings', 'stops', 'packingItems' => fn ($query) => $query->visibleTo($request->user())])->find($trip->id) ?? abort(404);
     }
 }

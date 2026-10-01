@@ -2,12 +2,17 @@
 
 use App\Jobs\LoadTripPlaces;
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\ChecklistTemplate;
 use App\Models\ExpenseGroup;
 use App\Models\Item;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
+use App\Models\TripFeedback;
+use App\Models\TripPackingItem;
 use App\Models\TripPlace;
+use App\Support\Life\TripDiscover;
+use App\Support\Life\TripFeedbackBox;
 use App\Models\TripStop;
 use App\Models\InboundMail;
 use App\Support\Life\BookingMail;
@@ -40,7 +45,7 @@ new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold, WithFileUploads;
 
-    private const TABS = ['overview', 'plan', 'map', 'bookings', 'costs', 'packing'];
+    private const TABS = ['overview', 'plan', 'map', 'discover', 'bookings', 'costs', 'packing'];
 
     #[Locked]
     public int $tripId;
@@ -64,6 +69,35 @@ new #[Layout('layouts.app')] class extends Component
     public string $template = 'beach';
 
     public string $templatePerson = '';
+
+    /** Packing list shown: "shared" (everybody) or "mine" (only visible to the member). */
+    #[Url(as: 'list', except: 'shared')]
+    public string $packingList = 'shared';
+
+    public string $templateName = '';
+
+    public bool $templatePrivate = false;
+
+    /** Discover: category of places shown (see TripDiscover::categories()). */
+    public string $feedbackText = '';
+
+    public string $feedbackStop = '';
+
+    /**
+     * Chosen day per suggestion when approving ("" = as an idea).
+     *
+     * @var array<int, string>
+     */
+    public array $suggestionDays = [];
+
+    #[Url(as: 'what', except: 'restaurants')]
+    public string $discoverCategory = 'restaurants';
+
+    public string $discoverSearch = '';
+
+    public int $discoverLimit = 24;
+
+    public bool $showVisited = false;
 
     /**
      * @var array<string, mixed>
@@ -112,6 +146,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->resolveHousehold();
         $this->tripId = $this->findTrip($trip->id)->id;
         $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'overview';
+        $this->packingList = $this->packingList === 'mine' ? 'mine' : 'shared';
         $this->resetStop();
         $this->resetBooking();
         $this->fillDetails();
@@ -470,6 +505,60 @@ new #[Layout('layouts.app')] class extends Component
      *
      * @return array{name: string, address: string, lat: float, lng: float, kind: string, info: array<string, string>}
      */
+    /**
+     * Marks a place of the trip area as visited (hidden from the lists) or not visited again.
+     */
+    public function toggleVisited(int $placeId): void
+    {
+        $trip = $this->findTrip();
+        $place = $trip->places()->find($placeId) ?? abort(404);
+        $visited = TripDiscover::toggleVisited($trip, $place->osm_id);
+        $this->dispatch('toast', message: $visited ? __(':place marked as visited.', ['place' => $place->name]) : __(':place is open again.', ['place' => $place->name]));
+    }
+
+    /**
+     * Puts a discovered place on the plan (as an idea or on a day).
+     */
+    public function planDiscovered(int $placeId, string $day = 'ideas'): void
+    {
+        $place = $this->findTrip()->places()->find($placeId) ?? abort(404);
+        $this->addPlace($this->placeData($place), $day);
+    }
+
+    public function updatedDiscoverCategory(): void
+    {
+        $this->discoverLimit = 24;
+    }
+
+    /**
+     * Places of the chosen category (not yet visited ones unless asked), the best described first.
+     *
+     * @return array{places: \Illuminate\Support\Collection<int, TripPlace>, more: bool, counts: array<string, int>, visitedCount: int}
+     */
+    private function discoverData(Trip $trip): array
+    {
+        $categories = TripDiscover::categories();
+        $category = $categories[$this->discoverCategory] ?? $categories['restaurants'];
+        $visited = $trip->visited_places ?? [];
+        $byType = $trip->places()->when($visited !== [], fn ($query) => $query->whereNotIn('osm_id', $visited))
+            ->selectRaw('category, COUNT(*) as total')->groupBy('category')->pluck('total', 'category');
+        $search = mb_strtolower(trim($this->discoverSearch));
+
+        $places = $trip->places()->whereIn('category', $category['types'])
+            ->when(! $this->showVisited && $visited !== [], fn ($query) => $query->whereNotIn('osm_id', $visited))
+            ->when($search !== '', fn ($query) => $query->whereRaw('LOWER(name) LIKE ?', ['%'.addcslashes($search, '%_\\').'%']))
+            ->get()
+            ->sortBy(fn (TripPlace $place) => [-TripDiscover::richness($place), mb_strtolower($place->name)])
+            ->values();
+
+        return [
+            'places' => $places->take($this->discoverLimit),
+            'more' => $places->count() > $this->discoverLimit,
+            'counts' => collect($categories)->map(fn (array $entry) => (int) collect($entry['types'])->sum(fn (string $type) => $byType[$type] ?? 0))->all(),
+            'visitedCount' => count($visited),
+        ];
+    }
+
     private function placeData(TripPlace $place): array
     {
         return ['name' => $place->name, 'address' => (string) $place->address, 'lat' => $place->lat, 'lng' => $place->lng, 'kind' => $place->kind, 'info' => $place->info ?? []];
@@ -884,40 +973,110 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['item.label' => __('Item')])['item'];
 
         $trip = $this->findTrip();
-        $trip->packingItems()->create(['label' => $data['label'], 'category' => $data['category'], 'person' => $data['person'] ?: null, 'position' => (int) $trip->packingItems()->max('position') + 1]);
+        $trip->packingItems()->create(['owner_id' => $this->packingOwner(), 'label' => $data['label'], 'category' => $data['category'], 'person' => $data['person'] ?: null, 'position' => (int) $trip->packingItems()->max('position') + 1]);
         $this->item['label'] = '';
     }
 
+    /**
+     * Owner of new items: the member on their personal list, nobody on the shared one.
+     */
+    private function packingOwner(): ?int
+    {
+        return $this->packingList === 'mine' ? $this->currentUser()->id : null;
+    }
+
+    private function findPackingItem(int $id): TripPackingItem
+    {
+        return $this->findTrip()->packingItems()->visibleTo($this->currentUser())->find($id) ?? abort(404);
+    }
+
+    /**
+     * Built-in templates ("beach") or own ones ("own-12") onto the shown list.
+     */
     public function applyTemplate(): void
     {
-        abort_unless(array_key_exists($this->template, TripPlanner::templates()), 422);
-        $added = TripPlanner::applyTemplate($this->findTrip(), $this->template, mb_substr($this->templatePerson, 0, 60));
+        $trip = $this->findTrip();
+        $person = mb_substr($this->templatePerson, 0, 60);
+
+        if (str_starts_with($this->template, 'own-')) {
+            $template = ChecklistTemplate::query()->visibleTo($this->currentUser(), (int) $this->householdId)->find((int) substr($this->template, 4)) ?? abort(404);
+            $added = TripPlanner::addItems($trip, $template->items(), $person, $this->packingOwner());
+        } else {
+            abort_unless(array_key_exists($this->template, TripPlanner::templates()), 422);
+            $added = TripPlanner::applyTemplate($trip, $this->template, $person, $this->packingOwner());
+        }
+
         $this->dispatch('toast', message: trans_choice(':count item added.|:count items added.', $added));
+    }
+
+    /**
+     * Saves the shown list as an own template – usable for trips, tasks and checklist pages.
+     */
+    public function saveTemplate(): void
+    {
+        $this->validate(['templateName' => ['required', 'string', 'max:255']], attributes: ['templateName' => __('Name')]);
+        TripPlanner::saveAsTemplate($this->findTrip(), $this->currentUser(), $this->templateName, $this->templatePrivate, $this->packingList === 'mine');
+        $this->reset('templateName', 'templatePrivate');
+        $this->dispatch('toast', message: __('Template saved – also available for tasks and pages.'));
     }
 
     public function togglePacked(int $id): void
     {
-        $item = $this->findTrip()->packingItems()->find($id) ?? abort(404);
+        $item = $this->findPackingItem($id);
         $item->update(['packed' => ! $item->packed]);
     }
 
     public function deleteItem(int $id): void
     {
-        ($this->findTrip()->packingItems()->find($id) ?? abort(404))->delete();
+        $this->findPackingItem($id)->delete();
     }
 
     public function unpackAll(): void
     {
-        $this->findTrip()->packingItems()->update(['packed' => false]);
+        $this->findTrip()->packingItems()->when($this->packingOwner(), fn ($query, $owner) => $query->where('owner_id', $owner), fn ($query) => $query->whereNull('owner_id'))->update(['packed' => false]);
+    }
+
+    private function findFeedback(int $id): TripFeedback
+    {
+        return $this->findTrip()->feedback()->find($id) ?? abort(404);
+    }
+
+    public function postComment(): void
+    {
+        $this->validate(['feedbackText' => ['required', 'string', 'max:2000']], attributes: ['feedbackText' => __('Comment')]);
+        $user = $this->currentUser();
+        TripFeedbackBox::comment($this->findTrip(), ['name' => $user->name, 'user' => $user], $this->feedbackText, $this->feedbackStop !== '' ? (int) $this->feedbackStop : null);
+        $this->reset('feedbackText', 'feedbackStop');
+    }
+
+    /**
+     * Takes a suggestion into the plan on the chosen day (or as an idea).
+     */
+    public function approveSuggestion(int $id): void
+    {
+        $suggestion = $this->findFeedback($id);
+        $day = $this->suggestionDays[$id] ?? ($suggestion->day?->toDateString() ?? '');
+        TripFeedbackBox::approve($suggestion, $day, $this->currentUser());
+        $this->dispatch('toast', message: __('Added to the plan.'));
+    }
+
+    public function declineSuggestion(int $id): void
+    {
+        TripFeedbackBox::decline($this->findFeedback($id));
+    }
+
+    public function deleteFeedback(int $id): void
+    {
+        $this->findFeedback($id)->delete();
     }
 
     public function with(): array
     {
-        $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants']);
+        $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants', 'feedback.stop']);
         $itinerary = TripItinerary::build($trip);
 
         // The places of the trip area are loaded once in the background when the map is first used.
-        if ($this->tab === 'map' && $trip->places_loaded_at === null && ($trip->destination || $trip->stops->contains(fn (TripStop $stop) => $stop->hasPosition()))) {
+        if (in_array($this->tab, ['map', 'discover'], true) && $trip->places_loaded_at === null && ($trip->destination || $trip->stops->contains(fn (TripStop $stop) => $stop->hasPosition()))) {
             LoadTripPlaces::start($trip);
         }
         $routes = in_array($this->tab, ['plan', 'map'], true) ? TripItinerary::dayRoutes($itinerary, $trip->travel_mode ?: 'foot') : ['days' => [], 'failed' => [], 'pending' => []];
@@ -929,16 +1088,22 @@ new #[Layout('layouts.app')] class extends Component
             'travelModes' => TripRoutes::modes(),
             'mapGroups' => $this->tab === 'map' ? $this->withRoutes(TripItinerary::mapGroups($itinerary), $routes['days'], $trip->travel_mode ?: 'foot') : [],
             'mapCenter' => $this->tab === 'map' && $trip->destination ? $this->mapCenter((string) $trip->destination) : null,
-            'placesCount' => $this->tab === 'map' ? $trip->places()->count() : 0,
-            'placesLoading' => $this->tab === 'map' && Cache::has(LoadTripPlaces::lockKey($trip->id)),
+            'placesCount' => in_array($this->tab, ['map', 'discover'], true) ? $trip->places()->count() : 0,
+            'discover' => $this->tab === 'discover' ? $this->discoverData($trip) : null,
+            'placesLoading' => in_array($this->tab, ['map', 'discover'], true) && Cache::has(LoadTripPlaces::lockKey($trip->id)),
             'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => ($stop->location || $trip->destination) && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
+            'pendingSuggestions' => $trip->feedback->filter->isPending()->values(),
+            'comments' => $trip->feedback->where('type', TripFeedback::COMMENT)->take(30)->values(),
             'colors' => Trip::colorSchemes(),
             'overview' => TripPlanner::overview($trip, $this->currentUser()),
             'kinds' => TripBooking::kinds(),
             'categories' => TripPlanner::categories(),
             'templates' => TripPlanner::templates(),
-            'people' => $trip->packingItems->pluck('person')->filter()->unique()->values(),
+            'ownTemplates' => $this->tab === 'packing' ? ChecklistTemplate::query()->visibleTo($this->currentUser(), (int) $this->householdId)->orderBy('name')->get() : collect(),
+            'packingItems' => $trip->packingItems->filter(fn (TripPackingItem $item) => $this->packingList === 'mine' ? $item->owner_id === $this->currentUser()->id : $item->owner_id === null)->values(),
+            'myPackingCount' => $trip->packingItems->where('owner_id', $this->currentUser()->id)->count(),
+            'people' => $trip->packingItems->whereNull('owner_id')->pluck('person')->filter()->unique()->values(),
             'expenseGroups' => ExpenseGroup::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->get(),
             'currencies' => ExchangeRates::COMMON,
             'inboundDrafts' => $this->tab === 'bookings' ? MailIntake::pendingFor($trip) : collect(),
@@ -1029,7 +1194,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             <div class="sticky top-14 z-10 -mx-1 flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/90 p-1 shadow-sm ring-1 ring-gray-200 backdrop-blur lg:top-2 dark:bg-gray-800/90 dark:ring-gray-700" role="tablist">
-                @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
+                @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'discover' => ['🔎', __('Discover')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])><span class="text-base" aria-hidden="true">{{ $icon }}</span>{{ $label }}</button>
                 @endforeach
                 <a href="{{ route('trips.group', $trip) }}" wire:navigate class="flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 sm:flex-row sm:gap-1.5 sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700"><span class="text-base" aria-hidden="true">👥</span>{{ __('Group') }}</a>
@@ -1213,6 +1378,71 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
 
+                <details class="group rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" @if ($pendingSuggestions->isNotEmpty()) open @endif>
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">💬 {{ __('Feedback & suggestions') }}
+                            @if ($pendingSuggestions->isNotEmpty())
+                                <span class="ms-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">{{ trans_choice(':count suggestion to approve|:count suggestions to approve', $pendingSuggestions->count()) }}</span>
+                            @elseif ($comments->isNotEmpty())
+                                <span class="ms-1 text-xs font-normal text-gray-500 dark:text-gray-400">{{ $comments->count() }}</span>
+                            @endif
+                        </span>
+                        <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                    </summary>
+
+                    @if ($pendingSuggestions->isNotEmpty())
+                        <ul class="mt-3 space-y-2">
+                            @foreach ($pendingSuggestions as $suggestion)
+                                <li wire:key="suggestion-{{ $suggestion->id }}" class="rounded-xl bg-amber-50 p-3 text-sm dark:bg-amber-900/20">
+                                    <p><span class="font-medium text-gray-900 dark:text-gray-100">💡 {{ $suggestion->title }}</span> <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('from :name', ['name' => $suggestion->author_name]) }} · {{ $suggestion->created_at->diffForHumans() }}</span></p>
+                                    @if ($suggestion->location)
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">📍 {{ $suggestion->location }}</p>
+                                    @endif
+                                    @if ($suggestion->body)
+                                        <p class="mt-1 whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $suggestion->body }}</p>
+                                    @endif
+                                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                                        <select wire:model="suggestionDays.{{ $suggestion->id }}" class="rounded-lg border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Day') }}">
+                                            <option value="">💡 {{ __('As an idea') }}</option>
+                                            @foreach ($itinerary['days'] as $day)
+                                                <option value="{{ $day['date']->toDateString() }}" @selected($suggestion->day?->isSameDay($day['date']))>{{ __('Day :number', ['number' => $day['number']]) }} · {{ $day['date']->translatedFormat('D, j. M') }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" wire:click="approveSuggestion({{ $suggestion->id }})" class="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700">✓ {{ __('Approve') }}</button>
+                                        <button type="button" wire:click="declineSuggestion({{ $suggestion->id }})" class="text-xs text-gray-600 underline dark:text-gray-300">{{ __('Decline') }}</button>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <ul class="mt-3 space-y-2 text-sm">
+                        @foreach ($comments as $comment)
+                            <li wire:key="comment-{{ $comment->id }}" class="group/comment flex gap-2">
+                                <span class="min-w-0 flex-1">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $comment->author_name }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">@if ($comment->stop) · {{ __('about :entry', ['entry' => $comment->stop->title]) }}@endif · {{ $comment->created_at->diffForHumans() }}</span>
+                                    <span class="block whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $comment->body }}</span>
+                                </span>
+                                <button type="button" wire:click="deleteFeedback({{ $comment->id }})" wire:confirm="{{ __('Delete this comment?') }}" class="self-start text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <form wire:submit="postComment" class="mt-3 flex flex-wrap gap-2">
+                        <select wire:model="feedbackStop" class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('About') }}">
+                            <option value="">{{ __('The trip in general') }}</option>
+                            @foreach ($trip->stops as $stopOption)
+                                <option value="{{ $stopOption->id }}">{{ $stopOption->title }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" wire:model="feedbackText" class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="{{ __('Write a comment …') }}" aria-label="{{ __('Comment') }}">
+                        <x-secondary-button type="submit">{{ __('Send') }}</x-secondary-button>
+                    </form>
+                    <x-input-error :messages="$errors->get('feedbackText')" class="mt-1" />
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Participants comment and suggest via the trip folder or their personal link.') }}</p>
+                </details>
+
                 <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
                     <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>
                     <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Drag onto a day to plan') }} (⠿)</p>
@@ -1279,6 +1509,74 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
                 @endforeach
+            @elseif ($tab === 'discover')
+                @php($discoverCategories = \App\Support\Life\TripDiscover::categories())
+                <section class="space-y-4">
+                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <div class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="{{ __('Categories') }}">
+                            @foreach ($discoverCategories as $categoryKey => $category)
+                                <button type="button" role="tab" wire:click="$set('discoverCategory', '{{ $categoryKey }}')" aria-selected="{{ $discoverCategory === $categoryKey ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $discoverCategory === $categoryKey, 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' => $discoverCategory !== $categoryKey])>
+                                    {{ $category['icon'] }} {{ $category['label'] }} <span class="opacity-70">{{ $discover['counts'][$categoryKey] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div class="mt-3 flex flex-wrap items-center gap-3">
+                            <input type="search" wire:model.live.debounce.300ms="discoverSearch" placeholder="🔎 {{ __('Search by name') }}" aria-label="{{ __('Search by name') }}" class="min-w-0 flex-1 rounded-full border-gray-300 px-4 py-1.5 text-sm dark:border-gray-700">
+                            @if ($discover['visitedCount'] > 0)
+                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showVisited" class="rounded border-gray-300 text-indigo-600"> {{ trans_choice('Show :count visited|Show :count visited', $discover['visitedCount']) }}</label>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($placesCount === 0)
+                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ $placesLoading ? __('The places of the trip area are loading …') : __('Open the map once – the places of the trip area are loaded from there.') }}</p>
+                    @elseif ($discover['places']->isEmpty())
+                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('Nothing here – try another category.') }}</p>
+                    @else
+                        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            @foreach ($discover['places'] as $place)
+                                @php($image = \App\Support\Life\TripDiscover::imageUrl($place))
+                                @php($links = \App\Support\Life\TripDiscover::links($place, $trip->destination))
+                                @php($visited = \App\Support\Life\TripDiscover::isVisited($trip, $place))
+                                <li wire:key="discover-{{ $place->id }}" @class(['flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800', 'opacity-60' => $visited])>
+                                    <div class="relative aspect-[16/9] bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40">
+                                        <span class="absolute inset-0 flex items-center justify-center text-4xl" aria-hidden="true">{{ $discoverCategories[\App\Support\Life\TripDiscover::categoryOf($place)]['icon'] }}</span>
+                                        @if ($image)
+                                            <img src="{{ $image }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full object-cover" x-data x-on:error="$el.remove()">
+                                        @endif
+                                        @if ($visited)
+                                            <span class="absolute start-2 top-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">✓ {{ __('visited') }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-1 flex-col gap-1 p-4">
+                                        <h4 class="font-semibold text-gray-900 dark:text-gray-100">{{ $place->name }}</h4>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ collect([($place->info['cuisine'] ?? null) ? ucfirst($place->info['cuisine']) : null, $place->address])->filter()->implode(' · ') }}
+                                        </p>
+                                        @if ($place->info['opening_hours'] ?? null)
+                                            <p class="text-xs text-gray-600 dark:text-gray-300">🕒 {{ $place->info['opening_hours'] }}</p>
+                                        @endif
+                                        <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                            @if ($links['menu'])<a href="{{ $links['menu'] }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">📜 {{ __('Menu') }}</a>@endif
+                                            @if ($links['menu_search'])<a href="{{ $links['menu_search'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">📜 {{ __('Find the menu') }}</a>@endif
+                                            @if ($links['website'])<a href="{{ $links['website'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">🌐 {{ __('Website') }}</a>@endif
+                                            <a href="{{ $links['photos'] }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">📷 {{ __('Photos & reviews') }}</a>
+                                            @if ($place->info['phone'] ?? null)<a href="tel:{{ preg_replace('/[^+0-9]/', '', $place->info['phone']) }}" class="text-indigo-600 hover:underline dark:text-indigo-400">📞 {{ $place->info['phone'] }}</a>@endif
+                                        </p>
+                                        <div class="mt-auto flex flex-wrap gap-2 pt-3">
+                                            <button type="button" wire:click="planDiscovered({{ $place->id }})" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">＋ {{ __('Add to plan') }}</button>
+                                            <button type="button" wire:click="toggleVisited({{ $place->id }})" class="rounded-lg px-3 py-1.5 text-xs text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">{{ $visited ? '↺ '.__('Not visited') : '✓ '.__('Visited') }}</button>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($discover['more'])
+                            <div class="text-center"><x-secondary-button type="button" wire:click="$set('discoverLimit', {{ $discoverLimit + 24 }})">{{ __('Show more') }}</x-secondary-button></div>
+                        @endif
+                        <p class="text-center text-xs text-gray-500 dark:text-gray-400">{{ __('Places and details from OpenStreetMap, pictures from Wikipedia/Wikimedia. Menus, photos and reviews open on the website or in Google Maps.') }}</p>
+                    @endif
+                </section>
             @elseif ($tab === 'map')
                 @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
                 <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -1570,6 +1868,13 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </section>
             @else
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Packing list') }}">
+                        <button type="button" wire:click="$set('packingList', 'shared')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $packingList === 'shared', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'shared']) aria-pressed="{{ $packingList === 'shared' ? 'true' : 'false' }}">👥 {{ __('Together') }}</button>
+                        <button type="button" wire:click="$set('packingList', 'mine')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $packingList === 'mine', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'mine']) aria-pressed="{{ $packingList === 'mine' ? 'true' : 'false' }}">🔒 {{ __('My list') }}@if ($myPackingCount) <span class="text-xs text-gray-500">{{ $myPackingCount }}</span>@endif</button>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $packingList === 'mine' ? __('Only you can see your personal list.') : __('Everyone on the trip sees and ticks off this list.') }}</p>
+                </div>
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <form wire:submit="addItem" class="flex flex-wrap items-end gap-2">
                         <label class="min-w-0 flex-1 basis-full text-sm text-gray-700 sm:basis-0 dark:text-gray-300">{{ __('Item') }}<input type="text" wire:model="item.label" class="{{ $input }}" placeholder="{{ __('e.g. Snorkel') }}"><x-input-error :messages="$errors->get('item.label')" /></label>
@@ -1588,24 +1893,45 @@ new #[Layout('layouts.app')] class extends Component
                     <form wire:submit="applyTemplate" class="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-700">
                         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Add template') }}
                             <select wire:model="template" class="{{ $input }}">
-                                @foreach ($templates as $key => $packingTemplate)
-                                    <option value="{{ $key }}">{{ $packingTemplate['icon'] }} {{ $packingTemplate['label'] }}</option>
-                                @endforeach
+                                <optgroup label="{{ __('Templates') }}">
+                                    @foreach ($templates as $key => $packingTemplate)
+                                        <option value="{{ $key }}">{{ $packingTemplate['icon'] }} {{ $packingTemplate['label'] }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @if ($ownTemplates->isNotEmpty())
+                                    <optgroup label="{{ __('Your templates') }}">
+                                        @foreach ($ownTemplates as $ownTemplate)
+                                            <option value="own-{{ $ownTemplate->id }}">{{ $ownTemplate->icon ?: '📋' }} {{ $ownTemplate->name }}@if ($ownTemplate->isPrivate()) 🔒@endif</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             </select>
                         </label>
                         <label class="w-32 text-sm text-gray-700 dark:text-gray-300">{{ __('For') }}<input type="text" wire:model="templatePerson" list="trip-people" class="{{ $input }}" placeholder="{{ __('everyone') }}"></label>
                         <x-secondary-button type="submit">{{ __('Add') }}</x-secondary-button>
-                        @if ($overview['packed'] > 0)
+                        @if ($packingItems->where('packed', true)->isNotEmpty())
                             <button type="button" wire:click="unpackAll" class="ms-auto rounded-lg px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">↺ {{ __('Unpack all') }}</button>
                         @endif
                     </form>
+
+                    @if ($packingItems->isNotEmpty())
+                        <details class="mt-3 border-t border-gray-100 pt-3 dark:border-gray-700">
+                            <summary class="cursor-pointer text-sm text-indigo-600 dark:text-indigo-400">💾 {{ __('Save this list as a template') }}</summary>
+                            <form wire:submit="saveTemplate" class="mt-2 flex flex-wrap items-end gap-2">
+                                <label class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="templateName" class="{{ $input }}" placeholder="{{ __('e.g. Camping weekend') }}"><x-input-error :messages="$errors->get('templateName')" /></label>
+                                <label class="flex items-center gap-2 py-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="templatePrivate" class="rounded border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}</label>
+                                <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
+                            </form>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Your templates also appear for tasks (checklists) and for new pages.') }}</p>
+                        </details>
+                    @endif
                 </section>
 
-                @if ($trip->packingItems->isEmpty())
+                @if ($packingItems->isEmpty())
                     <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('The packing list is empty – add a template to start.') }}</p>
                 @else
                     <div class="grid gap-4 sm:grid-cols-2">
-                        @foreach ($trip->packingItems->groupBy('category')->sortBy(fn ($items, $key) => array_search($key, array_keys($categories))) as $key => $items)
+                        @foreach ($packingItems->groupBy('category')->sortBy(fn ($items, $key) => array_search($key, array_keys($categories))) as $key => $items)
                             <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="category-{{ $key }}">
                                 <h3 class="flex items-center justify-between text-sm font-semibold text-gray-900 dark:text-gray-100"><span>{{ $categories[$key]['icon'] ?? '' }} {{ $categories[$key]['label'] ?? $key }}</span><span class="text-xs font-normal text-gray-500">{{ $items->where('packed', true)->count() }}/{{ $items->count() }}</span></h3>
                                 <ul class="mt-2 space-y-1">

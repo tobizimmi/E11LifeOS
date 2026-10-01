@@ -215,7 +215,7 @@ new class extends Component
                     <x-sidebar-link icon="gift" :href="route('wishlist.index')" :active="request()->routeIs('wishlist.*')" wire:navigate>{{ __('Wishlist') }}</x-sidebar-link>
                     <x-sidebar-link icon="light-bulb" :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')" wire:navigate>{{ __('Money knowledge') }}</x-sidebar-link>
                 </x-sidebar-group>
-                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*')">
+                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*', 'career.*')">
                     <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>
                     @if ($hasRealEstate)
                         <x-sidebar-link icon="building-office-2" :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>{{ __('Real estate') }}</x-sidebar-link>
@@ -225,6 +225,7 @@ new class extends Component
                     <x-sidebar-link icon="cake" :href="route('people.index')" :active="request()->routeIs('people.*')" wire:navigate>{{ __('People & occasions') }}</x-sidebar-link>
                     <x-sidebar-link icon="star" :href="route('kids.index')" :active="request()->routeIs('kids.*')" wire:navigate>{{ __('Kids & pocket money') }}</x-sidebar-link>
                     <x-sidebar-link icon="clock" :href="route('work.index')" :active="request()->routeIs('work.*')" wire:navigate>{{ __('Working time & leave') }}</x-sidebar-link>
+                    <x-sidebar-link icon="briefcase" :href="route('career.index')" :active="request()->routeIs('career.*')" wire:navigate>{{ __('Career') }}</x-sidebar-link>
                 </x-sidebar-group>
                 <x-sidebar-group :title="__('Travel & leisure')" section="travel" :active="request()->routeIs('trips.*', 'places.*', 'splits.*', 'review.*')">
                     <x-sidebar-link icon="paper-airplane" :href="route('trips.index')" :active="request()->routeIs('trips.*')" wire:navigate>{{ __('Trips') }}</x-sidebar-link>
@@ -282,6 +283,13 @@ new class extends Component
         </nav>
 
         <div class="border-t border-gray-100 dark:border-gray-700 p-3" x-data="{ menuOpen: false }">
+            {{-- Version with a dot until the changes of a new version were looked at. --}}
+            <a href="{{ route('changelog') }}" wire:navigate class="mb-1 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                x-data="{ fresh: false }" x-init="try { fresh = localStorage.getItem('e11-seen-version') !== @js(\App\Support\AppVersion::version()) } catch (e) {}" x-on:version-seen.window="fresh = false">
+                <span x-show="fresh" x-cloak class="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true"></span>
+                <span>{{ \App\Support\AppVersion::label() }}</span>
+                <span x-show="fresh" x-cloak class="font-medium text-indigo-600 dark:text-indigo-400">{{ __('New') }}</span>
+            </a>
             <button type="button" x-on:click="menuOpen = ! menuOpen" class="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60" :aria-expanded="menuOpen">
                 <span class="min-w-0 text-start">
                     <span class="block truncate font-medium" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></span>
@@ -296,6 +304,7 @@ new class extends Component
                 @can('admin')
                     <x-sidebar-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings')" wire:navigate>{{ __('Server settings') }}</x-sidebar-link>
                 @endcan
+                <x-sidebar-link :href="route('changelog')" :active="request()->routeIs('changelog')" wire:navigate>{{ __('What\'s new') }}</x-sidebar-link>
                 <button type="button" wire:click="logout" class="w-full rounded-md px-2 py-1.5 text-start text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60">
                     {{ __('Log Out') }}
                 </button>

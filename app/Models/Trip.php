@@ -37,8 +37,10 @@ use Illuminate\Support\Carbon;
  * @property ?string $currency local currency at the destination (null = euros)
  * @property ?array<int, float> $map_area south, west, north, east
  * @property ?Carbon $places_loaded_at
+ * @property ?list<string> $visited_places
+ * @property ?array<string, mixed> $folder_options plan, ideas, notes (bool), pages (ids), links (title + url)
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'currency', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'currency', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'visited_places', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info', 'folder_options'])]
 #[Hidden(['share_token', 'share_token_encrypted', 'share_password'])]
 class Trip extends Model
 {
@@ -67,6 +69,8 @@ class Trip extends Model
             'group_info' => 'encrypted',
             'map_area' => 'array',
             'places_loaded_at' => 'datetime',
+            'visited_places' => 'array',
+            'folder_options' => 'array',
         ];
     }
 
@@ -115,6 +119,16 @@ class Trip extends Model
     }
 
     /**
+     * Comments and suggestions on the plan, newest first.
+     *
+     * @return HasMany<TripFeedback, $this>
+     */
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(TripFeedback::class)->latest()->latest('id');
+    }
+
+    /**
      * Header colour of the trip (chosen or derived from its id).
      *
      * @return array{from: string, to: string}
@@ -160,6 +174,9 @@ class Trip extends Model
         return array_values(array_filter(array_map('trim', $names ?: [])));
     }
 
+    /**
+     * @return HasMany<TripPackingItem, $this>
+     */
     public function packingItems(): HasMany
     {
         return $this->hasMany(TripPackingItem::class)->orderBy('position')->orderBy('id');

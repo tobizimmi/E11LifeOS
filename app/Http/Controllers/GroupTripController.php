@@ -6,6 +6,7 @@ use App\Models\ExternalLink;
 use App\Models\Trip;
 use App\Models\TripParticipant;
 use App\Support\Life\GroupTrip;
+use App\Support\Life\TripFeedbackBox;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -77,6 +78,49 @@ class GroupTripController extends Controller
         return redirect()->route('trips.participant', $token)->with('status', __('Thank you, your reply has been saved.'));
     }
 
+    /**
+     * A comment or a suggestion from the trip folder (guests give their name).
+     */
+    public function feedback(Request $request, string $token): RedirectResponse
+    {
+        $trip = $this->sharedTrip($token);
+        abort_unless($this->isUnlocked($request, $trip), 403);
+        $name = $request->validate(['name' => ['required', 'string', 'max:100']], attributes: ['name' => __('Name')])['name'];
+        $this->storeFeedback($request, $trip, ['name' => $name]);
+        $request->session()->put('trip_folder.name', $name);
+
+        return redirect()->to(route('trips.folder', $token).'#feedback')->with('status', __('Thank you for your feedback!'));
+    }
+
+    public function participantFeedback(Request $request, string $token): RedirectResponse
+    {
+        $participant = $this->participantByToken($token);
+        $this->storeFeedback($request, $participant->trip, ['name' => $participant->name, 'participant' => $participant]);
+
+        return redirect()->to(route('trips.participant', $token).'#feedback')->with('status', __('Thank you for your feedback!'));
+    }
+
+    /**
+     * @param  array{name: string, participant?: TripParticipant}  $author
+     */
+    private function storeFeedback(Request $request, Trip $trip, array $author): void
+    {
+        $data = $request->validate([
+            'type' => ['required', Rule::in(['comment', 'suggestion'])],
+            'body' => ['nullable', 'required_if:type,comment', 'string', 'max:2000'],
+            'stop' => ['nullable', 'integer'],
+            'title' => ['nullable', 'required_if:type,suggestion', 'string', 'max:255'],
+            'day' => ['nullable', 'date'],
+            'location' => ['nullable', 'string', 'max:255'],
+        ], attributes: ['body' => __('Comment'), 'title' => __('Suggestion')]);
+
+        if ($data['type'] === 'suggestion') {
+            TripFeedbackBox::suggest($trip, $author, (string) $data['title'], $data['day'] ?? null, $data['location'] ?? null, $data['body'] ?? null);
+        } else {
+            TripFeedbackBox::comment($trip, $author, (string) $data['body'], isset($data['stop']) ? (int) $data['stop'] : null);
+        }
+    }
+
     private function sharedTrip(string $token): Trip
     {
         return Trip::query()->whereShareToken('share_token', $token, 'share_expires_at')->first() ?? abort(404);
@@ -97,13 +141,22 @@ class GroupTripController extends Controller
      */
     private function folderData(Trip $trip): array
     {
-        $trip->load(['bookings', 'participants']);
+        $trip->load(['bookings', 'participants', 'stops', 'feedback']);
+
+        $plan = GroupTrip::folderPlan($trip);
+        $shown = [...collect($plan['days'])->pluck('entries')->flatten(1)->all(), ...$plan['ideas']];
 
         return [
             'trip' => $trip,
             'program' => GroupTrip::program($trip, $trip->share_references),
             'files' => GroupTrip::files($trip),
             'costs' => GroupTrip::costs($trip),
+            'plan' => $plan,
+            'pages' => GroupTrip::folderPages($trip),
+            'links' => GroupTrip::folderOptions($trip)['links'],
+            'comments' => $trip->feedback->where('type', 'comment')->groupBy(fn ($feedback) => (int) $feedback->trip_stop_id),
+            'suggestions' => $trip->feedback->where('type', 'suggestion')->take(20),
+            'feedbackStops' => array_map(fn (array $entry) => ['id' => $entry['id'], 'title' => $entry['title']], $shown),
         ];
     }
 

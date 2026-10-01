@@ -6,11 +6,14 @@ use App\Livewire\Concerns\StoresAttachments;
 use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
 use App\Models\Item;
+use App\Models\PageRevision;
 use App\Models\Space;
 use App\Models\Tag;
 use App\Support\BrainAi;
 use App\Support\NoteMarkdown;
 use App\Support\PageMover;
+use App\Support\PageRevisions;
+use App\Support\PageTemplates;
 use App\Support\PageTree;
 use App\Support\TaskPages;
 use Illuminate\Support\Facades\Auth;
@@ -125,6 +128,28 @@ new #[Layout('layouts.app')] class extends Component
         $this->showForm = true;
     }
 
+    public bool $showTemplates = false;
+
+    /**
+     * New page from a template: a built-in one ("meeting") or a page tagged #vorlage ("page:12").
+     */
+    public function createFromTemplate(string $key): void
+    {
+        if (str_starts_with($key, 'page:')) {
+            $source = PageTemplates::own(Auth::user(), (int) $this->householdId)->firstWhere('id', (int) substr($key, 5)) ?? abort(404);
+            [$title, $icon, $body] = [$source->title, (string) $source->icon, $source->body()];
+        } else {
+            $template = PageTemplates::builtIn()[$key] ?? abort(404);
+            [$title, $icon, $body] = [$template['title'], $template['icon'], $template['body']];
+        }
+
+        $this->create();
+        $this->title = mb_substr($title.' '.now()->format('d.m.Y'), 0, 255);
+        $this->icon = $icon;
+        $this->body = PageTemplates::fill($body);
+        $this->showTemplates = false;
+    }
+
     /**
      * New subpage; it starts with the parent's visibility.
      */
@@ -156,6 +181,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $page = $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId);
+        PageRevisions::record($page, Auth::user(), mb_substr(trim($title), 0, 255), $body);
         $page->update(['title' => mb_substr(trim($title), 0, 255), 'content' => ['body' => $body] + ($page->content ?? [])]);
         Attachment::attachReferencedTo($page, Auth::user());
 
@@ -195,6 +221,8 @@ new #[Layout('layouts.app')] class extends Component
                 $attributes['visibility'] = $visibility;
             }
 
+            PageRevisions::record($page, Auth::user(), $attributes['title'], $attributes['content']['body']);
+
             if ($page->parent_id !== $attributes['parent_id']) {
                 $attributes['position'] = PageMover::positionForNewChild((int) $this->householdId, $attributes['parent_id']);
             }
@@ -230,6 +258,22 @@ new #[Layout('layouts.app')] class extends Component
         $page = $this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null;
 
         return PageMover::parentIsAllowed($page, $parentId, Auth::user(), (int) $this->householdId);
+    }
+
+    /** Page whose version history is shown. */
+    public ?int $historyFor = null;
+
+    public function showHistory(int $id): void
+    {
+        $this->historyFor = $this->historyFor === $id ? null : $this->findVisibleItem(Item::TYPE_NOTE, $id)->id;
+    }
+
+    public function restoreRevision(int $revisionId): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->historyFor);
+        PageRevisions::restore($page, PageRevision::where('item_id', $page->id)->findOrFail($revisionId), Auth::user());
+        $this->historyFor = null;
+        $this->dispatch('toast', message: __('The earlier version is back.'));
     }
 
     public function edit(int $id): void
@@ -571,9 +615,33 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             <div class="flex gap-3 shrink-0 text-sm">
                                 <button type="button" wire:click="edit({{ $selectedPage->id }})" class="text-indigo-600 dark:text-indigo-400 underline">{{ __('Edit') }}</button>
+                                @php($revisionCount = \App\Models\PageRevision::where('item_id', $selectedPage->id)->count())
+                                @if ($revisionCount > 0)
+                                    <button type="button" wire:click="showHistory({{ $selectedPage->id }})" class="text-gray-600 dark:text-gray-300 underline" aria-expanded="{{ $historyFor === $selectedPage->id ? 'true' : 'false' }}">🕓 {{ trans_choice(':count version|:count versions', $revisionCount) }}</button>
+                                @endif
                                 <button type="button" wire:click="delete({{ $selectedPage->id }})" wire:confirm="{{ __('Delete this page? Its subpages move up one level.') }}" class="text-red-600 dark:text-red-400 underline">{{ __('Delete') }}</button>
                             </div>
                         </div>
+
+                        @if ($historyFor === $selectedPage->id)
+                            <section class="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:ring-gray-700" aria-label="{{ __('Earlier versions') }}">
+                                <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">🕓 {{ __('Earlier versions') }}</h2>
+                                <ul class="mt-2 divide-y divide-gray-200 dark:divide-gray-700">
+                                    @foreach (\App\Models\PageRevision::where('item_id', $selectedPage->id)->with('user')->latest('id')->get() as $revision)
+                                        <li wire:key="revision-{{ $revision->id }}" class="py-2 text-sm" x-data="{ open: false }">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <button type="button" x-on:click="open = ! open" class="min-w-0 flex-1 text-left text-gray-800 hover:underline dark:text-gray-200">
+                                                    {{ $revision->created_at->translatedFormat('j. M Y, H:i') }}@if ($revision->user) · {{ $revision->user->name }}@endif
+                                                    <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $revision->title }} – {{ \Illuminate\Support\Str::limit(strip_tags((string) $revision->body), 90) }}</span>
+                                                </button>
+                                                <button type="button" wire:click="restoreRevision({{ $revision->id }})" wire:confirm="{{ __('Restore this version? The current text is kept as a version.') }}" class="rounded-lg px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">{{ __('Restore') }}</button>
+                                            </div>
+                                            <pre x-show="open" x-cloak class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $revision->body }}</pre>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </section>
+                        @endif
 
                         @if ($selectedPage->tags->isNotEmpty())
                             <div class="flex flex-wrap gap-1">
@@ -654,8 +722,29 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-4 space-y-3">
                     <div class="flex gap-3">
                         <x-text-input wire:model.live.debounce.300ms="search" class="block w-full" type="search" placeholder="{{ __('Search pages...') }}" />
+                        <x-secondary-button type="button" wire:click="$toggle('showTemplates')" class="shrink-0" aria-expanded="{{ $showTemplates ? 'true' : 'false' }}">📑 {{ __('Templates') }}</x-secondary-button>
                         <x-primary-button type="button" wire:click="create" class="shrink-0">{{ __('New page') }}</x-primary-button>
                     </div>
+
+                    @if ($showTemplates)
+                        <section class="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/40" aria-label="{{ __('Templates') }}">
+                            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach (\App\Support\PageTemplates::builtIn() as $key => $template)
+                                    <button type="button" wire:click="createFromTemplate('{{ $key }}')" wire:key="template-{{ $key }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-gray-200 hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700">
+                                        <span class="text-2xl" aria-hidden="true">{{ $template['icon'] }}</span>
+                                        <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $template['title'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $template['description'] }}</span></span>
+                                    </button>
+                                @endforeach
+                                @foreach (\App\Support\PageTemplates::own(Auth::user(), (int) $this->householdId) as $ownTemplate)
+                                    <button type="button" wire:click="createFromTemplate('page:{{ $ownTemplate->id }}')" wire:key="template-page-{{ $ownTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
+                                        <span class="text-2xl" aria-hidden="true">{{ $ownTemplate->displayIcon() }}</span>
+                                        <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $ownTemplate->title }}</span><span class="block text-xs text-indigo-600 dark:text-indigo-400">{{ __('Your template') }}</span></span>
+                                    </button>
+                                @endforeach
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Tag any page with #vorlage to make it a template for your household.') }}</p>
+                        </section>
+                    @endif
 
                     @if ($spaces->isNotEmpty())
                         <div class="flex flex-wrap gap-1" role="group" aria-label="{{ __('Spaces') }}">

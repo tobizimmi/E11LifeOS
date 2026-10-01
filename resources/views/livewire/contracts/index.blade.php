@@ -38,6 +38,17 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Links a recurring payment to an existing contract (e.g. named differently at the bank).
+     */
+    public function link(string $key, int $itemId): void
+    {
+        $payment = $this->payment($key);
+        $contract = collect(ContractOverview::for(Auth::user(), $this->householdId())['contracts'])->first(fn (array $contract) => $contract['item']->id === $itemId)['item'] ?? abort(404);
+        SubscriptionMatcher::link($contract, $payment['key']);
+        $this->dispatch('toast', message: __('Payment linked with ":name".', ['name' => $contract->title]));
+    }
+
+    /**
      * Hides a recurring payment that is no contract.
      */
     public function dismiss(string $key): void
@@ -111,7 +122,15 @@ new #[Layout('layouts.app')] class extends Component
                                     <span class="min-w-0 basis-full sm:basis-0 sm:flex-1"><span class="font-medium text-gray-900 dark:text-gray-100">{{ $payment['name'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $euro($payment['amount']) }} · {{ __(['weekly' => 'weekly', 'monthly' => 'monthly', 'bimonthly' => 'every 2 months', 'quarterly' => 'quarterly', 'halfyearly' => 'half-yearly', 'yearly' => 'yearly'][$payment['frequency']]) }} · {{ __('last :date', ['date' => $payment['lastDate']->format('d.m.Y')]) }}</span></span>
                                     <span class="me-auto tabular-nums text-gray-600 dark:text-gray-300 sm:me-0">{{ $euro($payment['monthly']) }} / {{ __('month') }}</span>
                                     <button type="button" wire:click="adopt(@js($payment['key']))" class="rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700">{{ __('Add as contract') }}</button>
-                                    <button type="button" wire:click="dismiss(@js($payment['key']))" class="rounded-lg px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ __('Not a contract') }}</button>
+                                    @if ($overview['contracts'] !== [])
+                                        <select x-on:change="$event.target.value && $wire.link(@js($payment['key']), $event.target.value)" class="rounded-lg border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Link to a contract') }}">
+                                            <option value="">🔗 {{ __('Link to …') }}</option>
+                                            @foreach ($overview['contracts'] as $contract)
+                                                <option value="{{ $contract['item']->id }}">{{ $contract['item']->title }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                    <button type="button" wire:click="dismiss(@js($payment['key']))" class="rounded-lg px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">✕ {{ __('Not a contract') }}</button>
                                 </li>
                             @endforeach
                         </ul>

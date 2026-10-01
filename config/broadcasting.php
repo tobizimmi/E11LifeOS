@@ -28,6 +28,10 @@ return [
     |
     */
 
+    // Port of the local Reverb process, written into .env by the deploy (the port it starts
+    // Reverb with). When set, live updates always go there, whatever else is configured.
+    'local_reverb_port' => env('REVERB_LOCAL_PORT'),
+
     'connections' => [
 
         'reverb' => [

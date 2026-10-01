@@ -142,6 +142,12 @@ jobs:
           echo "Directories created"
           DIRSEOF
 
+      - name: Pause scheduler and queue during the update
+        # Jobs started while the files are being replaced fail half-way (e.g. reminders at a deploy);
+        # both are started again at the end of the deployment.
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} "export PATH=/usr/local/bin:/usr/bin:/bin:\$PATH; pm2 stop '${{ env.PM2_SCHEDULER_NAME }}' '${{ env.PM2_QUEUE_NAME }}' > /dev/null 2>&1 || true"
+
       - name: Deploy application code
         run: |
           # .env is fully SERVER-MANAGED and intentionally never touched by CI —
@@ -186,11 +192,19 @@ jobs:
             # Migrations, push keys and – on a fresh installation – the invite code for the first account
             php artisan app:install --no-interaction
 
+            # The app sends live updates to the local Reverb process: tell it the port Reverb runs on.
+            if grep -q '^REVERB_LOCAL_PORT=' .env; then
+              sed -i "s/^REVERB_LOCAL_PORT=.*/REVERB_LOCAL_PORT=$REVERB_PORT/" .env
+            else
+              printf '\nREVERB_LOCAL_PORT=%s\n' "$REVERB_PORT" >> .env
+            fi
+
             # Clear stale caches (do NOT config:cache — keep reading the live .env)
             php artisan config:clear
             php artisan route:clear
             php artisan view:clear
             php artisan cache:clear
+            php artisan maps:warm || true
 
             # App, Reverb, scheduler, queue worker and VPN: restart (new code) or start once.
             # A process running in another folder (app folder moved) or with other arguments (port) is started anew.
@@ -210,7 +224,8 @@ jobs:
               fi
             }
 
-            ensure_process "$PM2_APP_NAME" -S "127.0.0.1:$APP_PORT" -t public/
+            # The built-in server uses the CLI php.ini (uploads max. 2 MB): allow photos and documents up to 20 MB.
+            ensure_process "$PM2_APP_NAME" -d upload_max_filesize=25M -d post_max_size=30M -d memory_limit=512M -S "127.0.0.1:$APP_PORT" -t public/
             ensure_process "$PM2_REVERB_NAME" artisan reverb:start "--port=$REVERB_PORT"
             ensure_process "$PM2_SCHEDULER_NAME" artisan schedule:work
             ensure_process "$PM2_QUEUE_NAME" artisan queue:work --queue=admin,default --tries=1 --sleep=3
@@ -224,3 +239,8 @@ jobs:
 
             echo "Deployment complete (PM2: $PM2_APP_NAME, $PM2_REVERB_NAME)."
           EOF
+
+      - name: Start scheduler and queue again after a failed update
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} "export PATH=/usr/local/bin:/usr/bin:/bin:\$PATH; pm2 restart '${{ env.PM2_SCHEDULER_NAME }}' '${{ env.PM2_QUEUE_NAME }}' > /dev/null 2>&1 || true"

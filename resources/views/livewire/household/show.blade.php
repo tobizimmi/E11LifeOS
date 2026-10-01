@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\HouseholdInvite;
+use App\Models\InboundMail;
+use App\Support\Mail\MailIntake;
 use App\Support\Addons;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -65,6 +67,28 @@ new #[Layout('layouts.app')] class extends Component
         $member->update(['permissions' => $permissions ?: null]);
     }
 
+    /**
+     * Creates the household's mail address or replaces it with a new one (the old one stops working).
+     */
+    public function assignMailAddress(): void
+    {
+        $household = Auth::user()->currentHousehold();
+        abort_if(! $household || ! MailIntake::domain(), 404);
+        abort_unless($household->members()->where('user_id', Auth::id())->first()?->isOwner(), 403);
+
+        MailIntake::assignAddress($household);
+        $this->dispatch('toast', message: __('The new address is active.'));
+    }
+
+    public function removeMailAddress(): void
+    {
+        $household = Auth::user()->currentHousehold();
+        abort_if(! $household, 404);
+        abort_unless($household->members()->where('user_id', Auth::id())->first()?->isOwner(), 403);
+
+        $household->forceFill(['mail_address' => null])->save();
+    }
+
     public function with(): array
     {
         $household = Auth::user()->currentHousehold();
@@ -78,6 +102,9 @@ new #[Layout('layouts.app')] class extends Component
             'addons' => Addons::all(),
             'isOwner' => (bool) $household->members()->where('user_id', Auth::id())->first()?->isOwner(),
             'load' => \App\Support\Life\HouseholdLoad::for($household),
+            'mailDomain' => MailIntake::domain(),
+            'mailAddress' => MailIntake::address($household),
+            'inboundMails' => InboundMail::where('household_id', $household->id)->with('trip')->latest()->limit(10)->get(),
         ];
     }
 }; ?>
@@ -167,6 +194,49 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </div>
 
+
+            @if ($mailDomain)
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6" x-data="{ copied: false }">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">✉️ {{ __('Mail address of the household') }}</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Forward booking confirmations, invoices or notes to this address – they land in the right place by themselves.') }}</p>
+
+                    @if ($mailAddress)
+                        <div class="mt-4 flex flex-wrap items-center gap-2">
+                            <code class="min-w-0 flex-1 truncate rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 dark:bg-gray-900 dark:text-gray-100">{{ $mailAddress }}</code>
+                            <button type="button" x-on:click="navigator.clipboard.writeText(@js($mailAddress)); copied = true; setTimeout(() => copied = false, 1500)" class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"><span x-show="! copied">{{ __('Copy') }}</span><span x-show="copied" x-cloak>✓ {{ __('Copied') }}</span></button>
+                            @if ($isOwner)
+                                <button type="button" wire:click="assignMailAddress" wire:confirm="{{ __('Create a new address? The current one stops working right away.') }}" class="rounded-lg px-3 py-2 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">{{ __('New address') }}</button>
+                                <button type="button" wire:click="removeMailAddress" wire:confirm="{{ __('Switch off the mail address?') }}" class="rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">{{ __('Switch off') }}</button>
+                            @endif
+                        </div>
+                        <dl class="mt-4 grid gap-x-6 gap-y-1 text-sm text-gray-700 sm:grid-cols-2 dark:text-gray-300">
+                            <div><dt class="inline font-medium">🎫 {{ __('Booking confirmation') }}</dt> <dd class="inline text-gray-500 dark:text-gray-400">→ {{ __('the matching trip') }}</dd></div>
+                            <div><dt class="inline font-medium">„Aufgabe: …“</dt> <dd class="inline text-gray-500 dark:text-gray-400">→ {{ __('a task') }}</dd></div>
+                            <div><dt class="inline font-medium">„Einkauf: …“</dt> <dd class="inline text-gray-500 dark:text-gray-400">→ {{ __('shopping list (one item per line)') }}</dd></div>
+                            <div><dt class="inline font-medium">{{ __('Everything else') }}</dt> <dd class="inline text-gray-500 dark:text-gray-400">→ {{ __('inbox') }}</dd></div>
+                            <div class="sm:col-span-2"><dt class="inline font-medium">📎 {{ __('PDFs and photos') }}</dt> <dd class="inline text-gray-500 dark:text-gray-400">→ {{ __('paperless, otherwise kept with the entry') }}</dd></div>
+                        </dl>
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Keep the address to yourselves: whoever knows it can send mails to your household. Mails from addresses that are not members are marked.') }}</p>
+
+                        @if ($inboundMails->isNotEmpty())
+                            <h4 class="mt-5 text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Received recently') }}</h4>
+                            <ul class="mt-2 divide-y divide-gray-100 text-sm dark:divide-gray-700">
+                                @foreach ($inboundMails as $inboundMail)
+                                    <li wire:key="inbound-{{ $inboundMail->id }}" class="flex flex-wrap items-baseline gap-x-3 py-2">
+                                        <span class="w-28 shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ $inboundMail->created_at->translatedFormat('j. M, H:i') }}</span>
+                                        <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $inboundMail->subject ?: __('Mail without subject') }}<span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $inboundMail->from_address }}@if ($inboundMail->note) · {{ $inboundMail->note }}@endif</span></span>
+                                        <span class="text-xs text-gray-600 dark:text-gray-300">{{ \App\Models\InboundMail::statusLabel($inboundMail->status) }}@if ($inboundMail->trip) · <a href="{{ route('trips.show', ['trip' => $inboundMail->trip, 'tab' => 'bookings']) }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ $inboundMail->trip->title }}</a>@endif</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    @elseif ($isOwner)
+                        <button type="button" wire:click="assignMailAddress" class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ __('Create mail address') }}</button>
+                    @else
+                        <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">{{ __('The owner of the household can create the address.') }}</p>
+                    @endif
+                </div>
+            @endif
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Addons') }}</h3>

@@ -1,14 +1,20 @@
 <?php
 
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\Contact;
 use App\Models\Item;
+use App\Models\PaperlessInstance;
+use App\Models\Place;
 use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
 use App\Models\Tag;
+use App\Models\Trip;
+use App\Support\Paperless\PaperlessClient;
 use App\Support\Addons;
 use App\Support\BrainAi;
 use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -20,6 +26,46 @@ new class extends Component
     private const RESULTS_PER_GROUP = 5;
 
     public string $query = '';
+
+    /**
+     * Full-text hits from paperless (its OCR text) for $paperlessQuery – only fetched on request,
+     * because paperless may sit behind the VPN and answer slowly.
+     *
+     * @var list<array{label: string, url: string}>|null
+     */
+    #[Locked]
+    public ?array $paperlessResults = null;
+
+    #[Locked]
+    public string $paperlessQuery = '';
+
+    #[Locked]
+    public ?string $paperlessError = null;
+
+    public function searchPaperless(): void
+    {
+        $term = trim($this->query);
+        $instance = Auth::user() ? PaperlessInstance::defaultFor(Auth::user()) : null;
+        $this->paperlessError = null;
+
+        if (! $instance || mb_strlen($term) < self::MIN_QUERY_LENGTH) {
+            return;
+        }
+
+        try {
+            $client = PaperlessClient::for($instance, Auth::user());
+            $this->paperlessResults = array_map(fn (array $document) => [
+                'label' => '📄 '.($document['title'] ?: '#'.$document['id']).($document['created'] ? ' · '.\Illuminate\Support\Carbon::parse($document['created'])->format('d.m.Y') : ''),
+                'url' => $client->documentUrl($document['id']),
+            ], $client->search($term, 8));
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->paperlessResults = [];
+            $this->paperlessError = __('paperless is not reachable.');
+        }
+
+        $this->paperlessQuery = $term;
+    }
 
     protected function requiresHousehold(): bool
     {
@@ -75,6 +121,20 @@ new class extends Component
                     'url' => route('shopping-list.index'),
                     'private' => false,
                 ])
+                ->all(),
+            __('Trips') => Trip::query()->visibleTo(Auth::user(), $this->householdId)
+                ->where(fn ($query) => $query->whereRaw('LOWER(title) LIKE ?', ['%'.mb_strtolower($term).'%'])->orWhereRaw('LOWER(destination) LIKE ?', ['%'.mb_strtolower($term).'%']))
+                ->orderByDesc('starts_on')->limit(self::RESULTS_PER_GROUP)->get()
+                ->map(fn (Trip $trip) => ['label' => '🧳 '.$trip->title.' · '.$trip->starts_on->format('m/Y'), 'url' => route('trips.show', $trip), 'private' => $trip->visibility === Item::VISIBILITY_PRIVATE])
+                ->all(),
+            __('People') => Contact::query()->visibleTo(Auth::user(), $this->householdId)
+                ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($term).'%'])->orderBy('name')->limit(self::RESULTS_PER_GROUP)->get()
+                ->map(fn (Contact $contact) => ['label' => '👤 '.$contact->name, 'url' => route('people.index', ['person' => $contact->id]), 'private' => $contact->visibility === Item::VISIBILITY_PRIVATE])
+                ->all(),
+            __('Places') => Place::query()->visibleTo(Auth::user(), $this->householdId)
+                ->where(fn ($query) => $query->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($term).'%'])->orWhereRaw('LOWER(city) LIKE ?', ['%'.mb_strtolower($term).'%']))
+                ->orderBy('name')->limit(self::RESULTS_PER_GROUP)->get()
+                ->map(fn (Place $place) => ['label' => '📍 '.$place->name.($place->city ? ' · '.$place->city : ''), 'url' => route('places.index'), 'private' => $place->visibility === Item::VISIBILITY_PRIVATE])
                 ->all(),
             __('Tags') => Tag::usedOnItemsVisibleTo(Auth::user(), $this->householdId)
                 ->where('name', 'like', '%'.mb_strtolower(ltrim($term, '#')).'%')
@@ -234,6 +294,7 @@ new class extends Component
             'groups' => $this->results(),
             'searched' => mb_strlen(trim($this->query)) >= self::MIN_QUERY_LENGTH,
             'canAsk' => $this->householdId !== null && BrainAi::isConfigured(),
+            'hasPaperless' => Auth::user() !== null && PaperlessInstance::defaultFor(Auth::user()) !== null,
         ];
     }
 }; ?>
@@ -337,6 +398,23 @@ new class extends Component
                         <p class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No results.') }}</p>
                     @endif
                 @endforelse
+                @if ($searched && $hasPaperless)
+                    @if ($paperlessResults !== null && $paperlessQuery === $typed)
+                        <div class="py-2">
+                            <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('paperless (full text)') }}</h4>
+                            @forelse ($paperlessResults as $document)
+                                <a href="{{ $document['url'] }}" target="_blank" rel="noopener noreferrer" data-search-result class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700"><span class="truncate">{{ $document['label'] }}</span></a>
+                            @empty
+                                <p class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{ $paperlessError ?? __('No documents found.') }}</p>
+                            @endforelse
+                        </div>
+                    @else
+                        <button type="button" wire:click="searchPaperless" wire:loading.attr="disabled" wire:target="searchPaperless" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                            <span aria-hidden="true" wire:loading.remove wire:target="searchPaperless">📄</span><span aria-hidden="true" wire:loading wire:target="searchPaperless">⏳</span>
+                            <span class="truncate">{{ __('Search documents in paperless for “:text”', ['text' => $typed]) }}</span>
+                        </button>
+                    @endif
+                @endif
                 @if ($searched && $canAsk)
                     <a
                         href="{{ route('brain.ask', ['q' => trim($query)]) }}"

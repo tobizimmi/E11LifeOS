@@ -53,6 +53,13 @@ class AppSettings
         'offers_api_key' => ['group' => 'shopping', 'config' => ['services.offers.api_key'], 'secret' => true, 'type' => 'text'],
         'offers_client_key' => ['group' => 'shopping', 'config' => ['services.offers.client_key'], 'secret' => true, 'type' => 'text'],
 
+        'inbound_mail_domain' => ['group' => 'inbound', 'config' => ['services.inbound_mail.domain'], 'secret' => false, 'type' => 'text'],
+        'inbound_mail_host' => ['group' => 'inbound', 'config' => ['services.inbound_mail.host'], 'secret' => false, 'type' => 'text'],
+        'inbound_mail_port' => ['group' => 'inbound', 'config' => ['services.inbound_mail.port'], 'secret' => false, 'type' => 'number'],
+        'inbound_mail_encryption' => ['group' => 'inbound', 'config' => ['services.inbound_mail.encryption'], 'secret' => false, 'type' => 'select'],
+        'inbound_mail_username' => ['group' => 'inbound', 'config' => ['services.inbound_mail.username'], 'secret' => false, 'type' => 'text'],
+        'inbound_mail_password' => ['group' => 'inbound', 'config' => ['services.inbound_mail.password'], 'secret' => true, 'type' => 'text'],
+
         'maps_tile_url' => ['group' => 'maps', 'config' => ['services.maps.tile_url'], 'secret' => false, 'type' => 'text'],
 
         'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],
@@ -136,8 +143,13 @@ class AppSettings
             config(['mail.default' => 'smtp']);
         }
 
+        // The port the deploy started Reverb with wins over a port entered by hand.
+        if ((int) config('broadcasting.local_reverb_port') > 0) {
+            config(['broadcasting.connections.reverb.options.port' => (int) config('broadcasting.local_reverb_port')]);
+        }
+
         // With the port of the local Reverb process the app sends live updates to it directly.
-        if (($stored['reverb_publish_port'] ?? '') !== '') {
+        if (($stored['reverb_publish_port'] ?? '') !== '' || (int) config('broadcasting.local_reverb_port') > 0) {
             config([
                 'broadcasting.connections.reverb.options.host' => '127.0.0.1',
                 'broadcasting.connections.reverb.options.scheme' => 'http',

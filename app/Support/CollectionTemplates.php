@@ -67,6 +67,7 @@ class CollectionTemplates
                 ['name' => __('Manual'), 'type' => CollectionProperty::TYPE_URL],
             ],
             'pantry' => [
+                ['name' => __('Kind'), 'type' => CollectionProperty::TYPE_SELECT, 'options' => Pantry::kindOptions()],
                 ['name' => __('Quantity'), 'type' => CollectionProperty::TYPE_NUMBER],
                 ['name' => __('Unit'), 'type' => CollectionProperty::TYPE_TEXT],
                 ['name' => __('Minimum stock'), 'type' => CollectionProperty::TYPE_NUMBER],
@@ -98,6 +99,11 @@ class CollectionTemplates
 
         foreach ($properties as $position => $property) {
             $collection->properties()->create($property + ['position' => $position]);
+        }
+
+        // The first pantry of a household is linked with recipes and the shopping list.
+        if ($template === 'pantry' && ! Collection::where('household_id', $collection->household_id)->where('system_key', Pantry::SYSTEM_KEY)->exists()) {
+            Pantry::adopt($collection->load('properties'));
         }
 
         $defaultView = match ($template) {

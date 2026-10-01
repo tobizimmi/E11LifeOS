@@ -65,10 +65,28 @@ return [
         'token' => env('PUSHOVER_APP_TOKEN'),
     ],
 
+    // Mail intake: every household gets an address name.secret@domain; the mails land in one
+    // (catch-all) mailbox of the server's mail service and are fetched by "mail:fetch" via IMAP.
+    'inbound_mail' => [
+        'domain' => env('INBOUND_MAIL_DOMAIN'),
+        'host' => env('INBOUND_MAIL_HOST', '127.0.0.1'),
+        'port' => (int) env('INBOUND_MAIL_PORT', 993),
+        'encryption' => env('INBOUND_MAIL_ENCRYPTION', 'ssl'),
+        'validate_cert' => (bool) env('INBOUND_MAIL_VALIDATE_CERT', false),
+        'username' => env('INBOUND_MAIL_USERNAME'),
+        'password' => env('INBOUND_MAIL_PASSWORD'),
+        'daily_limit' => (int) env('INBOUND_MAIL_DAILY_LIMIT', 100),
+    ],
+
     // Trip map: place search, addresses and places nearby (OpenStreetMap services, called from the server).
     'maps' => [
         'nominatim_url' => env('MAPS_NOMINATIM_URL', 'https://nominatim.openstreetmap.org'),
         'overpass_url' => env('MAPS_OVERPASS_URL', 'https://overpass-api.de/api/interpreter'),
+        // Search as you type (Photon by Komoot) and walking/cycling/driving routes (OSRM of FOSSGIS).
+        'photon_url' => env('MAPS_PHOTON_URL', 'https://photon.komoot.io'),
+        'routing_url' => env('MAPS_ROUTING_URL', 'https://routing.openstreetmap.de'),
+        // Remember the IP addresses of these services (servers with a slow name lookup).
+        'remember_dns' => (bool) env('MAPS_REMEMBER_DNS', true),
         // Map tiles in the browser; empty = OpenStreetMap. May contain a key, e.g. from MapTiler.
         'tile_url' => env('MAPS_TILE_URL'),
     ],

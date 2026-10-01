@@ -97,19 +97,31 @@ class MealPlanTest extends TestCase
         );
     }
 
-    public function test_combining_keeps_units_apart_and_lists_the_recipes(): void
+    public function test_combining_converts_units_merges_spellings_and_lists_the_recipes(): void
     {
         $combined = ShoppingIngredients::combine([
             ['name' => 'Milch', 'amount' => '200', 'unit' => 'ml', 'recipe' => 'A'],
-            ['name' => 'Milch', 'amount' => '1', 'unit' => 'l', 'recipe' => 'B'],
+            ['name' => 'Milch', 'amount' => '1', 'unit' => 'Liter', 'recipe' => 'B'],
             ['name' => 'Eier', 'amount' => '1,5', 'unit' => '', 'recipe' => 'A'],
-            ['name' => 'eier', 'amount' => '1/2', 'unit' => '', 'recipe' => 'B'],
+            ['name' => 'eier', 'amount' => '1/2', 'unit' => 'Stück', 'recipe' => 'B'],
+            ['name' => 'Zwiebel', 'amount' => '1', 'unit' => '', 'recipe' => 'A'],
+            ['name' => 'Zwiebeln (rot)', 'amount' => '2', 'unit' => '', 'recipe' => 'B'],
+            ['name' => 'Mehl', 'amount' => '300', 'unit' => 'g', 'recipe' => 'A'],
+            ['name' => 'Mehl', 'amount' => '0,7', 'unit' => 'kg', 'recipe' => 'B'],
+            ['name' => 'Öl', 'amount' => '1', 'unit' => 'Esslöffel', 'recipe' => 'A'],
+            ['name' => 'Öl', 'amount' => '1', 'unit' => 'TL', 'recipe' => 'B'],
+            ['name' => 'Petersilie', 'amount' => '1', 'unit' => 'Bund', 'recipe' => 'A'],
+            ['name' => 'Petersilie', 'amount' => '20', 'unit' => 'g', 'recipe' => 'B'],
         ]);
 
         $this->assertSame([
             ['name' => 'Eier', 'quantity' => '2', 'recipes' => ['A', 'B']],
-            ['name' => 'Milch', 'quantity' => '200 ml', 'recipes' => ['A']],
-            ['name' => 'Milch', 'quantity' => '1 l', 'recipes' => ['B']],
+            ['name' => 'Mehl', 'quantity' => '1 kg', 'recipes' => ['A', 'B']],
+            ['name' => 'Milch', 'quantity' => '1,2 l', 'recipes' => ['A', 'B']],
+            ['name' => 'Öl', 'quantity' => '4 TL', 'recipes' => ['A', 'B']],
+            ['name' => 'Petersilie', 'quantity' => '1 Bund', 'recipes' => ['A']],
+            ['name' => 'Petersilie', 'quantity' => '20 g', 'recipes' => ['B']],
+            ['name' => 'Zwiebel', 'quantity' => '3', 'recipes' => ['A', 'B']],
         ], $combined);
     }
 

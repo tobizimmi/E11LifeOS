@@ -1025,6 +1025,31 @@ window.E11Haptic = (duration = 8) => {
     }
 };
 
+/**
+ * Makes a photo smaller before it is uploaded (longest side max. 2400 px, JPEG): phone photos
+ * of several MB upload quickly and stay below the server limit. Other files stay as they are.
+ */
+window.e11ShrinkImage = async (file, maxSize = 2400) => {
+    if (!file?.type?.startsWith('image/') || ['image/gif', 'image/svg+xml'].includes(file.type)) {
+        return file;
+    }
+
+    try {
+        const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close?.();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+
+        return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+    } catch {
+        return file;
+    }
+};
+
 document.addEventListener('alpine:init', () => {
     /**
      * Swipe actions on list rows (touch): the row follows the finger 1:1; on release the
@@ -1034,7 +1059,13 @@ document.addEventListener('alpine:init', () => {
      * x-data="e11Swipe({ onRight: () => …, onLeft: () => …, leaveOnRight: true })", the moving
      * part has x-ref="content"; the template can show the actions behind it with `dx`.
      */
-    window.Alpine.data('e11Swipe', ({ onRight = null, onLeft = null, leaveOnRight = false, leaveOnLeft = false, enterFromOpposite = false } = {}) => ({
+    window.Alpine.data('e11Swipe', ({ onRight = null, onLeft = null, leaveOnRight = false, leaveOnLeft = false, enterFromOpposite = false } = {}) => {
+        // The position changes every frame: kept outside Alpine's reactivity, only its direction
+        // (for the colored actions behind the row) is reactive and changes rarely.
+        let offset = 0;
+        let rowWidth = 320;
+
+        return {
         dx: 0,
         swiping: false,
         leaving: false,
@@ -1042,11 +1073,17 @@ document.addEventListener('alpine:init', () => {
         animation: null,
 
         width() {
-            return this.$el.offsetWidth || 320;
+            return rowWidth;
         },
 
         render(value) {
-            this.dx = value;
+            offset = value;
+            const direction = Math.sign(Math.round(value));
+
+            if (direction !== this.dx) {
+                this.dx = direction;
+            }
+
             this.$refs.content.style.transform = value === 0 ? '' : `translate3d(${value}px, 0, 0)`;
         },
 
@@ -1056,7 +1093,8 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.animation?.stop();
-            this.gesture = { x: event.clientX - this.dx, y: event.clientY, active: false, samples: [], armed: false, id: event.pointerId };
+            rowWidth = this.$el.offsetWidth || 320;
+            this.gesture = { x: event.clientX - offset, y: event.clientY, active: false, samples: [], armed: false, id: event.pointerId, el: event.currentTarget };
         },
 
         move(event) {
@@ -1080,7 +1118,8 @@ document.addEventListener('alpine:init', () => {
 
                 gesture.active = true;
                 this.swiping = true;
-                try { this.$el.setPointerCapture(gesture.id); } catch { /* synthetic or already released pointer */ }
+                // Capture on the element that listens, so the finger may leave the row.
+                try { gesture.el.setPointerCapture(gesture.id); } catch { /* synthetic or already released pointer */ }
             }
 
             // Directions without an action resist instead of moving freely.
@@ -1107,13 +1146,19 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.swiping = false;
+
+            // The tap that ends a swipe must not also open the row.
+            const swallow = (event) => { event.stopPropagation(); event.preventDefault(); };
+            gesture.el.addEventListener('click', swallow, { capture: true, once: true });
+            setTimeout(() => gesture.el.removeEventListener('click', swallow, { capture: true }), 400);
+
             const velocity = E11Motion.velocity(gesture.samples);
-            const projected = this.dx + E11Motion.project(velocity, 0.99);
+            const projected = offset + E11Motion.project(velocity, 0.99);
             const limit = this.width() * 0.35;
 
-            if (projected > limit && this.dx > 0 && onRight) {
+            if (projected > limit && offset > 0 && onRight) {
                 this.commit(1, velocity, onRight, leaveOnRight);
-            } else if (projected < -limit && this.dx < 0 && onLeft) {
+            } else if (projected < -limit && offset < 0 && onLeft) {
                 this.commit(-1, velocity, onLeft, leaveOnLeft);
             } else {
                 this.springTo(0, velocity, Math.abs(velocity) > 300 ? 0.8 : 1);
@@ -1122,7 +1167,7 @@ document.addEventListener('alpine:init', () => {
 
         springTo(target, velocity = 0, damping = 1, onComplete = null) {
             this.animation?.stop();
-            this.animation = E11Motion.spring({ from: this.dx, to: target, velocity, damping, response: 0.3, onUpdate: (value) => this.render(value), onComplete });
+            this.animation = E11Motion.spring({ from: offset, to: target, velocity, damping, response: 0.3, onUpdate: (value) => this.render(value), onComplete });
         },
 
         commit(direction, velocity, action, leave) {
@@ -1162,9 +1207,11 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.leaving = true;
+            rowWidth = this.$el.offsetWidth || 320;
             this.springTo(this.width() * 1.05, 0, 1, () => onRight());
         },
-    }));
+        };
+    });
 });
 
 document.addEventListener('alpine:init', () => {

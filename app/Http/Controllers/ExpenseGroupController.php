@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ExpenseGroup;
 use App\Support\Life\ExpenseSplitter;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\PdfTheme;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
@@ -30,12 +29,9 @@ class ExpenseGroupController extends Controller
             ]);
         }
 
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml(view('splits.pdf', $this->summary($group))->render(), 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render(view('splits.pdf', $this->summary($group))->render());
 
-        return response((string) $dompdf->output(), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'.pdf"',
             'Cache-Control' => 'private, no-store',

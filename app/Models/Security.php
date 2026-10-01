@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A share, ETF, fund, crypto currency … identified by its Yahoo Finance symbol; shared by all users.
+ *
+ * @property ?array<string, mixed> $fundamentals
  */
 #[Fillable(['symbol', 'name', 'isin', 'wkn', 'exchange', 'asset_type', 'currency', 'sector', 'country', 'market_cap', 'week_52_high', 'week_52_low', 'dividend_yield', 'beta', 'fundamentals', 'fundamentals_updated_at', 'screeners', 'tracked', 'scanned_at', 'last_price', 'previous_close', 'price_updated_at'])]
 class Security extends Model

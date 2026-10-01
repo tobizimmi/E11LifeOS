@@ -345,6 +345,12 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                     @endif
 
+                    @if ($tab === 'prevention')
+                        <div class="flex justify-end">
+                            <a href="{{ route('health.vaccinations', $profile) }}" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">📄 {{ __('Vaccination record as PDF') }}</a>
+                        </div>
+                    @endif
+
                     @php
                         $kinds = match ($tab) {
                             'prevention' => ['checkup', 'vaccination'],

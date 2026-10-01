@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Collection;
 use App\Models\Item;
 use App\Models\Tag;
+use App\Support\NoteMarkdown;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -244,6 +246,51 @@ class PagesIndexTest extends TestCase
             "## Einkauf\n\n- [x] Brot\n- [ ] Milch\n\n```\n- [ ] kein Eintrag, nur Code\n```\n\n> - [x] Im Zitat",
             $page->fresh()->body(),
         );
+    }
+
+    public function test_checklist_items_show_due_dates_and_people_and_can_become_linked_tasks(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 1));
+        [$user, $household] = $this->memberWithHousehold();
+        $anna = $this->addMemberTo($household);
+        $anna->update(['name' => 'Anna']);
+        $this->actingAs($user);
+
+        $page = Item::factory()->note()->for($household)->create([
+            'content' => ['body' => "- [ ] Angebot einholen //15.10.2026 @Anna\n- [x] Rechnung bezahlt //20.09.\n\n`//01.01. @Code` und tobi@example.com"],
+        ]);
+
+        $component = Volt::test('pages.index', ['item' => $page->id])
+            ->assertSeeHtml('<span class="checklist-due">📅 15.10.2026</span>')
+            ->assertSeeHtml('<span class="checklist-due checklist-due-overdue">📅 20.09.2026</span>')
+            ->assertSeeHtml('<span class="checklist-person">@Anna</span>')
+            ->assertSeeHtml('<code>//01.01. @Code</code>')
+            ->assertSeeHtml('tobi@example.com')
+            ->assertSeeHtml('wire:click="checklistToTask(1)"')
+            ->call('checklistToTask', 0)
+            ->call('checklistToTask', 1);
+
+        $tasks = Collection::tasksFor($household->id);
+        [$open, $done] = Item::where('collection_id', $tasks->id)->orderBy('id')->get()->all();
+        $this->assertSame('Angebot einholen', $open->title);
+        $this->assertSame('2026-10-15', $open->propertyValue($tasks->systemProperty('due')));
+        $this->assertSame($anna->id, (int) $open->propertyValue($tasks->systemProperty('assignee')));
+        $this->assertFalse((bool) $open->done);
+        $this->assertTrue((bool) $done->done);
+        $this->assertSame(
+            "- [ ] Angebot einholen //15.10.2026 @Anna {task:{$open->id}}\n- [x] Rechnung bezahlt //20.09. {task:{$done->id}}\n\n`//01.01. @Code` und tobi@example.com",
+            $page->fresh()->body(),
+        );
+
+        // Linked items show a link to their task, and making them a task again does nothing.
+        $component->call('checklistToTask', 0)
+            ->assertSeeHtml('href="'.e(route('tasks.index', ['task' => $open->id])).'" class="checklist-task"')
+            ->assertSeeHtml('class="checklist-task checklist-task-done"')
+            ->assertDontSeeHtml('{task:');
+        $this->assertSame(2, Item::where('collection_id', $tasks->id)->count());
+
+        // Checklists in collections have no task button (the action exists only on pages).
+        $this->assertStringNotContainsString('checklistToTask', NoteMarkdown::toHtml($page->fresh(), $user, interactiveTasks: true));
     }
 
     public function test_ticking_a_checklist_item_that_does_not_exist_changes_nothing(): void

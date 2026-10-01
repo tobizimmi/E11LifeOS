@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -80,6 +81,60 @@ class Weather
         Cache::put($key, $weather, now()->addHour());
 
         return $weather;
+    }
+
+    /**
+     * Forecast per day for the days of a period that lie within the next 16 days (the forecast
+     * range), cached for three hours; empty if none do or the service is not reachable.
+     *
+     * @return array<string, array{icon: string, label: string, min: int, max: int, rain: int}> keyed by Y-m-d
+     */
+    public static function days(float $latitude, float $longitude, Carbon $from, Carbon $until): array
+    {
+        $first = $from->copy()->max(today());
+        $last = $until->copy()->min(today()->addDays(15));
+
+        if ($first->gt($last)) {
+            return [];
+        }
+
+        $key = 'weather:days:'.round($latitude, 2).':'.round($longitude, 2).':'.$first->toDateString().':'.$last->toDateString();
+
+        return Cache::remember($key, now()->addHours(3), function () use ($latitude, $longitude, $first, $last) {
+            try {
+                $daily = Http::timeout(8)->get('https://api.open-meteo.com/v1/forecast', [
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
+                    'daily' => 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+                    'timezone' => 'auto',
+                    'start_date' => $first->toDateString(),
+                    'end_date' => $last->toDateString(),
+                ])->json('daily');
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return [];
+            }
+
+            $days = [];
+
+            foreach ((array) ($daily['time'] ?? []) as $index => $date) {
+                if (! isset($daily['weather_code'][$index], $daily['temperature_2m_max'][$index], $daily['temperature_2m_min'][$index])) {
+                    continue;
+                }
+
+                [$icon, $label] = self::describe((int) $daily['weather_code'][$index]);
+                $days[(string) $date] = [
+                    'icon' => $icon,
+                    'label' => $label,
+                    'min' => (int) round((float) $daily['temperature_2m_min'][$index]),
+                    'max' => (int) round((float) $daily['temperature_2m_max'][$index]),
+                    'rain' => (int) ($daily['precipitation_probability_max'][$index] ?? 0),
+                ];
+            }
+
+            return $days;
+        });
     }
 
     /**

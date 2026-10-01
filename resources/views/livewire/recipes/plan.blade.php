@@ -159,6 +159,51 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * A recipe dragged from the strip onto a day: planned for dinner with its usual servings.
+     */
+    public function dropRecipe(int $recipeId, string $date): void
+    {
+        $recipe = Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($recipeId);
+
+        try {
+            $day = Carbon::createFromFormat('!Y-m-d', $date);
+        } catch (Throwable) {
+            return;
+        }
+
+        MealPlan::create([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+            'visibility' => $recipe->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+            'date' => $day,
+            'meal_type' => 'dinner',
+            'recipe_id' => $recipe->id,
+            'title' => $recipe->title,
+            'servings' => $recipe->servings,
+        ]);
+    }
+
+    /**
+     * Leftovers of a meal for lunch the next day (no recipe, so nothing lands on the shopping list twice).
+     */
+    public function planLeftovers(int $id): void
+    {
+        $entry = MealPlan::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($id);
+
+        MealPlan::create([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+            'visibility' => $entry->visibility,
+            'date' => $entry->date->copy()->addDay(),
+            'meal_type' => 'lunch',
+            'title' => __('Leftovers: :title', ['title' => $entry->recipe?->title ?? $entry->title]),
+            'note' => 'leftovers',
+        ]);
+
+        $this->dispatch('toast', message: __('Leftovers planned for tomorrow.'));
+    }
+
+    /**
      * Ingredients of all planned recipes of the week, scaled and combined.
      *
      * @return array<int, array{name: string, quantity: string, recipes: array<int, string>}>
@@ -317,7 +362,8 @@ new #[Layout('layouts.app')] class extends Component
                     ->filter(fn (MealPlan $entry) => $entry->date->isSameDay($day))
                     ->sortBy(fn (MealPlan $entry) => [$mealOrder[$entry->meal_type] ?? 9, $entry->id])
                     ->values(),
-            ]);
+            ])
+            ->map(fn (array $day) => [...$day, 'nutrition' => MealPlan::nutritionPerPerson($day['entries'])]);
 
         $recipeResults = $this->addingDate !== null
             ? Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)
@@ -335,6 +381,9 @@ new #[Layout('layouts.app')] class extends Component
             'isCurrentWeek' => $start->isSameDay(today()->startOfWeek(Carbon::MONDAY)),
             'hasRecipes' => $entries->contains(fn (MealPlan $entry) => $entry->recipe !== null),
             'recipeResults' => $recipeResults,
+            'dragRecipes' => Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->whereNull('archived_at')
+                ->withExists(['favoritedBy as is_favorite' => fn ($query) => $query->whereKey(Auth::id())])
+                ->orderByDesc('is_favorite')->orderByDesc('cooked_count')->orderBy('title')->limit(12)->get(['id', 'title', 'image_path', 'servings']),
             'weekIngredients' => $this->choosingShopping ? $this->weekIngredients() : [],
             'pantryStock' => $this->choosingShopping ? MealSuggestions::pantry(Auth::user(), (int) $this->householdId)['stock'] : [],
             'suggestedRecipes' => $this->suggestions !== []
@@ -442,11 +491,34 @@ new #[Layout('layouts.app')] class extends Component
                 </form>
             @endif
 
+            @if ($dragRecipes->isNotEmpty())
+                <div class="hidden sm:block">
+                    <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Drag a recipe onto a day:') }}</p>
+                    <div class="flex gap-2 overflow-x-auto pb-1">
+                        @foreach ($dragRecipes as $dragRecipe)
+                            <span wire:key="drag-recipe-{{ $dragRecipe->id }}" draggable="true" x-data x-on:dragstart="$event.dataTransfer.effectAllowed = 'copy'; $event.dataTransfer.setData('application/x-recipe', '{{ $dragRecipe->id }}')" class="flex shrink-0 cursor-grab items-center gap-2 rounded-full bg-white py-1 pe-3 ps-1 text-sm text-gray-800 shadow-sm ring-1 ring-gray-200 active:cursor-grabbing dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">
+                                @if ($dragRecipe->imageUrl())
+                                    <img src="{{ $dragRecipe->imageUrl() }}" alt="" class="h-6 w-6 rounded-full object-cover" draggable="false" />
+                                @else
+                                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs dark:bg-gray-700" aria-hidden="true">🍽️</span>
+                                @endif
+                                <span class="max-w-[10rem] truncate">{{ $dragRecipe->title }}</span>
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
                 @foreach ($days as $day)
                     <section
                         wire:key="day-{{ $day['date']->toDateString() }}"
-                        @class(['flex flex-col rounded-lg bg-white dark:bg-gray-800 p-3 shadow-sm', 'ring-2 ring-indigo-500' => $day['date']->isToday()])
+                        @class(['flex flex-col rounded-lg bg-white dark:bg-gray-800 p-3 shadow-sm transition', 'ring-2 ring-indigo-500' => $day['date']->isToday()])
+                        x-data="{ over: false }"
+                        x-bind:class="over && 'ring-2 ring-emerald-500 bg-emerald-50/60 dark:bg-emerald-900/20'"
+                        x-on:dragover="if ([...$event.dataTransfer.types].includes('application/x-recipe')) { $event.preventDefault(); over = true }"
+                        x-on:dragleave="if (! $el.contains($event.relatedTarget)) { over = false }"
+                        x-on:drop="over = false; const id = $event.dataTransfer.getData('application/x-recipe'); if (id) { $event.preventDefault(); $wire.dropRecipe(parseInt(id), @js($day['date']->toDateString())) }"
                     >
                         <h2 class="flex flex-wrap items-baseline justify-between gap-x-2">
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $day['date']->translatedFormat('l') }}</span>
@@ -462,7 +534,12 @@ new #[Layout('layouts.app')] class extends Component
                                 <li wire:key="entry-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group cursor-grab rounded-md bg-gray-50 dark:bg-gray-900/60 p-2 text-sm ring-1 ring-gray-200 dark:ring-gray-700">
                                     <p class="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-gray-400">
                                         <span>{{ \App\Models\MealPlan::mealTypeLabel($entry->meal_type) }}@if ($entry->servings) · {{ trans_choice(':count serving|:count servings', $entry->servings) }}@endif</span>
-                                        <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                        <span class="flex items-center gap-1">
+                                            @if ($entry->recipe)
+                                                <button type="button" wire:click="planLeftovers({{ $entry->id }})" class="opacity-60 hover:opacity-100" title="{{ __('Leftovers tomorrow') }}" aria-label="{{ __('Leftovers tomorrow') }}">🥡</button>
+                                            @endif
+                                            <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                        </span>
                                     </p>
                                     @if ($entry->recipe)
                                         <a href="{{ route('recipes.show', $entry->recipe) }}" wire:navigate class="mt-0.5 flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100 hover:underline">
@@ -480,6 +557,13 @@ new #[Layout('layouts.app')] class extends Component
                                 </li>
                             @endforeach
                         </ul>
+                        @if ($day['nutrition'] !== [])
+                            <p class="mt-2 text-xs tabular-nums text-gray-500 dark:text-gray-400" title="{{ __('Sum of the planned recipes per serving') }}">
+                                ≈ {{ number_format($day['nutrition']['calories'] ?? 0, 0, ',', '.') }} kcal
+                                @isset($day['nutrition']['protein']) · {{ number_format($day['nutrition']['protein'], 0, ',', '.') }} g {{ __('Protein') }}@endisset
+                                <span class="block">{{ __('per person') }}@if ($day['nutrition']['partial']) ({{ __('incomplete') }})@endif</span>
+                            </p>
+                        @endif
                         <button type="button" wire:click="startAdding('{{ $day['date']->toDateString() }}')" class="mt-2 rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600">+ {{ __('Add') }}</button>
                     </section>
                 @endforeach

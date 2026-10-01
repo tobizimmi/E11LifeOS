@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Item;
+use App\Support\ContractOverview;
 use App\Support\Finance\InsuranceCheck;
+use App\Support\Finance\SubscriptionMatcher;
 use App\Support\Finance\RetirementPlan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -22,6 +25,14 @@ new #[Layout('layouts.app')] class extends Component
      * @var array<string, string>
      */
     public array $plan = [];
+
+    /** Kind of insurance whose form is open (a key of InsuranceCheck::types()). */
+    public ?string $creating = null;
+
+    /**
+     * @var array{provider: string, monthly: string, payment: string}
+     */
+    public array $insurance = ['provider' => '', 'monthly' => '', 'payment' => ''];
 
     public function mount(): void
     {
@@ -46,6 +57,100 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $user->update(['insurance_answers' => $answers ?: null]);
+    }
+
+    private function householdId(): int
+    {
+        return Auth::user()->currentHousehold()?->id ?? abort(404);
+    }
+
+    private function findContract(int $itemId): Item
+    {
+        return collect(ContractOverview::for(Auth::user(), $this->householdId())['contracts'])
+            ->first(fn (array $contract) => $contract['item']->id === $itemId)['item'] ?? abort(404);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function payment(string $key): array
+    {
+        return collect(SubscriptionMatcher::for(Auth::user(), $this->householdId())['unmatched'])->firstWhere('key', $key) ?? abort(404);
+    }
+
+    public function startCreate(string $type): void
+    {
+        abort_unless(isset(InsuranceCheck::types()[$type]), 404);
+        $this->creating = $type;
+        $this->insurance = ['provider' => '', 'monthly' => '', 'payment' => ''];
+        $this->resetValidation();
+    }
+
+    /**
+     * Adds the insurance to the contracts; with a payment from the bank bookings it is linked to it.
+     */
+    public function saveInsurance(): void
+    {
+        $this->insurance['monthly'] = str_replace(',', '.', trim($this->insurance['monthly']));
+        $data = $this->validate([
+            'creating' => ['required', Rule::in(array_keys(InsuranceCheck::types()))],
+            'insurance.provider' => ['nullable', 'string', 'max:120'],
+            'insurance.monthly' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'insurance.payment' => ['nullable', 'string', 'max:255'],
+        ], attributes: ['insurance.monthly' => __('Premium per month')]);
+
+        $payment = $data['insurance']['payment'] ? $this->payment($data['insurance']['payment']) : null;
+        $monthly = $data['insurance']['monthly'] !== '' && $data['insurance']['monthly'] !== null ? (float) $data['insurance']['monthly'] : ($payment['monthly'] ?? null);
+        $item = InsuranceCheck::create(Auth::user(), $this->householdId(), (string) $this->creating, trim((string) $data['insurance']['provider']), $monthly, $payment['key'] ?? null);
+
+        $this->creating = null;
+        $this->dispatch('toast', message: __('":name" added to your contracts.', ['name' => $item->title]));
+    }
+
+    /**
+     * Adds an insurance straight from a recurring payment of the bank bookings.
+     */
+    public function createFromPayment(string $key, string $type): void
+    {
+        abort_unless(isset(InsuranceCheck::types()[$type]), 404);
+        $payment = $this->payment($key);
+        $item = InsuranceCheck::create(Auth::user(), $this->householdId(), $type, (string) $payment['name'], (float) $payment['monthly'], $payment['key']);
+        $this->dispatch('toast', message: __('":name" added to your contracts.', ['name' => $item->title]));
+    }
+
+    /**
+     * Sets the kind of insurance of a contract by hand ("none": it is no insurance, "": guess again).
+     */
+    public function assignContract(int $itemId, string $type): void
+    {
+        abort_unless($type === '' || $type === InsuranceCheck::NONE || isset(InsuranceCheck::types()[$type]), 404);
+        InsuranceCheck::assign($this->findContract($itemId), $type === '' ? null : $type);
+    }
+
+    /**
+     * Links a recurring payment from the bank bookings to an insurance contract.
+     */
+    public function linkPayment(int $itemId, string $key): void
+    {
+        $payment = $this->payment($key);
+        $contract = $this->findContract($itemId);
+        SubscriptionMatcher::link($contract, $payment['key']);
+        $this->dispatch('toast', message: __('Payment linked with ":name".', ['name' => $contract->title]));
+    }
+
+    public function unlinkPayment(int $itemId, string $key): void
+    {
+        SubscriptionMatcher::unlink($this->findContract($itemId), $key);
+    }
+
+    /**
+     * Hides a recurring payment that is no contract.
+     */
+    public function dismissPayment(string $key): void
+    {
+        $this->payment($key);
+        $user = Auth::user();
+        $user->update(['dismissed_subscriptions' => array_values(array_unique([...$user->dismissed_subscriptions ?? [], $key]))]);
     }
 
     public function updatedPlan(): void
@@ -75,12 +180,28 @@ new #[Layout('layouts.app')] class extends Component
         $this->plan = array_map(fn ($value) => (string) $value, RetirementPlan::inputs(Auth::user()->fresh()));
     }
 
+    /**
+     * @param  array<string, mixed>  $payment
+     */
+    private static function looksLikeInsurance(array $payment): bool
+    {
+        return $payment['category'] === 'insurance' || (bool) preg_match('/versicher|insurance|allianz|huk|ergo|axa|debeka|signal iduna|r\+v|generali|zurich|gothaer|lvm|provinzial|devk|cosmos|wwk|hdi|barmenia|hanse ?merkur|nürnberger|continentale|alte leipziger/i', (string) $payment['name']);
+    }
+
     public function with(): array
     {
         $user = Auth::user();
 
+        $household = $user->currentHousehold();
+        $matching = $this->tab === 'insurance' && $household ? SubscriptionMatcher::for($user, $household->id) : null;
+        // Insurance payments first: those are the ones that belong here.
+        $unmatched = collect($matching['unmatched'] ?? [])->sortBy(fn (array $payment) => self::looksLikeInsurance($payment) ? 0 : 1)->values();
+
         return [
             'check' => $this->tab === 'insurance' ? InsuranceCheck::for($user) : null,
+            'unmatchedPayments' => $unmatched,
+            'insurancePayments' => $unmatched->filter(fn (array $payment) => self::looksLikeInsurance($payment))->values(),
+            'linkedPayments' => collect($matching['matched'] ?? [])->mapWithKeys(fn (array $match) => [$match['contract']['item']->id => $match['payment']])->all(),
             'answers' => is_array($user->insurance_answers) ? $user->insurance_answers : [],
             'result' => $this->tab === 'retirement' ? RetirementPlan::calculate(RetirementPlan::inputs($user)) : null,
         ];
@@ -91,6 +212,7 @@ new #[Layout('layouts.app')] class extends Component
     $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 0, ',', '.').' €';
     $tabClass = 'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition pointer-coarse:min-h-11';
+    $types = InsuranceCheck::types();
     $levels = ['essential' => __('Essential'), 'recommended' => __('Recommended'), 'optional' => __('Optional'), 'none' => __('Not needed')];
 @endphp
 
@@ -145,9 +267,38 @@ new #[Layout('layouts.app')] class extends Component
                                 @endswitch
                             </div>
                             @if ($row['contracts'] !== [])
-                                <ul class="mt-2 space-y-1 text-sm">
+                                <ul class="mt-2 space-y-2 text-sm">
                                     @foreach ($row['contracts'] as $contract)
-                                        <li class="flex justify-between gap-3"><a href="{{ $contract['url'] }}" wire:navigate class="text-gray-700 hover:underline dark:text-gray-200">{{ $contract['title'] }}{{ $contract['provider'] ? ' · '.$contract['provider'] : '' }}</a><span class="tabular-nums text-gray-500 dark:text-gray-400">{{ number_format($contract['monthly'], 2, ',', '.') }} €</span></li>
+                                        @php($linked = $linkedPayments[$contract['item_id']] ?? null)
+                                        <li wire:key="insurance-contract-{{ $contract['item_id'] }}" class="rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                                            <div class="flex justify-between gap-3"><a href="{{ $contract['url'] }}" wire:navigate class="min-w-0 text-gray-800 hover:underline dark:text-gray-100">{{ $contract['title'] }}{{ $contract['provider'] && ! str_contains($contract['title'], $contract['provider']) ? ' · '.$contract['provider'] : '' }}</a><span class="tabular-nums text-gray-500 dark:text-gray-400">{{ number_format($contract['monthly'], 2, ',', '.') }} €</span></div>
+                                            <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                                @if ($linked)
+                                                    <span class="text-emerald-700 dark:text-emerald-300">🔗 {{ __('Debit: :name, :amount € per month', ['name' => $linked['name'], 'amount' => number_format($linked['monthly'], 2, ',', '.')]) }}</span>
+                                                    @if (in_array($linked['key'], $contract['payments'], true))
+                                                        <button type="button" wire:click="unlinkPayment({{ $contract['item_id'] }}, @js($linked['key']))" class="text-gray-500 hover:underline dark:text-gray-400">{{ __('Remove link') }}</button>
+                                                    @endif
+                                                @elseif ($unmatchedPayments->isNotEmpty())
+                                                    <select x-on:change="$event.target.value && $wire.linkPayment({{ $contract['item_id'] }}, $event.target.value)" class="rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Link a payment from the bank bookings') }}">
+                                                        <option value="">🔗 {{ __('Link a payment from the bank bookings …') }}</option>
+                                                        @foreach ($unmatchedPayments as $payment)
+                                                            <option value="{{ $payment['key'] }}">{{ $payment['name'] }} · {{ number_format($payment['monthly'], 2, ',', '.') }} €</option>
+                                                        @endforeach
+                                                    </select>
+                                                @endif
+                                                <select x-on:change="$wire.assignContract({{ $contract['item_id'] }}, $event.target.value)" class="ms-auto rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Kind of insurance') }}">
+                                                    <option value="{{ $row['key'] }}" selected>{{ $contract['assigned'] ? __('Kind set by you') : __('Recognised automatically') }}</option>
+                                                    @foreach ($types as $typeKey => $type)
+                                                        @continue($typeKey === $row['key'])
+                                                        <option value="{{ $typeKey }}">→ {{ $type['label'] }}</option>
+                                                    @endforeach
+                                                    <option value="none">✕ {{ __('No insurance – wrongly recognised') }}</option>
+                                                    @if ($contract['assigned'])
+                                                        <option value="">↺ {{ __('Recognise automatically again') }}</option>
+                                                    @endif
+                                                </select>
+                                            </div>
+                                        </li>
                                     @endforeach
                                 </ul>
                             @elseif ($row['status'] !== 'ok')
@@ -162,9 +313,81 @@ new #[Layout('layouts.app')] class extends Component
                             @elseif (($answers[$row['key']] ?? null) !== null)
                                 <button type="button" wire:click="answer('{{ $row['key'] }}', null)" class="mt-2 text-xs text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Undo') }}</button>
                             @endif
+
+                            @if ($creating === $row['key'])
+                                <form wire:submit="saveInsurance" class="mt-3 grid gap-2 rounded-xl bg-indigo-50/60 p-3 text-sm sm:grid-cols-3 dark:bg-indigo-900/20">
+                                    <label class="text-gray-700 dark:text-gray-300">{{ __('Insurer') }}<input type="text" wire:model="insurance.provider" class="{{ $input }}" placeholder="{{ __('e.g. Allianz, HUK, Debeka') }}" autofocus></label>
+                                    <label class="text-gray-700 dark:text-gray-300">{{ __('Premium per month') }}<input type="text" inputmode="decimal" wire:model="insurance.monthly" class="{{ $input }}" placeholder="{{ __('from the payment') }}"><x-input-error :messages="$errors->get('insurance.monthly')" /></label>
+                                    <label class="text-gray-700 dark:text-gray-300">{{ __('Payment from Finances') }}
+                                        <select wire:model="insurance.payment" class="{{ $input }}">
+                                            <option value="">{{ $unmatchedPayments->isEmpty() ? __('No open payments') : '–' }}</option>
+                                            @foreach ($unmatchedPayments as $payment)
+                                                <option value="{{ $payment['key'] }}">{{ $payment['name'] }} · {{ number_format($payment['monthly'], 2, ',', '.') }} €</option>
+                                            @endforeach
+                                        </select>
+                                    </label>
+                                    <div class="flex flex-wrap gap-2 sm:col-span-3">
+                                        <x-primary-button>{{ __('Add insurance') }}</x-primary-button>
+                                        <x-secondary-button type="button" wire:click="$set('creating', null)">{{ __('Cancel') }}</x-secondary-button>
+                                    </div>
+                                </form>
+                            @else
+                                <button type="button" wire:click="startCreate('{{ $row['key'] }}')" class="mt-2 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">+ {{ $row['contracts'] === [] ? __('Add this insurance') : __('Add another') }}</button>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
+
+                @if ($insurancePayments->isNotEmpty())
+                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="insurance-payments">
+                        <h3 id="insurance-payments" class="font-semibold text-gray-900 dark:text-gray-100">💳 {{ __('Insurance payments without a contract') }}</h3>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Recurring debits from your bank bookings that look like an insurance. Add them as insurance, link them to one, or reject them.') }}</p>
+                        <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                            @foreach ($insurancePayments as $payment)
+                                <li wire:key="insurance-payment-{{ md5($payment['key']) }}" class="flex flex-wrap items-center gap-2 py-2 text-sm">
+                                    <span class="min-w-0 flex-1"><span class="font-medium text-gray-900 dark:text-gray-100">{{ $payment['name'] }}</span> <span class="text-xs text-gray-500 dark:text-gray-400">{{ number_format($payment['monthly'], 2, ',', '.') }} € / {{ __('month') }}</span></span>
+                                    <select x-on:change="$event.target.value && $wire.createFromPayment(@js($payment['key']), $event.target.value)" class="rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Add as insurance') }}">
+                                        <option value="">+ {{ __('Add as …') }}</option>
+                                        @foreach ($types as $typeKey => $type)
+                                            <option value="{{ $typeKey }}">{{ $type['icon'] }} {{ $type['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    @php($insuranceContracts = collect($check['found'])->flatten(1)->merge($check['candidates'])->unique('item_id'))
+                                    @if ($insuranceContracts->isNotEmpty())
+                                        <select x-on:change="$event.target.value && $wire.linkPayment($event.target.value, @js($payment['key']))" class="rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Link to an insurance') }}">
+                                            <option value="">🔗 {{ __('Link to …') }}</option>
+                                            @foreach ($insuranceContracts as $contract)
+                                                <option value="{{ $contract['item_id'] }}">{{ $contract['title'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                    <button type="button" wire:click="dismissPayment(@js($payment['key']))" class="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">✕ {{ __('Not an insurance') }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+
+                @if ($check['candidates'] !== [])
+                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="insurance-candidates">
+                        <h3 id="insurance-candidates" class="font-semibold text-gray-900 dark:text-gray-100">❔ {{ __('Insurances not recognised') }}</h3>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('These contracts look like an insurance, but the check could not tell which one. Say what it is – or reject it.') }}</p>
+                        <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                            @foreach ($check['candidates'] as $contract)
+                                <li wire:key="insurance-candidate-{{ $contract['item_id'] }}" class="flex flex-wrap items-center gap-2 py-2 text-sm">
+                                    <a href="{{ $contract['url'] }}" wire:navigate class="min-w-0 flex-1 font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $contract['title'] }} <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ number_format($contract['monthly'], 2, ',', '.') }} €</span></a>
+                                    <select x-on:change="$event.target.value && $wire.assignContract({{ $contract['item_id'] }}, $event.target.value)" class="rounded-md border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Kind of insurance') }}">
+                                        <option value="">{{ __('This is a …') }}</option>
+                                        @foreach ($types as $typeKey => $type)
+                                            <option value="{{ $typeKey }}">{{ $type['icon'] }} {{ $type['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" wire:click="assignContract({{ $contract['item_id'] }}, 'none')" class="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">✕ {{ __('No insurance') }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
 
                 @if ($check['unnecessary'] !== [])
                     <section class="rounded-2xl bg-amber-50 p-5 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800">

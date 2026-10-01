@@ -1,5 +1,9 @@
 {{-- One entry of the trip plan (idea or planned): drag handle, time, type, place, cost, done. --}}
-<li wire:key="stop-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group flex items-stretch gap-2 rounded-xl bg-white p-2.5 ring-1 ring-gray-100 dark:bg-gray-900/40 dark:ring-gray-700">
+<li wire:key="stop-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group flex flex-wrap items-stretch gap-x-2 rounded-xl bg-white p-2.5 ring-1 ring-gray-100 dark:bg-gray-900/40 dark:ring-gray-700">
+    @if ($leg ?? null)
+        {{-- The way here: tap to switch between on foot, by bike and by car. --}}
+        <button type="button" wire:click="cycleTravelMode({{ $entry->id }})" class="mb-1 basis-full text-left text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-300" title="{{ __('Tap to change: on foot, by bike, by car') }}">↓ {{ $leg }} <span class="text-gray-400" aria-hidden="true">⇄</span></button>
+    @endif
     <span x-sort:handle class="flex cursor-grab items-center px-0.5 text-gray-300 hover:text-gray-500 dark:text-gray-600" title="{{ __('Drag to move') }}" aria-hidden="true">⠿</span>
     @if ($entry->time)
         <span class="w-11 shrink-0 pt-1 text-center text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">{{ $entry->time }}@if ($entry->end_time)<span class="block font-normal text-gray-400">{{ $entry->end_time }}</span>@endif</span>

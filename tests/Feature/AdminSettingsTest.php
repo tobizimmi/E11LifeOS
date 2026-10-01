@@ -195,6 +195,19 @@ class AdminSettingsTest extends TestCase
         $this->assertSame(0, DB::table('failed_jobs')->count());
     }
 
+    public function test_the_reverb_port_set_by_the_deploy_wins_over_a_port_entered_by_hand(): void
+    {
+        $this->admin();
+        Volt::test('admin.settings')->set('form.reverb_publish_port', '3011')->call('save')->assertHasNoErrors();
+
+        config(['broadcasting.local_reverb_port' => '3013']);
+        AppSettings::apply();
+
+        $this->assertSame(3013, config('broadcasting.connections.reverb.options.port'));
+        $this->assertSame('127.0.0.1', config('broadcasting.connections.reverb.options.host'));
+        $this->assertSame('http', config('broadcasting.connections.reverb.options.scheme'));
+    }
+
     public function test_live_updates_are_sent_to_the_local_reverb_port_and_can_be_tested(): void
     {
         $this->admin();

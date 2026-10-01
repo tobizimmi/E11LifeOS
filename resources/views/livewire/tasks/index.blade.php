@@ -991,13 +991,13 @@ new #[Layout('layouts.app')] class extends Component
                                         x-on:pointercancel="end()"
                                         :class="{ 'opacity-40': leaving }"
                                         @class([
-                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 duration-300',
+                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 transition-[box-shadow,opacity] duration-300',
                                             'ring-indigo-500' => $isSelected || (int) $openTaskId === $task->id,
                                             'ring-gray-200 dark:ring-gray-700' => ! $isSelected && (int) $openTaskId !== $task->id,
                                         ])
                                     >
                                         @if (! $selecting && $list !== \App\Support\TaskLists::DONE)
-                                            <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-600" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
+                                            <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-500 dark:hover:text-gray-300" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
                                         @endif
                                         @if ($selecting)
                                             <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />

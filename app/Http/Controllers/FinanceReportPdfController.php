@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BankAccount;
 use App\Support\Finance\FinancePeriod;
 use App\Support\Finance\FinanceReport;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\PdfTheme;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -39,13 +38,9 @@ class FinanceReportPdfController extends Controller
             'account' => $account,
         ])->render();
 
-        // No remote resources: the bars are plain HTML.
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html);
 
-        return response($dompdf->output(), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="finanzbericht-'.$from->format('Y-m').'-'.$to->format('Y-m').'.pdf"',
         ]);

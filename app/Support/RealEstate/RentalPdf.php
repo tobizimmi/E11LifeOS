@@ -7,8 +7,7 @@ use App\Models\RealEstateApplicant;
 use App\Models\RealEstateHandover;
 use App\Models\RealEstateTenant;
 use App\Models\RealEstateUtilityStatement;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\PdfTheme;
 
 /**
  * PDFs for letting: residential lease (draft to review), utility statement per tenant, the
@@ -93,11 +92,8 @@ class RentalPdf
 
     private static function render(string $html): string
     {
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html, footer: false);
 
-        return (string) $dompdf->output();
+        return $pdf;
     }
 }

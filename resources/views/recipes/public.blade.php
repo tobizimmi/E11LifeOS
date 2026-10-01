@@ -12,7 +12,7 @@
         @if ($recipe->image_path)
             <meta property="og:image" content="{{ route('recipes.public.image', $recipe->public_token) }}">
         @endif
-        <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
+        <link rel="icon" href="{{ asset('icons/icon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css'])
     </head>
     <body class="font-sans antialiased bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">

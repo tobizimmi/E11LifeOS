@@ -574,7 +574,9 @@ class MarketData
      */
     public function fundamentals(Security $security, bool $refresh = false): ?array
     {
-        if (! $refresh && $security->fundamentals_updated_at?->gt(now()->subWeek())) {
+        $complete = $security->fundamentals === null || array_key_exists('analyst_votes', $security->fundamentals);
+
+        if (! $refresh && $complete && $security->fundamentals_updated_at?->gt(now()->subWeek())) {
             return $security->fundamentals;
         }
 
@@ -582,7 +584,7 @@ class MarketData
             return null;
         }
 
-        $data = $this->yahooJson(self::SUMMARY_URL.rawurlencode($security->symbol), ['modules' => 'summaryDetail,financialData,defaultKeyStatistics,assetProfile']);
+        $data = $this->yahooJson(self::SUMMARY_URL.rawurlencode($security->symbol), ['modules' => 'summaryDetail,financialData,defaultKeyStatistics,assetProfile,insiderTransactions,netSharePurchaseActivity,earnings,recommendationTrend,upgradeDowngradeHistory,calendarEvents']);
         $result = $data['quoteSummary']['result'][0] ?? null;
 
         if (! $result) {
@@ -616,7 +618,8 @@ class MarketData
             'employees' => $profile['fullTimeEmployees'] ?? null,
             'website' => $profile['website'] ?? null,
             'description' => isset($profile['longBusinessSummary']) ? mb_substr((string) $profile['longBusinessSummary'], 0, 2000) : null,
-        ];
+            'ir_website' => isset($profile['irWebsite']) && str_starts_with((string) $profile['irWebsite'], 'http') ? mb_substr((string) $profile['irWebsite'], 0, 255) : null,
+        ] + self::insightsFrom($result, $raw);
 
         $security->fill(array_filter([
             'sector' => $profile['sector'] ?? null,
@@ -627,6 +630,62 @@ class MarketData
         ], fn ($value) => $value !== null))->forceFill(['fundamentals' => $fundamentals, 'fundamentals_updated_at' => now()])->save();
 
         return $fundamentals;
+    }
+
+    /**
+     * Insider trades, yearly revenue and earnings, analyst votes, rating changes and the next
+     * earnings date from Yahoo's quote summary.
+     *
+     * @param  array<string, mixed>  $result
+     * @param  callable(mixed): ?float  $raw
+     * @return array{insider: ?array{period: string, buys: int, sells: int, net_shares: ?float, transactions: list<array{name: string, relation: string, date: ?string, text: string, shares: ?float, value: ?float}>}, financials: list<array{year: string, revenue: ?float, earnings: ?float}>, analyst_votes: ?array{strong_buy: int, buy: int, hold: int, sell: int, strong_sell: int}, rating_changes: list<array{date: string, firm: string, from: string, to: string, action: string}>, next_earnings: ?string}
+     */
+    public static function insightsFrom(array $result, callable $raw): array
+    {
+        $activity = $result['netSharePurchaseActivity'] ?? null;
+        $transactions = collect($result['insiderTransactions']['transactions'] ?? [])->take(10)->map(fn (array $trade) => [
+            'name' => mb_substr((string) ($trade['filerName'] ?? ''), 0, 80),
+            'relation' => mb_substr((string) ($trade['filerRelation'] ?? ''), 0, 60),
+            'date' => isset($trade['startDate']['raw']) ? date('Y-m-d', (int) $trade['startDate']['raw']) : null,
+            'text' => mb_substr((string) ($trade['transactionText'] ?? ''), 0, 160),
+            'shares' => $raw($trade['shares'] ?? null),
+            'value' => $raw($trade['value'] ?? null),
+        ])->values()->all();
+
+        $votes = collect($result['recommendationTrend']['trend'] ?? [])->firstWhere('period', '0m');
+        $yearly = $result['earnings']['financialsChart']['yearly'] ?? [];
+
+        return [
+            'insider' => is_array($activity) || $transactions !== [] ? [
+                'period' => (string) ($activity['period'] ?? '6m'),
+                'buys' => (int) ($raw($activity['buyInfoCount'] ?? null) ?? 0),
+                'sells' => (int) ($raw($activity['sellInfoCount'] ?? null) ?? 0),
+                'net_shares' => $raw($activity['netInfoShares'] ?? null),
+                'transactions' => $transactions,
+            ] : null,
+            'financials' => collect($yearly)->take(-5)->map(fn (array $year) => [
+                'year' => (string) ($year['date'] ?? ''),
+                'revenue' => $raw($year['revenue'] ?? null),
+                'earnings' => $raw($year['earnings'] ?? null),
+            ])->filter(fn (array $year) => $year['year'] !== '')->values()->all(),
+            'analyst_votes' => is_array($votes) ? [
+                'strong_buy' => (int) ($votes['strongBuy'] ?? 0),
+                'buy' => (int) ($votes['buy'] ?? 0),
+                'hold' => (int) ($votes['hold'] ?? 0),
+                'sell' => (int) ($votes['sell'] ?? 0),
+                'strong_sell' => (int) ($votes['strongSell'] ?? 0),
+            ] : null,
+            'rating_changes' => collect($result['upgradeDowngradeHistory']['history'] ?? [])->take(6)->map(fn (array $change) => [
+                'date' => date('Y-m-d', (int) ($change['epochGradeDate'] ?? 0)),
+                'firm' => mb_substr((string) ($change['firm'] ?? ''), 0, 60),
+                'from' => mb_substr((string) ($change['fromGrade'] ?? ''), 0, 40),
+                'to' => mb_substr((string) ($change['toGrade'] ?? ''), 0, 40),
+                'action' => (string) ($change['action'] ?? ''),
+            ])->filter(fn (array $change) => $change['firm'] !== '')->values()->all(),
+            'next_earnings' => isset($result['calendarEvents']['earnings']['earningsDate'][0]['raw'])
+                ? date('Y-m-d', (int) $result['calendarEvents']['earnings']['earningsDate'][0]['raw'])
+                : null,
+        ];
     }
 
     /**

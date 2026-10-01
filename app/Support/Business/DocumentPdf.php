@@ -4,8 +4,7 @@ namespace App\Support\Business;
 
 use App\Models\BusinessProfile;
 use App\Models\Invoice;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\PdfTheme;
 use Illuminate\Support\Str;
 
 /**
@@ -49,11 +48,8 @@ class DocumentPdf
 
     private static function render(string $html): string
     {
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html, footer: false);
 
-        return (string) $dompdf->output();
+        return $pdf;
     }
 }

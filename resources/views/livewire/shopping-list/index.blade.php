@@ -642,7 +642,7 @@ new #[Layout('layouts.app')] class extends Component
                                             @class(['relative flex items-center gap-3 rounded-xl border border-gray-200 bg-white transition-opacity dark:border-gray-700 dark:bg-gray-800', 'px-3 py-2.5' => ! $shoppingMode, 'px-4 py-4' => $shoppingMode])
                                         >
                                             @if ($group['key'])
-                                                <span class="drag-handle hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-600" aria-hidden="true" title="{{ __('Drag to sort') }}">⋮⋮</span>
+                                                <span class="drag-handle hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-500 dark:hover:text-gray-300" aria-hidden="true" title="{{ __('Drag to sort') }}">⋮⋮</span>
                                             @endif
                                             <input type="checkbox" x-on:click="E11Haptic()" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) aria-label="{{ __('Bought: :item', ['item' => $entry->label]) }}"
                                                 @class(['rounded-full border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600', 'h-5 w-5' => ! $shoppingMode, 'h-7 w-7' => $shoppingMode]) />

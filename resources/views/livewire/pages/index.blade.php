@@ -5,6 +5,7 @@ use App\Livewire\Concerns\ProvidesLinkTargets;
 use App\Livewire\Concerns\StoresAttachments;
 use App\Livewire\Concerns\SuggestsTags;
 use App\Models\Attachment;
+use App\Models\ChecklistTemplate;
 use App\Models\Item;
 use App\Models\PageRevision;
 use App\Models\Space;
@@ -138,6 +139,9 @@ new #[Layout('layouts.app')] class extends Component
         if (str_starts_with($key, 'page:')) {
             $source = PageTemplates::own(Auth::user(), (int) $this->householdId)->firstWhere('id', (int) substr($key, 5)) ?? abort(404);
             [$title, $icon, $body] = [$source->title, (string) $source->icon, $source->body()];
+        } elseif (str_starts_with($key, 'checklist:')) {
+            $checklist = ChecklistTemplate::query()->visibleTo(Auth::user(), (int) $this->householdId)->find((int) substr($key, 10)) ?? abort(404);
+            [$title, $icon, $body] = [$checklist->name, (string) $checklist->icon, $checklist->toMarkdown()];
         } else {
             $template = PageTemplates::builtIn()[$key] ?? abort(404);
             [$title, $icon, $body] = [$template['title'], $template['icon'], $template['body']];
@@ -776,6 +780,12 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" wire:click="createFromTemplate('page:{{ $ownTemplate->id }}')" wire:key="template-page-{{ $ownTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
                                         <span class="text-2xl" aria-hidden="true">{{ $ownTemplate->displayIcon() }}</span>
                                         <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $ownTemplate->title }}</span><span class="block text-xs text-indigo-600 dark:text-indigo-400">{{ __('Your template') }}</span></span>
+                                    </button>
+                                @endforeach
+                                @foreach (\App\Models\ChecklistTemplate::query()->visibleTo(Auth::user(), (int) $this->householdId)->orderBy('name')->limit(30)->get() as $checklistTemplate)
+                                    <button type="button" wire:click="createFromTemplate('checklist:{{ $checklistTemplate->id }}')" wire:key="template-checklist-{{ $checklistTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
+                                        <span class="text-2xl" aria-hidden="true">{{ $checklistTemplate->icon ?: '📋' }}</span>
+                                        <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $checklistTemplate->name }}@if ($checklistTemplate->isPrivate()) 🔒@endif</span><span class="block text-xs text-indigo-600 dark:text-indigo-400">{{ __('Your checklist') }}</span></span>
                                     </button>
                                 @endforeach
                             </div>

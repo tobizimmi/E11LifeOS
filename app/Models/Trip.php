@@ -174,6 +174,9 @@ class Trip extends Model
         return array_values(array_filter(array_map('trim', $names ?: [])));
     }
 
+    /**
+     * @return HasMany<TripPackingItem, $this>
+     */
     public function packingItems(): HasMany
     {
         return $this->hasMany(TripPackingItem::class)->orderBy('position')->orderBy('id');

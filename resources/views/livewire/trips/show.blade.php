@@ -2,12 +2,14 @@
 
 use App\Jobs\LoadTripPlaces;
 use App\Livewire\Concerns\InteractsWithHousehold;
+use App\Models\ChecklistTemplate;
 use App\Models\ExpenseGroup;
 use App\Models\Item;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripFeedback;
+use App\Models\TripPackingItem;
 use App\Models\TripPlace;
 use App\Support\Life\TripDiscover;
 use App\Support\Life\TripFeedbackBox;
@@ -67,6 +69,14 @@ new #[Layout('layouts.app')] class extends Component
     public string $template = 'beach';
 
     public string $templatePerson = '';
+
+    /** Packing list shown: "shared" (everybody) or "mine" (only visible to the member). */
+    #[Url(as: 'list', except: 'shared')]
+    public string $packingList = 'shared';
+
+    public string $templateName = '';
+
+    public bool $templatePrivate = false;
 
     /** Discover: category of places shown (see TripDiscover::categories()). */
     public string $feedbackText = '';
@@ -136,6 +146,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->resolveHousehold();
         $this->tripId = $this->findTrip($trip->id)->id;
         $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'overview';
+        $this->packingList = $this->packingList === 'mine' ? 'mine' : 'shared';
         $this->resetStop();
         $this->resetBooking();
         $this->fillDetails();
@@ -962,31 +973,67 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['item.label' => __('Item')])['item'];
 
         $trip = $this->findTrip();
-        $trip->packingItems()->create(['label' => $data['label'], 'category' => $data['category'], 'person' => $data['person'] ?: null, 'position' => (int) $trip->packingItems()->max('position') + 1]);
+        $trip->packingItems()->create(['owner_id' => $this->packingOwner(), 'label' => $data['label'], 'category' => $data['category'], 'person' => $data['person'] ?: null, 'position' => (int) $trip->packingItems()->max('position') + 1]);
         $this->item['label'] = '';
     }
 
+    /**
+     * Owner of new items: the member on their personal list, nobody on the shared one.
+     */
+    private function packingOwner(): ?int
+    {
+        return $this->packingList === 'mine' ? $this->currentUser()->id : null;
+    }
+
+    private function findPackingItem(int $id): TripPackingItem
+    {
+        return $this->findTrip()->packingItems()->visibleTo($this->currentUser())->find($id) ?? abort(404);
+    }
+
+    /**
+     * Built-in templates ("beach") or own ones ("own-12") onto the shown list.
+     */
     public function applyTemplate(): void
     {
-        abort_unless(array_key_exists($this->template, TripPlanner::templates()), 422);
-        $added = TripPlanner::applyTemplate($this->findTrip(), $this->template, mb_substr($this->templatePerson, 0, 60));
+        $trip = $this->findTrip();
+        $person = mb_substr($this->templatePerson, 0, 60);
+
+        if (str_starts_with($this->template, 'own-')) {
+            $template = ChecklistTemplate::query()->visibleTo($this->currentUser(), (int) $this->householdId)->find((int) substr($this->template, 4)) ?? abort(404);
+            $added = TripPlanner::addItems($trip, $template->items(), $person, $this->packingOwner());
+        } else {
+            abort_unless(array_key_exists($this->template, TripPlanner::templates()), 422);
+            $added = TripPlanner::applyTemplate($trip, $this->template, $person, $this->packingOwner());
+        }
+
         $this->dispatch('toast', message: trans_choice(':count item added.|:count items added.', $added));
+    }
+
+    /**
+     * Saves the shown list as an own template – usable for trips, tasks and checklist pages.
+     */
+    public function saveTemplate(): void
+    {
+        $this->validate(['templateName' => ['required', 'string', 'max:255']], attributes: ['templateName' => __('Name')]);
+        TripPlanner::saveAsTemplate($this->findTrip(), $this->currentUser(), $this->templateName, $this->templatePrivate, $this->packingList === 'mine');
+        $this->reset('templateName', 'templatePrivate');
+        $this->dispatch('toast', message: __('Template saved – also available for tasks and pages.'));
     }
 
     public function togglePacked(int $id): void
     {
-        $item = $this->findTrip()->packingItems()->find($id) ?? abort(404);
+        $item = $this->findPackingItem($id);
         $item->update(['packed' => ! $item->packed]);
     }
 
     public function deleteItem(int $id): void
     {
-        ($this->findTrip()->packingItems()->find($id) ?? abort(404))->delete();
+        $this->findPackingItem($id)->delete();
     }
 
     public function unpackAll(): void
     {
-        $this->findTrip()->packingItems()->update(['packed' => false]);
+        $this->findTrip()->packingItems()->when($this->packingOwner(), fn ($query, $owner) => $query->where('owner_id', $owner), fn ($query) => $query->whereNull('owner_id'))->update(['packed' => false]);
     }
 
     private function findFeedback(int $id): TripFeedback
@@ -1053,7 +1100,10 @@ new #[Layout('layouts.app')] class extends Component
             'kinds' => TripBooking::kinds(),
             'categories' => TripPlanner::categories(),
             'templates' => TripPlanner::templates(),
-            'people' => $trip->packingItems->pluck('person')->filter()->unique()->values(),
+            'ownTemplates' => $this->tab === 'packing' ? ChecklistTemplate::query()->visibleTo($this->currentUser(), (int) $this->householdId)->orderBy('name')->get() : collect(),
+            'packingItems' => $trip->packingItems->filter(fn (TripPackingItem $item) => $this->packingList === 'mine' ? $item->owner_id === $this->currentUser()->id : $item->owner_id === null)->values(),
+            'myPackingCount' => $trip->packingItems->where('owner_id', $this->currentUser()->id)->count(),
+            'people' => $trip->packingItems->whereNull('owner_id')->pluck('person')->filter()->unique()->values(),
             'expenseGroups' => ExpenseGroup::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->get(),
             'currencies' => ExchangeRates::COMMON,
             'inboundDrafts' => $this->tab === 'bookings' ? MailIntake::pendingFor($trip) : collect(),
@@ -1818,6 +1868,13 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </section>
             @else
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Packing list') }}">
+                        <button type="button" wire:click="$set('packingList', 'shared')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $packingList === 'shared', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'shared']) aria-pressed="{{ $packingList === 'shared' ? 'true' : 'false' }}">👥 {{ __('Together') }}</button>
+                        <button type="button" wire:click="$set('packingList', 'mine')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $packingList === 'mine', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'mine']) aria-pressed="{{ $packingList === 'mine' ? 'true' : 'false' }}">🔒 {{ __('My list') }}@if ($myPackingCount) <span class="text-xs text-gray-500">{{ $myPackingCount }}</span>@endif</button>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $packingList === 'mine' ? __('Only you can see your personal list.') : __('Everyone on the trip sees and ticks off this list.') }}</p>
+                </div>
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <form wire:submit="addItem" class="flex flex-wrap items-end gap-2">
                         <label class="min-w-0 flex-1 basis-full text-sm text-gray-700 sm:basis-0 dark:text-gray-300">{{ __('Item') }}<input type="text" wire:model="item.label" class="{{ $input }}" placeholder="{{ __('e.g. Snorkel') }}"><x-input-error :messages="$errors->get('item.label')" /></label>
@@ -1836,24 +1893,45 @@ new #[Layout('layouts.app')] class extends Component
                     <form wire:submit="applyTemplate" class="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-700">
                         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Add template') }}
                             <select wire:model="template" class="{{ $input }}">
-                                @foreach ($templates as $key => $packingTemplate)
-                                    <option value="{{ $key }}">{{ $packingTemplate['icon'] }} {{ $packingTemplate['label'] }}</option>
-                                @endforeach
+                                <optgroup label="{{ __('Templates') }}">
+                                    @foreach ($templates as $key => $packingTemplate)
+                                        <option value="{{ $key }}">{{ $packingTemplate['icon'] }} {{ $packingTemplate['label'] }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @if ($ownTemplates->isNotEmpty())
+                                    <optgroup label="{{ __('Your templates') }}">
+                                        @foreach ($ownTemplates as $ownTemplate)
+                                            <option value="own-{{ $ownTemplate->id }}">{{ $ownTemplate->icon ?: '📋' }} {{ $ownTemplate->name }}@if ($ownTemplate->isPrivate()) 🔒@endif</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             </select>
                         </label>
                         <label class="w-32 text-sm text-gray-700 dark:text-gray-300">{{ __('For') }}<input type="text" wire:model="templatePerson" list="trip-people" class="{{ $input }}" placeholder="{{ __('everyone') }}"></label>
                         <x-secondary-button type="submit">{{ __('Add') }}</x-secondary-button>
-                        @if ($overview['packed'] > 0)
+                        @if ($packingItems->where('packed', true)->isNotEmpty())
                             <button type="button" wire:click="unpackAll" class="ms-auto rounded-lg px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">↺ {{ __('Unpack all') }}</button>
                         @endif
                     </form>
+
+                    @if ($packingItems->isNotEmpty())
+                        <details class="mt-3 border-t border-gray-100 pt-3 dark:border-gray-700">
+                            <summary class="cursor-pointer text-sm text-indigo-600 dark:text-indigo-400">💾 {{ __('Save this list as a template') }}</summary>
+                            <form wire:submit="saveTemplate" class="mt-2 flex flex-wrap items-end gap-2">
+                                <label class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="templateName" class="{{ $input }}" placeholder="{{ __('e.g. Camping weekend') }}"><x-input-error :messages="$errors->get('templateName')" /></label>
+                                <label class="flex items-center gap-2 py-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="templatePrivate" class="rounded border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}</label>
+                                <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
+                            </form>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Your templates also appear for tasks (checklists) and for new pages.') }}</p>
+                        </details>
+                    @endif
                 </section>
 
-                @if ($trip->packingItems->isEmpty())
+                @if ($packingItems->isEmpty())
                     <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('The packing list is empty – add a template to start.') }}</p>
                 @else
                     <div class="grid gap-4 sm:grid-cols-2">
-                        @foreach ($trip->packingItems->groupBy('category')->sortBy(fn ($items, $key) => array_search($key, array_keys($categories))) as $key => $items)
+                        @foreach ($packingItems->groupBy('category')->sortBy(fn ($items, $key) => array_search($key, array_keys($categories))) as $key => $items)
                             <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="category-{{ $key }}">
                                 <h3 class="flex items-center justify-between text-sm font-semibold text-gray-900 dark:text-gray-100"><span>{{ $categories[$key]['icon'] ?? '' }} {{ $categories[$key]['label'] ?? $key }}</span><span class="text-xs font-normal text-gray-500">{{ $items->where('packed', true)->count() }}/{{ $items->count() }}</span></h3>
                                 <ul class="mt-2 space-y-1">

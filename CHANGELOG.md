@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.17.0] – 2026-10-01
+
+### Neu
+- Packlisten: gemeinsame Liste für alle und eine persönliche Liste pro Person, die nur sie selbst sieht – beide aus Vorlagen befüllbar.
+- Eigene Vorlagen: eine Packliste als Vorlage speichern (auch nur für dich) und sie für Reisen, Aufgaben (Checkliste) und neue Seiten nutzen.
+
 ## [1.16.0] – 2026-10-01
 
 ### Neu

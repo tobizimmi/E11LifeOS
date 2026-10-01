@@ -277,7 +277,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function checklistTemplates(): array
     {
-        $own = ChecklistTemplate::where('household_id', $this->householdId)->orderBy('name')->get()
+        $own = ChecklistTemplate::query()->visibleTo($this->currentUser(), (int) $this->householdId)->orderBy('name')->get()
             ->mapWithKeys(fn (ChecklistTemplate $template) => ['own-'.$template->id => ['name' => $template->name, 'icon' => $template->icon ?: '📋', 'anchor' => __('Due'), 'default_offset' => 0, 'tasks' => $template->tasks, 'own' => true]])
             ->all();
 
@@ -316,7 +316,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function deleteTemplate(int $templateId): void
     {
-        ChecklistTemplate::where('household_id', $this->householdId)->findOrFail($templateId)->delete();
+        ChecklistTemplate::query()->visibleTo($this->currentUser(), (int) $this->householdId)->findOrFail($templateId)->delete();
         $this->reset('templateKey');
     }
 

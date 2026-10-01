@@ -119,6 +119,16 @@ class Trip extends Model
     }
 
     /**
+     * Comments and suggestions on the plan, newest first.
+     *
+     * @return HasMany<TripFeedback, $this>
+     */
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(TripFeedback::class)->latest()->latest('id');
+    }
+
+    /**
      * Header colour of the trip (chosen or derived from its id).
      *
      * @return array{from: string, to: string}

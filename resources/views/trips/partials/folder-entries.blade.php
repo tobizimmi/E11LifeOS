@@ -16,6 +16,9 @@
                 @if ($entry['notes'] !== '')
                     <span class="mt-0.5 block whitespace-pre-line text-gray-600 dark:text-gray-300">{{ $entry['notes'] }}</span>
                 @endif
+                @foreach ($comments->get($entry['id'], collect())->reverse() as $comment)
+                    <span class="mt-1 block rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-700 dark:bg-gray-900/50 dark:text-gray-300">💬 <strong>{{ $comment->author_name }}:</strong> {{ $comment->body }}</span>
+                @endforeach
             </span>
         </li>
     @endforeach

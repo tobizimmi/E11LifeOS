@@ -331,8 +331,14 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Drag & drop in the plan: puts the entry on the day ("ideas" for none) at the given position.
      */
-    public function moveStop(int $id, string $day, int $position): void
+    public function moveStop(?int $id, string $day, ?int $position = 0): void
     {
+        // A dragged hint row ("nothing planned yet") has no entry.
+        if (! $id) {
+            return;
+        }
+
+        $position = (int) $position;
         $trip = $this->findTrip();
         $stop = $this->findStop($id);
         $targetDay = $day === 'ideas' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) ? null : $day;
@@ -1210,11 +1216,11 @@ new #[Layout('layouts.app')] class extends Component
                 <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
                     <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>
                     <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Drag onto a day to plan') }} (⠿)</p>
-                    <ul class="mt-2 min-h-10 space-y-2" x-sort="$wire.moveStop($item, 'ideas', $position)" x-sort:group="trip-plan">
+                    <ul class="mt-2 min-h-10 space-y-2" x-sort="$item && $wire.moveStop($item, 'ideas', $position)" x-sort:group="trip-plan">
                         @forelse ($itinerary['ideas'] as $entry)
                             @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro, 'leg' => isset($legs[$entry->id]) ? $legText($legs[$entry->id]) : null])
                         @empty
-                            <li class="rounded-xl border border-dashed border-amber-200 p-3 text-center text-xs text-amber-700 dark:border-amber-800 dark:text-amber-300">{{ __('Collect sights, restaurants and tips here.') }}</li>
+                            <li x-sort:ignore class="rounded-xl border border-dashed border-amber-200 p-3 text-center text-xs text-amber-700 dark:border-amber-800 dark:text-amber-300">{{ __('Collect sights, restaurants and tips here.') }}</li>
                         @endforelse
                     </ul>
                 </section>
@@ -1263,18 +1269,18 @@ new #[Layout('layouts.app')] class extends Component
                             </ul>
                         @endif
 
-                        <ul class="mt-2 min-h-10 space-y-2" x-sort="$wire.moveStop($item, '{{ $day['date']->toDateString() }}', $position)" x-sort:group="trip-plan">
+                        <ul class="mt-2 min-h-10 space-y-2" x-sort="$item && $wire.moveStop($item, '{{ $day['date']->toDateString() }}', $position)" x-sort:group="trip-plan">
                             @foreach ($day['stops'] as $entry)
                                 @include('livewire.trips.partials.stop', ['entry' => $entry, 'stopKinds' => $stopKinds, 'euro' => $euro, 'leg' => isset($legs[$entry->id]) ? $legText($legs[$entry->id]) : null])
                             @endforeach
                             @if ($day['stops']->isEmpty() && $day['bookings'] === [])
-                                <li class="rounded-xl border border-dashed border-gray-200 p-3 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">{{ __('Nothing planned yet – tap + or drag an idea here.') }}</li>
+                                <li x-sort:ignore class="rounded-xl border border-dashed border-gray-200 p-3 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">{{ __('Nothing planned yet – tap + or drag an idea here.') }}</li>
                             @endif
                         </ul>
                     </section>
                 @endforeach
             @elseif ($tab === 'map')
-                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: null, 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
                 <div class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
                     <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">

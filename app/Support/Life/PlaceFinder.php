@@ -4,6 +4,7 @@ namespace App\Support\Life;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -32,7 +33,7 @@ class PlaceFinder
             return [];
         }
 
-        $parameters = ['q' => $query, 'limit' => 8, 'lang' => 'de'];
+        $parameters = ['q' => $query, 'limit' => 8, 'lang' => self::photonLanguage()];
 
         if ($bounds !== null) {
             [$south, $west, $north, $east] = array_map(fn ($value) => (float) $value, $bounds);
@@ -81,7 +82,7 @@ class PlaceFinder
             return [];
         }
 
-        $parameters = ['format' => 'jsonv2', 'q' => $query, 'limit' => 8, 'accept-language' => 'de'];
+        $parameters = ['format' => 'jsonv2', 'q' => $query, 'limit' => 8, 'accept-language' => self::acceptLanguage()];
 
         if ($bounds !== null) {
             [$south, $west, $north, $east] = array_map(fn ($value) => round((float) $value, 3), $bounds);
@@ -115,7 +116,7 @@ class PlaceFinder
      */
     public static function reverse(float $lat, float $lng): ?array
     {
-        $parameters = ['format' => 'jsonv2', 'lat' => round($lat, 5), 'lon' => round($lng, 5), 'zoom' => 18, 'accept-language' => 'de'];
+        $parameters = ['format' => 'jsonv2', 'lat' => round($lat, 5), 'lon' => round($lng, 5), 'zoom' => 18, 'accept-language' => self::acceptLanguage()];
 
         return Cache::remember('places:reverse:'.md5(json_encode($parameters)), now()->addDays(30), function () use ($parameters, $lat, $lng) {
             $result = self::get(config('services.maps.nominatim_url').'/reverse', $parameters);
@@ -187,8 +188,8 @@ class PlaceFinder
                 }
 
                 return [
-                    'name' => mb_substr((string) $tags['name'], 0, 150),
-                    'address' => trim(implode(' ', array_filter([$tags['addr:street'] ?? null, $tags['addr:housenumber'] ?? null]))),
+                    'name' => mb_substr(self::localName($tags), 0, 150),
+                    'address' => self::readable(trim(implode(' ', array_filter([$tags['addr:street'] ?? null, $tags['addr:housenumber'] ?? null])))),
                     'lat' => (float) $element['lat'],
                     'lng' => (float) $element['lon'],
                     'kind' => self::kindFor((string) ($tags['tourism'] ?? $tags['historic'] ?? ''), (string) ($tags['amenity'] ?? '')),
@@ -204,7 +205,7 @@ class PlaceFinder
      */
     public static function area(string $query): ?array
     {
-        $result = self::get(rtrim((string) config('services.maps.nominatim_url'), '/').'/search', ['format' => 'jsonv2', 'q' => trim(mb_substr($query, 0, 150)), 'limit' => 1, 'accept-language' => 'de'])[0] ?? null;
+        $result = self::get(rtrim((string) config('services.maps.nominatim_url'), '/').'/search', ['format' => 'jsonv2', 'q' => trim(mb_substr($query, 0, 150)), 'limit' => 1, 'accept-language' => self::acceptLanguage()])[0] ?? null;
         $box = is_array($result) ? ($result['boundingbox'] ?? null) : null;
 
         if (! is_array($box) || count($box) !== 4) {
@@ -272,10 +273,10 @@ class PlaceFinder
 
             $places[] = [
                 'osm_id' => $element['type'].'/'.$element['id'],
-                'name' => mb_substr((string) ($tags['name:de'] ?? $tags['name']), 0, 150),
+                'name' => mb_substr(self::localName($tags), 0, 150),
                 'kind' => self::kindFor($key === 'shop' ? 'shop' : ($key === 'leisure' || $key === 'natural' ? $key : ''), $value),
                 'category' => mb_substr($value, 0, 40),
-                'address' => trim(implode(' ', array_filter([$tags['addr:street'] ?? null, $tags['addr:housenumber'] ?? null])).(isset($tags['addr:city']) ? ', '.$tags['addr:city'] : ''), ', ') ?: null,
+                'address' => self::readable(trim(implode(' ', array_filter([$tags['addr:street'] ?? null, $tags['addr:housenumber'] ?? null])).(isset($tags['addr:city']) ? ', '.$tags['addr:city'] : ''), ', ')) ?: null,
                 'lat' => (float) $lat,
                 'lng' => (float) $lng,
                 'info' => $info ?: null,
@@ -331,8 +332,8 @@ class PlaceFinder
         $address = implode(', ', array_slice(array_values(array_filter($parts, fn (string $part) => $part !== $name)), 0, 3));
 
         return [
-            'name' => mb_substr($name, 0, 150),
-            'address' => mb_substr($address, 0, 255),
+            'name' => mb_substr(self::readable($name), 0, 150),
+            'address' => mb_substr(self::readable($address), 0, 255),
             'lat' => (float) $result['lat'],
             'lng' => (float) $result['lon'],
             'kind' => self::kindFor((string) ($result['category'] ?? ''), (string) ($result['type'] ?? '')),
@@ -363,12 +364,62 @@ class PlaceFinder
             ->map(fn ($part) => trim((string) $part))->filter(fn (string $part) => $part !== '' && $part !== $name)->unique()->implode(', ');
 
         return [
-            'name' => mb_substr($name, 0, 150),
-            'address' => mb_substr($address, 0, 255),
+            'name' => mb_substr(self::readable($name), 0, 150),
+            'address' => mb_substr(self::readable($address), 0, 255),
             'lat' => (float) $coordinates[1],
             'lng' => (float) $coordinates[0],
             'kind' => self::kindFor((string) ($properties['osm_key'] ?? ''), (string) ($properties['osm_value'] ?? '')),
         ];
+    }
+
+    /**
+     * The name of an OpenStreetMap object in the app language: "name:de", then "name:en" and the
+     * international name, otherwise the local name written in Latin letters.
+     *
+     * @param  array<string, mixed>  $tags
+     */
+    public static function localName(array $tags): string
+    {
+        foreach (['name:'.self::language(), 'name:en', 'int_name', 'name:latin'] as $key) {
+            if (filled($tags[$key] ?? null)) {
+                return trim((string) $tags[$key]);
+            }
+        }
+
+        return self::readable(trim((string) ($tags['name'] ?? '')));
+    }
+
+    /**
+     * Text in Cyrillic, Greek, Arabic … letters written in Latin letters ("Витоша" → "Vitosha");
+     * Latin text (with umlauts) stays as it is.
+     */
+    public static function readable(string $text): string
+    {
+        if (! preg_match('/[\p{Cyrillic}\p{Greek}\p{Arabic}\p{Hebrew}\p{Georgian}\p{Armenian}]/u', $text)) {
+            return $text;
+        }
+
+        $latin = function_exists('transliterator_transliterate')
+            ? (string) transliterator_transliterate('Any-Latin; Latin-ASCII', $text)
+            : Str::ascii($text);
+
+        return trim($latin) !== '' ? trim($latin) : $text;
+    }
+
+    private static function language(): string
+    {
+        return substr(app()->getLocale(), 0, 2) ?: 'de';
+    }
+
+    /** Photon knows only a few languages, others fall back to English. */
+    private static function photonLanguage(): string
+    {
+        return in_array(self::language(), ['de', 'en', 'fr', 'it'], true) ? self::language() : 'en';
+    }
+
+    private static function acceptLanguage(): string
+    {
+        return self::language() === 'en' ? 'en' : self::language().',en;q=0.8';
     }
 
     /**

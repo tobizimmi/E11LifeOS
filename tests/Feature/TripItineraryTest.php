@@ -67,6 +67,10 @@ class TripItineraryTest extends TestCase
         // …and back to the ideas.
         $page->call('moveStop', $idea->id, 'ideas', 0);
         $this->assertNull($idea->fresh()->day);
+
+        // Dragging the hint row of an empty day sends no entry and changes nothing.
+        $page->call('moveStop', null, '2026-10-11', null)->assertOk()->assertHasNoErrors();
+        $this->assertNull($idea->fresh()->day);
     }
 
     public function test_entries_can_be_edited_ticked_off_and_deleted_only_on_visible_trips(): void

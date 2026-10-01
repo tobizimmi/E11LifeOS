@@ -7,6 +7,7 @@ use App\Models\Trip;
 use App\Models\TripPlace;
 use App\Models\TripStop;
 use App\Support\Life\MapHttp;
+use App\Support\Life\PlaceFinder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -68,6 +69,29 @@ class TripPlacesTest extends TestCase
         Http::fake();
         $this->assertSame(['Café Gerbeaud'], array_column($page->instance()->placesNearby([47.49, 19.04, 47.50, 19.06]), 'name'));
         Http::assertNothingSent();
+    }
+
+    public function test_places_are_named_in_the_app_language_or_in_latin_letters(): void
+    {
+        Http::fake([
+            'nominatim.openstreetmap.org/search*' => Http::response([['name' => 'София', 'display_name' => 'София, България', 'lat' => '42.69', 'lon' => '23.32', 'boundingbox' => ['42.6', '42.8', '23.2', '23.4']]]),
+            'overpass-api.de/*' => Http::response(['elements' => [
+                ['type' => 'node', 'id' => 1, 'lat' => 42.6958, 'lon' => 23.3328, 'tags' => ['name' => 'Храм-паметник „Св. Александър Невски“', 'name:de' => 'Alexander-Newski-Kathedrale', 'name:en' => 'Alexander Nevsky Cathedral', 'tourism' => 'attraction']],
+                ['type' => 'node', 'id' => 2, 'lat' => 42.6977, 'lon' => 23.3219, 'tags' => ['name' => 'Национален дворец на културата', 'name:en' => 'National Palace of Culture', 'tourism' => 'attraction']],
+                ['type' => 'node', 'id' => 3, 'lat' => 42.69, 'lon' => 23.31, 'tags' => ['name' => 'Витоша', 'amenity' => 'restaurant', 'addr:street' => 'бул. Витоша']],
+            ]]),
+        ]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'destination' => 'Sofia', 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-24']);
+
+        $this->actingAs($user);
+        Volt::test('trips.show', ['trip' => $trip])->set('tab', 'map');
+
+        $places = $trip->places()->orderBy('osm_id')->get();
+        $this->assertSame(['Alexander-Newski-Kathedrale', 'National Palace of Culture', 'Vitosa'], $places->pluck('name')->all());
+        $this->assertSame('bul. Vitosa', $places[2]->address);
+        $this->assertSame('Café Gerbeaud', PlaceFinder::readable('Café Gerbeaud'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'accept-language=de%2Cen'));
     }
 
     public function test_the_trip_area_can_be_chosen_on_the_map_and_a_new_destination_loads_again(): void

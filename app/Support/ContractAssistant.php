@@ -8,8 +8,6 @@ use App\Models\CollectionProperty;
 use App\Models\HouseholdMember;
 use App\Models\Item;
 use App\Models\User;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Support\Carbon;
 
 /**
@@ -132,12 +130,9 @@ class ContractAssistant
         $html = '<html><head><meta charset="utf-8"><style>@page { margin: 25mm 20mm; } body { font-family: "DejaVu Sans"; font-size: 11pt; line-height: 1.5; }</style></head><body>'
             .nl2br(e($text)).'</body></html>';
 
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html, footer: false);
 
-        return (string) $dompdf->output();
+        return $pdf;
     }
 
     /**

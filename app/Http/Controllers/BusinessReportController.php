@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessProfile;
 use App\Support\Business\BookkeepingCategories;
 use App\Support\Business\EuerReport;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\PdfTheme;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -42,12 +41,9 @@ class BusinessReportController extends Controller
             'lineDefinitions' => BookkeepingCategories::euerLines(),
         ])->render();
 
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html);
 
-        return response($dompdf->output(), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="euer-'.$report['year'].'.pdf"',
         ]);

@@ -97,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('quotes', 'quotes.index')->name('quotes.index');
     Volt::route('quotes/{comparison}', 'quotes.show')->whereNumber('comparison')->name('quotes.show');
     Volt::route('letters', 'letters.index')->name('letters.index');
+    Volt::route('pdf-design', 'pdf.editor')->name('pdf.editor');
     Volt::route('ask', 'brain.ask')->name('brain.ask');
     Volt::route('pages/{item?}', 'pages.index')->whereNumber('item')->name('pages.index');
     // Notes became pages: keep old bookmarks (/notes?note=ID) working.

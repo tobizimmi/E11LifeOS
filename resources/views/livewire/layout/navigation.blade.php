@@ -239,6 +239,7 @@ new class extends Component
                     <h3 class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ __('Household') }}</h3>
                     <x-sidebar-link icon="user-group" :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>{{ __('Members') }}</x-sidebar-link>
                     <x-sidebar-link icon="share" :href="route('groups.index')" :active="request()->routeIs('groups.*')" wire:navigate>{{ __('Groups & sharing') }}</x-sidebar-link>
+                    <x-sidebar-link icon="document-text" :href="route('pdf.editor')" :active="request()->routeIs('pdf.editor')" wire:navigate>{{ __('PDF design') }}</x-sidebar-link>
                 </div>
 
                 <x-sidebar-section :title="__('Spaces')" :add-href="route('spaces.index', ['create' => 1])" :all-href="route('spaces.index')" :add-label="__('New space')">

@@ -256,7 +256,7 @@ new #[Layout('layouts.app')] class extends Component
     public function markCooked(): void
     {
         $recipe = $this->findRecipe();
-        $recipe->increment('cooked_count');
+        $recipe->markCooked();
         // Ingredients from the pantry: shown for confirmation, nothing is taken without it.
         $this->pantryUsage = Pantry::usage($recipe, $this->servings, Auth::user(), (int) $this->householdId);
 

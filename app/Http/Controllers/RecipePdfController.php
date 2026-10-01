@@ -41,7 +41,7 @@ class RecipePdfController extends Controller
             'ingredients' => $recipe->scaledIngredients($servings),
             'steps' => $recipe->steps(),
             'nutrition' => $recipe->nutritionValues(),
-            'image' => $layout['photo'] === 'none' ? null : $this->embeddedImage($recipe->image_path, $layout['photo']),
+            'image' => $layout['photo'] === 'none' ? null : self::embeddedImage($recipe->image_path, $layout['photo']),
             'theme' => $theme,
             'layout' => $layout,
         ])->render();
@@ -67,7 +67,7 @@ class RecipePdfController extends Controller
     /**
      * The photo cut to the layout (wide 16:9 or square) – the PDF renderer cannot crop images itself.
      */
-    private function embeddedImage(?string $path, string $size): ?string
+    public static function embeddedImage(?string $path, string $size, int $squareSize = 700): ?string
     {
         if (! $path || ! Storage::disk(Recipe::IMAGE_DISK)->exists($path)) {
             return null;
@@ -75,7 +75,7 @@ class RecipePdfController extends Controller
 
         try {
             $image = (new ImageManager(new Driver))->read((string) Storage::disk(Recipe::IMAGE_DISK)->get($path));
-            $image = $size === 'small' ? $image->cover(700, 700) : $image->cover(1600, 900);
+            $image = $size === 'small' ? $image->cover($squareSize, $squareSize) : $image->cover(1600, 900);
 
             return 'data:image/jpeg;base64,'.base64_encode((string) $image->toJpeg(82));
         } catch (Throwable) {

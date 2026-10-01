@@ -83,6 +83,34 @@ class MealPlan extends Model
         return $this->visibility === Item::VISIBILITY_PRIVATE;
     }
 
+    /**
+     * Nutrition of one day per person: one serving of each planned recipe added up
+     * (empty when no planned recipe has nutrition values; "partial" when some have none).
+     *
+     * @param  SupportCollection<int, MealPlan>  $entries
+     * @return array{calories?: float, protein?: float, carbs?: float, fat?: float, partial?: bool}
+     */
+    public static function nutritionPerPerson(SupportCollection $entries): array
+    {
+        $values = $entries->filter(fn (MealPlan $entry) => $entry->recipe instanceof Recipe)
+            ->map(fn (MealPlan $entry) => $entry->recipe instanceof Recipe ? $entry->recipe->nutritionValues() : []);
+        $withValues = $values->filter(fn (array $nutrition) => isset($nutrition['calories']));
+
+        if ($withValues->isEmpty()) {
+            return [];
+        }
+
+        $sum = [];
+
+        foreach (['calories', 'protein', 'carbs', 'fat'] as $key) {
+            if ($withValues->contains(fn (array $nutrition) => isset($nutrition[$key]))) {
+                $sum[$key] = (float) $withValues->sum(fn (array $nutrition) => $nutrition[$key] ?? 0);
+            }
+        }
+
+        return [...$sum, 'partial' => $withValues->count() < $values->count()];
+    }
+
     public static function mealTypeLabel(string $mealType): string
     {
         return match ($mealType) {

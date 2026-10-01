@@ -20,6 +20,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(except: 'link')]
     public string $source = 'link';
 
+    #[Url(except: '')]
     public string $url = '';
 
     /**

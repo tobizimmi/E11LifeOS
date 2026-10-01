@@ -10,7 +10,9 @@ use App\Models\WatchlistItem;
 use App\Support\Portfolio\KeyFigureCheck;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\PortfolioLink;
+use App\Support\Portfolio\MarketAnalysis;
 use App\Support\Portfolio\StockInsights;
+use App\Support\Portfolio\StockScore;
 use App\Support\Portfolio\TechnicalAnalysis;
 use App\Support\Portfolio\Valuation;
 use Livewire\Attributes\Layout;
@@ -153,7 +155,10 @@ new #[Layout('layouts.app')] class extends Component
             'security' => $security,
             'price' => $security?->last_price ? $market->toEuro($security->last_price, $security->currency) : null,
             'chart' => $prices->map(fn ($price) => ['label' => $price->date->format('d.m.y'), 'value' => (float) $price->close, 'compare' => $trendByDate[$price->date->toDateString()] ?? null])->values()->all(),
-            'technical' => TechnicalAnalysis::analyse($analysisPrices->map(fn ($price) => (float) $price->close)->values()->all()),
+            'technical' => $technical = TechnicalAnalysis::analyse($analysisPrices->map(fn ($price) => (float) $price->close)->values()->all()),
+            'stockScore' => ($security?->asset_type ?? 'stock') === 'stock' && ! str_starts_with($this->symbol, '^')
+                ? StockScore::rate($security->fundamentals ?? [], $technical, MarketAnalysis::sectorStanding(($market = MarketAnalysis::cached())['sectors'], $security?->sector), $market['light'])
+                : null,
             'notes' => SecurityNote::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->latest()->get(),
             'rows' => $valuation->rows($positions),
             'transactions' => PortfolioTransaction::whereIn('portfolio_id', $portfolioIds)->where('symbol', $this->symbol)->with('portfolio')->orderByDesc('executed_on')->limit(50)->get(),
@@ -446,6 +451,33 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </ul>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Chart signals describe the past and are no forecast – combine them with the fundamental analysis.') }}</p>
+                </section>
+            @endif
+
+            @if ($stockScore && $stockScore['rows'] !== [])
+                @php($verdict = \App\Support\Portfolio\StockScore::verdicts()[$stockScore['verdict']])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="score-heading">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 id="score-heading" class="font-semibold text-gray-900 dark:text-gray-100">🏅 {{ __('Points system') }} <span class="font-normal text-gray-500 dark:text-gray-400">{{ $stockScore['points'] }} / {{ $stockScore['max'] }}</span></h3>
+                        <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ $verdict['color'] }}">{{ $verdict['label'] }}</span>
+                    </div>
+                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ $stockScore['percent'] }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full rounded-full bg-indigo-500" style="width: {{ $stockScore['percent'] }}%"></div></div>
+                    <table class="mt-3 w-full text-sm">
+                        @foreach (['company' => __('Company'), 'chart' => __('Chart'), 'market' => __('Sector & market')] as $group => $groupLabel)
+                            @php($groupRows = collect($stockScore['rows'])->where('group', $group))
+                            @if ($groupRows->isNotEmpty())
+                                <tr><th colspan="3" class="pt-2 text-start text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $groupLabel }}</th></tr>
+                                @foreach ($groupRows as $row)
+                                    <tr class="border-b border-gray-100 last:border-0 dark:border-gray-700">
+                                        <td class="py-1 text-gray-700 dark:text-gray-300">{{ $row['label'] }}</td>
+                                        <td class="py-1 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $row['value'] }}</td>
+                                        <td class="w-16 py-1 text-end" aria-label="{{ trans_choice(':count point|:count points', $row['points']) }}">{{ str_repeat('●', $row['points']) }}<span class="text-gray-300 dark:text-gray-600">{{ str_repeat('●', 2 - $row['points']) }}</span></td>
+                                    </tr>
+                                @endforeach
+                            @endif
+                        @endforeach
+                    </table>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Top-down after the “Aktien- und Börsenführerschein”. Sector and market count once the market analysis has been opened today.') }} <a href="{{ route('portfolio.market') }}" wire:navigate class="underline">{{ __('To the market analysis') }} →</a></p>
                 </section>
             @endif
 

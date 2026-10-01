@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.22.0] – 2026-10-01
+
+### Neu
+- Portfolio: neue Seite „Marktanalyse“ von oben nach unten wie im „Aktien- und Börsenführerschein“ – Globalanalyse (Indizes, Zinsen, VIX, Währung, Rohstoffe) mit Börsenampel, Branchenanalyse (Branchen-ETFs im Vergleich zum S&P 500) und das Punktesystem für deine Aktien.
+- Aktien: Punktesystem (0–2 Punkte je Kriterium für Bewertung, Rentabilität, Wachstum, Verschuldung, Dividende, Chart, Branche und Markt) mit Einschätzung auf jeder Aktienseite.
+
 ## [1.21.0] – 2026-10-01
 
 ### Neu

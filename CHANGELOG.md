@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.18.0] – 2026-10-01
+
+### Neu
+- Finanzen: Buchungen nach „mit Beleg“ / „ohne Beleg“ filtern (z. B. Gehaltsabrechnungen für die Steuer finden), Anzahl der Belege direkt an der Buchung.
+- Finanzen: Rechnung aus paperless an der Buchung „bezahlt markieren“ (Tag „Bezahlt“ und Notiz mit der Buchung) oder ohne Rechnung einen Buchungsbeleg nach paperless schicken. Die paperless-Suche startet mit dem Empfänger.
+
 ## [1.17.0] – 2026-10-01
 
 ### Neu

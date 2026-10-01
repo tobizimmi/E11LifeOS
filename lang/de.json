@@ -5301,5 +5301,18 @@
     "e.g. Camping weekend": "z. B. Camping-Wochenende",
     "Your templates also appear for tasks (checklists) and for new pages.": "Eigene Vorlagen gibt es auch bei Aufgaben (Checklisten) und neuen Seiten.",
     "Template saved – also available for tasks and pages.": "Vorlage gespeichert – auch für Aufgaben und Seiten verfügbar.",
-    "Your checklist": "Eigene Checkliste"
+    "Your checklist": "Eigene Checkliste",
+    "Paid on :date: :amount to :payee": "Bezahlt am :date: :amount an :payee",
+    "Booking :date :payee": "Buchung :date :payee",
+    "Booking receipt": "Buchungsbeleg",
+    "Created from the bank booking in E11LifeOS.": "Erstellt aus der Bankbuchung in E11LifeOS.",
+    "Payer": "Zahler",
+    "Marked as paid in paperless.": "In paperless als bezahlt markiert.",
+    "Creates a receipt of this booking in paperless – useful when there is no invoice.": "Legt einen Beleg dieser Buchung in paperless an – praktisch, wenn es keine Rechnung gibt.",
+    "Booking to paperless": "Buchung nach paperless",
+    "Tags the document “Paid” in paperless and notes this booking.": "Markiert das Dokument in paperless mit „Bezahlt“ und vermerkt diese Buchung.",
+    "Mark paid": "Bezahlt markieren",
+    "With and without documents": "Mit und ohne Beleg",
+    "With document": "Mit Beleg",
+    "Without document": "Ohne Beleg"
 }

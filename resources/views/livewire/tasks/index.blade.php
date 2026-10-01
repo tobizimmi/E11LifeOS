@@ -997,7 +997,7 @@ new #[Layout('layouts.app')] class extends Component
                                         ])
                                     >
                                         @if (! $selecting && $list !== \App\Support\TaskLists::DONE)
-                                            <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-600" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
+                                            <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-500 dark:hover:text-gray-300" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
                                         @endif
                                         @if ($selecting)
                                             <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />

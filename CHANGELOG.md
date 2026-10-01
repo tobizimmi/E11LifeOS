@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.15.0] – 2026-10-01
+
+### Neu
+- Reiseordner: zeigt jetzt auch den Tagesplan, weitere Ideen, ausgewählte Seiten mit Infos und Links – einstellbar unter „Gruppe & Reiseordner“, Notizen nur auf Wunsch.
+
 ## [1.14.0] – 2026-10-01
 
 ### Neu

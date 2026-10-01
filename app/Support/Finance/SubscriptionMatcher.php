@@ -51,7 +51,9 @@ class SubscriptionMatcher
 
         foreach ($payments as $payment) {
             $paymentTokens = self::tokens($payment['name']);
-            $index = collect($contracts)->search(fn (array $contract) => array_intersect(self::tokens($contract['item']->title.' '.$contract['provider']), $paymentTokens) !== []);
+            // A payment linked by hand wins over the match by name.
+            $index = collect($contracts)->search(fn (array $contract) => in_array($payment['key'], self::linkedKeys($contract['item']), true));
+            $index = $index !== false ? $index : collect($contracts)->search(fn (array $contract) => array_intersect(self::tokens($contract['item']->title.' '.$contract['provider']), $paymentTokens) !== []);
 
             if ($index === false) {
                 if (! in_array($payment['key'], $dismissed, true)) {
@@ -129,7 +131,35 @@ class SubscriptionMatcher
         }
     }
 
-    private static function contractCollection(User $user, int $householdId): Collection
+    /**
+     * Links a recurring payment (its key) to a contract, e.g. the monthly debit of an insurance.
+     */
+    public static function link(Item $contract, string $paymentKey): void
+    {
+        $content = $contract->content ?? [];
+        $content['payment_keys'] = array_values(array_unique([...self::linkedKeys($contract), $paymentKey]));
+        $contract->update(['content' => $content]);
+    }
+
+    public static function unlink(Item $contract, string $paymentKey): void
+    {
+        $content = $contract->content ?? [];
+        $content['payment_keys'] = array_values(array_diff(self::linkedKeys($contract), [$paymentKey]));
+        $contract->update(['content' => $content]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function linkedKeys(Item $contract): array
+    {
+        return array_values(array_filter((array) ($contract->content['payment_keys'] ?? []), 'is_string'));
+    }
+
+    /**
+     * The contracts collection new contracts go into (a private one is created from the template if needed).
+     */
+    public static function contractCollection(User $user, int $householdId): Collection
     {
         $existing = Collection::query()->visibleTo($user, $householdId)->whereNull('system_key')->with('properties')->get()
             ->first(fn (Collection $collection) => ContractOverview::property($collection, ['Provider']) !== null && self::costProperty($collection) !== null);

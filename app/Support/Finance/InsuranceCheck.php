@@ -2,6 +2,8 @@
 
 namespace App\Support\Finance;
 
+use App\Models\Collection;
+use App\Models\Item;
 use App\Models\RealEstate;
 use App\Models\Transaction;
 use App\Models\User;
@@ -21,6 +23,9 @@ class InsuranceCheck
     public const HAVE = 'have';
 
     public const NOT_NEEDED = 'not_needed';
+
+    /** Kind of a contract set by hand when it is no insurance at all. */
+    public const NONE = 'none';
 
     /**
      * @return array<string, array{label: string, icon: string, words: list<string>, why: string}>
@@ -58,7 +63,7 @@ class InsuranceCheck
     }
 
     /**
-     * @return array{found: array<string, list<array{title: string, provider: ?string, monthly: float, url: string}>>, rows: list<array{key: string, label: string, icon: string, why: string, level: string, status: string, contracts: list<array{title: string, provider: ?string, monthly: float, url: string}>}>, unnecessary: list<array{title: string, label: string, monthly: float, url: string}>, monthly: float, gaps: int}
+     * @return array{found: array<string, list<array{item_id: int, title: string, provider: ?string, monthly: float, url: string, assigned: bool, payments: list<string>}>>, rows: list<array{key: string, label: string, icon: string, why: string, level: string, status: string, contracts: list<array{item_id: int, title: string, provider: ?string, monthly: float, url: string, assigned: bool, payments: list<string>}>}>, unnecessary: list<array{title: string, label: string, monthly: float, url: string}>, candidates: list<array{item_id: int, title: string, provider: ?string, monthly: float, url: string}>, monthly: float, gaps: int}
      */
     public static function for(User $user): array
     {
@@ -70,10 +75,25 @@ class InsuranceCheck
         $unnecessary = [];
         $monthly = 0.0;
 
+        $candidates = [];
+
         foreach ($contracts as $contract) {
             $text = ' '.mb_strtolower($contract['item']->title.' '.$contract['provider'].' '.$contract['category'].' '.$contract['collection']->name).' ';
-            $row = ['title' => $contract['item']->title, 'provider' => $contract['provider'], 'monthly' => $contract['monthly'], 'url' => $contract['url']];
+            $assigned = $contract['item']->content['insurance_type'] ?? null;
+            $row = ['item_id' => $contract['item']->id, 'title' => $contract['item']->title, 'provider' => $contract['provider'], 'monthly' => $contract['monthly'], 'url' => $contract['url'], 'assigned' => is_string($assigned), 'payments' => SubscriptionMatcher::linkedKeys($contract['item'])];
             $isInsurance = str_contains($text, 'versicher') || str_contains($text, 'insurance');
+
+            // Set by hand: "no insurance" (a wrong guess) or the kind of insurance.
+            if ($assigned === self::NONE) {
+                continue;
+            }
+
+            if (is_string($assigned) && isset(self::types()[$assigned])) {
+                $found[$assigned][] = $row;
+                $monthly += $contract['monthly'];
+
+                continue;
+            }
 
             foreach (self::types() as $key => $type) {
                 foreach ($type['words'] as $word) {
@@ -86,10 +106,18 @@ class InsuranceCheck
                 }
             }
 
+            $isUnnecessary = false;
+
             foreach (self::oftenUnnecessary() as $word => $label) {
                 if (str_contains($text, $word) && $isInsurance) {
                     $unnecessary[] = ['title' => $contract['item']->title, 'label' => $label, 'monthly' => $contract['monthly'], 'url' => $contract['url']];
+                    $isUnnecessary = true;
                 }
+            }
+
+            // An insurance the check could not place: the member can say which kind it is.
+            if ($isInsurance && ! $isUnnecessary) {
+                $candidates[] = ['item_id' => $row['item_id'], 'title' => $row['title'], 'provider' => $row['provider'], 'monthly' => $row['monthly'], 'url' => $row['url']];
             }
         }
 
@@ -130,9 +158,51 @@ class InsuranceCheck
             'found' => $found,
             'rows' => $rows,
             'unnecessary' => $unnecessary,
+            'candidates' => $candidates,
             'monthly' => round($monthly, 2),
             'gaps' => count(array_filter($rows, fn (array $row) => $row['status'] === 'missing' && $row['level'] === 'essential')),
         ];
+    }
+
+    /**
+     * Adds an insurance to the contracts (e.g. an occupational disability insurance), optionally
+     * linked to its recurring payment from the bank bookings.
+     */
+    public static function create(User $user, int $householdId, string $type, string $provider, ?float $monthly, ?string $paymentKey = null): Item
+    {
+        $label = self::types()[$type]['label'];
+        $item = SubscriptionMatcher::adopt($user, $householdId, [
+            'name' => trim($label.($provider !== '' ? ' – '.$provider : '')),
+            'monthly' => (float) ($monthly ?? 0),
+            'category' => 'insurance',
+        ]);
+
+        $collection = Collection::with('properties')->find($item->collection_id);
+
+        if ($collection && ($providerField = ContractOverview::property($collection, ['Provider']))) {
+            $item->setPropertyValue($providerField, $provider !== '' ? mb_substr($provider, 0, 255) : null);
+        }
+
+        $item->content = ['insurance_type' => $type, 'payment_keys' => $paymentKey !== null ? [$paymentKey] : []] + ($item->content ?? []);
+        $item->save();
+
+        return $item;
+    }
+
+    /**
+     * Sets the kind of insurance of a contract by hand (NONE: it is no insurance; null: guess again).
+     */
+    public static function assign(Item $contract, ?string $type): void
+    {
+        $content = $contract->content ?? [];
+
+        if ($type === null) {
+            unset($content['insurance_type']);
+        } else {
+            $content['insurance_type'] = $type;
+        }
+
+        $contract->update(['content' => $content]);
     }
 
     /**

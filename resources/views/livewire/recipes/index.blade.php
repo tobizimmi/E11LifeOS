@@ -34,7 +34,7 @@ new #[Layout('layouts.app')] class extends Component
     public bool $archived = false;
 
     /**
-     * "newest", "title", "time", "cooked" or "rating".
+     * "newest", "title", "time", "cooked", "forgotten" (longest not cooked) or "rating".
      */
     #[Url(except: 'newest')]
     public string $sort = 'newest';
@@ -127,6 +127,7 @@ new #[Layout('layouts.app')] class extends Component
             ->when($this->sort === 'title', fn ($query) => $query->orderBy('title'))
             ->when($this->sort === 'time', fn ($query) => $query->orderByRaw('COALESCE(prep_time, 0) + COALESCE(cook_time, 0) = 0')->orderByRaw('COALESCE(prep_time, 0) + COALESCE(cook_time, 0)'))
             ->when($this->sort === 'cooked', fn ($query) => $query->orderByDesc('cooked_count'))
+            ->when($this->sort === 'forgotten', fn ($query) => $query->orderByRaw('cooked_count = 0')->orderByRaw('last_cooked_at IS NOT NULL')->orderBy('last_cooked_at'))
             ->when($this->sort === 'rating', fn ($query) => $query->orderByDesc('ratings_avg_rating'))
             ->latest('id')
             ->get();
@@ -149,6 +150,9 @@ new #[Layout('layouts.app')] class extends Component
             'recipes' => $recipes,
             'pantryMatches' => $pantryMatches,
             'expiring' => Pantry::expiring($user, $this->householdId)->take(6),
+            'forgotten' => ! $this->archived && $this->search === '' && $this->category === '' && $this->tag === '' && ! $this->favorites && $pantryTerms === [] && $this->sort === 'newest'
+                ? Recipe::query()->visibleTo($user, $this->householdId)->forgotten()->orderByRaw('last_cooked_at IS NOT NULL')->orderBy('last_cooked_at')->limit(6)->get()
+                : collect(),
             'hasPantry' => Pantry::collectionFor($this->householdId) !== null,
             'categories' => RecipeCategory::where('household_id', $this->householdId)->orderBy('position')->orderBy('name')->get(),
             'tags' => Tag::where('household_id', $this->householdId)
@@ -176,6 +180,7 @@ new #[Layout('layouts.app')] class extends Component
                     <option value="title">{{ __('A–Z') }}</option>
                     <option value="time">{{ __('Quickest first') }}</option>
                     <option value="cooked">{{ __('Cooked most often') }}</option>
+                    <option value="forgotten">{{ __('Not cooked for a long time') }}</option>
                     <option value="rating">{{ __('Best rated') }}</option>
                 </select>
                 <a href="{{ route('recipes.plan') }}" wire:navigate class="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">📅 {{ __('Meal plan') }}</a>
@@ -211,6 +216,32 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @endif
 
+            @if ($forgotten->isNotEmpty())
+                <section aria-labelledby="forgotten-heading">
+                    <h3 id="forgotten-heading" class="mb-2 flex items-baseline justify-between gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <span>💭 {{ __('Long time no see') }}</span>
+                        <button type="button" wire:click="$set('sort', 'forgotten')" class="text-xs font-normal text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Show all') }}</button>
+                    </h3>
+                    <div class="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+                        @foreach ($forgotten as $oldFavorite)
+                            <a href="{{ route('recipes.show', $oldFavorite) }}" wire:navigate wire:key="forgotten-{{ $oldFavorite->id }}" class="w-40 shrink-0 snap-start overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200/60 hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700">
+                                <span class="block h-20 bg-gray-100 dark:bg-gray-700">
+                                    @if ($oldFavorite->imageUrl())
+                                        <img src="{{ $oldFavorite->imageUrl() }}" alt="" loading="lazy" class="h-full w-full object-cover" />
+                                    @else
+                                        <span class="flex h-full items-center justify-center text-2xl" aria-hidden="true">🍽️</span>
+                                    @endif
+                                </span>
+                                <span class="block p-2">
+                                    <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ $oldFavorite->title }}</span>
+                                    <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $oldFavorite->last_cooked_at ? __('Last cooked :when', ['when' => $oldFavorite->last_cooked_at->locale(app()->getLocale())->diffForHumans()]) : __('Last cooked a while ago') }}</span>
+                                </span>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             @if ($pantryMode)
                 <div class="rounded-lg bg-emerald-50 dark:bg-emerald-900/30 p-3">
                     @if ($hasPantry)
@@ -231,7 +262,12 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ trans_choice(':count recipe|:count recipes', $recipes->count()) }}</p>
+                <p class="flex flex-wrap items-center gap-x-3 text-sm text-gray-500 dark:text-gray-400">
+                    {{ trans_choice(':count recipe|:count recipes', $recipes->count()) }}
+                    @if ($recipes->isNotEmpty() && ! $archived)
+                        <a href="{{ route('recipes.cookbook', array_filter(['category' => $category, 'tag' => $tag, 'favorites' => $favorites ? 1 : null])) }}" class="text-indigo-600 hover:underline dark:text-indigo-400" title="{{ __('All recipes of this filter as one PDF (max. :count)', ['count' => \App\Http\Controllers\RecipeCookbookController::MAX_RECIPES]) }}">📕 {{ __('Cookbook as PDF') }}</a>
+                    @endif
+                </p>
                 <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-sm dark:bg-gray-800" role="group" aria-label="{{ __('View') }}">
                     @foreach (['cards' => '▦ '.__('Cards'), 'list' => '☰ '.__('List'), 'table' => '▤ '.__('Table')] as $key => $label)
                         <button type="button" wire:click="$set('view', '{{ $key }}')" aria-pressed="{{ $view === $key ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $view === $key, 'text-gray-600 dark:text-gray-400' => $view !== $key])>{{ $label }}</button>

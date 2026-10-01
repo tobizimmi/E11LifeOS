@@ -22,6 +22,7 @@ use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RealEstateReceiptController;
+use App\Http\Controllers\RecipeCookbookController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
@@ -98,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('quotes/{comparison}', 'quotes.show')->whereNumber('comparison')->name('quotes.show');
     Volt::route('letters', 'letters.index')->name('letters.index');
     Volt::route('pdf-design', 'pdf.editor')->name('pdf.editor');
+    Volt::route('share', 'share.target')->name('share.target');
     Volt::route('ask', 'brain.ask')->name('brain.ask');
     Volt::route('pages/{item?}', 'pages.index')->whereNumber('item')->name('pages.index');
     // Notes became pages: keep old bookmarks (/notes?note=ID) working.
@@ -174,6 +176,7 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Volt::route('recipes/{recipe}', 'recipes.show')->whereNumber('recipe')->name('recipes.show');
     Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');
     Volt::route('recipes/{recipe}/cook', 'recipes.cook')->whereNumber('recipe')->name('recipes.cook');
+    Route::get('recipes/cookbook.pdf', RecipeCookbookController::class)->name('recipes.cookbook');
     Route::get('recipes/{recipe}/pdf', RecipePdfController::class)->whereNumber('recipe')->name('recipes.pdf');
     Route::get('recipes/{recipe}/image', RecipeImageController::class)->whereNumber('recipe')->name('recipes.image');
     Route::get('recipes/{recipe}/photos/{index}', RecipeImageController::class)->whereNumber(['recipe', 'index'])->name('recipes.photo');

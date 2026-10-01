@@ -59,7 +59,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         if (! $this->finished) {
             $recipe = $this->findRecipe();
-            $recipe->increment('cooked_count');
+            $recipe->markCooked();
             $this->pantryUsage = Pantry::usage($recipe, $this->servings ?: max(1, (int) $recipe->servings), Auth::user(), (int) $this->householdId);
             $this->finished = true;
         }

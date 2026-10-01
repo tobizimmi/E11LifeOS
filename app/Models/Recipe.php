@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 #[Fillable(['public_expires_at',
     'household_id', 'created_by', 'visibility', 'public_token', 'title', 'description', 'ingredients', 'instructions',
     'prep_time', 'cook_time', 'servings', 'difficulty', 'image_path', 'additional_images', 'source_url', 'source_type',
-    'nutrition', 'cooked_count', 'archived_at', 'legacy_id',
+    'nutrition', 'cooked_count', 'last_cooked_at', 'archived_at', 'legacy_id',
 ])]
 #[Hidden(['public_token', 'public_token_encrypted'])]
 class Recipe extends Model
@@ -51,6 +51,7 @@ class Recipe extends Model
             'additional_images' => 'array',
             'nutrition' => 'array',
             'archived_at' => 'datetime',
+            'last_cooked_at' => 'date',
         ];
     }
 
@@ -240,6 +241,28 @@ class Recipe extends Model
         $average = $this->relationLoaded('ratings') ? $this->ratings->avg('rating') : $this->ratings()->avg('rating');
 
         return $average !== null ? round((float) $average, 1) : null;
+    }
+
+    /**
+     * Counts a cooking today.
+     */
+    public function markCooked(): void
+    {
+        $this->forceFill(['cooked_count' => (int) $this->cooked_count + 1, 'last_cooked_at' => today()])->save();
+    }
+
+    /**
+     * Recipes the household liked (favorite, rated 4+ or cooked 3+ times) but has not cooked for a while.
+     *
+     * @param  Builder<Recipe>  $query
+     */
+    public function scopeForgotten(Builder $query, int $days = 60): void
+    {
+        $query->whereNull('archived_at')
+            ->where(fn (Builder $query) => $query->whereNull('last_cooked_at')->orWhere('last_cooked_at', '<', today()->subDays($days)))
+            ->where(fn (Builder $query) => $query->where('cooked_count', '>=', 3)
+                ->orWhereHas('favoritedBy')
+                ->orWhereHas('ratings', fn (Builder $ratings) => $ratings->where('rating', '>=', 4)));
     }
 
     /**

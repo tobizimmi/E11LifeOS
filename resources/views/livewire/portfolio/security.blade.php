@@ -5,11 +5,13 @@ use App\Livewire\Concerns\InteractsWithPortfolio;
 use App\Models\InvestmentThesis;
 use App\Models\PortfolioPosition;
 use App\Models\PortfolioTransaction;
+use App\Models\SecurityNote;
 use App\Models\WatchlistItem;
 use App\Support\Portfolio\KeyFigureCheck;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\PortfolioLink;
 use App\Support\Portfolio\StockInsights;
+use App\Support\Portfolio\TechnicalAnalysis;
 use App\Support\Portfolio\Valuation;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -28,6 +30,8 @@ new #[Layout('layouts.app')] class extends Component
     public string $range = '1y';
 
     public bool $editingThesis = false;
+
+    public string $note = '';
 
     /**
      * @var array{stock_type: string, thesis: string, moat: string, risks: string, sell_if: string, buy_below: string, review_on: string}
@@ -105,6 +109,18 @@ new #[Layout('layouts.app')] class extends Component
         $this->editingThesis = false;
     }
 
+    public function addNote(): void
+    {
+        $this->validate(['note' => ['required', 'string', 'max:3000']], attributes: ['note' => __('Note')]);
+        SecurityNote::create(['user_id' => $this->currentUser()->id, 'symbol' => $this->symbol, 'body' => trim($this->note)]);
+        $this->reset('note');
+    }
+
+    public function deleteNote(int $id): void
+    {
+        (SecurityNote::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->find($id) ?? abort(404))->delete();
+    }
+
     public function loadFundamentals(MarketData $market): void
     {
         $security = \App\Models\Security::where('symbol', $this->symbol)->first() ?? abort(404);
@@ -125,13 +141,20 @@ new #[Layout('layouts.app')] class extends Component
             default => now()->subYear(),
         };
         $prices = $market->history($this->symbol, $from);
+        // The chart analysis always looks at (at least) the last 14 months, whatever range is shown.
+        $analysisPrices = $from->lt(now()->subMonths(14)) ? $prices : $market->history($this->symbol, now()->subMonths(14));
+        $closes = $prices->map(fn ($price) => (float) $price->close)->values()->all();
+        $trendLine = TechnicalAnalysis::smaSeries($analysisPrices->map(fn ($price) => (float) $price->close)->values()->all(), 200);
+        $trendByDate = $analysisPrices->values()->mapWithKeys(fn ($price, $index) => [$price->date->toDateString() => $trendLine[$index] ?? null]);
         $portfolioIds = $this->portfolios()->pluck('id');
         $positions = PortfolioPosition::whereIn('portfolio_id', $portfolioIds)->where('symbol', $this->symbol)->with('portfolio')->get();
 
         return [
             'security' => $security,
             'price' => $security?->last_price ? $market->toEuro($security->last_price, $security->currency) : null,
-            'chart' => $prices->map(fn ($price) => ['label' => $price->date->format('d.m.y'), 'value' => (float) $price->close])->values()->all(),
+            'chart' => $prices->map(fn ($price) => ['label' => $price->date->format('d.m.y'), 'value' => (float) $price->close, 'compare' => $trendByDate[$price->date->toDateString()] ?? null])->values()->all(),
+            'technical' => TechnicalAnalysis::analyse($analysisPrices->map(fn ($price) => (float) $price->close)->values()->all()),
+            'notes' => SecurityNote::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->latest()->get(),
             'rows' => $valuation->rows($positions),
             'transactions' => PortfolioTransaction::whereIn('portfolio_id', $portfolioIds)->where('symbol', $this->symbol)->with('portfolio')->orderByDesc('executed_on')->limit(50)->get(),
             'watched' => $this->watchlist()->where('symbol', $this->symbol)->exists(),
@@ -206,7 +229,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </div>
                 </div>
-                <x-line-chart :points="$chart" :value-label="__('Closing price')" :currency="false" wire:key="security-chart-{{ $range }}" />
+                <x-line-chart :points="$chart" :value-label="__('Closing price')" :compare-label="__('200-day line')" :currency="false" wire:key="security-chart-{{ $range }}" />
                 <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                     @foreach ([
                         __('Previous close') => $security->previous_close ? number_format($security->previous_close, 2, ',', '.') : '—',
@@ -230,6 +253,7 @@ new #[Layout('layouts.app')] class extends Component
                 $figures = $security->fundamentals ?? [];
                 $percent = fn ($value) => $value !== null ? number_format($value * 100, 1, ',', '.').' %' : '—';
                 $number = fn ($value, $decimals = 1) => $value !== null ? number_format($value, $decimals, ',', '.') : '—';
+                $big = fn ($value) => $value !== null ? number_format($value / 1e9, abs($value) >= 1e10 ? 1 : 2, ',', '.').' '.__('bn') : '—';
                 $analyst = ['strong_buy' => __('Strong buy'), 'buy' => __('Buy'), 'hold' => __('Hold'), 'underperform' => __('Underperform'), 'sell' => __('Sell')];
             @endphp
             @unless (str_starts_with($security->symbol, '^') || str_contains($security->symbol, '='))
@@ -248,6 +272,11 @@ new #[Layout('layouts.app')] class extends Component
                                 [__('Debt/equity'), $number($figures['debt_to_equity'] ?? null, 2)],
                                 [__('Revenue growth'), $percent($figures['revenue_growth'] ?? null)],
                                 [__('Operating margin'), $percent($figures['operating_margins'] ?? null)],
+                                [__('EBIT'), $big($figures['ebit'] ?? null)],
+                                [__('EBITDA'), $big($figures['ebitda'] ?? null)],
+                                [__('Price/cash flow'), $number($figures['price_to_cashflow'] ?? null)],
+                                [__('EV/EBITDA'), $number($figures['ev_to_ebitda'] ?? null)],
+                                [__('Free cash flow yield'), $percent($figures['free_cashflow_yield'] ?? null)],
                                 [__('Analysts'), ($analyst[$figures['recommendation'] ?? ''] ?? '—').(isset($figures['analyst_target']) ? ' · '.__('target :price', ['price' => $number($figures['analyst_target'], 2)]) : '')],
                             ] as [$label, $value])
                                 <div class="rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-900/40"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ $label }}</dt><dd class="tabular-nums text-gray-900 dark:text-gray-100">{{ $value }}</dd></div>
@@ -272,6 +301,23 @@ new #[Layout('layouts.app')] class extends Component
                                     @endforeach
                                 </ul>
                                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Rules of thumb only – compare within the industry. Explanations in the knowledge area under “Understanding key figures”.') }} <a href="{{ route('knowledge.index', ['category' => 'metrics']) }}" wire:navigate class="underline">{{ __('To the explanations') }} →</a></p>
+                            </details>
+                        @endif
+                        @php($figureHistory = collect($figures['history'] ?? [])->filter(fn ($point) => is_array($point))->groupBy(fn ($point) => substr((string) $point['date'], 0, 7))->map->last()->take(-12)->values())
+                        @if ($figureHistory->count() > 1)
+                            <details class="mt-3 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-900/40">
+                                <summary class="cursor-pointer font-medium text-gray-900 dark:text-gray-100">🕰 {{ __('Key figures over time') }}</summary>
+                                <div class="mt-2 overflow-x-auto">
+                                    <table class="w-full text-xs tabular-nums">
+                                        <thead class="text-gray-500 dark:text-gray-400"><tr><th class="py-1 text-start font-medium">{{ __('Month') }}</th><th class="text-end font-medium">{{ __('Price') }}</th><th class="text-end font-medium">{{ __('P/E') }}</th><th class="text-end font-medium">{{ __('P/CF') }}</th><th class="text-end font-medium">{{ __('EV/EBITDA') }}</th><th class="text-end font-medium">{{ __('Div. yield') }}</th></tr></thead>
+                                        <tbody class="divide-y divide-gray-200 text-gray-800 dark:divide-gray-700 dark:text-gray-200">
+                                            @foreach ($figureHistory->reverse() as $point)
+                                                <tr><td class="py-1">{{ \Illuminate\Support\Carbon::parse($point['date'])->translatedFormat('M Y') }}</td><td class="text-end">{{ $number($point['price'] ?? null, 2) }}</td><td class="text-end">{{ $number($point['pe_ratio'] ?? null) }}</td><td class="text-end">{{ $number($point['price_to_cashflow'] ?? null) }}</td><td class="text-end">{{ $number($point['ev_to_ebitda'] ?? null) }}</td><td class="text-end">{{ $percent($point['dividend_yield'] ?? null) }}</td></tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Recorded each time the key figures are updated – the history grows over time.') }}</p>
                             </details>
                         @endif
                     @else
@@ -384,6 +430,41 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </section>
             @endunless
+
+            @if ($technical)
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="technical-heading">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 id="technical-heading" class="font-semibold text-gray-900 dark:text-gray-100">📉 {{ __('Chart analysis') }}</h3>
+                        <span @class(['rounded-full px-2.5 py-0.5 text-xs font-medium', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' => $technical['trend'] === 'up', 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' => $technical['trend'] === 'down', 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' => in_array($technical['trend'], ['sideways', 'unknown'], true)])>{{ ['up' => __('Uptrend'), 'down' => __('Downtrend'), 'sideways' => __('Sideways'), 'unknown' => __('Trend not yet known')][$technical['trend']] }}</span>
+                    </div>
+                    <ul class="mt-3 space-y-1.5 text-sm">
+                        @foreach ($technical['signals'] as $signal)
+                            <li class="flex gap-2">
+                                <span aria-hidden="true">{{ ['green' => '🟢', 'yellow' => '🟡', 'red' => '🔴', 'neutral' => '⚪'][$signal['level']] }}</span>
+                                <span><strong>{{ $signal['label'] }}: {{ $signal['value'] }}</strong> – {{ $signal['note'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Chart signals describe the past and are no forecast – combine them with the fundamental analysis.') }}</p>
+                </section>
+            @endif
+
+            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="notes-heading">
+                <h3 id="notes-heading" class="font-semibold text-gray-900 dark:text-gray-100">🗒 {{ __('My notes') }}</h3>
+                <form wire:submit="addNote" class="mt-2 flex flex-wrap gap-2">
+                    <textarea wire:model="note" rows="2" class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="{{ __('e.g. annual report: margin under pressure – check again after Q3') }}" aria-label="{{ __('Note') }}"></textarea>
+                    <x-secondary-button type="submit" class="self-start">{{ __('Add') }}</x-secondary-button>
+                </form>
+                <x-input-error :messages="$errors->get('note')" class="mt-1" />
+                <ul class="mt-3 space-y-2">
+                    @foreach ($notes as $savedNote)
+                        <li wire:key="note-{{ $savedNote->id }}" class="flex gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900/40">
+                            <span class="min-w-0 flex-1"><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $savedNote->created_at->format('d.m.Y') }}</span><span class="whitespace-pre-line text-gray-800 dark:text-gray-200">{{ $savedNote->body }}</span></span>
+                            <button type="button" wire:click="deleteNote({{ $savedNote->id }})" wire:confirm="{{ __('Delete this note?') }}" class="self-start text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
 
             <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="thesis-heading">
                 <div class="flex flex-wrap items-center justify-between gap-2">

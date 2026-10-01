@@ -59,6 +59,20 @@ class KeyFigureCheck
                 'note' => $growth < 0 ? __('Revenue is shrinking.') : __('Growth compared with the previous year.')];
         }
 
+        if (is_numeric($figures['price_to_cashflow'] ?? null) && (float) $figures['price_to_cashflow'] > 0) {
+            $pcf = (float) $figures['price_to_cashflow'];
+            $rows[] = ['key' => 'price_to_cashflow', 'label' => __('Price/cash flow'), 'value' => $number($pcf),
+                'level' => $pcf < 10 ? 'green' : ($pcf <= 20 ? 'yellow' : 'red'),
+                'note' => $pcf < 10 ? __('Low – the share is cheap compared with the cash it generates.') : ($pcf <= 20 ? __('Moderate valuation by cash flow.') : __('High – a lot of future cash flow is already priced in.'))];
+        }
+
+        if (is_numeric($figures['ev_to_ebitda'] ?? null) && (float) $figures['ev_to_ebitda'] > 0) {
+            $ev = (float) $figures['ev_to_ebitda'];
+            $rows[] = ['key' => 'ev_to_ebitda', 'label' => __('EV/EBITDA'), 'value' => $number($ev),
+                'level' => $ev < 8 ? 'green' : ($ev <= 14 ? 'yellow' : 'red'),
+                'note' => $ev < 8 ? __('Cheap including debt – good for comparing companies with different debt.') : ($ev <= 14 ? __('Usual valuation including debt.') : __('Expensive including debt.'))];
+        }
+
         if (is_numeric($figures['debt_to_equity'] ?? null)) {
             $debt = (float) $figures['debt_to_equity'];
             $rows[] = ['key' => 'debt_to_equity', 'label' => __('Debt/equity'), 'value' => $number($debt, 2),

@@ -5,6 +5,7 @@
             'portfolio.index' => '📈 '.__('Overview'),
             'portfolio.transactions' => '🧾 '.__('Transactions'),
             'portfolio.analysis' => '📊 '.__('Analysis'),
+            'portfolio.market' => '🧭 '.__('Market analysis'),
             'portfolio.recommendations' => '🔎 '.__('Recommendations'),
             'portfolio.insights' => '🕵️ '.__('Insiders & analysts'),
             'portfolio.discover' => '🌍 '.__('Discover'),

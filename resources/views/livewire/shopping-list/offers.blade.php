@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($chains === [] ? array_keys($allChains) : $chains as $key)
                         @if (! empty($allChains[$key]['flyer']))
-                            <a href="{{ $allChains[$key]['flyer'] }}" target="_blank" rel="noopener" class="rounded-lg bg-gray-50 px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700">{{ $allChains[$key]['name'] }} ↗</a>
+                            <a href="{{ $allChains[$key]['flyer'] }}" target="_blank" rel="noopener" class="rounded-lg bg-gray-50 px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-800">{{ $allChains[$key]['name'] }} ↗</a>
                         @endif
                     @endforeach
                 </div>

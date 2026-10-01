@@ -37,6 +37,37 @@
     [data-page-header] .justify-between > h2 {
         min-width: 0;
     }
+
+    /*
+     * Dark mode for form fields that bring no dark colors of their own: light text on a dark
+     * field (also in the opened list of a select), dark checkboxes and native dark scrollbars
+     * and pickers. Fields with their own dark: classes keep them (utilities win over base).
+     */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            color-scheme: dark;
+        }
+
+        select,
+        textarea,
+        input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='submit']):not([type='button']) {
+            @apply border-gray-700 bg-gray-900 text-gray-200 placeholder:text-gray-500;
+        }
+
+        option,
+        optgroup {
+            @apply bg-gray-900 text-gray-200;
+        }
+
+        input[type='checkbox'],
+        input[type='radio'] {
+            @apply border-gray-500 bg-gray-800;
+        }
+
+        input[type='file'] {
+            @apply text-gray-300;
+        }
+    }
 }
 
 /*

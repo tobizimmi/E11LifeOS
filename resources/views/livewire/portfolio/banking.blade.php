@@ -385,7 +385,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($connection->last_synced_at) · {{ __('last :time', ['time' => $connection->last_synced_at->diffForHumans()]) }} @endif
                             </p>
                             @if ($connection->sync_message)
-                                <p class="mt-2 inline-block rounded-lg px-2 py-1 text-xs {{ $statusClasses[$connection->sync_status] ?? 'bg-gray-100 text-gray-700' }}">{{ $connection->sync_message }}</p>
+                                <p class="mt-2 inline-block rounded-lg px-2 py-1 text-xs {{ $statusClasses[$connection->sync_status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' }}">{{ $connection->sync_message }}</p>
                             @endif
                         </div>
                         <div class="flex flex-wrap gap-2">

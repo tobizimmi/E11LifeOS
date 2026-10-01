@@ -29,6 +29,8 @@ export default (texts, center) => {
         searched: false,
         active: 0,
         showPois: false,
+        wheelHint: false,
+        wheelHintTimer: null,
         locating: false,
         loadingNearby: false,
         ready: false,
@@ -45,7 +47,8 @@ export default (texts, center) => {
                 return;
             }
 
-            map = L.map(this.$refs.map, { zoomControl: false, tap: true }).setView(center ? [center.lat, center.lng] : [48.14, 11.58], center ? 13 : 4);
+            // The mouse wheel zooms only after a click into the map: scrolling the page over it keeps the zoom.
+            map = L.map(this.$refs.map, { zoomControl: false, tap: true, scrollWheelZoom: false }).setView(center ? [center.lat, center.lng] : [48.14, 11.58], center ? 13 : 4);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             // Tile servers want to know the site (the app itself sends no referrer): only the domain, no path.
             L.tileLayer(texts.tiles || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -57,6 +60,15 @@ export default (texts, center) => {
             poiLayer = L.layerGroup().addTo(map);
 
             map.on('click', (event) => this.pick(event.latlng.lat, event.latlng.lng));
+            map.on('mousedown focus', () => map.scrollWheelZoom.enable());
+            this.$refs.map.addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
+            this.$refs.map.addEventListener('wheel', () => {
+                if (!map.scrollWheelZoom.enabled()) {
+                    this.wheelHint = true;
+                    clearTimeout(this.wheelHintTimer);
+                    this.wheelHintTimer = setTimeout(() => { this.wheelHint = false; }, 1500);
+                }
+            }, { passive: true });
             // With "places nearby" switched on, the places follow the visible map area.
             map.on('moveend', () => {
                 if (this.showPois) {

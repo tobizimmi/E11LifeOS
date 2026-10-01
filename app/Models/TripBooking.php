@@ -18,8 +18,12 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $starts_at
  * @property ?Carbon $ends_at
  * @property ?string $reference
+ * @property ?float $cost in euros
+ * @property ?string $currency original currency (null = euros)
+ * @property ?float $foreign_amount amount in the original currency
+ * @property ?float $exchange_rate units of the currency per euro
  */
-#[Fillable(['trip_id', 'kind', 'title', 'provider', 'starts_at', 'ends_at', 'reference', 'cost', 'paid', 'notes'])]
+#[Fillable(['trip_id', 'kind', 'title', 'provider', 'starts_at', 'ends_at', 'reference', 'cost', 'currency', 'foreign_amount', 'exchange_rate', 'paid', 'notes'])]
 class TripBooking extends Model
 {
     /** @use HasFactory<TripBookingFactory> */
@@ -35,6 +39,8 @@ class TripBooking extends Model
             'reference' => 'encrypted',
             'notes' => 'encrypted',
             'cost' => 'float',
+            'foreign_amount' => 'float',
+            'exchange_rate' => 'float',
             'paid' => 'boolean',
         ];
     }

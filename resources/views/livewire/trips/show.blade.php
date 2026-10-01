@@ -9,12 +9,15 @@ use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripPlace;
 use App\Models\TripStop;
+use App\Support\Life\BookingMail;
+use App\Support\Life\ExchangeRates;
 use App\Support\Life\TripCovers;
 use App\Support\Life\TripDayPlanner;
 use App\Support\Life\PlaceFinder;
 use App\Support\Life\TripItinerary;
 use App\Support\Life\TripPlanner;
 use App\Support\Life\TripRoutes;
+use App\Support\Weather;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -79,6 +82,29 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $idea = '';
 
+    /** A saved booking confirmation (.eml) to read. */
+    public $bookingMail = null;
+
+    public string $bookingMailText = '';
+
+    /**
+     * Bookings read from a confirmation mail, waiting to be taken over.
+     *
+     * @var list<array{kind: string, title: string, provider: string, starts_at: string, ends_at: string, reference: string, amount: string, currency: string}>
+     */
+    public array $mailDrafts = [];
+
+    /**
+     * Forecast per day, loaded after the page is shown (keyed by Y-m-d).
+     *
+     * @var array<string, array{icon: string, label: string, min: int, max: int, rain: int}>
+     */
+    #[Locked]
+    public array $weather = [];
+
+    /** Amount for the currency converter of the overview (in the trip's currency). */
+    public string $convertAmount = '100';
+
     public function mount(Trip $trip): void
     {
         $this->resolveHousehold();
@@ -96,7 +122,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function resetBooking(string $kind = 'flight'): void
     {
-        $this->booking = ['kind' => $kind, 'title' => '', 'provider' => '', 'starts_at' => '', 'ends_at' => '', 'reference' => '', 'cost' => '', 'paid' => false, 'notes' => ''];
+        $this->booking = ['kind' => $kind, 'title' => '', 'provider' => '', 'starts_at' => '', 'ends_at' => '', 'reference' => '', 'cost' => '', 'currency' => $this->findTrip()->currency ?: 'EUR', 'paid' => false, 'notes' => ''];
         $this->editingBookingId = null;
         $this->resetValidation();
     }
@@ -109,6 +135,7 @@ new #[Layout('layouts.app')] class extends Component
             'starts_on' => $trip->starts_on->toDateString(), 'ends_on' => $trip->ends_on->toDateString(),
             'budget' => $trip->budget !== null ? number_format($trip->budget, 2, ',', '') : '', 'travelers' => (string) $trip->travelers,
             'notes' => (string) $trip->notes, 'private' => $trip->visibility === Item::VISIBILITY_PRIVATE,
+            'currency' => (string) $trip->currency,
         ];
     }
 
@@ -123,6 +150,7 @@ new #[Layout('layouts.app')] class extends Component
             'details.budget' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'details.travelers' => ['nullable', 'string', 'max:255'],
             'details.notes' => ['nullable', 'string', 'max:5000'],
+            'details.currency' => ['nullable', Rule::in(ExchangeRates::COMMON)],
         ], attributes: ['details.title' => __('Title'), 'details.ends_on' => __('Until')])['details'];
 
         $trip = $this->findTrip();
@@ -131,7 +159,7 @@ new #[Layout('layouts.app')] class extends Component
             'title' => $data['title'], 'destination' => $data['destination'] ?: null,
             'starts_on' => $data['starts_on'], 'ends_on' => $data['ends_on'],
             'budget' => $data['budget'] !== '' ? $data['budget'] : null, 'travelers' => $data['travelers'] ?: null,
-            'notes' => $data['notes'] ?: null,
+            'notes' => $data['notes'] ?: null, 'currency' => in_array($data['currency'] ?? '', ['', 'EUR'], true) ? null : $data['currency'],
             'visibility' => $trip->created_by === Auth::id() && $this->details['private'] ? Item::VISIBILITY_PRIVATE : ($trip->created_by === Auth::id() ? Item::VISIBILITY_SHARED : $trip->visibility),
         ]);
         if ($newDestination) {
@@ -623,6 +651,31 @@ new #[Layout('layouts.app')] class extends Component
      *
      * @return ?array{lat: float, lng: float}
      */
+    /**
+     * Forecast for the days of the trip within the next 16 days, at the destination or the first place.
+     */
+    public function loadWeather(): void
+    {
+        $trip = $this->findTrip()->load('stops');
+        $this->weather = $trip->isPast() ? [] : $this->forecast($trip);
+    }
+
+    /**
+     * @return array<string, array{icon: string, label: string, min: int, max: int, rain: int}>
+     */
+    private function forecast(Trip $trip): array
+    {
+        if ($trip->starts_on->gt(today()->addDays(15))) {
+            return [];
+        }
+
+        $first = $trip->stops->first(fn (TripStop $stop) => $stop->hasPosition());
+        $center = $trip->destination ? $this->mapCenter((string) $trip->destination) : null;
+        $center ??= $first ? ['lat' => (float) $first->lat, 'lng' => (float) $first->lng] : null;
+
+        return $center ? Weather::days((float) $center['lat'], (float) $center['lng'], $trip->starts_on, $trip->ends_on) : [];
+    }
+
     private function mapCenter(string $destination): ?array
     {
         $key = 'places:center:'.md5($destination);
@@ -672,8 +725,9 @@ new #[Layout('layouts.app')] class extends Component
         $this->booking = [
             'kind' => $booking->kind, 'title' => $booking->title, 'provider' => (string) $booking->provider,
             'starts_at' => (string) $booking->starts_at?->format('Y-m-d\TH:i'), 'ends_at' => (string) $booking->ends_at?->format('Y-m-d\TH:i'),
-            'reference' => (string) $booking->reference, 'cost' => $booking->cost !== null ? number_format($booking->cost, 2, ',', '') : '',
-            'paid' => $booking->paid, 'notes' => (string) $booking->notes,
+            'reference' => (string) $booking->reference,
+            'cost' => $booking->currency && $booking->foreign_amount !== null ? number_format((float) $booking->foreign_amount, 2, ',', '') : ($booking->cost !== null ? number_format($booking->cost, 2, ',', '') : ''),
+            'currency' => $booking->currency ?: 'EUR', 'paid' => $booking->paid, 'notes' => (string) $booking->notes,
         ];
         $this->editingBookingId = $booking->id;
     }
@@ -694,14 +748,23 @@ new #[Layout('layouts.app')] class extends Component
             'booking.ends_at' => ['nullable', 'date', 'after_or_equal:booking.starts_at'],
             'booking.reference' => ['nullable', 'string', 'max:255'],
             'booking.cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+            'booking.currency' => ['required', Rule::in(ExchangeRates::COMMON)],
             'booking.paid' => ['boolean'],
             'booking.notes' => ['nullable', 'string', 'max:2000'],
-        ], attributes: ['booking.title' => __('Title'), 'booking.cost' => __('Cost (€)')])['booking'];
+        ], attributes: ['booking.title' => __('Title'), 'booking.cost' => __('Cost')])['booking'];
+
+        $price = $this->price($data['cost'] !== '' ? (float) $data['cost'] : null, $data['currency']);
+
+        if ($price === null) {
+            $this->addError('booking.cost', __('No exchange rate for :currency right now – please enter the amount in euros.', ['currency' => $data['currency']]));
+
+            return;
+        }
 
         $values = [
             'kind' => $data['kind'], 'title' => $data['title'], 'provider' => $data['provider'] ?: null,
             'starts_at' => $data['starts_at'] ?: null, 'ends_at' => $data['ends_at'] ?: null, 'reference' => $data['reference'] ?: null,
-            'cost' => $data['cost'] !== '' ? $data['cost'] : null, 'paid' => (bool) $data['paid'], 'notes' => $data['notes'] ?: null,
+            'paid' => (bool) $data['paid'], 'notes' => $data['notes'] ?: null, ...$price,
         ];
         $trip = $this->findTrip();
 
@@ -713,6 +776,59 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->resetBooking($data['kind']);
         $this->dispatch('toast', message: __('Saved.'));
+    }
+
+    /**
+     * Cost in euros plus the original amount and rate for other currencies; null if the rate is unknown.
+     *
+     * @return ?array{cost: ?float, currency: ?string, foreign_amount: ?float, exchange_rate: ?float}
+     */
+    private function price(?float $amount, string $currency): ?array
+    {
+        if ($amount === null || $currency === 'EUR') {
+            return ['cost' => $amount, 'currency' => null, 'foreign_amount' => null, 'exchange_rate' => null];
+        }
+
+        $rate = ExchangeRates::rate($currency);
+
+        return $rate ? ['cost' => round($amount / $rate, 2), 'currency' => $currency, 'foreign_amount' => $amount, 'exchange_rate' => $rate] : null;
+    }
+
+    /**
+     * Reads a saved booking confirmation (.eml) or pasted mail text into draft bookings.
+     */
+    public function readBookingMail(): void
+    {
+        $this->validate([
+            'bookingMail' => ['nullable', 'file', 'max:5120'],
+            'bookingMailText' => ['nullable', 'string', 'max:100000'],
+        ]);
+
+        $raw = $this->bookingMail ? (string) file_get_contents($this->bookingMail->getRealPath()) : $this->bookingMailText;
+        $this->bookingMail = null;
+        $this->bookingMailText = '';
+        $this->mailDrafts = array_map(fn (array $draft) => [...$draft, 'currency' => in_array($draft['currency'], ExchangeRates::COMMON, true) ? $draft['currency'] : 'EUR'], BookingMail::read($raw));
+
+        if ($this->mailDrafts === []) {
+            $this->dispatch('toast', message: __('No booking found in this mail.'));
+        }
+    }
+
+    public function takeMailDraft(int $index): void
+    {
+        $draft = $this->mailDrafts[$index] ?? abort(404);
+        $this->booking = [
+            'kind' => in_array($draft['kind'], TripBooking::KINDS, true) ? $draft['kind'] : 'other', 'title' => $draft['title'], 'provider' => $draft['provider'],
+            'starts_at' => $draft['starts_at'], 'ends_at' => $draft['ends_at'], 'reference' => $draft['reference'], 'cost' => $draft['amount'],
+            'currency' => $draft['currency'], 'paid' => false, 'notes' => '',
+        ];
+        $this->editingBookingId = null;
+        $this->saveBooking();
+
+        if ($this->getErrorBag()->isEmpty()) {
+            unset($this->mailDrafts[$index]);
+            $this->mailDrafts = array_values($this->mailDrafts);
+        }
     }
 
     public function togglePaid(int $id): void
@@ -792,6 +908,8 @@ new #[Layout('layouts.app')] class extends Component
             'templates' => TripPlanner::templates(),
             'people' => $trip->packingItems->pluck('person')->filter()->unique()->values(),
             'expenseGroups' => ExpenseGroup::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->get(),
+            'currencies' => ExchangeRates::COMMON,
+            'tripRate' => $trip->currency && $this->tab === 'overview' ? ExchangeRates::rate($trip->currency) : null,
             'places' => Place::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->orderBy('visited')->orderBy('name')->get(),
         ];
     }
@@ -818,7 +936,7 @@ new #[Layout('layouts.app')] class extends Component
     </x-slot>
 
     <div class="py-6">
-        <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8" @unless ($trip->isPast() || $trip->starts_on->gt(today()->addDays(15))) wire:init="loadWeather" @endunless>
             {{-- Cover: photo or colour, countdown, dates and travellers (like Lambus) --}}
             <section class="relative isolate overflow-hidden rounded-3xl shadow-sm" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
                 @if ($trip->coverUrl())
@@ -935,6 +1053,44 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
+                @if ($weather !== [])
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" aria-labelledby="trip-weather">
+                        <h3 id="trip-weather" class="text-sm font-semibold text-gray-900 dark:text-gray-100">🌤️ {{ __('Weather forecast') }}@if ($trip->destination) · {{ $trip->destination }}@endif</h3>
+                        <div class="mt-2 flex gap-2 overflow-x-auto pb-1">
+                            @foreach ($weather as $date => $dayWeather)
+                                <div class="w-16 shrink-0 rounded-xl bg-gray-50 p-2 text-center dark:bg-gray-900/40" title="{{ \App\Support\Weather::summary($dayWeather) }}">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ \Illuminate\Support\Carbon::parse($date)->translatedFormat('D j.') }}</p>
+                                    <p class="text-xl" aria-hidden="true">{{ $dayWeather['icon'] }}</p>
+                                    <p class="text-xs tabular-nums text-gray-900 dark:text-gray-100"><span class="font-semibold">{{ $dayWeather['max'] }}°</span> <span class="text-gray-500">{{ $dayWeather['min'] }}°</span></p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @if ($trip->currency)
+                    <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <span class="text-2xl" aria-hidden="true">💱</span>
+                        @if ($tripRate)
+                            <p class="text-sm text-gray-700 dark:text-gray-300">1 € = {{ number_format($tripRate, $tripRate >= 100 ? 0 : 2, ',', '.') }} {{ $trip->currency }}</p>
+                            <label class="ms-auto flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                <input type="text" inputmode="decimal" wire:model.live.debounce.300ms="convertAmount" class="w-24 rounded-md border-gray-300 py-1 text-right text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Amount in :currency', ['currency' => $trip->currency]) }}"> {{ $trip->currency }}
+                                <span class="tabular-nums font-medium">= {{ $euro(round(max(0, (float) str_replace(',', '.', \App\Support\Life\TripPlanner::number($convertAmount) ?: '0')) / $tripRate, 2)) }}</span>
+                            </label>
+                            <p class="w-full text-xs text-gray-500 dark:text-gray-400">{{ __('Reference rate of the European Central Bank.') }}</p>
+                        @else
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('The exchange rate is not available right now.') }}</p>
+                        @endif
+                    </section>
+                @endif
+
+                <section class="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <span class="me-auto text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Take the trip with you') }}</span>
+                    <a href="{{ route('trips.itinerary', $trip) }}" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700" title="{{ __('Opens the travel plan as a page that also works without internet once it has been opened.') }}">📴 {{ __('Offline plan') }}</a>
+                    <a href="{{ route('trips.itinerary', ['trip' => $trip, 'format' => 'pdf']) }}" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">📄 PDF</a>
+                    <a href="{{ route('trips.calendar', $trip) }}" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700" title="{{ __('Bookings and the itinerary as a calendar file (ICS)') }}">📅 {{ __('Calendar') }}</a>
+                </section>
+
                 @if ($trip->notes)
                     <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📝 {{ __('Notes') }}</h3>
@@ -981,7 +1137,16 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('From') }}<input type="date" wire:model="details.starts_on" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Until') }}<input type="date" wire:model="details.ends_on" class="{{ $input }}"><x-input-error :messages="$errors->get('details.ends_on')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Budget (€)') }}<input type="text" inputmode="decimal" wire:model="details.budget" class="{{ $input }}"><x-input-error :messages="$errors->get('details.budget')" /></label>
-                    <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Travellers') }}<input type="text" wire:model="details.travelers" class="{{ $input }}"></label>
+                    <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('Travellers') }}<input type="text" wire:model="details.travelers" class="{{ $input }}"></label>
+                    <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Local currency') }}
+                        <select wire:model="details.currency" class="{{ $input }}">
+                            <option value="">EUR</option>
+                            @foreach ($currencies as $currency)
+                                @continue($currency === 'EUR')
+                                <option value="{{ $currency }}">{{ $currency }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Notes') }}<textarea wire:model="details.notes" rows="3" class="{{ $input }}" placeholder="{{ __('Address of the accommodation, emergency numbers, ideas …') }}"></textarea></label>
                     @if ($trip->created_by === auth()->id())
                         <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="details.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
@@ -1035,7 +1200,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="text-base font-bold leading-none">{{ $day['number'] }}</span>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $day['date']->translatedFormat('l, j. F') }}</h3>
+                                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $day['date']->translatedFormat('l, j. F') }}@if ($dayWeather = $weather[$day['date']->toDateString()] ?? null) <span class="ms-1 whitespace-nowrap text-sm font-normal text-gray-500 dark:text-gray-400" title="{{ \App\Support\Weather::summary($dayWeather) }}">{{ $dayWeather['icon'] }} {{ $dayWeather['max'] }}°/{{ $dayWeather['min'] }}°@if ($dayWeather['rain'] >= 40) · 💧{{ $dayWeather['rain'] }} %@endif</span>@endif</h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $day['date']->isToday() ? __('Today').' · ' : '' }}{{ trans_choice(':count entry|:count entries', $day['stops']->count() + count($day['bookings'])) }}@if ($dayRoute = $routes['days'][$day['date']->toDateString()] ?? null) · {{ $legText($dayRoute) }}@endif</p>
                             </div>
                             @if ($day['route'])
@@ -1212,6 +1377,41 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
             @elseif ($tab === 'bookings')
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" x-data="{ paste: false }">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-2xl" aria-hidden="true">✉️</span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Booking from a mail') }}</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Choose a saved confirmation mail (.eml) or paste its text – flights, trains, hotels and rental cars are recognised.') }}</p>
+                        </div>
+                        <label class="cursor-pointer rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
+                            <span wire:loading.remove wire:target="bookingMail">{{ __('Choose mail') }}</span><span wire:loading wire:target="bookingMail">⏳</span>
+                            <input type="file" accept=".eml,message/rfc822,.txt,text/plain" wire:model="bookingMail" class="sr-only" x-on:change="$nextTick(() => setTimeout(() => $wire.readBookingMail(), 50))">
+                        </label>
+                        <button type="button" x-on:click="paste = ! paste" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">{{ __('Paste text') }}</button>
+                    </div>
+                    <x-input-error :messages="$errors->get('bookingMail')" />
+                    <form x-show="paste" x-cloak wire:submit="readBookingMail" class="mt-3 space-y-2">
+                        <textarea wire:model="bookingMailText" rows="5" class="{{ $input }}" placeholder="{{ __('Paste the confirmation mail here') }}"></textarea>
+                        <x-secondary-button type="submit">{{ __('Read booking') }}</x-secondary-button>
+                    </form>
+                    @if ($mailDrafts !== [])
+                        <ul class="mt-3 divide-y divide-gray-100 rounded-xl ring-1 ring-indigo-100 dark:divide-gray-700 dark:ring-indigo-900">
+                            @foreach ($mailDrafts as $index => $draft)
+                                <li wire:key="mail-draft-{{ $index }}" class="flex flex-wrap items-center gap-3 p-3 text-sm">
+                                    <span class="text-xl" aria-hidden="true">{{ $kinds[$draft['kind']]['icon'] ?? '📌' }}</span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $draft['title'] }}</span>
+                                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ collect([$draft['starts_at'] ? \Illuminate\Support\Carbon::parse($draft['starts_at'])->translatedFormat('D, j. M Y H:i') : null, $draft['provider'], $draft['reference'] ? __('Code :code', ['code' => $draft['reference']]) : null, $draft['amount'] !== '' ? $draft['amount'].' '.$draft['currency'] : null])->filter()->implode(' · ') }}</span>
+                                    </span>
+                                    <button type="button" wire:click="takeMailDraft({{ $index }})" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">{{ __('Add') }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Please check the data – you can edit the booking afterwards.') }}</p>
+                    @endif
+                </section>
+
                 <form wire:submit="saveBooking" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ $editingBookingId ? __('Edit booking') : __('New booking') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
@@ -1226,7 +1426,18 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('End / check-out') }}<input type="datetime-local" wire:model="booking.ends_at" class="{{ $input }}"><x-input-error :messages="$errors->get('booking.ends_at')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Provider') }}<input type="text" wire:model="booking.provider" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Booking code') }}<input type="text" wire:model="booking.reference" class="{{ $input }}" autocomplete="off"></label>
-                    <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Cost (€)') }}<input type="text" inputmode="decimal" wire:model="booking.cost" class="{{ $input }}"><x-input-error :messages="$errors->get('booking.cost')" /></label>
+                    <div class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">
+                        <label for="booking-cost">{{ __('Cost') }}</label>
+                        <div class="flex gap-1">
+                            <input id="booking-cost" type="text" inputmode="decimal" wire:model="booking.cost" class="mt-1 block min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                            <select wire:model="booking.currency" class="mt-1 block w-[5.5rem] shrink-0 rounded-md border-gray-300 ps-2 pe-7 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Currency') }}">
+                                @foreach ($currencies as $currency)
+                                    <option value="{{ $currency }}">{{ $currency }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <x-input-error :messages="$errors->get('booking.cost')" />
+                    </div>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Notes') }}<input type="text" wire:model="booking.notes" class="{{ $input }}"></label>
                     <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="booking.paid" class="rounded border-gray-300 text-indigo-600"> {{ __('Already paid') }}</label>
                     <div class="flex gap-2 sm:col-span-6">
@@ -1251,7 +1462,14 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="block text-xs text-gray-500 dark:text-gray-400">{{ collect([$entry->starts_at?->translatedFormat('D, j. M H:i'), $entry->provider, $entry->reference ? __('Code :code', ['code' => $entry->reference]) : null])->filter()->implode(' · ') }}</span>
                                     </button>
                                     @if ($entry->cost !== null)
-                                        <span class="tabular-nums text-gray-700 dark:text-gray-300">{{ $euro($entry->cost) }}</span>
+                                        <span class="text-right tabular-nums text-gray-700 dark:text-gray-300">
+                                            @if ($entry->currency && $entry->foreign_amount !== null)
+                                                {{ number_format($entry->foreign_amount, 2, ',', '.') }} {{ $entry->currency }}
+                                                <span class="block text-xs text-gray-500 dark:text-gray-400">≈ {{ $euro($entry->cost) }}</span>
+                                            @else
+                                                {{ $euro($entry->cost) }}
+                                            @endif
+                                        </span>
                                         <button type="button" wire:click="togglePaid({{ $entry->id }})" @class(['rounded-full px-2 py-0.5 text-xs', 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' => $entry->paid, 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' => ! $entry->paid])>{{ $entry->paid ? __('paid') : __('open') }}</button>
                                     @endif
                                 </li>

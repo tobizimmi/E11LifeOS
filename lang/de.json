@@ -5180,5 +5180,21 @@
     "No insider trades known (often only reported for US companies).": "Keine Insider-Geschäfte bekannt (oft nur für US-Unternehmen gemeldet).",
     "Plans, products & deals": "Pläne, Produkte & Deals",
     "No news about plans or new products yet.": "Noch keine News zu Plänen oder neuen Produkten.",
-    "Headlines about new products, investments, takeovers and partnerships. The company describes its strategy in the annual report.": "Schlagzeilen zu neuen Produkten, Investitionen, Übernahmen und Partnerschaften. Seine Strategie beschreibt das Unternehmen im Geschäftsbericht."
+    "Headlines about new products, investments, takeovers and partnerships. The company describes its strategy in the annual report.": "Schlagzeilen zu neuen Produkten, Investitionen, Übernahmen und Partnerschaften. Seine Strategie beschreibt das Unternehmen im Geschäftsbericht.",
+    "Domain, user name and password are needed.": "Domain, Benutzername und Passwort werden benötigt.",
+    "Login worked – :count mail is waiting.|Login worked – :count mails are waiting.": "Anmeldung klappt – :count Mail wartet.|Anmeldung klappt – :count Mails warten.",
+    "The mailbox could not be reached: :message": "Das Postfach ist nicht erreichbar: :message",
+    "Mail intake": "Mail-Eingang",
+    "Every household gets its own address (e.g. familie.x7k2@in.example.com) to forward bookings, invoices and to-dos to. Needed: an MX record of the domain pointing to this server, a mail domain with a catch-all mailbox in Plesk (Mail → the domain → Mail settings → “Catch-all”: forward to the mailbox) and its login here. The mails are fetched every two minutes and deleted from the mailbox.": "Jeder Haushalt bekommt eine eigene Adresse (z. B. familie.x7k2@in.example.com), an die Buchungen, Rechnungen und To-dos weitergeleitet werden können. Nötig sind: ein MX-Eintrag der Domain auf diesen Server, eine Mail-Domain mit Sammelpostfach in Plesk (Mail → die Domain → Mail-Einstellungen → „Catch-All“: an das Postfach weiterleiten) und dessen Zugangsdaten hier. Die Mails werden alle zwei Minuten abgeholt und aus dem Postfach gelöscht.",
+    "Domain of the addresses": "Domain der Adressen",
+    "IMAP server": "IMAP-Server",
+    "Mailbox (user name)": "Postfach (Benutzername)",
+    "SSL/TLS (port 993)": "SSL/TLS (Port 993)",
+    "STARTTLS (port 143)": "STARTTLS (Port 143)",
+    "None (only on this server)": "Keine (nur auf diesem Server)",
+    "Last fetch :time: :processed filed, :ignored without household.": "Letzter Abruf :time: :processed einsortiert, :ignored ohne Haushalt.",
+    "Last fetch :time failed: :error": "Letzter Abruf :time fehlgeschlagen: :error",
+    "last mail :time": "letzte Mail :time",
+    "Not fetched yet – the scheduler fetches every two minutes.": "Noch nicht abgerufen – der Scheduler holt alle zwei Minuten ab.",
+    "Test mailbox": "Postfach testen"
 }

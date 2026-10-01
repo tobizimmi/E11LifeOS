@@ -3,8 +3,6 @@
 namespace App\Support;
 
 use App\Models\User;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Support\Carbon;
 
 /**
@@ -96,11 +94,8 @@ class LetterTemplates
     public static function pdf(User $user, array $letter): string
     {
         $html = view('letters.pdf', ['letter' => $letter, 'user' => $user])->render();
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html, footer: false);
 
-        return (string) $dompdf->output();
+        return $pdf;
     }
 }

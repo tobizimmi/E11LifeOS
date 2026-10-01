@@ -6,8 +6,7 @@ use App\Models\EmergencyEntry;
 use App\Models\TrustedPerson;
 use App\Models\User;
 use App\Support\Life\EmergencyFolder;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Support\PdfTheme;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -38,12 +37,9 @@ class EmergencyFolderController extends Controller
             'overview' => EmergencyFolder::overview($owner),
         ])->render();
 
-        $dompdf = new Dompdf((new Options)->setIsRemoteEnabled(false)->setDefaultFont('DejaVu Sans'));
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
+        $pdf = PdfTheme::render($html);
 
-        return response((string) $dompdf->output(), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.__('Emergency folder').'.pdf"',
             'Cache-Control' => 'private, no-store',

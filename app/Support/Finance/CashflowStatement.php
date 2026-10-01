@@ -53,18 +53,18 @@ class CashflowStatement
         $properties = $household && ! $manualOnly ? RealEstateLink::properties($user, $household->id)->load(['valuations', 'loans', 'tenants']) : collect();
         $tenants = $properties->flatMap(fn (RealEstate $realEstate) => $realEstate->isLet() ? $realEstate->tenants->filter(fn (RealEstateTenant $tenant) => $tenant->isActiveOn($to)) : []);
 
-        $transactions = $household && ! $manualOnly && $user->canUseAddon(Addons::FINANCE)
-            ? Transaction::where('user_id', $user->id)->where('household_id', $household->id)->whereBetween('booked_on', [$from, $to])
-                ->where('category', '!=', FinanceCategories::TRANSFER)->get()
-            : new Collection;
+        $transactions = $household && $user->canUseAddon(Addons::FINANCE) ? self::countedTransactions($user, $household->id, $from, $to) : new Collection;
+        $role = fn (Transaction $transaction) => CashflowCategories::roleFor($user, (string) $transaction->category);
         $bankMonths = self::monthsCovered($transactions, $from, $to);
 
         $references = $tenants->map(fn (RealEstateTenant $tenant) => mb_strtolower($tenant->reference()))->filter(fn (string $reference) => mb_strlen($reference) >= 3);
         $isRent = fn (Transaction $transaction) => $references->contains(fn (string $reference) => str_contains(mb_strtolower($transaction->counterparty.' '.$transaction->purpose), $reference));
 
-        $credits = $transactions->filter(fn (Transaction $transaction) => $transaction->amount > 0 && $transaction->category !== 'refunds');
-        $earned = (float) $credits->where('category', 'salary')->sum('amount') / $bankMonths;
-        $other = (float) $credits->filter(fn (Transaction $transaction) => $transaction->category !== 'salary' && ! $isRent($transaction))->sum('amount') / $bankMonths;
+        $monthly = fn (string $kind, bool $withoutRent = false) => (float) $transactions->filter(fn (Transaction $transaction) => $role($transaction) === $kind && ! ($withoutRent && $isRent($transaction)))->sum('amount') / $bankMonths;
+        $earned = $monthly('earned');
+        $financePortfolio = $monthly('portfolio');
+        $financePassive = $monthly('passive', true);
+        $other = $monthly('other', true);
 
         $dividends = ! $manualOnly && $user->canUseAddon(Addons::PORTFOLIO)
             ? PortfolioTransaction::whereIn('portfolio_id', Portfolio::where('user_id', $user->id)->select('id'))->where('type', 'dividend')->whereBetween('executed_on', [$from, $to])->get()
@@ -74,18 +74,20 @@ class CashflowStatement
         $rent = (float) $tenants->sum('cold_rent');
         $business = $manualOnly ? 0.0 : self::businessProfit($user, $household?->id);
 
-        $refunds = (float) $transactions->where('category', 'refunds')->sum('amount');
-        $spending = $transactions->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $transaction->category !== 'savings');
+        $refunds = (float) $transactions->filter(fn (Transaction $transaction) => $role($transaction) === 'refund')->sum('amount');
+        $spending = $transactions->filter(fn (Transaction $transaction) => $role($transaction) === 'expense');
         $expenseRows = $spending->groupBy('category')
             ->map(fn (Collection $group, string $category) => ['label' => FinanceCategories::label($category), 'icon' => FinanceCategories::icon($category), 'value' => round(-$group->sum('amount') / $bankMonths, 2), 'id' => null])
-            ->sortByDesc('value')->values()->all();
+            ->filter(fn (array $row) => $row['value'] > 0)->sortByDesc('value')->values()->all();
         $expenses = max(0.0, (-$spending->sum('amount') - $refunds) / $bankMonths);
 
         $incomeRows = [
             ['kind' => 'earned', 'label' => __('Salary & wages'), 'value' => round($earned, 2), 'id' => null],
             ['kind' => 'self_employed', 'label' => __('Business profit'), 'value' => round($business, 2), 'id' => null],
             ['kind' => 'portfolio', 'label' => __('Dividends & distributions'), 'value' => round($dividends, 2), 'id' => null],
+            ['kind' => 'portfolio', 'label' => __('Portfolio income from Finances'), 'value' => round($financePortfolio, 2), 'id' => null],
             ['kind' => 'passive', 'label' => __('Rental income (net cold rent)'), 'value' => round($rent, 2), 'id' => null],
+            ['kind' => 'passive', 'label' => __('Passive income from Finances'), 'value' => round($financePassive, 2), 'id' => null],
             ['kind' => 'other', 'label' => __('Other income'), 'value' => round($other, 2), 'id' => null],
         ];
 
@@ -169,7 +171,7 @@ class CashflowStatement
     {
         $household = $user->currentHousehold();
 
-        if (! $household || ! $user->canUseAddon(Addons::FINANCE) || $user->cashflow_manual_only) {
+        if (! $household || ! $user->canUseAddon(Addons::FINANCE) || ($user->cashflow_manual_only && CashflowCategories::overrides($user) === [])) {
             return [];
         }
 
@@ -179,8 +181,8 @@ class CashflowStatement
         $manualExpenses = (float) $manual->whereIn('kind', [CashflowEntry::EXPENSE, CashflowEntry::LIABILITY])->sum('amount');
         $to = today();
         $from = $to->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
-        $transactions = Transaction::where('user_id', $user->id)->where('household_id', $household->id)->whereBetween('booked_on', [$from, $to])
-            ->where('category', '!=', FinanceCategories::TRANSFER)->get();
+        $transactions = self::countedTransactions($user, $household->id, $from, $to);
+        $role = fn (Transaction $transaction) => CashflowCategories::roleFor($user, (string) $transaction->category);
 
         if ($transactions->isEmpty()) {
             return [];
@@ -215,10 +217,11 @@ class CashflowStatement
                 continue;
             }
 
-            $income = (float) $inMonth->filter(fn (Transaction $transaction) => $transaction->amount > 0 && $transaction->category !== 'refunds' && ! $isRent($transaction))->sum('amount')
+            $income = (float) $inMonth->filter(fn (Transaction $transaction) => in_array($role($transaction), ['earned', 'other'], true) && ! $isRent($transaction))->sum('amount')
                 + (float) ($business[$key] ?? 0) + $manualIncome;
-            $expenses = max(0.0, (float) -$inMonth->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $transaction->category !== 'savings')->sum('amount') - (float) $inMonth->where('category', 'refunds')->sum('amount')) + $manualExpenses;
-            $assetIncome = (float) $dividends->filter(fn (PortfolioTransaction $transaction) => $transaction->executed_on->format('Y-m') === $key)->sum(fn (PortfolioTransaction $transaction) => $transaction->cashFlow())
+            $expenses = max(0.0, (float) -$inMonth->filter(fn (Transaction $transaction) => $role($transaction) === 'expense')->sum('amount') - (float) $inMonth->filter(fn (Transaction $transaction) => $role($transaction) === 'refund')->sum('amount')) + $manualExpenses;
+            $assetIncome = (float) $inMonth->filter(fn (Transaction $transaction) => in_array($role($transaction), ['portfolio', 'passive'], true) && ! $isRent($transaction))->sum('amount')
+                + (float) $dividends->filter(fn (PortfolioTransaction $transaction) => $transaction->executed_on->format('Y-m') === $key)->sum(fn (PortfolioTransaction $transaction) => $transaction->cashFlow())
                 + (float) $tenants->filter(fn (RealEstateTenant $tenant) => $tenant->livesInMonth($month))->sum('cold_rent')
                 + $manualAssetIncome;
 
@@ -234,6 +237,19 @@ class CashflowStatement
         }
 
         return $rows;
+    }
+
+    /**
+     * Bank bookings of the member in the period whose category counts in the cashflow analysis.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Transaction>
+     */
+    private static function countedTransactions(User $user, int $householdId, Carbon $from, Carbon $to): \Illuminate\Database\Eloquent\Collection
+    {
+        $categories = CashflowCategories::counted($user);
+
+        return Transaction::where('user_id', $user->id)->where('household_id', $householdId)->whereBetween('booked_on', [$from, $to])
+            ->whereIn('category', $categories === [] ? [''] : $categories)->get();
     }
 
     /**

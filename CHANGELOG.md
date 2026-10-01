@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.19.0] – 2026-10-01
+
+### Neu
+- Cashflow-Analyse: „Werte aus Finanzen“ – pro Finanzkategorie festlegen, wie sie zählt (Gehalt, Kapitaleinkommen, passives oder sonstiges Einkommen, Ausgabe, Erstattung, nicht berücksichtigen). Auch mit „nur eigene Einträge“ lassen sich einzelne Kategorien dazunehmen.
+
 ## [1.18.0] – 2026-10-01
 
 ### Neu

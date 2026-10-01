@@ -53,7 +53,7 @@ class HouseholdModulesTest extends TestCase
         $expected = [
             'contracts' => ['Kategorie', 'Anbieter', 'Monatliche Kosten (€)', 'Kundennummer', 'Kündigungsfrist', 'Endet am', 'Kündigen bis', 'Website'],
             'budget' => ['Betrag (€)', 'Art', 'Kategorie', 'Datum', 'Bezahlt von'],
-            'pantry' => ['Menge', 'Einheit', 'Mindestbestand', 'Ort', 'Haltbar bis'],
+            'pantry' => ['Art', 'Menge', 'Einheit', 'Mindestbestand', 'Ort', 'Haltbar bis'],
             'bookmarks' => ['Status', 'Link'],
             'journal' => ['Datum', 'Stimmung'],
             'habits' => ['Datum', 'Sport', 'Lesen', 'Meditation', 'Genug getrunken'],

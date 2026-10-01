@@ -187,10 +187,11 @@ new class extends Component
             </div>
 
             @if ($householdId !== null)
-                <x-sidebar-group :title="__('Everyday')" section="everyday" :default="true" :active="request()->routeIs('tasks.index', 'calendar.*', 'shopping-list.*', 'recipes.*') || $currentCollectionId === $tasksCollection->id">
+                <x-sidebar-group :title="__('Everyday')" section="everyday" :default="true" :active="request()->routeIs('tasks.index', 'calendar.*', 'shopping-list.*', 'pantry.*', 'recipes.*') || $currentCollectionId === $tasksCollection->id">
                     <x-sidebar-link icon="check-circle" :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>{{ __('To-Do') }}</x-sidebar-link>
                     <x-sidebar-link icon="calendar-days" :href="route('calendar.index')" :active="request()->routeIs('calendar.*')" wire:navigate>{{ __('Calendar') }}</x-sidebar-link>
                     <x-sidebar-link icon="shopping-cart" :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>{{ __('Shopping List') }}</x-sidebar-link>
+                    <x-sidebar-link icon="archive-box" :href="route('pantry.index')" :active="request()->routeIs('pantry.*')" wire:navigate>{{ __('Pantry') }}</x-sidebar-link>
                     @if ($hasRecipes)
                         <x-sidebar-link icon="book-open" :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>{{ __('Recipes') }}</x-sidebar-link>
                     @endif

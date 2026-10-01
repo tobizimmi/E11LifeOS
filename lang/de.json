@@ -5027,5 +5027,12 @@
     "inbox": "Inbox",
     "paperless, otherwise kept with the entry": "paperless, sonst beim Eintrag gespeichert",
     "shopping list (one item per line)": "Einkaufsliste (ein Artikel pro Zeile)",
-    "the matching trip": "die passende Reise"
+    "the matching trip": "die passende Reise",
+    "The Endpoint is a fixed IP address (:endpoint). Home connections usually get a new address now and then – use the DynDNS name of your router instead (e.g. from MyFRITZ!).": "Der Endpoint ist eine feste IP-Adresse (:endpoint). Heimanschlüsse bekommen meist ab und zu eine neue Adresse – nutze stattdessen den DynDNS-Namen deines Routers (z. B. von MyFRITZ!).",
+    "The last WireGuard handshake was :time – the connection has broken off. Check whether the router is reachable; the app reconnects by itself.": "Der letzte WireGuard-Handshake war :time – die Verbindung ist abgebrochen. Prüfe, ob der Router erreichbar ist; die App verbindet sich von selbst neu.",
+    "Port :configured is already used by another program (probably the VPN of the other installation on this server) – port :own is used instead. Leave “Local port” empty, then every installation gets its own.": "Port :configured ist schon von einem anderen Programm belegt (vermutlich dem VPN der anderen Installation auf diesem Server) – stattdessen wird Port :own genutzt. Lass „Lokaler Port“ leer, dann bekommt jede Installation ihren eigenen.",
+    "Port :port is already in use. Choose another “Local port” or leave it empty.": "Port :port ist schon belegt. Wähle einen anderen „Lokalen Port“ oder lass das Feld leer.",
+    "No answer from the router – reconnecting.": "Keine Antwort vom Router – verbinde neu.",
+    "No handshake with the router – check the Endpoint and the router.": "Kein Handshake mit dem Router – prüfe Endpoint und Router.",
+    "empty = own port per installation": "leer = eigener Port je Installation"
 }

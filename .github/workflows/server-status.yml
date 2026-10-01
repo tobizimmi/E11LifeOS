@@ -60,6 +60,12 @@ jobs:
             curl -s -o /dev/null -m 15 -w "  /login → HTTP %{http_code}\n" "http://127.0.0.1:$APP_PORT/login" || echo "  no answer"
             echo "== PM2 error log (app, last 30 lines)"
             pm2 logs "e11lifeos-app$SUFFIX" --err --lines 30 --nostream --raw 2>/dev/null | tail -n 30 | cut -c1-300
+            echo "== Map services reachable from the server? (trip map)"
+            for url in "https://photon.komoot.io/api/?q=Berlin&limit=1" "https://nominatim.openstreetmap.org/search?format=jsonv2&q=Berlin&limit=1" "https://routing.openstreetmap.de/routed-foot/route/v1/driving/13.38,52.51;13.40,52.52?overview=false" "https://overpass-api.de/api/status"; do
+              curl -s -o /dev/null -m 15 -A "E11LifeOS trip planner (status check)" -w "  %{http_code} in %{time_total}s  $(echo "$url" | cut -d/ -f3)\n" "$url" || echo "  no answer  $(echo "$url" | cut -d/ -f3)"
+            done
+            echo "== Map warnings (last 10)"
+            grep -hE 'WARNING: (Place search|Places nearby|Route)' "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 10 | cut -c1-250 || true
             echo "== Laravel errors (last 10)"
             grep -hE '\.(ERROR|CRITICAL|EMERGENCY):' "$APP_PATH"/storage/logs/laravel*.log 2>/dev/null | tail -n 10 | cut -c1-300 || true
           EOF

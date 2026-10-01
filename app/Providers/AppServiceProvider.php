@@ -5,12 +5,14 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureAddonEnabled;
 use App\Models\User;
 use App\Support\AppSettings;
+use App\Support\Life\MapHttp;
 use App\Support\PrefixAwareSignedUploadUrl;
 use App\Support\Security\EncryptedFilesystemAdapter;
 use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +20,7 @@ use Illuminate\Validation\Rules\Password;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use Livewire\Livewire;
+use Psr\Http\Message\RequestInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -36,6 +39,19 @@ class AppServiceProvider extends ServiceProvider
     {
         // Keys and mail settings entered on the admin page override .env.
         AppSettings::apply();
+
+        // Every outgoing request uses the remembered address of its host (slow DNS on the server);
+        // requests through the VPN proxy resolve their names in the private network instead.
+        Http::globalMiddleware(fn (callable $handler) => function (RequestInterface $request, array $options) use ($handler) {
+            $uri = $request->getUri();
+
+            if (empty($options['proxy']) && $uri->getHost() !== '' && ($ip = MapHttp::address($uri->getHost()))) {
+                $port = $uri->getPort() ?? ($uri->getScheme() === 'http' ? 80 : 443);
+                $options['curl'][CURLOPT_RESOLVE] = [...($options['curl'][CURLOPT_RESOLVE] ?? []), "{$uri->getHost()}:{$port}:{$ip}"];
+            }
+
+            return $handler($request, $options);
+        });
 
         Gate::define('admin', fn (User $user) => $user->isAdmin());
 

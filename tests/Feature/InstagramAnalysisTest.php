@@ -88,6 +88,15 @@ class InstagramAnalysisTest extends TestCase
         $this->assertTrue(PortfolioSetting::where('user_id', $user->id)->sole()->instagram_push);
     }
 
+    public function test_long_signed_media_links_are_stored(): void
+    {
+        $link = 'https://instagram.fbcn12-1.fna.fbcdn.net/o1/v/t16/f2/m86/video.mp4?'.str_repeat('efg=abcdefghij&', 120);
+
+        $post = InstagramPost::create(['profile' => 'example', 'instagram_id' => '42', 'shortcode' => 'abc', 'thumbnail_url' => $link, 'video_url' => $link]);
+
+        $this->assertSame($link, $post->fresh()->video_url);
+    }
+
     public function test_videos_can_be_pushed_with_the_push_key(): void
     {
         $payload = ['videos' => [['instagram_id' => '999', 'shortcode' => 'PI1', 'caption' => 'Video', 'transcript' => 'Heute schauen wir auf SAP …', 'published_at' => '2026-09-25 08:00:00', 'ai_summary' => '', 'ai_tickers' => '[]']]];

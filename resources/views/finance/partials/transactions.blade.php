@@ -1,4 +1,4 @@
-{{-- Finance bookings tab (variables from finance/index: $transactions, $transactionCount, $rules, $categories, $euro, $aiAvailable, $receiptAiAvailable). --}}
+{{-- Finance bookings tab (variables from finance/index: $transactions, $transactionCount, $documentCounts, $rules, $categories, $euro, $aiAvailable, $receiptAiAvailable). --}}
 @php
     $groupLabels = ['income' => __('Income'), 'needs' => __('Needs'), 'wants' => __('Wishes & lifestyle'), 'savings' => __('Saving'), 'transfer' => __('Transfers')];
     $groupedCategories = collect($categories)->groupBy('group', preserveKeys: true);
@@ -17,6 +17,11 @@
                     @endforeach
                 </optgroup>
             @endforeach
+        </select>
+        <select wire:model.live="documentFilter" aria-label="{{ __('Documents') }}" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+            <option value="">🗂 {{ __('With and without documents') }}</option>
+            <option value="with">📎 {{ __('With document') }}</option>
+            <option value="without">∅ {{ __('Without document') }}</option>
         </select>
         @unless ($manualOpen)
             <button type="button" wire:click="openManual" class="rounded-lg px-3 py-2 text-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700">🧾 {{ __('Add receipt') }}</button>
@@ -181,7 +186,7 @@
                         <div @class(['w-24 shrink-0 text-end text-sm font-semibold tabular-nums', 'text-gray-900 dark:text-gray-100' => $transaction->amount < 0, 'text-emerald-700 dark:text-emerald-400' => $transaction->amount >= 0])>
                             {{ $transaction->amount >= 0 ? '+' : '' }}{{ $euro($transaction->amount) }}
                         </div>
-                        <button type="button" wire:click="$set('documentsFor', {{ $documentsFor === $transaction->id ? 'null' : $transaction->id }})" @class(['shrink-0 text-sm', 'text-indigo-600' => $documentsFor === $transaction->id, 'text-gray-400 hover:text-indigo-600' => $documentsFor !== $transaction->id]) title="{{ __('Documents & e-mails') }}" aria-label="{{ __('Documents & e-mails') }}" aria-expanded="{{ $documentsFor === $transaction->id ? 'true' : 'false' }}">🗂</button>
+                        <button type="button" wire:click="$set('documentsFor', {{ $documentsFor === $transaction->id ? 'null' : $transaction->id }})" @class(['shrink-0 text-sm', 'text-indigo-600' => $documentsFor === $transaction->id, 'text-gray-400 hover:text-indigo-600' => $documentsFor !== $transaction->id]) title="{{ __('Documents & e-mails') }}" aria-label="{{ __('Documents & e-mails') }}" aria-expanded="{{ $documentsFor === $transaction->id ? 'true' : 'false' }}">🗂@if ($documentCounts[$transaction->id] ?? 0)<span class="ms-0.5 align-top text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">{{ $documentCounts[$transaction->id] }}</span>@endif</button>
                         @if ($documentsFor === $transaction->id)
                             <div class="w-full rounded-lg bg-gray-50 p-3 dark:bg-gray-900/40">
                                 <livewire:documents-panel type="transaction" :id="$transaction->id" :wire:key="'documents-transaction-'.$transaction->id" />

@@ -179,17 +179,45 @@ class PaperlessClient
      */
     public function upload(UploadedFile $file, ?string $title = null, array $tagIds = []): string
     {
-        $data = array_filter(['title' => $title]);
+        return $this->uploadContents((string) file_get_contents($file->getRealPath()), $file->getClientOriginalName(), $title, $tagIds);
+    }
+
+    /**
+     * Uploads generated content (e.g. a PDF) for consumption; returns the task id.
+     *
+     * @param  list<int>  $tagIds
+     * @param  ?string  $created  date of the document (Y-m-d)
+     */
+    public function uploadContents(string $contents, string $filename, ?string $title = null, array $tagIds = [], ?string $created = null): string
+    {
+        $data = array_filter(['title' => $title, 'created' => $created]);
 
         foreach ($tagIds as $index => $tagId) {
             $data['tags['.$index.']'] = $tagId;
         }
 
         $response = $this->send(fn (PendingRequest $request) => $request->timeout(60)
-            ->attach('document', (string) file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+            ->attach('document', $contents, $filename)
             ->post($this->baseUrl.'/api/documents/post_document/', $data));
 
         return trim((string) $response->body(), "\" \n");
+    }
+
+    /**
+     * Id of the tag with this name (ignoring case); created when it does not exist yet.
+     */
+    public function ensureTag(string $name): int
+    {
+        foreach ($this->tags() as $id => $tagName) {
+            if (mb_strtolower($tagName) === mb_strtolower($name)) {
+                return $id;
+            }
+        }
+
+        $tag = $this->send(fn (PendingRequest $request) => $request->post($this->baseUrl.'/api/tags/', ['name' => $name]))->json();
+        Cache::forget('paperless-tags:'.md5($this->baseUrl.$this->token));
+
+        return (int) $tag['id'];
     }
 
     /**

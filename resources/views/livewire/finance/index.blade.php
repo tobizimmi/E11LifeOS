@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\BankAccount;
 use App\Models\FinanceBudget;
+use App\Models\ExternalLink;
 use App\Models\FinanceRule;
 use App\Models\Transaction;
 use App\Support\AiException;
@@ -47,6 +48,10 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(as: 'category', except: '')]
     public string $categoryFilter = '';
+
+    /** "with" or "without" a linked document (invoice, payslip …); "" = all. */
+    #[Url(as: 'docs', except: '')]
+    public string $documentFilter = '';
 
     #[Url(as: 'taxyear', except: 0)]
     public int $taxYear = 0;
@@ -557,11 +562,18 @@ new #[Layout('layouts.app')] class extends Component
                 ->when($this->categoryFilter !== '', fn ($query) => $query->where('category', $this->categoryFilter))
                 ->when(trim($this->search) !== '', fn ($query) => $query->where(fn ($query) => $query
                     ->whereRaw('LOWER(counterparty) LIKE ?', ['%'.mb_strtolower(trim($this->search)).'%'])
-                    ->orWhereRaw('LOWER(purpose) LIKE ?', ['%'.mb_strtolower(trim($this->search)).'%'])));
+                    ->orWhereRaw('LOWER(purpose) LIKE ?', ['%'.mb_strtolower(trim($this->search)).'%'])))
+                ->when(in_array($this->documentFilter, ['with', 'without'], true), function ($query) {
+                    $documents = ExternalLink::query()->select('linkable_id')->where('linkable_type', 'transaction')->where('household_id', $this->householdId);
+
+                    $this->documentFilter === 'with' ? $query->whereIn('id', $documents) : $query->whereNotIn('id', $documents);
+                });
 
             $data['transactionCount'] = (clone $query)->count();
             $data['matchingTransaction'] = $this->matchingTransactionId ? $this->findTransaction($this->matchingTransactionId) : null;
             $data['transactions'] = $query->with('account')->orderByDesc('booked_on')->orderByDesc('id')->limit($this->limit)->get();
+            $data['documentCounts'] = ExternalLink::where('linkable_type', 'transaction')->where('household_id', $this->householdId)
+                ->whereIn('linkable_id', $data['transactions']->pluck('id'))->selectRaw('linkable_id, COUNT(*) as total')->groupBy('linkable_id')->pluck('total', 'linkable_id');
             $data['rules'] = FinanceRule::where('user_id', $this->currentUser()->id)->orderBy('pattern')->get();
         }
 

@@ -33,8 +33,11 @@ use Illuminate\Support\Carbon;
  * @property ?string $group_info
  * @property ?string $cover_path
  * @property ?string $color
+ * @property ?string $travel_mode
+ * @property ?array<int, float> $map_area south, west, north, east
+ * @property ?Carbon $places_loaded_at
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'destination', 'starts_on', 'ends_on', 'budget', 'travelers', 'packing_templates', 'notes', 'cover_path', 'color', 'travel_mode', 'map_area', 'places_loaded_at', 'share_token', 'share_expires_at', 'share_password', 'share_references', 'meeting_point', 'organizer_contact', 'group_info'])]
 #[Hidden(['share_token', 'share_token_encrypted', 'share_password'])]
 class Trip extends Model
 {
@@ -61,6 +64,8 @@ class Trip extends Model
             'share_password' => 'hashed',
             'share_references' => 'boolean',
             'group_info' => 'encrypted',
+            'map_area' => 'array',
+            'places_loaded_at' => 'datetime',
         ];
     }
 
@@ -86,6 +91,16 @@ class Trip extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(TripBooking::class)->orderByRaw('starts_at IS NULL')->orderBy('starts_at')->orderBy('id');
+    }
+
+    /**
+     * Sights, restaurants … in the area of the trip (loaded in the background).
+     *
+     * @return HasMany<TripPlace, $this>
+     */
+    public function places(): HasMany
+    {
+        return $this->hasMany(TripPlace::class);
     }
 
     /**

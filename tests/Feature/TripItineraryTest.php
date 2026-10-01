@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -93,6 +94,7 @@ class TripItineraryTest extends TestCase
 
     public function test_places_are_found_on_the_map_and_added_to_a_day_with_their_position(): void
     {
+        Queue::fake(); // The places of the trip area have their own test (TripPlacesTest).
         Http::fake([
             'photon.komoot.io/*' => Http::response(['features' => [
                 ['geometry' => ['coordinates' => [19.0457, 47.5071]], 'properties' => ['name' => 'Parlament', 'street' => 'Kossuth Lajos tér', 'housenumber' => '1-3', 'city' => 'Budapest', 'country' => 'Ungarn', 'osm_key' => 'tourism', 'osm_value' => 'attraction']],
@@ -158,6 +160,7 @@ class TripItineraryTest extends TestCase
 
     public function test_entries_without_an_address_are_found_at_the_trip_destination_and_failures_are_retried(): void
     {
+        Queue::fake(); // The places of the trip area are not part of this test.
         Http::fake(['nominatim.openstreetmap.org/search*' => Http::sequence()
             ->push('', 503)
             ->push([['name' => 'Park Güell', 'display_name' => 'Park Güell, Barcelona', 'lat' => '41.4145', 'lon' => '2.1527']])
@@ -184,6 +187,7 @@ class TripItineraryTest extends TestCase
 
     public function test_the_route_of_a_day_shows_the_way_between_the_places_and_follows_the_travel_mode(): void
     {
+        Queue::fake();
         Http::fake(['routing.openstreetmap.de/*' => Http::response(['routes' => [[
             'duration' => 1500, 'distance' => 2100,
             'legs' => [['duration' => 600, 'distance' => 800], ['duration' => 900, 'distance' => 1300]],

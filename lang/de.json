@@ -5492,5 +5492,9 @@
     "Attractive – candidate for buying": "Attraktiv – Kaufkandidat",
     "Mixed – keep watching": "Gemischt – weiter beobachten",
     "Weak – rather not": "Schwach – eher nicht",
-    "Too little data": "Zu wenig Daten"
+    "Too little data": "Zu wenig Daten",
+    "Regular payments without a contract": "Regelmäßige Zahlungen ohne Vertrag",
+    "All other payments": "Alle weiteren Zahlungen",
+    "No payments in Finances": "Keine Zahlungen in Finanzen",
+    "Debit: :name, :amount € on :date": "Abbuchung: :name, :amount € am :date"
 }

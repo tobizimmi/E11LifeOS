@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.21.0] – 2026-10-01
+
+### Neu
+- Aktien: weitere Kennzahlen – EBIT, EBITDA, KCV (Kurs-Cashflow-Verhältnis), EV/EBITDA, Free-Cashflow-Rendite – mit Einordnung und Verlauf über die Zeit.
+- Aktien: Chartanalyse mit 200-Tage-Linie im Chart, Trend, Golden/Death Cross, RSI, Momentum, 52-Wochen-Spanne, Unterstützung/Widerstand und Volatilität.
+- Aktien: eigene Notizen und Hinweise zu jeder Aktie im Depot oder auf der Watchlist.
+
 ## [1.20.0] – 2026-10-01
 
 ### Neu

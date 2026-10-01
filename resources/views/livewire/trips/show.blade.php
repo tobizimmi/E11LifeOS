@@ -1,11 +1,13 @@
 <?php
 
+use App\Jobs\LoadTripPlaces;
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ExpenseGroup;
 use App\Models\Item;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
+use App\Models\TripPlace;
 use App\Models\TripStop;
 use App\Support\Life\TripCovers;
 use App\Support\Life\TripDayPlanner;
@@ -124,6 +126,7 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['details.title' => __('Title'), 'details.ends_on' => __('Until')])['details'];
 
         $trip = $this->findTrip();
+        $newDestination = ($data['destination'] ?: null) !== $trip->destination;
         $trip->update([
             'title' => $data['title'], 'destination' => $data['destination'] ?: null,
             'starts_on' => $data['starts_on'], 'ends_on' => $data['ends_on'],
@@ -131,6 +134,12 @@ new #[Layout('layouts.app')] class extends Component
             'notes' => $data['notes'] ?: null,
             'visibility' => $trip->created_by === Auth::id() && $this->details['private'] ? Item::VISIBILITY_PRIVATE : ($trip->created_by === Auth::id() ? Item::VISIBILITY_SHARED : $trip->visibility),
         ]);
+        if ($newDestination) {
+            $trip->forceFill(['map_area' => null, 'places_loaded_at' => null])->save();
+            Cache::forget(LoadTripPlaces::lockKey($trip->id));
+            LoadTripPlaces::start($trip);
+        }
+
         $this->fillDetails();
         $this->dispatch('toast', message: __('Saved.'));
     }
@@ -392,9 +401,68 @@ new #[Layout('layouts.app')] class extends Component
      * @return list<array{name: string, address: string, lat: float, lng: float, kind: string}>
      */
     #[Renderless]
-    public function searchPlaces(string $query, array $bounds = []): array
+    public function searchPlaces(string $query, array $bounds = [], bool $online = true): array
     {
-        return $this->limited(fn () => PlaceFinder::search($query, count($bounds) === 4 ? array_map('floatval', array_values($bounds)) : null)) ?? [];
+        $query = trim(mb_substr($query, 0, 100));
+        $bounds = count($bounds) === 4 ? array_map('floatval', array_values($bounds)) : null;
+
+        if (mb_strlen($query) < 2) {
+            return [];
+        }
+
+        // First the places loaded for the trip area (instant), then OpenStreetMap search.
+        $center = $bounds ? [($bounds[0] + $bounds[2]) / 2, ($bounds[1] + $bounds[3]) / 2] : null;
+        $needle = mb_strtolower($query);
+        $local = TripPlace::where('trip_id', $this->findTrip()->id)->where('name', 'like', '%'.addcslashes($query, '%_\\').'%')->limit(60)->get()
+            ->sortBy(fn (TripPlace $place) => [str_starts_with(mb_strtolower($place->name), $needle) ? 0 : 1, $center ? abs($place->lat - $center[0]) + abs($place->lng - $center[1]) : 0])
+            ->take(8)->map(fn (TripPlace $place) => $this->placeData($place))->values()->all();
+
+        if (! $online) {
+            return $local;
+        }
+
+        $found = $this->limited(fn () => PlaceFinder::search($query, $bounds)) ?? [];
+
+        return array_values(array_merge($local, array_filter($found, fn (array $place) => ! collect($local)->contains(fn (array $known) => $known['name'] === $place['name'] && abs($known['lat'] - $place['lat']) < 0.001))));
+    }
+
+    /**
+     * A loaded place for the map (with opening hours, website … when known).
+     *
+     * @return array{name: string, address: string, lat: float, lng: float, kind: string, info: array<string, string>}
+     */
+    private function placeData(TripPlace $place): array
+    {
+        return ['name' => $place->name, 'address' => (string) $place->address, 'lat' => $place->lat, 'lng' => $place->lng, 'kind' => $place->kind, 'info' => $place->info ?? []];
+    }
+
+    /**
+     * Uses the visible map area as the area of the trip and loads its places again.
+     *
+     * @param  list<float>  $bounds  south, west, north, east
+     */
+    public function setMapArea(array $bounds): void
+    {
+        abort_unless(count($bounds) === 4, 422);
+        [$south, $west, $north, $east] = array_map('floatval', array_values($bounds));
+        abort_unless($south < $north && $west < $east && abs($south) <= 90 && abs($north) <= 90 && abs($west) <= 180 && abs($east) <= 180, 422);
+
+        $trip = $this->findTrip();
+        $trip->forceFill(['map_area' => [$south, $west, $north, $east], 'places_loaded_at' => null])->save();
+        Cache::forget(LoadTripPlaces::lockKey($trip->id));
+        LoadTripPlaces::start($trip);
+        $this->dispatch('toast', message: __('Trip area saved – its places are loading in the background.'));
+    }
+
+    /**
+     * Loads the places of the trip area again (e.g. after a long time).
+     */
+    public function reloadPlaces(): void
+    {
+        $trip = $this->findTrip();
+        $trip->forceFill(['places_loaded_at' => null])->save();
+        Cache::forget(LoadTripPlaces::lockKey($trip->id));
+        LoadTripPlaces::start($trip);
     }
 
     /**
@@ -420,8 +488,19 @@ new #[Layout('layouts.app')] class extends Component
     public function placesNearby(array $bounds): array
     {
         abort_unless(count($bounds) === 4, 422);
+        [$south, $west, $north, $east] = array_map('floatval', array_values($bounds));
+        $trip = $this->findTrip();
 
-        return $this->limited(fn () => PlaceFinder::nearby(array_map('floatval', array_values($bounds)))) ?? [];
+        // Where the map shows the loaded trip area the places come from the database (instant, also zoomed out).
+        $area = $trip->map_area;
+
+        if ($trip->places_loaded_at && is_array($area) && count($area) === 4 && $south < $area[2] && $north > $area[0] && $west < $area[3] && $east > $area[1]) {
+            return $trip->places()->whereBetween('lat', [$south, $north])->whereBetween('lng', [$west, $east])
+                ->orderByRaw("CASE kind WHEN 'sight' THEN 0 WHEN 'activity' THEN 1 ELSE 2 END")->limit(150)->get()
+                ->map(fn (TripPlace $place) => $this->placeData($place))->all();
+        }
+
+        return $this->limited(fn () => PlaceFinder::nearby([$south, $west, $north, $east])) ?? [];
     }
 
     /**
@@ -672,6 +751,11 @@ new #[Layout('layouts.app')] class extends Component
     {
         $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants']);
         $itinerary = TripItinerary::build($trip);
+
+        // The places of the trip area are loaded once in the background when the map is first used.
+        if ($this->tab === 'map' && $trip->places_loaded_at === null && ($trip->destination || $trip->stops->contains(fn (TripStop $stop) => $stop->hasPosition()))) {
+            LoadTripPlaces::start($trip);
+        }
         $routes = in_array($this->tab, ['plan', 'map'], true) ? TripItinerary::dayRoutes($itinerary, $trip->travel_mode ?: 'foot') : ['days' => [], 'failed' => [], 'pending' => []];
 
         return [
@@ -681,6 +765,8 @@ new #[Layout('layouts.app')] class extends Component
             'travelModes' => TripRoutes::modes(),
             'mapGroups' => $this->tab === 'map' ? $this->withRoutes(TripItinerary::mapGroups($itinerary), $routes['days'], $trip->travel_mode ?: 'foot') : [],
             'mapCenter' => $this->tab === 'map' && $trip->destination ? $this->mapCenter((string) $trip->destination) : null,
+            'placesCount' => $this->tab === 'map' ? $trip->places()->count() : 0,
+            'placesLoading' => $this->tab === 'map' && Cache::has(LoadTripPlaces::lockKey($trip->id)),
             'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => ($stop->location || $trip->destination) && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
             'colors' => Trip::colorSchemes(),
@@ -980,7 +1066,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endforeach
             @elseif ($tab === 'map')
-                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'tiles' => config('services.maps.tile_url') ?: null, 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: null, 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
                 <div class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
                     <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">
@@ -995,7 +1081,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
                 <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="tripMap(@js($mapTexts), @js($mapCenter))" wire:key="trip-map-{{ $trip->id }}">
-                    <div x-ref="data" class="hidden" data-groups="{{ json_encode($mapGroups) }}"></div>
+                    <div x-ref="data" class="hidden" data-groups="{{ json_encode($mapGroups) }}" data-area="{{ json_encode($trip->map_area) }}"></div>
                     <div class="relative z-[500] flex flex-wrap gap-2 p-3">
                         <div class="relative min-w-0 flex-1 basis-full sm:basis-0" x-on:click.outside="closeResults()">
                             <input type="search" x-model="query" x-on:input.debounce.250ms="search()" x-on:keydown.escape="closeResults()" x-on:keydown.arrow-down.prevent="move(1)" x-on:keydown.arrow-up.prevent="move(-1)" x-on:keydown.enter.prevent="chooseActive()" x-on:focus="query.trim().length > 1 && results.length === 0 && search()" placeholder="🔎 {{ __('Search a place, sight or restaurant …') }}" aria-label="{{ __('Search a place') }}" autocomplete="off" enterkeyhint="search" class="block w-full rounded-xl border-gray-300 pe-9 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
@@ -1018,7 +1104,8 @@ new #[Layout('layouts.app')] class extends Component
                                 <p x-show="searched && ! searching && results.length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing found. Try another spelling or tap the place on the map.') }}</p>
                             </div>
                         </div>
-                        <button type="button" x-on:click="nearby()" x-bind:disabled="loadingNearby" class="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 sm:flex-none dark:bg-gray-700 dark:text-gray-100"><span x-show="! loadingNearby">📍 {{ __('Places nearby') }}</span><span x-show="loadingNearby" x-cloak>⏳ {{ __('Searching …') }}</span></button>
+                        <button type="button" x-on:click="nearby()" x-bind:aria-pressed="showPois" class="flex-1 rounded-xl px-3 py-2 text-sm font-medium sm:flex-none" x-bind:class="showPois ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100'"><span x-show="! loadingNearby">📍 {{ __('Places nearby') }}</span><span x-show="loadingNearby" x-cloak>⏳ {{ __('Searching …') }}</span></button>
+                        <button type="button" x-on:click="locate()" x-bind:disabled="locating" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('My location') }}" aria-label="{{ __('My location') }}"><span x-show="! locating">◎</span><span x-show="locating" x-cloak>⏳</span></button>
                         <button type="button" x-on:click="fitAll()" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('Show all') }}" aria-label="{{ __('Show all') }}">⤢</button>
                     </div>
                     <div wire:ignore class="relative z-0">
@@ -1026,6 +1113,21 @@ new #[Layout('layouts.app')] class extends Component
                         <p x-show="! ready" class="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-gray-500"><span x-show="! failed">{{ __('Loading map …') }}</span><span x-show="failed" x-cloak>{{ __('The map could not be loaded. Please reload the page.') }}</span></p>
                     </div>
                     <p class="px-3 pt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Tap the map or search to add a place to a day.') }}</p>
+                    <div class="mx-3 mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-indigo-50/70 px-3 py-2 text-xs text-indigo-900 dark:bg-indigo-900/20 dark:text-indigo-200" @if ($placesLoading) wire:poll.5s @endif>
+                        <span class="min-w-0 flex-1">
+                            @if ($placesLoading)
+                                ⏳ {{ __('Loading the sights, restaurants and beaches of the trip area …') }}
+                            @elseif ($trip->places_loaded_at)
+                                📦 {{ trans_choice(':count place of the trip area is ready for the search.|:count places of the trip area are ready for the search.', $placesCount) }}
+                            @else
+                                {{ __('Set the trip area: move the map to the region and save it – its places are then loaded for a fast search.') }}
+                            @endif
+                        </span>
+                        <button type="button" x-on:click="useAreaFromMap()" class="rounded-full bg-white px-2.5 py-1 font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:bg-gray-800 dark:text-indigo-300 dark:ring-indigo-800">⬚ {{ __('Use map area as trip area') }}</button>
+                        @if ($trip->places_loaded_at && ! $placesLoading)
+                            <button type="button" wire:click="reloadPlaces" class="rounded-full px-2 py-1 text-indigo-700 hover:bg-white dark:text-indigo-300 dark:hover:bg-gray-800" title="{{ __('Load again') }}" aria-label="{{ __('Load again') }}">↻</button>
+                        @endif
+                    </div>
                     <div class="p-3">
                         <h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('Day plan') }}</h3>
                         <ul class="divide-y divide-gray-100 dark:divide-gray-700">

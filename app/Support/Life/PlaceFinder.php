@@ -3,7 +3,6 @@
 namespace App\Support\Life;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -165,7 +164,7 @@ class PlaceFinder
         // A failed request returns null and is therefore not remembered.
         return Cache::remember('places:nearby:'.md5($box), now()->addDay(), function () use ($query): ?array {
             try {
-                $response = Http::withHeaders(self::headers())->timeout(self::TIMEOUT + 10)->asForm()->post(config('services.maps.overpass_url'), ['data' => $query]);
+                $response = MapHttp::to((string) config('services.maps.overpass_url'))->timeout(self::TIMEOUT + 10)->asForm()->post(config('services.maps.overpass_url'), ['data' => $query]);
             } catch (Throwable $exception) {
                 Log::warning('Places nearby not reachable: '.$exception->getMessage());
 
@@ -199,6 +198,94 @@ class PlaceFinder
     }
 
     /**
+     * Bounding box of a town, island or region (south, west, north, east); null if not found.
+     *
+     * @return ?array{0: float, 1: float, 2: float, 3: float}
+     */
+    public static function area(string $query): ?array
+    {
+        $result = self::get(rtrim((string) config('services.maps.nominatim_url'), '/').'/search', ['format' => 'jsonv2', 'q' => trim(mb_substr($query, 0, 150)), 'limit' => 1, 'accept-language' => 'de'])[0] ?? null;
+        $box = is_array($result) ? ($result['boundingbox'] ?? null) : null;
+
+        if (! is_array($box) || count($box) !== 4) {
+            return null;
+        }
+
+        // Nominatim: south, north, west, east.
+        return [(float) $box[0], (float) $box[2], (float) $box[1], (float) $box[3]];
+    }
+
+    /**
+     * Everything worth a visit in an area: sights, museums, viewpoints, historic places, restaurants,
+     * cafés, bars, parks, beaches … with name, address and opening hours / website when known.
+     * Null if Overpass could not be reached.
+     *
+     * @param  array{0: float, 1: float, 2: float, 3: float}  $bounds  south, west, north, east
+     * @return ?list<array{osm_id: string, name: string, kind: string, category: string, address: ?string, lat: float, lng: float, info: ?array<string, string>}>
+     */
+    public static function areaPlaces(array $bounds, int $limit = 5000): ?array
+    {
+        [$south, $west, $north, $east] = array_map(fn ($value) => round((float) $value, 4), $bounds);
+        $box = "({$south},{$west},{$north},{$east})";
+        $query = '[out:json][timeout:120];('
+            .'nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium|artwork)$"]["name"]'.$box.';'
+            .'nwr["historic"~"^(monument|castle|memorial|ruins|archaeological_site|fort|palace|manor|city_gate|tower|church|monastery)$"]["name"]'.$box.';'
+            .'nwr["amenity"~"^(restaurant|cafe|bar|pub|ice_cream|biergarten|marketplace|theatre)$"]["name"]'.$box.';'
+            .'nwr["leisure"~"^(park|garden|beach_resort|water_park|nature_reserve)$"]["name"]'.$box.';'
+            .'nwr["natural"~"^(beach|peak|cave_entrance|waterfall|bay|cape)$"]["name"]'.$box.';'
+            .'nwr["shop"~"^(mall|department_store)$"]["name"]'.$box.';'
+            .");out center tags {$limit};";
+
+        try {
+            $response = MapHttp::to((string) config('services.maps.overpass_url'))->timeout(150)->asForm()->post(config('services.maps.overpass_url'), ['data' => $query]);
+        } catch (Throwable $exception) {
+            Log::warning('Places nearby not reachable: '.$exception->getMessage());
+
+            return null;
+        }
+
+        if (! $response->successful()) {
+            Log::warning('Places nearby failed with HTTP '.$response->status());
+
+            return null;
+        }
+
+        $places = [];
+
+        foreach ((array) $response->json('elements', []) as $element) {
+            $tags = (array) ($element['tags'] ?? []);
+            $lat = $element['lat'] ?? $element['center']['lat'] ?? null;
+            $lng = $element['lon'] ?? $element['center']['lon'] ?? null;
+
+            if ($lat === null || $lng === null || ! isset($tags['name'], $element['type'], $element['id'])) {
+                continue;
+            }
+
+            [$key, $value] = collect(['tourism', 'historic', 'amenity', 'leisure', 'natural', 'shop'])
+                ->map(fn (string $key) => [$key, (string) ($tags[$key] ?? '')])->first(fn (array $pair) => $pair[1] !== '');
+            $info = array_filter([
+                'opening_hours' => isset($tags['opening_hours']) ? mb_substr((string) $tags['opening_hours'], 0, 200) : null,
+                'website' => isset($tags['website']) && str_starts_with((string) $tags['website'], 'http') ? mb_substr((string) $tags['website'], 0, 255) : null,
+                'cuisine' => isset($tags['cuisine']) ? str_replace(['_', ';'], [' ', ', '], mb_substr((string) $tags['cuisine'], 0, 80)) : null,
+                'wikipedia' => isset($tags['wikipedia']) ? mb_substr((string) $tags['wikipedia'], 0, 150) : null,
+            ]);
+
+            $places[] = [
+                'osm_id' => $element['type'].'/'.$element['id'],
+                'name' => mb_substr((string) ($tags['name:de'] ?? $tags['name']), 0, 150),
+                'kind' => self::kindFor($key === 'shop' ? 'shop' : ($key === 'leisure' || $key === 'natural' ? $key : ''), $value),
+                'category' => mb_substr($value, 0, 40),
+                'address' => trim(implode(' ', array_filter([$tags['addr:street'] ?? null, $tags['addr:housenumber'] ?? null])).(isset($tags['addr:city']) ? ', '.$tags['addr:city'] : ''), ', ') ?: null,
+                'lat' => (float) $lat,
+                'lng' => (float) $lng,
+                'info' => $info ?: null,
+            ];
+        }
+
+        return $places;
+    }
+
+    /**
      * @param  array<string, mixed>  $parameters
      */
     private static function get(string $url, array $parameters): ?array
@@ -206,7 +293,7 @@ class PlaceFinder
         self::$failed = false;
 
         try {
-            $response = Http::withHeaders(self::headers())->timeout(self::TIMEOUT)->get($url, $parameters);
+            $response = MapHttp::to($url)->timeout(self::TIMEOUT)->get($url, $parameters);
         } catch (Throwable $exception) {
             self::$failed = true;
             Log::warning('Place search not reachable: '.$exception->getMessage());
@@ -222,16 +309,6 @@ class PlaceFinder
         }
 
         return (array) $response->json();
-    }
-
-    /**
-     * OpenStreetMap asks every app to identify itself.
-     *
-     * @return array<string, string>
-     */
-    private static function headers(): array
-    {
-        return ['User-Agent' => config('app.name').' trip planner ('.config('app.url').')'];
     }
 
     /**

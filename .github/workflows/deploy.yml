@@ -191,6 +191,7 @@ jobs:
             php artisan route:clear
             php artisan view:clear
             php artisan cache:clear
+            php artisan maps:warm || true
 
             # App, Reverb, scheduler, queue worker and VPN: restart (new code) or start once.
             # A process running in another folder (app folder moved) or with other arguments (port) is started anew.

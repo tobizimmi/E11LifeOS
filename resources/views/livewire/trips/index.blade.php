@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\LoadTripPlaces;
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
 use App\Models\Trip;
@@ -51,6 +52,10 @@ new #[Layout('layouts.app')] class extends Component
             'budget' => $data['budget'] !== '' ? $data['budget'] : null,
             'travelers' => $data['travelers'] ?: null,
         ]);
+
+        if ($created->destination) {
+            LoadTripPlaces::start($created);
+        }
 
         if ($data['template'] ?? '') {
             TripPlanner::applyTemplate($created, 'basics');

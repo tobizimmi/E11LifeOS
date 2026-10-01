@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -158,6 +159,7 @@ class TripItineraryTest extends TestCase
 
     public function test_entries_without_an_address_are_found_at_the_trip_destination_and_failures_are_retried(): void
     {
+        Queue::fake(); // The places of the trip area are not part of this test.
         Http::fake(['nominatim.openstreetmap.org/search*' => Http::sequence()
             ->push('', 503)
             ->push([['name' => 'Park Güell', 'display_name' => 'Park Güell, Barcelona', 'lat' => '41.4145', 'lon' => '2.1527']])

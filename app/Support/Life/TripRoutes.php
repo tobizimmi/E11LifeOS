@@ -3,7 +3,6 @@
 namespace App\Support\Life;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -65,7 +64,7 @@ class TripRoutes
         $url = rtrim((string) config('services.maps.routing_url'), '/').'/'.self::modes()[$mode]['profile'].'/route/v1/driving/'.$coordinates;
 
         try {
-            $response = Http::withHeaders(['User-Agent' => config('app.name').' trip planner ('.config('app.url').')'])
+            $response = MapHttp::to($url)
                 ->timeout(10)->get($url, ['overview' => 'full', 'geometries' => 'geojson', 'steps' => 'false']);
         } catch (Throwable $exception) {
             Log::warning('Route not reachable: '.$exception->getMessage());

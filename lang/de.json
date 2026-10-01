@@ -4908,5 +4908,13 @@
     "The places are now sorted by distance.": "Die Orte sind jetzt nach Entfernung sortiert.",
     "Times planned – change single times in the entry.": "Uhrzeiten geplant – einzelne Zeiten änderst du im Eintrag.",
     "Shortest order": "Kürzeste Reihenfolge",
-    "Plan times": "Uhrzeiten planen"
+    "Plan times": "Uhrzeiten planen",
+    "Your location is not available – allow location access for this site in the browser settings.": "Dein Standort ist nicht verfügbar – erlaube den Standortzugriff für diese Seite in den Browser-Einstellungen.",
+    "My location": "Mein Standort",
+    "Loading the sights, restaurants and beaches of the trip area …": "Sehenswürdigkeiten, Restaurants und Strände im Reisegebiet werden geladen …",
+    ":count place of the trip area is ready for the search.|:count places of the trip area are ready for the search.": ":count Ort im Reisegebiet ist für die Suche bereit.|:count Orte im Reisegebiet sind für die Suche bereit.",
+    "Set the trip area: move the map to the region and save it – its places are then loaded for a fast search.": "Lege das Reisegebiet fest: Karte auf die Region schieben und speichern – die Orte dort werden dann für eine schnelle Suche geladen.",
+    "Use map area as trip area": "Kartenausschnitt als Reisegebiet",
+    "Load again": "Neu laden",
+    "Trip area saved – its places are loading in the background.": "Reisegebiet gespeichert – die Orte werden im Hintergrund geladen."
 }

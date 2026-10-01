@@ -169,7 +169,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function resetStop(?string $day = null, string $kind = 'sight'): void
     {
-        $this->stop = ['kind' => $kind, 'title' => '', 'day' => (string) $day, 'time' => '', 'end_time' => '', 'location' => '', 'lat' => '', 'lng' => '', 'cost' => '', 'notes' => ''];
+        $this->stop = ['kind' => $kind, 'title' => '', 'day' => (string) $day, 'time' => '', 'end_time' => '', 'location' => '', 'lat' => '', 'lng' => '', 'travel_mode' => '', 'cost' => '', 'notes' => ''];
         $this->editingStopId = null;
         $this->resetValidation();
     }
@@ -190,6 +190,7 @@ new #[Layout('layouts.app')] class extends Component
             'kind' => $stop->kind, 'title' => $stop->title, 'day' => (string) $stop->day?->toDateString(),
             'time' => (string) $stop->time, 'end_time' => (string) $stop->end_time, 'location' => (string) $stop->location,
             'lat' => $stop->lat !== null ? (string) $stop->lat : '', 'lng' => $stop->lng !== null ? (string) $stop->lng : '',
+            'travel_mode' => (string) $stop->travel_mode,
             'cost' => $stop->cost !== null ? number_format($stop->cost, 2, ',', '') : '', 'notes' => (string) $stop->notes,
         ];
         $this->editingStopId = $stop->id;
@@ -220,6 +221,7 @@ new #[Layout('layouts.app')] class extends Component
             'stop.location' => ['nullable', 'string', 'max:255'],
             'stop.lat' => ['nullable', 'numeric', 'between:-90,90'],
             'stop.lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'stop.travel_mode' => ['nullable', Rule::in(array_keys(TripRoutes::modes()))],
             'stop.cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'stop.notes' => ['nullable', 'string', 'max:2000'],
         ], attributes: ['stop.title' => __('Title'), 'stop.cost' => __('Cost (€)'), 'stop.time' => __('Time')])['stop'];
@@ -230,6 +232,7 @@ new #[Layout('layouts.app')] class extends Component
             'time' => $data['time'] ?: null, 'end_time' => $data['end_time'] ?: null, 'location' => $data['location'] ?: null,
             'lat' => $data['lat'] !== '' && $data['lat'] !== null ? (float) $data['lat'] : null,
             'lng' => $data['lng'] !== '' && $data['lng'] !== null ? (float) $data['lng'] : null,
+            'travel_mode' => ($data['travel_mode'] ?? '') ?: null,
             'cost' => $data['cost'] !== '' ? $data['cost'] : null, 'notes' => $data['notes'] ?: null,
         ];
         $previous = $this->editingStopId ? $this->findStop($this->editingStopId) : null;
@@ -513,6 +516,19 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * The way to one entry: on foot → by bike → by car → … (the trip's mode is stored as "as set for the trip").
+     */
+    public function cycleTravelMode(int $id): void
+    {
+        $stop = $this->findStop($id);
+        $tripMode = $this->findTrip()->travel_mode ?: 'foot';
+        $modes = array_keys(TripRoutes::modes());
+        $current = $stop->travel_mode ?: $tripMode;
+        $next = $modes[(array_search($current, $modes, true) + 1) % count($modes)];
+        $stop->update(['travel_mode' => $next === $tripMode ? null : $next]);
+    }
+
+    /**
      * On foot, by bike or by car: changes the routes and times of all days.
      */
     public function setTravelMode(string $mode): void
@@ -586,16 +602,16 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function withRoutes(array $groups, array $routes, string $mode): array
     {
-        $icon = TripRoutes::modes()[$mode]['icon'] ?? '';
+        $icon = fn (?string $way) => TripRoutes::modes()[$way ?? $mode]['icon'] ?? '🧭';
 
         foreach ($groups as &$group) {
             $route = $routes[$group['key']] ?? null;
             $group['line'] = $route['line'] ?? null;
-            $group['total'] = $route ? $icon.' '.TripRoutes::duration($route['duration']).' · '.TripRoutes::distance($route['distance']) : null;
+            $group['total'] = $route ? $icon($route['mode'] ?? null).' '.TripRoutes::duration($route['duration']).' · '.TripRoutes::distance($route['distance']) : null;
 
             foreach ($group['pins'] as &$pin) {
                 $leg = $route['legs'][$pin['id']] ?? null;
-                $pin['leg'] = $leg ? $icon.' '.TripRoutes::duration($leg['duration']).' · '.TripRoutes::distance($leg['distance']) : null;
+                $pin['leg'] = $leg ? $icon($leg['mode'] ?? null).' '.TripRoutes::duration($leg['duration']).' · '.TripRoutes::distance($leg['distance']) : null;
             }
         }
 
@@ -786,7 +802,7 @@ new #[Layout('layouts.app')] class extends Component
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $travelMode = $trip->travel_mode ?: 'foot';
     $legs = collect($routes['days'])->reduce(fn (array $carry, array $route) => $carry + $route['legs'], []);
-    $legText = fn (array $way) => ($travelModes[$travelMode]['icon'] ?? '').' '.TripRoutes::duration($way['duration']).' · '.TripRoutes::distance($way['distance']);
+    $legText = fn (array $way) => ($travelModes[$way['mode'] ?? $travelMode]['icon'] ?? '🧭').' '.TripRoutes::duration($way['duration']).' · '.TripRoutes::distance($way['distance']);
     $levels = ['critical' => 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800', 'warning' => 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800', 'hint' => 'bg-gray-50 text-gray-700 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-300 dark:ring-gray-700'];
     $scheme = $trip->colorScheme();
     $travellers = $trip->travellerNames();
@@ -1370,6 +1386,14 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Until') }}<input type="time" wire:model="stop.end_time" class="{{ $input }}"></label>
                 </div>
                 <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Place / address') }}<input type="text" wire:model="stop.location" class="{{ $input }}" placeholder="{{ __('e.g. Carrer de Mallorca 401, Barcelona') }}"></label>
+                <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Getting there') }}
+                    <select wire:model="stop.travel_mode" class="{{ $input }}">
+                        <option value="">{{ __('As set for the trip (:mode)', ['mode' => $travelModes[$travelMode]['label'] ?? '']) }}</option>
+                        @foreach ($travelModes as $modeKey => $mode)
+                            <option value="{{ $modeKey }}">{{ $mode['icon'] }} {{ $mode['label'] }}</option>
+                        @endforeach
+                    </select>
+                </label>
                 <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Cost (€)') }}<input type="text" inputmode="decimal" wire:model="stop.cost" class="{{ $input }}"><x-input-error :messages="$errors->get('stop.cost')" /></label>
                 <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Notes') }}<textarea wire:model="stop.notes" rows="3" class="{{ $input }}" placeholder="{{ __('Opening hours, tickets, tips …') }}"></textarea></label>
             </form>

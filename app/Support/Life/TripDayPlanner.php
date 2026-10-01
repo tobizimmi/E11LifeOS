@@ -80,7 +80,7 @@ class TripDayPlanner
 
         foreach ($stops as $stop) {
             if ($previous !== null) {
-                $travel = isset($legs[$stop->id]) ? $legs[$stop->id]['duration'] / 60 : self::estimate($previous, $stop, $mode);
+                $travel = isset($legs[$stop->id]) ? $legs[$stop->id]['duration'] / 60 : self::estimate($previous, $stop, $stop->travel_mode ?: $mode);
                 $clock = (int) (ceil(($clock + $travel) / 5) * 5);
             }
 

@@ -92,7 +92,7 @@ class TripItinerary
      * Without $fetch only remembered routes are used, "pending" then lists the days still to calculate.
      *
      * @param  array{days: list<array{date: Carbon, stops: Collection<int, TripStop>}>}  $plan
-     * @return array{days: array<string, array{duration: float, distance: float, line: list<array{0: float, 1: float}>, legs: array<int, array{duration: float, distance: float}>}>, failed: list<string>, pending: list<string>}
+     * @return array{days: array<string, array{duration: float, distance: float, line: list<array{0: float, 1: float}>, legs: array<int, array{duration: float, distance: float, mode: string}>, mode: string}>, failed: list<string>, pending: list<string>}
      */
     public static function dayRoutes(array $plan, string $mode, bool $fetch = false): array
     {
@@ -106,7 +106,17 @@ class TripItinerary
             }
 
             $key = $day['date']->toDateString();
-            $route = TripRoutes::route($stops->map(fn (TripStop $stop) => ['lat' => (float) $stop->lat, 'lng' => (float) $stop->lng])->all(), $mode, $fetch);
+            $point = fn (TripStop $stop) => ['lat' => (float) $stop->lat, 'lng' => (float) $stop->lng];
+            $modeOf = fn (TripStop $stop) => isset(TripRoutes::modes()[(string) $stop->travel_mode]) ? (string) $stop->travel_mode : $mode;
+
+            // One route for the whole day when every way uses the same mode, otherwise one per way.
+            if ($stops->skip(1)->every(fn (TripStop $stop) => $modeOf($stop) === $mode)) {
+                $route = TripRoutes::route($stops->map($point)->all(), $mode, $fetch);
+                $modes = array_fill(0, $stops->count() - 1, $mode);
+            } else {
+                $route = self::combine($stops->skip(1)->values()->map(fn (TripStop $stop, int $index) => TripRoutes::route([$point($stops[$index]), $point($stop)], $modeOf($stop), $fetch))->all());
+                $modes = $stops->skip(1)->values()->map($modeOf)->all();
+            }
 
             if ($route === null) {
                 $result['pending'][] = $key;
@@ -117,15 +127,39 @@ class TripItinerary
 
                 foreach ($route['legs'] as $index => $leg) {
                     if ($stops->has($index + 1)) {
-                        $legs[$stops[$index + 1]->id] = $leg;
+                        $legs[$stops[$index + 1]->id] = $leg + ['mode' => $modes[$index] ?? $mode];
                     }
                 }
 
-                $result['days'][$key] = ['duration' => $route['duration'], 'distance' => $route['distance'], 'line' => $route['line'], 'legs' => $legs];
+                $result['days'][$key] = ['duration' => $route['duration'], 'distance' => $route['distance'], 'line' => $route['line'], 'legs' => $legs, 'mode' => count(array_unique($modes)) === 1 ? $modes[0] : 'mixed'];
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Joins the routes of single ways into one; null while one is still missing, false if one failed.
+     *
+     * @param  list<array{duration: float, distance: float, legs: list<array{duration: float, distance: float}>, line: list<array{0: float, 1: float}>}|false|null>  $parts
+     * @return array{duration: float, distance: float, legs: list<array{duration: float, distance: float}>, line: list<array{0: float, 1: float}>}|false|null
+     */
+    private static function combine(array $parts): array|false|null
+    {
+        if (in_array(null, $parts, true)) {
+            return null;
+        }
+
+        if (in_array(false, $parts, true)) {
+            return false;
+        }
+
+        return [
+            'duration' => array_sum(array_column($parts, 'duration')),
+            'distance' => array_sum(array_column($parts, 'distance')),
+            'legs' => array_merge(...array_column($parts, 'legs')),
+            'line' => array_merge(...array_column($parts, 'line')),
+        ];
     }
 
     /**

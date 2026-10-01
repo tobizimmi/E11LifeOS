@@ -787,60 +787,6 @@ parameters:
 			path: app/Models/Item.php
 
 		-
-			message: '#^Call to function is_array\(\) with \*NEVER\* will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Cannot unset offset ''rotation'' on array\{\}\|string\.$#'
-			identifier: unset.offset
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Offset ''body'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Offset ''id'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Offset ''rotation'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Offset ''subtasks'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Offset ''text'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Models/Item.php
-
-		-
-			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
-			identifier: arrayValues.empty
-			count: 2
-			path: app/Models/Item.php
-
-		-
-			message: '#^Property App\\Models\\Item\:\:\$content \(string\|null\) does not accept array\<string, list\<array\<string, bool\|string\>\>\>\|null\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Models/Item.php
-
-		-
 			message: '#^Property App\\Models\\Item\:\:\$properties \(string\|null\) does not accept array\<int\|string\>\.$#'
 			identifier: assign.propertyType
 			count: 1
@@ -1543,12 +1489,6 @@ parameters:
 			path: app/Support/ContractAssistant.php
 
 		-
-			message: '#^Offset ''deadline_tasks'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Support/ContractAssistant.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CollectionProperty\)\: bool given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1569,12 +1509,6 @@ parameters:
 		-
 			message: '#^Parameter \#2 \$property of static method App\\Support\\ContractAssistant\:\:createTask\(\) expects App\\Models\\CollectionProperty, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Support/ContractAssistant.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between null and non\-empty\-string will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Support/ContractAssistant.php
 

@@ -8,8 +8,10 @@ use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Models\RealEstate;
 use App\Models\Transaction;
+use App\Support\CollectionTemplates;
 use App\Support\Finance\InsuranceCheck;
 use App\Support\Finance\RetirementPlan;
+use App\Support\Finance\SubscriptionMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Volt\Volt;
@@ -63,6 +65,62 @@ class ProvisionCheckTest extends TestCase
 
         $this->assertSame(1, InsuranceCheck::for($user->fresh())['gaps']);
         Volt::test('provision.index')->call('answer', 'unknown', 'have')->assertNotFound();
+    }
+
+    public function test_insurances_can_be_added_linked_with_payments_assigned_and_rejected(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $collection = Collection::factory()->create(['household_id' => $household->id, 'created_by' => $user->id, 'name' => 'Verträge']);
+        CollectionTemplates::apply($collection, 'contracts');
+        $cost = $collection->properties()->where('name', 'Monatliche Kosten (€)')->sole();
+        $contract = fn (string $title, float $monthly) => Item::factory()->create(['household_id' => $household->id, 'collection_id' => $collection->id, 'created_by' => $user->id, 'type' => Item::TYPE_ENTRY, 'title' => $title, 'properties' => [$cost->id => $monthly]]);
+        $unknown = $contract('Allianz Versicherung Police 4711', 60);
+        $dog = $contract('Haftpflicht Hundeschule Beitrag', 15);
+
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        foreach (['07', '08', '09'] as $month) {
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => "2026-$month-03", 'amount' => -7.5, 'counterparty' => 'HUK-COBURG', 'purpose' => null, 'category' => 'insurance']);
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => "2026-$month-04", 'amount' => -28, 'counterparty' => 'WWK Leben', 'purpose' => null, 'category' => 'insurance']);
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => "2026-$month-05", 'amount' => -12.99, 'counterparty' => 'Netflix', 'purpose' => null, 'category' => 'subscriptions']);
+        }
+
+        $check = InsuranceCheck::for($user);
+        $this->assertSame(['Allianz Versicherung Police 4711'], array_column($check['candidates'], 'title'));
+        $this->assertSame('ok', collect($check['rows'])->firstWhere('key', 'liability')['status']);
+
+        $payments = collect(SubscriptionMatcher::for($user, $household->id)['unmatched'])->keyBy('name');
+        $this->actingAs($user);
+        Volt::test('provision.index')
+            ->assertSee('Versicherungsbeiträge ohne Vertrag')
+            ->assertSee('Nicht erkannte Versicherungen')
+            // The unknown contract is an occupational disability insurance, the "dog school" no insurance at all.
+            ->call('assignContract', $unknown->id, 'disability')
+            ->call('assignContract', $dog->id, InsuranceCheck::NONE)
+            // A liability insurance is added and linked to its monthly debit …
+            ->call('startCreate', 'liability')
+            ->set('insurance.provider', 'HUK-COBURG')
+            ->set('insurance.payment', $payments['HUK-COBURG']['key'])
+            ->call('saveInsurance')->assertHasNoErrors()
+            // … and the term life insurance straight from its payment.
+            ->call('createFromPayment', $payments['WWK Leben']['key'], 'term_life')
+            ->assertSee('Abbuchung: HUK-COBURG, 7,50 € pro Monat')
+            ->call('assignContract', $dog->id, 'unknown')->assertNotFound();
+
+        $check = InsuranceCheck::for($user->fresh());
+        $rows = collect($check['rows'])->keyBy('key');
+        $this->assertSame(['Allianz Versicherung Police 4711'], array_column($rows['disability']['contracts'], 'title'));
+        $this->assertSame(['Privathaftpflichtversicherung – HUK-COBURG'], array_column($rows['liability']['contracts'], 'title'));
+        $this->assertSame(['Risikolebensversicherung – WWK Leben'], array_column($rows['term_life']['contracts'], 'title'));
+        $this->assertSame(7.5, $rows['liability']['contracts'][0]['monthly']);
+        $this->assertSame([], $check['candidates']);
+
+        // Linked payments count as matched; the rest stays open.
+        $matching = SubscriptionMatcher::for($user->fresh(), $household->id);
+        $this->assertSame(['Netflix'], array_column($matching['unmatched'], 'name'));
+
+        // On the contract costs page a payment can be linked to an existing contract.
+        Volt::test('contracts.index')->call('link', $matching['unmatched'][0]['key'], $dog->id);
+        $this->assertSame([], SubscriptionMatcher::for($user->fresh(), $household->id)['unmatched']);
     }
 
     public function test_the_pension_gap_and_financial_freedom_are_projected(): void

@@ -148,6 +148,12 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ env.SSH_HOST_DEPLOY }} "export PATH=/usr/local/bin:/usr/bin:/bin:\$PATH; pm2 stop '${{ env.PM2_SCHEDULER_NAME }}' '${{ env.PM2_QUEUE_NAME }}' > /dev/null 2>&1 || true"
 
+      - name: Write build info (version shown in the app)
+        run: |
+          printf '{"build": %s, "commit": "%s", "environment": "%s", "date": "%s"}\n' \
+            "${{ github.run_number }}" "${GITHUB_SHA::7}" "${{ env.DEPLOY_ENV }}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > build.json
+          cat build.json
+
       - name: Deploy application code
         run: |
           # .env is fully SERVER-MANAGED and intentionally never touched by CI —

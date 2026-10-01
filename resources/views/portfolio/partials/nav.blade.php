@@ -6,6 +6,7 @@
             'portfolio.transactions' => '🧾 '.__('Transactions'),
             'portfolio.analysis' => '📊 '.__('Analysis'),
             'portfolio.recommendations' => '🔎 '.__('Recommendations'),
+            'portfolio.insights' => '🕵️ '.__('Insiders & analysts'),
             'portfolio.discover' => '🌍 '.__('Discover'),
             'portfolio.news' => '📰 '.__('News'),
             'portfolio.instagram' => '📸 '.__('Instagram'),

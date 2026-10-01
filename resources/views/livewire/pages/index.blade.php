@@ -318,6 +318,42 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Makes a checklist item a real task: due date ("//15.10.") and person ("@Anna") are taken over,
+     * the task is linked to the page and the item gets a link to it.
+     */
+    public function checklistToTask(int $index): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+        $item = NoteMarkdown::taskLine($page->body(), $index) ?? abort(404);
+
+        if (preg_match(NoteMarkdown::TASK_LINK_PATTERN, $item['text'])) {
+            $this->dispatch('toast', message: __('This item is already a task.'));
+
+            return;
+        }
+
+        $text = (string) preg_replace_callback(NoteMarkdown::DUE_PATTERN, fn (array $match) => NoteMarkdown::parseDue($match[1])?->format('d.m.Y') ?? $match[1], $item['text']);
+        $task = TaskPages::createOnPage($page, Auth::user(), mb_substr(trim($text), 0, 500));
+
+        if (! $task) {
+            return;
+        }
+
+        if ($item['done']) {
+            $task->update(['done' => true]);
+        }
+
+        $body = NoteMarkdown::appendToTask($page->body(), $index, '{task:'.$task->id.'}');
+
+        if ($body !== null) {
+            PageRevisions::record($page, Auth::user(), (string) $page->title, $body);
+            $page->update(['content' => ['body' => $body] + ($page->content ?? [])]);
+        }
+
+        $this->dispatch('toast', message: __('Task created and linked.'));
+    }
+
+    /**
      * Creates a task right on the open page; it is linked to the page and lands in its space.
      */
     public function addPageTask(): void
@@ -414,7 +450,7 @@ new #[Layout('layouts.app')] class extends Component
                 'selectedPage' => $page,
                 'breadcrumbs' => $page ? $tree->ancestors($page->id) : [],
                 'subpages' => $page ? $tree->children($page->id) : [],
-                'pageHtml' => $page ? NoteMarkdown::toHtml($page, Auth::user(), interactiveTasks: true) : null,
+                'pageHtml' => $page ? NoteMarkdown::toHtml($page, Auth::user(), interactiveTasks: true, taskButtons: true) : null,
                 'pageTasks' => $page ? TaskPages::tasksOf($page, Auth::user()) : collect(),
             ] + $data;
         }
@@ -534,6 +570,7 @@ new #[Layout('layouts.app')] class extends Component
 
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
+                                {{ __('In checklists, “//15.10.” adds a due date and “@Name” a person; ↗ makes an item a task.') }}
                             </p>
                             <x-input-error :messages="$errors->get('body')" class="mt-2" />
                         </div>

@@ -123,6 +123,29 @@ class ProvisionCheckTest extends TestCase
         $this->assertSame([], SubscriptionMatcher::for($user->fresh(), $household->id)['unmatched']);
     }
 
+    public function test_any_debit_can_be_linked_also_a_yearly_premium_paid_once(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => '2026-03-01', 'amount' => -480, 'counterparty' => 'Debeka', 'purpose' => 'BU-Versicherung Jahresbeitrag', 'category' => 'other']);
+        Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => '2026-09-10', 'amount' => -96, 'counterparty' => 'ADAC', 'purpose' => null, 'category' => 'mobility']);
+
+        $this->assertSame([], SubscriptionMatcher::for($user, $household->id)['unmatched']);
+        $key = collect(SubscriptionMatcher::payees($user, $household->id))->firstWhere('name', 'Debeka')['key'];
+
+        $this->actingAs($user);
+        Volt::test('provision.index')
+            ->call('startCreate', 'disability')
+            ->assertSee('Alle weiteren Zahlungen')->assertSee('ADAC')
+            ->set('insurance.provider', 'Debeka')->set('insurance.monthly', '40')->set('insurance.payment', $key)
+            ->call('saveInsurance')->assertHasNoErrors()
+            ->assertSee('Abbuchung: Debeka, 480,00 € am 01.03.2026');
+
+        $contract = collect(InsuranceCheck::for($user->fresh())['rows'])->firstWhere('key', 'disability')['contracts'][0];
+        $this->assertSame(40.0, $contract['monthly']);
+        $this->assertSame([$key], $contract['payments']);
+    }
+
     public function test_the_pension_gap_and_financial_freedom_are_projected(): void
     {
         $inputs = ['birth_year' => 1991, 'retirement_age' => 67, 'desired_income' => 3000.0, 'statutory_pension' => 1500.0, 'other_pension' => 0.0, 'assets' => 50000.0, 'monthly_savings' => 500.0, 'return' => 5.0, 'inflation' => 2.0, 'withdrawal' => 4.0];

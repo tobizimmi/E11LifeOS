@@ -12,6 +12,7 @@ use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
 use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\GroupTripController;
+use App\Http\Controllers\HealthPdfController;
 use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
@@ -71,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('review', 'review.index')->name('review.index');
     Volt::route('provision', 'provision.index')->name('provision.index');
     Volt::route('health', 'health.index')->middleware([Security::SENSITIVE, 'sensitive.log:health'])->name('health.index');
+    Route::get('health/{profile}/vaccinations.pdf', HealthPdfController::class)->whereNumber('profile')->middleware([Security::SENSITIVE, 'sensitive.log:health'])->name('health.vaccinations');
     Volt::route('people', 'people.index')->name('people.index');
     Volt::route('places', 'places.index')->name('places.index');
     Volt::route('learnings', 'learnings.index')->name('learnings.index');

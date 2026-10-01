@@ -515,6 +515,15 @@ new #[Layout('layouts.app')] class extends Component
         );
     }
 
+    /**
+     * Turns a budget into a pot (left-over money carries into the next month) or back.
+     */
+    public function toggleRollover(string $category): void
+    {
+        $budget = FinanceBudget::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->where('category', $category)->firstOrFail();
+        $budget->update(['rollover_from' => $budget->rollover_from ? null : now()->startOfMonth()]);
+    }
+
     public function askAnalyst(FinanceAi $ai): void
     {
         $this->aiError = null;

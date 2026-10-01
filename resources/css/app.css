@@ -7,6 +7,39 @@
 }
 
 /*
+ * Cards and tiles keep the width of their column: grid and flex children may shrink below the
+ * length of their text (otherwise one long word or link makes a card and the page wider than the
+ * screen), and words or links longer than the line break instead of running out of the card.
+ */
+@layer base {
+    .grid > *,
+    .flex-1 {
+        min-width: 0;
+    }
+
+    main,
+    [role="dialog"],
+    [data-page-header] {
+        overflow-wrap: break-word;
+    }
+
+    /* Hidden labels (sr-only) inside scrolling tables stay inside the table instead of widening the page. */
+    .overflow-x-auto {
+        position: relative;
+    }
+
+    /* Page title and its buttons: the buttons move below the title when both do not fit on the phone. */
+    [data-page-header] .justify-between {
+        flex-wrap: wrap;
+        row-gap: 0.75rem;
+    }
+
+    [data-page-header] .justify-between > h2 {
+        min-width: 0;
+    }
+}
+
+/*
  * Calm, uniform surfaces: white cards on the tinted page get a fine outline instead of
  * only a grey shadow, dark cards a subtle light edge, so they sit together with the
  * sidebar and header.

@@ -1,0 +1,52 @@
+name: VPN-Check (einmalig)
+
+# Temporary, read-only: VPN processes of live and staging, whether both use the same WireGuard key
+# (only a short fingerprint is shown), the tunnel state of each wireproxy and the DNS servers.
+
+on:
+  push:
+    branches: [claude/e11lifeos-second-brain-re5ulu]
+    paths: [.github/workflows/vpn-check-once.yml]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.SSH_HOST_STAGING }}" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Read-only VPN check
+        run: |
+          ssh -i ~/.ssh/id_rsa -o BatchMode=yes ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_STAGING }} bash -s -- "${{ secrets.APP_PATH_STAGING }}" "${{ secrets.APP_PATH_LIVE }}" << 'EOF2'
+            export PATH="/opt/plesk/php/8.4/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+            echo "== PM2 VPN processes"
+            pm2 jlist 2>/dev/null | php -r 'foreach (json_decode(stream_get_contents(STDIN), true) ?: [] as $p) { if (str_contains($p["name"] ?? "", "vpn")) { $e = $p["pm2_env"] ?? []; printf("  %-26s %-8s restarts=%s uptime_since=%s\n", $p["name"], $e["status"] ?? "?", $e["restart_time"] ?? "?", isset($e["pm_uptime"]) ? date("Y-m-d H:i", intdiv($e["pm_uptime"], 1000)) : "?"); } }'
+            echo "== wireproxy processes"
+            ps -eo pid,etime,args | grep -i [w]ireproxy | sed -E 's#-c [^ ]+#-c <conf>#' | cut -c1-150
+            for name in staging:"$1" live:"$2"; do
+              label="${name%%:*}"; path="${name#*:}"
+              echo "== $label"
+              cd "$path" || continue
+              php artisan tinker --execute '
+                App\Support\AppSettings::apply();
+                $c = App\Support\Vpn::parse((string) config("vpn.wireguard_config"));
+                echo "  enabled=".(config("vpn.enabled") ? "yes" : "no")." socks=".config("vpn.socks_port")." info=".config("vpn.info_port")."\n";
+                if ($c) {
+                  echo "  key fingerprint=".substr(sha1($c["interface"]["privatekey"]), 0, 8)." address=".$c["interface"]["address"]." dns=".($c["interface"]["dns"] ?? "-")."\n";
+                  foreach ($c["peers"] as $p) { echo "  peer endpoint=".$p["endpoint"]." allowedips=".($p["allowedips"] ?? "-")." keepalive=".($p["persistentkeepalive"] ?? "-")."\n"; }
+                }
+                echo "  networks=".implode(",", App\Support\Vpn::networks())."\n";
+                $s = App\Support\Vpn::status(); echo "  status=".($s["state"] ?? "-")." at=".($s["at"] ?? "-")." msg=".($s["message"] ?? "")."\n";
+                $t = App\Support\Vpn::tunnelState(); echo "  tunnel=".json_encode($t)." (now ".time().")\n";
+              ' 2>&1 | grep -v "^$" | cut -c1-220
+              info=$(php artisan tinker --execute 'App\Support\AppSettings::apply(); echo config("vpn.info_port");' 2>/dev/null | tail -n1)
+              echo "  metrics (without keys):"
+              curl -s -m 3 "http://127.0.0.1:$info/metrics" | grep -Ev 'key=' | sed 's/^/    /' | head -n 20
+            done
+            echo "== DNS servers (resolv.conf)"; grep -E '^\s*(nameserver|search|options)' /etc/resolv.conf | sed 's/^/  /'
+            echo "== Who set resolv.conf?"; ls -l /etc/resolv.conf; head -n 3 /etc/resolv.conf
+            echo "== System WireGuard interfaces?"; (ip -brief link 2>/dev/null | grep -Ei 'wg|tun') || echo "  none"
+          EOF2

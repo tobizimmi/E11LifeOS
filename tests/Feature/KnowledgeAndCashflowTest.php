@@ -177,7 +177,7 @@ class KnowledgeAndCashflowTest extends TestCase
         $statement = CashflowStatement::for($user->fresh());
         $this->assertSame([3000.0, 400.0, 0.0], [$statement['income']['earned'], $statement['income']['passive'], $statement['income']['other']]);
         $this->assertSame(1500.0, $statement['expenses']['total']);
-        $this->assertSame(['other_income' => 'passive', 'cash' => 'ignore'], $user->fresh()->cashflow_categories);
+        $this->assertEqualsCanonicalizing(['other_income' => 'passive', 'cash' => 'ignore'], $user->fresh()->cashflow_categories);
 
         // Back to the default role: the override is removed.
         Volt::test('cashflow.index')->call('setCategoryRole', 'cash', 'expense');

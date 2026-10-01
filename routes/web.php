@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\BookkeepingReceiptController;
 use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
+use App\Http\Controllers\CareerCvController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\EmergencyFolderController;
 use App\Http\Controllers\ExpenseGroupController;
@@ -89,6 +90,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('drives/google/connect', [GoogleDriveController::class, 'connect'])->middleware('throttle:10,1')->name('drives.google.connect');
     Route::get('drives/google/callback', [GoogleDriveController::class, 'callback'])->middleware('throttle:10,1')->name('drives.google.callback');
     Volt::route('work', 'work.index')->name('work.index');
+    Volt::route('career', 'career.index')->name('career.index');
+    Route::get('career/cv', CareerCvController::class)->middleware('throttle:20,1')->name('career.cv');
     Volt::route('trips', 'trips.index')->name('trips.index');
     Volt::route('kids', 'kids.index')->name('kids.index');
     Volt::route('spaces', 'spaces.index')->name('spaces.index');

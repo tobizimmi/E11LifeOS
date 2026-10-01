@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
 use App\Models\CalendarSubscription;
+use App\Models\CareerEntry;
 use App\Models\CashflowEntry;
 use App\Models\Collection;
 use App\Models\Comment;
@@ -184,6 +185,10 @@ class DataExportController extends Controller
                 ? Kid::where('household_id', $household->id)->with(['transactions'])->orderBy('id')->get()
                     ->map(fn (Kid $kid) => $kid->makeHidden(['household_id'])->toArray())
                 : [],
+            'career' => [
+                'profile' => $user->career_profile,
+                'entries' => CareerEntry::where('user_id', $user->id)->orderBy('starts_on')->get()->map->only(['type', 'title', 'organization', 'location', 'starts_on', 'ends_on', 'description', 'details']),
+            ],
             'trips' => $household
                 ? Trip::query()->where('household_id', $household->id)->where('created_by', $user->id)->with(['bookings', 'packingItems' => fn ($query) => $query->visibleTo($user)])->orderBy('starts_on')->get()
                     ->map(fn (Trip $trip) => $trip->makeHidden(['household_id', 'created_by'])->toArray())

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\BookkeepingEntry;
+use App\Models\CareerEntry;
 use App\Models\ExternalLink;
 use App\Models\Item;
 use App\Models\Quote;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ExternalLinks
 {
-    public const TYPES = ['item', 'real_estate', 'real_estate_invoice', 'transaction', 'bookkeeping_entry', 'quote', 'trip'];
+    public const TYPES = ['item', 'real_estate', 'real_estate_invoice', 'transaction', 'bookkeeping_entry', 'quote', 'trip', 'career_entry'];
 
     /**
      * Mail links from the common mail apps; web mail uses https.
@@ -37,6 +38,7 @@ class ExternalLinks
             'real_estate' => RealEstate::query()->visibleTo($user, $householdId)->find($id),
             'real_estate_invoice' => RealEstateInvoice::query()->whereIn('real_estate_id', RealEstate::query()->visibleTo($user, $householdId)->select('id'))->find($id),
             'transaction' => Transaction::where('user_id', $user->id)->where('household_id', $householdId)->find($id),
+            'career_entry' => CareerEntry::where('user_id', $user->id)->where('household_id', $householdId)->find($id),
             'bookkeeping_entry' => BookkeepingEntry::where('user_id', $user->id)->where('household_id', $householdId)->find($id),
             'trip' => Trip::query()->visibleTo($user, $householdId)->find($id),
             'quote' => Quote::query()->whereIn('quote_comparison_id', QuoteComparison::query()->visibleTo($user, $householdId)->select('id'))->find($id),

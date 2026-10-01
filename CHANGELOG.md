@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.20.0] – 2026-10-01
+
+### Neu
+- Karriere (unter „Zuhause & Familie“): Werdegang mit Jobs, Schule & Studium, Schulungen und Meilensteinen; Schulungen mit Zertifikat (paperless oder Upload) und Ablaufdatum-Hinweis; Arbeitsverträge mit Gehalt, Kündigungsfrist, Urlaub und Unterlagen; Lebenslauf mit PDF; Bewerbungen mit Status und Vorschlägen aus der Jobbörse der Bundesagentur für Arbeit sowie Suchlinks zu StepStone, Indeed, LinkedIn und XING. Nur für dich sichtbar.
+
 ## [1.19.0] – 2026-10-01
 
 ### Neu

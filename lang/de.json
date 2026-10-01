@@ -5314,5 +5314,15 @@
     "Mark paid": "Bezahlt markieren",
     "With and without documents": "Mit und ohne Beleg",
     "With document": "Mit Beleg",
-    "Without document": "Ohne Beleg"
+    "Without document": "Ohne Beleg",
+    "Salary (earned income)": "Gehalt (Arbeitseinkommen)",
+    "Refund (lowers expenses)": "Erstattung (senkt Ausgaben)",
+    "Not counted": "Nicht berücksichtigen",
+    "Portfolio income from Finances": "Kapitalerträge aus Finanzen",
+    "Passive income from Finances": "Passive Einnahmen aus Finanzen",
+    "Values from Finances": "Werte aus Finanzen",
+    "Choose which finance categories are added to your own entries.": "Wähle, welche Finanzkategorien zu deinen eigenen Einträgen dazukommen.",
+    "Choose how each finance category counts – e.g. a category as salary or as passive income.": "Lege fest, wie jede Finanzkategorie zählt – z. B. eine Kategorie als Gehalt oder als passives Einkommen.",
+    "Counts as": "Zählt als",
+    "Average of the last 12 months from your bank bookings. Rent from your tenants is counted with the property.": "Durchschnitt der letzten 12 Monate aus deinen Bankbuchungen. Mieten deiner Mieter zählen bei der Immobilie."
 }

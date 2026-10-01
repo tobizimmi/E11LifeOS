@@ -157,6 +157,42 @@ class KnowledgeAndCashflowTest extends TestCase
         Volt::test('cashflow.index')->call('edit', $rent->id)->assertNotFound();
     }
 
+    public function test_finance_categories_can_be_assigned_to_cashflow_roles(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+
+        foreach (['2026-08-01', '2026-09-01'] as $month) {
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => $month, 'amount' => 3000, 'category' => 'salary', 'counterparty' => 'Arbeitgeber']);
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => $month, 'amount' => 400, 'category' => 'other_income', 'counterparty' => 'Lizenzpartner']);
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => $month, 'amount' => -1500, 'category' => 'groceries', 'counterparty' => 'Markt']);
+            Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => $month, 'amount' => -100, 'category' => 'cash', 'counterparty' => 'Automat']);
+        }
+
+        $this->actingAs($user);
+        Volt::test('cashflow.index')->assertSee('Werte aus Finanzen')->assertSee('Gehalt (Arbeitseinkommen)')
+            ->call('setCategoryRole', 'other_income', 'passive')
+            ->call('setCategoryRole', 'cash', 'ignore');
+
+        $statement = CashflowStatement::for($user->fresh());
+        $this->assertSame([3000.0, 400.0, 0.0], [$statement['income']['earned'], $statement['income']['passive'], $statement['income']['other']]);
+        $this->assertSame(1500.0, $statement['expenses']['total']);
+        $this->assertSame(['other_income' => 'passive', 'cash' => 'ignore'], $user->fresh()->cashflow_categories);
+
+        // Back to the default role: the override is removed.
+        Volt::test('cashflow.index')->call('setCategoryRole', 'cash', 'expense');
+        $this->assertSame(['other_income' => 'passive'], $user->fresh()->cashflow_categories);
+
+        // "Only my own entries": just the categories chosen explicitly come from Finances.
+        Volt::test('cashflow.index')->call('toggleManualOnly');
+        $statement = CashflowStatement::for($user->fresh());
+        $this->assertSame([0.0, 400.0], [$statement['income']['earned'], $statement['income']['passive']]);
+        $this->assertSame(0.0, $statement['expenses']['total']);
+
+        Volt::test('cashflow.index')->call('setCategoryRole', 'groceries', 'expense')->call('setCategoryRole', 'nonsense', 'expense')->assertStatus(422);
+        $this->assertSame(1500.0, CashflowStatement::for($user->fresh())['expenses']['total']);
+    }
+
     public function test_cashflow_patterns(): void
     {
         $this->assertSame('rich', CashflowStatement::pattern(1.2, 3000, 500, 800000, 100000));

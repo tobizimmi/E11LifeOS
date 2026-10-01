@@ -11,8 +11,9 @@
         <meta name="app-base-url" content="{{ url('/') }}">
         <link rel="manifest" href="{{ asset('manifest.json') }}">
         <meta name="theme-color" content="#4f46e5">
-        <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
-        <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
+        <link rel="icon" href="{{ asset('icons/icon.svg') }}" type="image/svg+xml">
+        <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+        <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

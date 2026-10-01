@@ -192,6 +192,13 @@ jobs:
             # Migrations, push keys and – on a fresh installation – the invite code for the first account
             php artisan app:install --no-interaction
 
+            # The app sends live updates to the local Reverb process: tell it the port Reverb runs on.
+            if grep -q '^REVERB_LOCAL_PORT=' .env; then
+              sed -i "s/^REVERB_LOCAL_PORT=.*/REVERB_LOCAL_PORT=$REVERB_PORT/" .env
+            else
+              printf '\nREVERB_LOCAL_PORT=%s\n' "$REVERB_PORT" >> .env
+            fi
+
             # Clear stale caches (do NOT config:cache — keep reading the live .env)
             php artisan config:clear
             php artisan route:clear

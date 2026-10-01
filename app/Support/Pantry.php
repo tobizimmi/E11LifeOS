@@ -24,7 +24,14 @@ class Pantry
         'unit' => ['einheit', 'unit'],
         'minimum' => ['mindestbestand', 'minimum stock', 'minimum'],
         'best_before' => ['mindestens haltbar bis', 'mhd', 'best before', 'haltbar bis', 'mindesthaltbarkeit'],
+        'kind' => ['art', 'kind', 'typ', 'type'],
+        'place' => ['ort', 'place', 'lagerort'],
     ];
+
+    /** Option ids of the "Kind" field. */
+    public const KIND_FOOD = 'food';
+
+    public const KIND_SUPPLIES = 'supplies';
 
     /**
      * The pantry collection of the household (a collection made from the pantry template is adopted).
@@ -66,6 +73,7 @@ class Pantry
         $type = match ($key) {
             'quantity', 'minimum' => CollectionProperty::TYPE_NUMBER,
             'best_before' => CollectionProperty::TYPE_DATE,
+            'kind', 'place' => CollectionProperty::TYPE_SELECT,
             default => CollectionProperty::TYPE_TEXT,
         };
 
@@ -256,5 +264,187 @@ class Pantry
             ->filter(fn (array $entry) => $entry['best_before'] && $entry['best_before']->lte(today()->addDays($days)) && ($entry['quantity'] === null || $entry['quantity'] > 0))
             ->sortBy(fn (array $entry) => $entry['best_before']->timestamp)
             ->values();
+    }
+
+    /**
+     * The pantry collection, created from the template when the household has none yet; it always
+     * gets the "Kind" field (groceries or household supplies like toilet paper and detergent).
+     */
+    public static function ensure(User $user, int $householdId): Collection
+    {
+        $collection = self::collectionFor($householdId);
+
+        if (! $collection) {
+            $collection = Collection::create([
+                'household_id' => $householdId,
+                'name' => __('Pantry'),
+                'icon' => '🥫',
+                'visibility' => Item::VISIBILITY_SHARED,
+                'created_by' => $user->id,
+            ]);
+            CollectionTemplates::apply($collection, 'pantry');
+            $collection = self::collectionFor($householdId) ?? $collection;
+        }
+
+        if (! self::fieldFor($collection, 'kind')) {
+            $collection->properties()->create([
+                'name' => __('Kind'),
+                'type' => CollectionProperty::TYPE_SELECT,
+                'system_key' => 'kind',
+                'position' => (int) $collection->properties()->max('position') + 1,
+                'options' => self::kindOptions(),
+            ]);
+        }
+
+        return $collection->load('properties');
+    }
+
+    /**
+     * @return list<array{id: string, name: string, color: string}>
+     */
+    public static function kindOptions(): array
+    {
+        return [
+            ['id' => self::KIND_FOOD, 'name' => __('Groceries'), 'color' => 'green'],
+            ['id' => self::KIND_SUPPLIES, 'name' => __('Household supplies'), 'color' => 'blue'],
+        ];
+    }
+
+    /**
+     * Everything in stock with kind and storage place, for the pantry page.
+     *
+     * @return SupportCollection<int, array{item: Item, name: string, key: string, quantity: ?float, unit: string, minimum: ?float, best_before: ?Carbon, kind: string, place: string, low: bool}>
+     */
+    public static function inventory(User $user, int $householdId): SupportCollection
+    {
+        $collection = self::collectionFor($householdId);
+
+        if (! $collection) {
+            return collect();
+        }
+
+        $kind = self::fieldFor($collection, 'kind');
+        $place = self::fieldFor($collection, 'place');
+
+        return self::stock($user, $householdId)->map(function (array $entry) use ($kind, $place) {
+            $kindOption = $kind?->option((string) $entry['item']->propertyValue($kind));
+            $placeOption = $place?->option((string) $entry['item']->propertyValue($place));
+            $isSupplies = $kindOption && ($kindOption['id'] === self::KIND_SUPPLIES || preg_match('/verbrauch|haushalt|supplies|drogerie/i', (string) $kindOption['name']));
+
+            return [
+                'item' => $entry['item'],
+                'name' => $entry['name'],
+                'key' => $entry['key'],
+                'quantity' => $entry['quantity'],
+                'unit' => $entry['unit'],
+                'minimum' => $entry['minimum'],
+                'best_before' => $entry['best_before'],
+                'kind' => $isSupplies ? self::KIND_SUPPLIES : self::KIND_FOOD,
+                'place' => (string) ($placeOption['name'] ?? ''),
+                'low' => $entry['minimum'] !== null && ($entry['quantity'] ?? 0) <= $entry['minimum'],
+            ];
+        })->values();
+    }
+
+    /**
+     * Adds an entry, or adds the quantity to an existing one with the same name.
+     *
+     * @param  array{name: string, kind: string, quantity: ?float, unit: string, minimum: ?float, place: string, best_before: ?string}  $data
+     */
+    public static function add(User $user, int $householdId, array $data): Item
+    {
+        $collection = self::ensure($user, $householdId);
+        $key = IngredientUnits::nameKey($data['name']);
+        $item = self::stock($user, $householdId)->first(fn (array $entry) => $entry['key'] === $key)['item'] ?? null;
+        $quantityField = self::fieldFor($collection, 'quantity');
+
+        if ($item) {
+            if ($quantityField && $data['quantity'] !== null) {
+                $item->setPropertyValue($quantityField, (float) $item->propertyValue($quantityField) + $data['quantity']);
+            }
+        } else {
+            $item = new Item([
+                'household_id' => $householdId,
+                'collection_id' => $collection->id,
+                'type' => Item::TYPE_ENTRY,
+                'visibility' => $collection->entryVisibility(),
+                'title' => mb_substr(trim($data['name']), 0, 255),
+                'created_by' => $user->id,
+                'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
+            ]);
+
+            if ($quantityField && $data['quantity'] !== null) {
+                $item->setPropertyValue($quantityField, $data['quantity']);
+            }
+
+            if (($field = self::fieldFor($collection, 'unit')) && $data['unit'] !== '') {
+                $item->setPropertyValue($field, $data['unit']);
+            }
+
+            if ($field = self::fieldFor($collection, 'kind')) {
+                $item->setPropertyValue($field, self::kindOptionId($field, $data['kind']));
+            }
+        }
+
+        if (($field = self::fieldFor($collection, 'minimum')) && $data['minimum'] !== null) {
+            $item->setPropertyValue($field, $data['minimum']);
+        }
+
+        if (($field = self::fieldFor($collection, 'best_before')) && $data['best_before']) {
+            $item->setPropertyValue($field, $data['best_before']);
+        }
+
+        if (($field = self::fieldFor($collection, 'place')) && $data['place'] !== '' && $field->option($data['place'])) {
+            $item->setPropertyValue($field, $data['place']);
+        }
+
+        $item->save();
+
+        return $item;
+    }
+
+    /**
+     * One more or one less of an entry (never below zero); returns the new quantity.
+     */
+    public static function adjust(Item $item, float $delta): float
+    {
+        $collection = self::collectionFor($item->household_id);
+        $field = $collection && $item->collection_id === $collection->id ? self::fieldFor($collection, 'quantity') : null;
+
+        if (! $field) {
+            return 0;
+        }
+
+        $quantity = max(0, (float) $item->propertyValue($field) + $delta);
+        $item->setPropertyValue($field, $quantity + 0);
+        $item->save();
+
+        return $quantity;
+    }
+
+    /**
+     * The storage places of the pantry ("Fridge", "Cupboard", …) by option id.
+     *
+     * @return array<string, string>
+     */
+    public static function places(Collection $collection): array
+    {
+        return collect(self::fieldFor($collection, 'place')?->selectOptions() ?? [])->pluck('name', 'id')->all();
+    }
+
+    /**
+     * The option of the "Kind" field for groceries or supplies (adopted fields have own ids).
+     */
+    private static function kindOptionId(CollectionProperty $field, string $kind): ?string
+    {
+        foreach ($field->selectOptions() as $option) {
+            $isSupplies = $option['id'] === self::KIND_SUPPLIES || preg_match('/verbrauch|haushalt|supplies|drogerie/i', (string) $option['name']);
+
+            if ($isSupplies === ($kind === self::KIND_SUPPLIES)) {
+                return $option['id'];
+            }
+        }
+
+        return null;
     }
 }

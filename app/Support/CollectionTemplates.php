@@ -67,6 +67,7 @@ class CollectionTemplates
                 ['name' => __('Manual'), 'type' => CollectionProperty::TYPE_URL],
             ],
             'pantry' => [
+                ['name' => __('Kind'), 'type' => CollectionProperty::TYPE_SELECT, 'options' => Pantry::kindOptions()],
                 ['name' => __('Quantity'), 'type' => CollectionProperty::TYPE_NUMBER],
                 ['name' => __('Unit'), 'type' => CollectionProperty::TYPE_TEXT],
                 ['name' => __('Minimum stock'), 'type' => CollectionProperty::TYPE_NUMBER],

@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Models\PushMessage;
 use App\Models\PushSubscription;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
@@ -33,9 +35,11 @@ class WebPush
     }
 
     /**
-     * Adds the message to the bell, queues it and wakes all of the user's devices; returns how many were reached.
+     * Adds the message to the bell, queues it and wakes all of the user's devices; returns how many
+     * were reached. During the user's quiet hours the push waits and comes bundled afterwards –
+     * except urgent ones (medication, reminders at a chosen time).
      */
-    public function send(User $user, string $title, string $body, ?string $url = null): int
+    public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false): int
     {
         InAppNotifications::record($user, $title, $body, $url);
 
@@ -47,7 +51,81 @@ class WebPush
 
         PushMessage::create(['user_id' => $user->id, 'title' => mb_substr($title, 0, 255), 'body' => $body, 'url' => $url]);
 
+        if (! $urgent && self::inQuietHours($user)) {
+            // Queued for the devices; "push:release-quiet" wakes them when the quiet hours end.
+            return $subscriptions->count();
+        }
+
         return $subscriptions->filter(fn (PushSubscription $subscription) => $this->wake($subscription))->count();
+    }
+
+    /**
+     * Whether the user's quiet hours (e.g. 22 to 7 o'clock) include this moment.
+     */
+    public static function inQuietHours(User $user, ?Carbon $at = null): bool
+    {
+        $from = $user->push_quiet_from;
+        $until = $user->push_quiet_until;
+
+        if ($from === null || $until === null || $from === $until) {
+            return false;
+        }
+
+        $hour = ($at ?? now())->hour;
+
+        return $from < $until ? $hour >= $from && $hour < $until : $hour >= $from || $hour < $until;
+    }
+
+    /**
+     * Wakes the devices of users whose quiet hours are over and who have pushes waiting (once a day).
+     */
+    public function releaseQuiet(): int
+    {
+        $released = 0;
+
+        User::whereNotNull('push_quiet_from')->whereNotNull('push_quiet_until')
+            ->whereHas('pushSubscriptions')
+            ->get()
+            ->each(function (User $user) use (&$released) {
+                $key = 'push:released:'.$user->id.':'.today()->toDateString();
+
+                if (self::inQuietHours($user) || Cache::has($key)
+                    || ! PushMessage::where('user_id', $user->id)->whereNull('delivered_at')->where('created_at', '>=', now()->subDay())->exists()) {
+                    return;
+                }
+
+                Cache::put($key, true, now()->endOfDay());
+                PushSubscription::where('user_id', $user->id)->get()->each(fn (PushSubscription $subscription) => $this->wake($subscription));
+                $released++;
+            });
+
+        return $released;
+    }
+
+    /**
+     * What the service worker shows: three or more waiting messages become one summary (unless the
+     * user wants every message on its own).
+     *
+     * @param  Collection<int, PushMessage>  $messages
+     * @return list<array{title: string, body: string, url: string, tag: string}>
+     */
+    public static function present(User $user, Collection $messages): array
+    {
+        if ($user->push_bundle !== false && $messages->count() >= 3) {
+            return [[
+                'title' => trans_choice(':count new notification|:count new notifications', $messages->count()),
+                'body' => $messages->map(fn (PushMessage $message) => '• '.$message->title)->implode("\n"),
+                'url' => route('notifications.index'),
+                'tag' => 'e11-bundle',
+            ]];
+        }
+
+        return $messages->map(fn (PushMessage $message) => [
+            'title' => $message->title,
+            'body' => (string) $message->body,
+            'url' => $message->url ?: route('dashboard'),
+            'tag' => 'e11-'.$message->id,
+        ])->values()->all();
     }
 
     /**
@@ -60,7 +138,7 @@ class WebPush
         PushMessage::where('user_id', $user->id)->where('created_at', '<', now()->subWeek())->delete();
 
         $messages = PushMessage::where('user_id', $user->id)->whereNull('delivered_at')
-            ->where('created_at', '>=', now()->subDay())->oldest()->limit(5)->get();
+            ->where('created_at', '>=', now()->subDay())->oldest()->limit(20)->get();
 
         PushMessage::whereIn('id', $messages->pluck('id'))->update(['delivered_at' => now()]);
 

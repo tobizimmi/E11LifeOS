@@ -28,6 +28,7 @@ class SendMedicationReminders extends Command
                     '💊 '.__('Time for :medication', ['medication' => $medication->title]),
                     trim($medication->profile->name.($medication->dosage ? ' · '.$medication->dosage : '')),
                     route('health.index', ['profile' => $medication->health_profile_id, 'tab' => 'medications']),
+                    urgent: true,
                 );
                 $sent++;
             });

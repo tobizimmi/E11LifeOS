@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PushMessage;
 use App\Models\PushSubscription;
 use App\Support\WebPush;
 use Illuminate\Http\JsonResponse;
@@ -63,12 +62,7 @@ class PushController extends Controller
     public function pending(Request $request, WebPush $webPush): JsonResponse
     {
         return response()->json([
-            'messages' => $webPush->takePending($request->user())->map(fn (PushMessage $message) => [
-                'title' => $message->title,
-                'body' => $message->body,
-                'url' => $message->url ?: route('dashboard'),
-                'tag' => 'e11-'.$message->id,
-            ])->values(),
+            'messages' => WebPush::present($request->user(), $webPush->takePending($request->user())),
         ])->header('Cache-Control', 'no-store');
     }
 }

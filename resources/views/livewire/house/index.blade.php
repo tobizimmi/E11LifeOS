@@ -5,6 +5,8 @@ use App\Models\HomeTask;
 use App\Models\Meter;
 use App\Support\Life\HomeMaintenance;
 use App\Support\Life\MeterStats;
+use App\Support\Life\Warranties;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -12,14 +14,14 @@ use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
- * At home: a maintenance plan from a library of recurring jobs and meters with readings, consumption
- * projection and a check of the monthly advance payment.
+ * At home: a maintenance plan from a library of recurring jobs, meters with readings, consumption
+ * projection and a check of the monthly advance payment, and the warranties of appliances.
  */
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
 
-    /** maintenance or meters */
+    /** maintenance, meters or warranties */
     #[Url(except: 'maintenance')]
     public string $tab = 'maintenance';
 
@@ -45,11 +47,37 @@ new #[Layout('layouts.app')] class extends Component
     /** @var array<int, array{read_on: string, value: string}> */
     public array $reading = [];
 
+    /**
+     * @var array{title: string, purchased_on: string, years: string, until: string, price: string}
+     */
+    public array $device = ['title' => '', 'purchased_on' => '', 'years' => '2', 'until' => '', 'price' => ''];
+
+    /**
+     * An appliance with its warranty: the end date given, or purchase date plus the warranty years.
+     */
+    public function addDevice(): void
+    {
+        $data = $this->validate([
+            'device.title' => ['required', 'string', 'max:150'],
+            'device.purchased_on' => ['required', 'date', 'before_or_equal:today'],
+            'device.years' => ['nullable', 'integer', 'min:0', 'max:30'],
+            'device.until' => ['nullable', 'date', 'after_or_equal:device.purchased_on'],
+            'device.price' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+        ], attributes: ['device.title' => __('Appliance'), 'device.purchased_on' => __('Purchased on')])['device'];
+
+        $purchased = Carbon::parse($data['purchased_on']);
+        $until = $data['until'] ? Carbon::parse($data['until']) : $purchased->copy()->addYears((int) ($data['years'] ?: 2));
+        Warranties::add(Auth::user(), (int) $this->householdId, $data['title'], $purchased, $until, $data['price'] !== '' && $data['price'] !== null ? (float) $data['price'] : null);
+
+        $this->device = ['title' => '', 'purchased_on' => '', 'years' => '2', 'until' => '', 'price' => ''];
+        $this->dispatch('toast', message: __('Saved.'));
+    }
+
     public function mount(): void
     {
         $this->resolveHousehold();
 
-        if (! in_array($this->tab, ['maintenance', 'meters'], true)) {
+        if (! in_array($this->tab, ['maintenance', 'meters', 'warranties'], true)) {
             $this->tab = 'maintenance';
         }
 
@@ -224,6 +252,7 @@ new #[Layout('layouts.app')] class extends Component
             'library' => HomeMaintenance::library(),
             'meters' => $meters->map(fn (Meter $meter) => ['meter' => $meter, 'stats' => MeterStats::for($meter)]),
             'kinds' => Meter::kindLabels(),
+            'warranties' => $this->tab === 'warranties' ? Warranties::list(Auth::user(), (int) $this->householdId) : collect(),
         ];
     }
 }; ?>
@@ -244,7 +273,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
-                @foreach (['maintenance' => '🔧 '.__('Maintenance'), 'meters' => '🔢 '.__('Meters & consumption')] as $key => $label)
+                @foreach (['maintenance' => '🔧 '.__('Maintenance'), 'meters' => '🔢 '.__('Meters & consumption'), 'warranties' => '🧾 '.__('Warranties')] as $key => $label)
                     <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </nav>
@@ -411,6 +440,41 @@ new #[Layout('layouts.app')] class extends Component
                 @empty
                     <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No meters yet – add electricity, gas or water with tariff and advance payment.') }}</section>
                 @endforelse
+            @endif
+
+            @if ($tab === 'warranties')
+                <form wire:submit="addDevice" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ __('Add an appliance') }}</h3>
+                    <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Appliance') }}<input type="text" wire:model="device.title" class="{{ $input }}" placeholder="{{ __('e.g. washing machine') }}"><x-input-error :messages="$errors->get('device.title')" /></label>
+                    <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Purchased on') }}<input type="date" wire:model="device.purchased_on" class="{{ $input }}"><x-input-error :messages="$errors->get('device.purchased_on')" /></label>
+                    <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Warranty (years)') }}<input type="number" min="0" max="30" wire:model="device.years" class="{{ $input }}"></label>
+                    <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('or until') }}<input type="date" wire:model="device.until" class="{{ $input }}"><x-input-error :messages="$errors->get('device.until')" /></label>
+                    <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Price (€)') }}<input type="text" inputmode="decimal" wire:model="device.price" class="{{ $input }}"><x-input-error :messages="$errors->get('device.price')" /></label>
+                    <div class="sm:col-span-6"><x-primary-button>{{ __('Add') }}</x-primary-button></div>
+                    <p class="text-xs text-gray-500 sm:col-span-6 dark:text-gray-400">{{ __('In the EU you have 2 years of statutory warranty against the seller; many manufacturers give more. Attach the receipt to the entry – you get a reminder 30 days before the end.') }}</p>
+                </form>
+
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    @forelse ($warranties as $row)
+                        @if ($loop->first)<ul class="divide-y divide-gray-100 dark:divide-gray-700">@endif
+                        <li wire:key="warranty-{{ $row['item']->id }}" class="flex flex-wrap items-center gap-3 py-3 text-sm">
+                            <span class="min-w-0 flex-1">
+                                <a href="{{ route('items.show', $row['item']) }}" class="font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $row['item']->title }}</a>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ collect([$row['collection']->icon.' '.$row['collection']->name, $row['purchased'] ? __('bought :date', ['date' => $row['purchased']->format('d.m.Y')]) : null, $row['price'] !== null ? $euro($row['price']) : null])->filter()->implode(' · ') }}</span>
+                            </span>
+                            <span @class(['rounded-full px-2 py-0.5 text-xs', 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' => $row['status'] === 'soon', 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' => $row['status'] === 'active', 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' => $row['status'] === 'expired'])>
+                                @if ($row['status'] === 'expired')
+                                    {{ __('ended :date', ['date' => $row['until']->format('d.m.Y')]) }}
+                                @else
+                                    {{ __('until :date', ['date' => $row['until']->format('d.m.Y')]) }} · {{ trans_choice(':count day left|:count days left', $row['days']) }}
+                                @endif
+                            </span>
+                        </li>
+                        @if ($loop->last)</ul>@endif
+                    @empty
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('No warranties yet. Add appliances above or use the household inventory collection.') }}</p>
+                    @endforelse
+                </section>
             @endif
         </div>
     </div>

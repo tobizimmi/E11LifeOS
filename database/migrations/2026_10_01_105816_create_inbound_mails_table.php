@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('from_address');
             $table->text('subject')->nullable();
             $table->string('status', 20);
-            $table->json('drafts')->nullable();
+            $table->text('drafts')->nullable();
             $table->unsignedSmallInteger('attachments')->default(0);
             $table->text('note')->nullable();
             $table->timestamps();

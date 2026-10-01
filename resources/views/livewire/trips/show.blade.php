@@ -7,8 +7,10 @@ use App\Models\Item;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripBooking;
+use App\Models\TripFeedback;
 use App\Models\TripPlace;
 use App\Support\Life\TripDiscover;
+use App\Support\Life\TripFeedbackBox;
 use App\Models\TripStop;
 use App\Models\InboundMail;
 use App\Support\Life\BookingMail;
@@ -67,6 +69,17 @@ new #[Layout('layouts.app')] class extends Component
     public string $templatePerson = '';
 
     /** Discover: category of places shown (see TripDiscover::categories()). */
+    public string $feedbackText = '';
+
+    public string $feedbackStop = '';
+
+    /**
+     * Chosen day per suggestion when approving ("" = as an idea).
+     *
+     * @var array<int, string>
+     */
+    public array $suggestionDays = [];
+
     #[Url(as: 'what', except: 'restaurants')]
     public string $discoverCategory = 'restaurants';
 
@@ -976,9 +989,43 @@ new #[Layout('layouts.app')] class extends Component
         $this->findTrip()->packingItems()->update(['packed' => false]);
     }
 
+    private function findFeedback(int $id): TripFeedback
+    {
+        return $this->findTrip()->feedback()->find($id) ?? abort(404);
+    }
+
+    public function postComment(): void
+    {
+        $this->validate(['feedbackText' => ['required', 'string', 'max:2000']], attributes: ['feedbackText' => __('Comment')]);
+        $user = $this->currentUser();
+        TripFeedbackBox::comment($this->findTrip(), ['name' => $user->name, 'user' => $user], $this->feedbackText, $this->feedbackStop !== '' ? (int) $this->feedbackStop : null);
+        $this->reset('feedbackText', 'feedbackStop');
+    }
+
+    /**
+     * Takes a suggestion into the plan on the chosen day (or as an idea).
+     */
+    public function approveSuggestion(int $id): void
+    {
+        $suggestion = $this->findFeedback($id);
+        $day = $this->suggestionDays[$id] ?? ($suggestion->day?->toDateString() ?? '');
+        TripFeedbackBox::approve($suggestion, $day, $this->currentUser());
+        $this->dispatch('toast', message: __('Added to the plan.'));
+    }
+
+    public function declineSuggestion(int $id): void
+    {
+        TripFeedbackBox::decline($this->findFeedback($id));
+    }
+
+    public function deleteFeedback(int $id): void
+    {
+        $this->findFeedback($id)->delete();
+    }
+
     public function with(): array
     {
-        $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants']);
+        $trip = $this->findTrip()->load(['bookings', 'packingItems', 'stops', 'participants', 'feedback.stop']);
         $itinerary = TripItinerary::build($trip);
 
         // The places of the trip area are loaded once in the background when the map is first used.
@@ -999,6 +1046,8 @@ new #[Layout('layouts.app')] class extends Component
             'placesLoading' => in_array($this->tab, ['map', 'discover'], true) && Cache::has(LoadTripPlaces::lockKey($trip->id)),
             'missingPositions' => $trip->stops->filter(fn (TripStop $stop) => ($stop->location || $trip->destination) && ! $stop->hasPosition())->count(),
             'stopKinds' => TripStop::kinds(),
+            'pendingSuggestions' => $trip->feedback->filter->isPending()->values(),
+            'comments' => $trip->feedback->where('type', TripFeedback::COMMENT)->take(30)->values(),
             'colors' => Trip::colorSchemes(),
             'overview' => TripPlanner::overview($trip, $this->currentUser()),
             'kinds' => TripBooking::kinds(),
@@ -1278,6 +1327,71 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="text-xs text-amber-700 dark:text-amber-300">{{ __('Travel times are not available for every day right now.') }}</span>
                     @endif
                 </div>
+
+                <details class="group rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" @if ($pendingSuggestions->isNotEmpty()) open @endif>
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">💬 {{ __('Feedback & suggestions') }}
+                            @if ($pendingSuggestions->isNotEmpty())
+                                <span class="ms-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">{{ trans_choice(':count suggestion to approve|:count suggestions to approve', $pendingSuggestions->count()) }}</span>
+                            @elseif ($comments->isNotEmpty())
+                                <span class="ms-1 text-xs font-normal text-gray-500 dark:text-gray-400">{{ $comments->count() }}</span>
+                            @endif
+                        </span>
+                        <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                    </summary>
+
+                    @if ($pendingSuggestions->isNotEmpty())
+                        <ul class="mt-3 space-y-2">
+                            @foreach ($pendingSuggestions as $suggestion)
+                                <li wire:key="suggestion-{{ $suggestion->id }}" class="rounded-xl bg-amber-50 p-3 text-sm dark:bg-amber-900/20">
+                                    <p><span class="font-medium text-gray-900 dark:text-gray-100">💡 {{ $suggestion->title }}</span> <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('from :name', ['name' => $suggestion->author_name]) }} · {{ $suggestion->created_at->diffForHumans() }}</span></p>
+                                    @if ($suggestion->location)
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">📍 {{ $suggestion->location }}</p>
+                                    @endif
+                                    @if ($suggestion->body)
+                                        <p class="mt-1 whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $suggestion->body }}</p>
+                                    @endif
+                                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                                        <select wire:model="suggestionDays.{{ $suggestion->id }}" class="rounded-lg border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Day') }}">
+                                            <option value="">💡 {{ __('As an idea') }}</option>
+                                            @foreach ($itinerary['days'] as $day)
+                                                <option value="{{ $day['date']->toDateString() }}" @selected($suggestion->day?->isSameDay($day['date']))>{{ __('Day :number', ['number' => $day['number']]) }} · {{ $day['date']->translatedFormat('D, j. M') }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" wire:click="approveSuggestion({{ $suggestion->id }})" class="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700">✓ {{ __('Approve') }}</button>
+                                        <button type="button" wire:click="declineSuggestion({{ $suggestion->id }})" class="text-xs text-gray-600 underline dark:text-gray-300">{{ __('Decline') }}</button>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <ul class="mt-3 space-y-2 text-sm">
+                        @foreach ($comments as $comment)
+                            <li wire:key="comment-{{ $comment->id }}" class="group/comment flex gap-2">
+                                <span class="min-w-0 flex-1">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $comment->author_name }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">@if ($comment->stop) · {{ __('about :entry', ['entry' => $comment->stop->title]) }}@endif · {{ $comment->created_at->diffForHumans() }}</span>
+                                    <span class="block whitespace-pre-line text-gray-700 dark:text-gray-300">{{ $comment->body }}</span>
+                                </span>
+                                <button type="button" wire:click="deleteFeedback({{ $comment->id }})" wire:confirm="{{ __('Delete this comment?') }}" class="self-start text-xs text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <form wire:submit="postComment" class="mt-3 flex flex-wrap gap-2">
+                        <select wire:model="feedbackStop" class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('About') }}">
+                            <option value="">{{ __('The trip in general') }}</option>
+                            @foreach ($trip->stops as $stopOption)
+                                <option value="{{ $stopOption->id }}">{{ $stopOption->title }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" wire:model="feedbackText" class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="{{ __('Write a comment …') }}" aria-label="{{ __('Comment') }}">
+                        <x-secondary-button type="submit">{{ __('Send') }}</x-secondary-button>
+                    </form>
+                    <x-input-error :messages="$errors->get('feedbackText')" class="mt-1" />
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Participants comment and suggest via the trip folder or their personal link.') }}</p>
+                </details>
 
                 <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
                     <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>

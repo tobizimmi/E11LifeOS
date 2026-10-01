@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.16.0] – 2026-10-01
+
+### Neu
+- Reisen: Kommentare und Vorschläge zum Reiseplan – auch über den Reiseordner und die persönlichen Teilnehmer-Links. Vorschläge werden im Tab „Plan“ freigegeben (als Idee oder an einem Tag) oder abgelehnt; die Organisatoren werden benachrichtigt.
+
 ## [1.15.0] – 2026-10-01
 
 ### Neu

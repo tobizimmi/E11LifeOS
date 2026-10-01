@@ -223,9 +223,11 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('g/{token}', 'folder')->name('trips.folder');
         Route::post('g/{token}', 'unlock')->middleware('throttle:10,1')->name('trips.folder.unlock');
         Route::get('g/{token}/files/{file}', 'file')->name('trips.folder.file');
+        Route::post('g/{token}/feedback', 'feedback')->middleware('throttle:10,1')->name('trips.folder.feedback');
         Route::get('gp/{token}', 'participant')->name('trips.participant');
         Route::post('gp/{token}', 'reply')->middleware('throttle:10,1')->name('trips.participant.reply');
         Route::get('gp/{token}/files/{file}', 'participantFile')->name('trips.participant.file');
+        Route::post('gp/{token}/feedback', 'participantFeedback')->middleware('throttle:10,1')->name('trips.participant.feedback');
     });
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');

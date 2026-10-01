@@ -53,6 +53,13 @@ class AppSettings
         'offers_api_key' => ['group' => 'shopping', 'config' => ['services.offers.api_key'], 'secret' => true, 'type' => 'text'],
         'offers_client_key' => ['group' => 'shopping', 'config' => ['services.offers.client_key'], 'secret' => true, 'type' => 'text'],
 
+        'inbound_mail_domain' => ['group' => 'inbound', 'config' => ['services.inbound_mail.domain'], 'secret' => false, 'type' => 'text'],
+        'inbound_mail_host' => ['group' => 'inbound', 'config' => ['services.inbound_mail.host'], 'secret' => false, 'type' => 'text'],
+        'inbound_mail_port' => ['group' => 'inbound', 'config' => ['services.inbound_mail.port'], 'secret' => false, 'type' => 'number'],
+        'inbound_mail_encryption' => ['group' => 'inbound', 'config' => ['services.inbound_mail.encryption'], 'secret' => false, 'type' => 'select'],
+        'inbound_mail_username' => ['group' => 'inbound', 'config' => ['services.inbound_mail.username'], 'secret' => false, 'type' => 'text'],
+        'inbound_mail_password' => ['group' => 'inbound', 'config' => ['services.inbound_mail.password'], 'secret' => true, 'type' => 'text'],
+
         'maps_tile_url' => ['group' => 'maps', 'config' => ['services.maps.tile_url'], 'secret' => false, 'type' => 'text'],
 
         'require_two_factor' => ['group' => 'security', 'config' => ['security.require_two_factor'], 'secret' => false, 'type' => 'yesno'],

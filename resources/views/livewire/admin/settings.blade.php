@@ -56,6 +56,9 @@ new #[Layout('layouts.app')] class extends Component
      */
     public ?array $realtimeTestResult = null;
 
+    /** @var array{ok: bool, message: string}|null */
+    public ?array $inboundTestResult = null;
+
     /**
      * Per import: "*" = all old accounts, "" = the account with the target's e-mail, else an e-mail.
      *
@@ -107,6 +110,8 @@ new #[Layout('layouts.app')] class extends Component
         $this->validate([
             'form.mail_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.mail_scheme' => ['nullable', 'in:smtp,smtps'],
+            'form.inbound_mail_encryption' => ['nullable', 'in:ssl,tls,none'],
+            'form.inbound_mail_domain' => ['nullable', 'string', 'max:190', 'regex:/^[a-z0-9.-]+\.[a-z]{2,}$/i'],
             'form.mail_from_address' => ['nullable', 'email'],
             'form.vapid_subject' => ['nullable', 'regex:/^(mailto:|https:\/\/)/'],
             'form.instagram_limit' => ['nullable', 'integer', 'between:1,100'],
@@ -230,6 +235,27 @@ new #[Layout('layouts.app')] class extends Component
             $this->realtimeTestResult = ['ok' => true, 'message' => __('Reverb accepted the test message.')];
         } catch (\Throwable $exception) {
             $this->realtimeTestResult = ['ok' => false, 'message' => __('Reverb could not be reached: :message', ['message' => \Illuminate\Support\Str::limit(trim(strip_tags($exception->getMessage())), 160)])];
+        }
+    }
+
+    /**
+     * Logs in to the mailbox of the mail intake and counts the mails waiting there.
+     */
+    public function testInboundMail(\App\Support\Mail\Mailbox $mailbox): void
+    {
+        $this->authorize('admin');
+
+        if (! \App\Support\Mail\Mailbox::isConfigured()) {
+            $this->inboundTestResult = ['ok' => false, 'message' => __('Domain, user name and password are needed.')];
+
+            return;
+        }
+
+        try {
+            $count = $mailbox->check();
+            $this->inboundTestResult = ['ok' => true, 'message' => trans_choice('Login worked – :count mail is waiting.|Login worked – :count mails are waiting.', $count)];
+        } catch (\Throwable $exception) {
+            $this->inboundTestResult = ['ok' => false, 'message' => __('The mailbox could not be reached: :message', ['message' => \Illuminate\Support\Str::limit($exception->getMessage(), 200)])];
         }
     }
 
@@ -383,6 +409,7 @@ new #[Layout('layouts.app')] class extends Component
         'security' => ['title' => __('Security & monitoring'), 'text' => __('Require two-factor authentication for everyone, and get an e-mail when an error happens on the server (at most once per error and hour).').' '.__('Sign-out after inactivity, session length and storage, expiry of app sign-ins and how long the security log is kept.')],
         'virus' => ['title' => __('Virus scan (ClamAV)'), 'text' => __('Checks every uploaded file with the ClamAV virus scanner on the server before it is stored. The server needs the ClamAV daemon (package “clamav-daemon”); enter its socket, e.g. /var/run/clamav/clamd.ctl or tcp://127.0.0.1:3310.')],
         'shopping' => ['title' => __('Shopping list'), 'text' => __('Keys for the supermarket offers (marktguru). Usually not needed – without them the keys are read from the marktguru website.')],
+        'inbound' => ['title' => __('Mail intake'), 'text' => __('Every household gets its own address (e.g. familie.x7k2@in.example.com) to forward bookings, invoices and to-dos to. Needed: an MX record of the domain pointing to this server, a mail domain with a catch-all mailbox in Plesk (Mail → the domain → Mail settings → “Catch-all”: forward to the mailbox) and its login here. The mails are fetched every two minutes and deleted from the mailbox.')],
         'maps' => ['title' => __('Trip map'), 'text' => __('Without an entry the map shows OpenStreetMap. For another map style enter the tile address of a map service, e.g. from MapTiler or Stadia Maps, with {z}, {x} and {y} and your key.')],
         'import_portfolio' => ['title' => __('Import: old portfolio manager'), 'text' => __('Access to the MySQL database of the old portfolio manager. Only needed for the one-time import; remove the values afterwards.')],
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
@@ -416,6 +443,12 @@ new #[Layout('layouts.app')] class extends Component
         'backup_remote_password' => [__('WebDAV password'), ''],
         'backup_encryption_password' => [__('Encryption password for the copies'), ''],
         'backup_remote_keep' => [__('Keep copies off the server'), '30'],
+        'inbound_mail_domain' => [__('Domain of the addresses'), 'in.zimmimail.de'],
+        'inbound_mail_host' => [__('IMAP server'), '127.0.0.1'],
+        'inbound_mail_port' => [__('Port'), '993'],
+        'inbound_mail_encryption' => [__('Encryption'), ''],
+        'inbound_mail_username' => [__('Mailbox (user name)'), 'eingang@in.zimmimail.de'],
+        'inbound_mail_password' => [__('Password'), ''],
         'offers_api_key' => [__('marktguru API key (optional)'), ''],
         'offers_client_key' => [__('marktguru client key (optional)'), ''],
         'maps_tile_url' => [__('Tile address (optional)'), 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=…'],
@@ -453,6 +486,7 @@ new #[Layout('layouts.app')] class extends Component
     $importNames = ['import_portfolio' => 'portfolio', 'import_recipes' => 'recipes'];
     $selectOptions = [
         'mail_scheme' => ['' => __('STARTTLS (port 587)'), 'smtps' => __('SSL/TLS (port 465)')],
+        'inbound_mail_encryption' => ['' => __('Default (:value)', ['value' => (string) AppSettings::current('inbound_mail_encryption')]), 'ssl' => __('SSL/TLS (port 993)'), 'tls' => __('STARTTLS (port 143)'), 'none' => __('None (only on this server)')],
         'session_driver' => ['' => isset($stored['session_driver']) ? __('Default (.env)') : __('Default (:value)', ['value' => ['database' => __('Database'), 'file' => __('Files')][AppSettings::current('session_driver')] ?? (string) AppSettings::current('session_driver')]), 'database' => __('Database (sessions visible in the profile)'), 'file' => __('Files')],
     ];
     // What "Default" means for yes/no fields: the value in effect while nothing is saved here.
@@ -575,6 +609,25 @@ new #[Layout('layouts.app')] class extends Component
                             <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
                                 <x-secondary-button type="button" wire:click="testVirusScanner" wire:loading.attr="disabled" wire:target="testVirusScanner">{{ __('Test virus scanner') }}</x-secondary-button>
                                 <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }}</span>
+                            </div>
+                        @elseif ($group === 'inbound')
+                            @php($inboundStatus = \Illuminate\Support\Facades\Cache::get(\App\Console\Commands\FetchInboundMail::STATUS_KEY))
+                            <div class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
+                                @if ($inboundStatus)
+                                    <p @class(['text-xs', 'text-gray-600 dark:text-gray-300' => $inboundStatus['ok'], 'text-red-700 dark:text-red-300' => ! $inboundStatus['ok']])>
+                                        {{ $inboundStatus['ok'] ? '● '.__('Last fetch :time: :processed filed, :ignored without household.', ['time' => \Illuminate\Support\Carbon::parse($inboundStatus['at'])->diffForHumans(), 'processed' => $inboundStatus['processed'], 'ignored' => $inboundStatus['ignored']]) : '● '.__('Last fetch :time failed: :error', ['time' => \Illuminate\Support\Carbon::parse($inboundStatus['at'])->diffForHumans(), 'error' => $inboundStatus['error']]) }}
+                                        @if ($inboundStatus['last_mail_at']) · {{ __('last mail :time', ['time' => \Illuminate\Support\Carbon::parse($inboundStatus['last_mail_at'])->diffForHumans()]) }}@endif
+                                    </p>
+                                @elseif (\App\Support\Mail\Mailbox::isConfigured())
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Not fetched yet – the scheduler fetches every two minutes.') }}</p>
+                                @endif
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <x-secondary-button type="button" wire:click="testInboundMail" wire:loading.attr="disabled" wire:target="testInboundMail">{{ __('Test mailbox') }}</x-secondary-button>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Save first, then test.') }}</span>
+                                </div>
+                                @if ($inboundTestResult)
+                                    <p @class(['text-sm', 'text-emerald-700 dark:text-emerald-300' => $inboundTestResult['ok'], 'text-red-700 dark:text-red-300' => ! $inboundTestResult['ok']]) role="status">{{ $inboundTestResult['message'] }}</p>
+                                @endif
                             </div>
                         @elseif ($group === 'realtime')
                             <div class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">

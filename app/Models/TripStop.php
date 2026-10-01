@@ -22,12 +22,13 @@ use Illuminate\Support\Carbon;
  * @property ?string $location
  * @property ?float $lat
  * @property ?float $lng
+ * @property ?string $travel_mode way here from the entry before; null = as set for the trip
  * @property ?string $notes
  * @property ?float $cost
  * @property bool $done
  * @property int $position
  */
-#[Fillable(['trip_id', 'day', 'time', 'end_time', 'kind', 'title', 'location', 'lat', 'lng', 'notes', 'cost', 'done', 'position', 'created_by'])]
+#[Fillable(['trip_id', 'day', 'time', 'end_time', 'kind', 'title', 'location', 'lat', 'lng', 'travel_mode', 'notes', 'cost', 'done', 'position', 'created_by'])]
 class TripStop extends Model
 {
     /** @use HasFactory<TripStopFactory> */

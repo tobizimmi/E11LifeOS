@@ -4917,5 +4917,7 @@
     "Use map area as trip area": "Kartenausschnitt als Reisegebiet",
     "Load again": "Neu laden",
     "Trip area saved – its places are loading in the background.": "Reisegebiet gespeichert – die Orte werden im Hintergrund geladen.",
-    "Click into the map to zoom with the mouse wheel – or use + / −.": "Zum Zoomen mit dem Mausrad erst in die Karte klicken – oder + / − nutzen."
+    "Click into the map to zoom with the mouse wheel – or use + / −.": "Zum Zoomen mit dem Mausrad erst in die Karte klicken – oder + / − nutzen.",
+    "As set for the trip (:mode)": "Wie für die Reise eingestellt (:mode)",
+    "Tap to change: on foot, by bike, by car": "Antippen zum Wechseln: zu Fuß, Rad, Auto"
 }

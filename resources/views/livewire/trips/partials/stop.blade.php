@@ -1,14 +1,15 @@
 {{-- One entry of the trip plan (idea or planned): drag handle, time, type, place, cost, done. --}}
-<li wire:key="stop-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group flex items-stretch gap-2 rounded-xl bg-white p-2.5 ring-1 ring-gray-100 dark:bg-gray-900/40 dark:ring-gray-700">
+<li wire:key="stop-{{ $entry->id }}" x-sort:item="{{ $entry->id }}" class="group flex flex-wrap items-stretch gap-x-2 rounded-xl bg-white p-2.5 ring-1 ring-gray-100 dark:bg-gray-900/40 dark:ring-gray-700">
+    @if ($leg ?? null)
+        {{-- The way here: tap to switch between on foot, by bike and by car. --}}
+        <button type="button" wire:click="cycleTravelMode({{ $entry->id }})" class="mb-1 basis-full text-left text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-300" title="{{ __('Tap to change: on foot, by bike, by car') }}">↓ {{ $leg }} <span class="text-gray-400" aria-hidden="true">⇄</span></button>
+    @endif
     <span x-sort:handle class="flex cursor-grab items-center px-0.5 text-gray-300 hover:text-gray-500 dark:text-gray-600" title="{{ __('Drag to move') }}" aria-hidden="true">⠿</span>
     @if ($entry->time)
         <span class="w-11 shrink-0 pt-1 text-center text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">{{ $entry->time }}@if ($entry->end_time)<span class="block font-normal text-gray-400">{{ $entry->end_time }}</span>@endif</span>
     @endif
     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg {{ $stopKinds[$entry->kind]['color'] ?? 'bg-gray-100' }}" aria-hidden="true">{{ $stopKinds[$entry->kind]['icon'] ?? '📍' }}</span>
     <button type="button" wire:click="editStop({{ $entry->id }})" class="min-w-0 flex-1 text-left">
-        @if ($leg ?? null)
-            <span class="mb-0.5 block text-[11px] font-medium text-indigo-600 dark:text-indigo-300">↓ {{ $leg }}</span>
-        @endif
         <span @class(['line-clamp-2 block font-medium leading-snug', 'text-gray-400 line-through dark:text-gray-500' => $entry->done, 'text-gray-900 dark:text-gray-100' => ! $entry->done])>{{ $entry->title }}</span>
         @if ($entry->location || $entry->cost !== null)
             <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ collect([$entry->location ? '📍 '.$entry->location : null, $entry->cost !== null ? $euro($entry->cost) : null])->filter()->implode(' · ') }}</span>

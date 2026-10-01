@@ -216,6 +216,34 @@ class TripItineraryTest extends TestCase
         $page->call('setTravelMode', 'plane')->assertStatus(422);
     }
 
+    public function test_each_way_can_have_its_own_travel_mode(): void
+    {
+        Queue::fake();
+        Http::fake(['routing.openstreetmap.de/routed-foot/*' => Http::response(['routes' => [['duration' => 600, 'distance' => 800, 'legs' => [['duration' => 600, 'distance' => 800]], 'geometry' => ['coordinates' => [[19.0402, 47.4979], [19.0511, 47.4968]]]]]]),
+            'routing.openstreetmap.de/routed-car/*' => Http::response(['routes' => [['duration' => 300, 'distance' => 2500, 'legs' => [['duration' => 300, 'distance' => 2500]], 'geometry' => ['coordinates' => [[19.0511, 47.4968], [19.0620, 47.5010]]]]]]),
+        ]);
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-22', 'travel_mode' => 'foot']);
+        $stops = collect([['Burg', 47.4979, 19.0402], ['Platz', 47.4968, 19.0511], ['Therme', 47.5010, 19.0620]])
+            ->map(fn ($stop, $index) => TripStop::factory()->create(['trip_id' => $trip->id, 'day' => '2026-07-22', 'title' => $stop[0], 'lat' => $stop[1], 'lng' => $stop[2], 'position' => $index + 1]));
+
+        $this->actingAs($user);
+        $page = Volt::test('trips.show', ['trip' => $trip])->set('tab', 'plan')
+            ->call('cycleTravelMode', $stops[2]->id)->call('cycleTravelMode', $stops[2]->id);
+        $this->assertSame('car', $stops[2]->fresh()->travel_mode);
+
+        $page->call('loadRoutes')->assertSee('🚶 10 Min. · 800 m')->assertSee('🚗 5 Min. · 2,5 km')->assertSee('🧭 15 Min. · 3,3 km');
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'routed-car/route/v1/driving/19.0511,47.4968;19.062,47.501'));
+
+        // Back to the trip's mode: stored as "as set for the trip".
+        $page->call('cycleTravelMode', $stops[2]->id);
+        $this->assertNull($stops[2]->fresh()->travel_mode);
+
+        $page->call('editStop', $stops[1]->id)->set('stop.travel_mode', 'bike')->call('saveStop')->assertHasNoErrors();
+        $this->assertSame('bike', $stops[1]->fresh()->travel_mode);
+        $page->call('editStop', $stops[1]->id)->set('stop.travel_mode', 'plane')->call('saveStop')->assertHasErrors('stop.travel_mode');
+    }
+
     public function test_a_day_is_sorted_by_distance_and_its_times_follow_the_ways_between_the_places(): void
     {
         Http::fake(['routing.openstreetmap.de/*' => Http::response([], 503)]);

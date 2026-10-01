@@ -131,7 +131,7 @@ class ShoppingListsTest extends TestCase
             ->set('selectedIngredients', [0, 1])
             ->call('addToShoppingList');
 
-        $this->assertSame(['Milch' => '1000 ml', 'Mehl' => '250 g'], $party->entries()->orderBy('id')->pluck('quantity', 'label')->all());
+        $this->assertSame(['Milch' => '1 l', 'Mehl' => '250 g'], $party->entries()->orderBy('id')->pluck('quantity', 'label')->all());
         $this->assertSame('Pfannkuchen', $party->entries()->where('label', 'Mehl')->value('note'));
         $this->assertSame(0, $weekly->entries()->count());
     }

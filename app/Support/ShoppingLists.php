@@ -21,8 +21,10 @@ class ShoppingLists
     {
         $label = mb_substr(trim($label), 0, 255);
         $quantity = trim((string) $quantity) ?: null;
-        $existing = ShoppingListEntry::where('shopping_list_id', $list->id)->where('checked', false)
-            ->whereRaw('LOWER(label) = ?', [mb_strtolower($label)])->first();
+        // The same item in another spelling ("Zwiebeln" for "Zwiebel") is the same entry.
+        $key = IngredientUnits::nameKey($label);
+        $existing = ShoppingListEntry::where('shopping_list_id', $list->id)->where('checked', false)->get()
+            ->first(fn (ShoppingListEntry $entry) => IngredientUnits::nameKey($entry->label) === $key);
 
         if ($existing) {
             $existing->update(array_filter([
@@ -56,6 +58,13 @@ class ShoppingLists
 
         if ($first === '' || $second === '') {
             return ($first ?: $second) ?: null;
+        }
+
+        // Units of one family are converted: "500 g" + "0,5 kg" = "1 kg".
+        $sum = IngredientUnits::add($first, $second);
+
+        if ($sum !== null) {
+            return $sum;
         }
 
         [$firstAmount, $firstUnit] = self::split($first);

@@ -66,7 +66,7 @@ class MealSuggestions
         $expiring = [];
         $soon = today()->addDays(5)->toDateString();
 
-        Collection::query()->visibleTo($user, $householdId)->whereNull('system_key')->with('properties')->get()
+        Collection::query()->visibleTo($user, $householdId)->where(fn ($query) => $query->whereNull('system_key')->orWhere('system_key', Pantry::SYSTEM_KEY))->with('properties')->get()
             ->each(function (Collection $collection) use ($user, $soon, &$stock, &$expiring) {
                 $bestBefore = self::property($collection, 'Best before');
                 $quantity = self::property($collection, 'Quantity');

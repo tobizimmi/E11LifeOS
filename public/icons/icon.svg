@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="E11LifeOS">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.55" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <!-- House: the household -->
+  <path d="M256 104 L408 228 Q416 235 416 246 L416 386 Q416 408 394 408 L118 408 Q96 408 96 386 L96 246 Q96 235 104 228 Z"
+        fill="#ffffff" fill-opacity="0.14" stroke="#ffffff" stroke-width="26" stroke-linejoin="round"/>
+  <!-- Connected thoughts: the second brain -->
+  <g stroke="#ffffff" stroke-width="14" stroke-linecap="round" opacity="0.95">
+    <line x1="196" y1="330" x2="256" y2="262"/>
+    <line x1="256" y1="262" x2="318" y2="320"/>
+    <line x1="196" y1="330" x2="318" y2="320"/>
+  </g>
+  <circle cx="196" cy="330" r="26" fill="#ffffff"/>
+  <circle cx="318" cy="320" r="26" fill="#ffffff"/>
+  <circle cx="256" cy="262" r="32" fill="url(#spark)" stroke="#ffffff" stroke-width="10"/>
+</svg>

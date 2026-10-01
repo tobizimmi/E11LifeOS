@@ -143,8 +143,13 @@ class AppSettings
             config(['mail.default' => 'smtp']);
         }
 
+        // The port the deploy started Reverb with wins over a port entered by hand.
+        if ((int) config('broadcasting.local_reverb_port') > 0) {
+            config(['broadcasting.connections.reverb.options.port' => (int) config('broadcasting.local_reverb_port')]);
+        }
+
         // With the port of the local Reverb process the app sends live updates to it directly.
-        if (($stored['reverb_publish_port'] ?? '') !== '') {
+        if (($stored['reverb_publish_port'] ?? '') !== '' || (int) config('broadcasting.local_reverb_port') > 0) {
             config([
                 'broadcasting.connections.reverb.options.host' => '127.0.0.1',
                 'broadcasting.connections.reverb.options.scheme' => 'http',

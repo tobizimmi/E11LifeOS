@@ -1,4 +1,4 @@
-// Service worker: offline view of the shopping list, dashboard, tasks and inbox, and push notifications.
+// Service worker: offline view of the shopping list, dashboard, tasks, inbox and travel plans, and push notifications.
 // - Built assets (/build/…) are cached on first use (their file names change with every build).
 // - These pages are fetched from the network first; without a connection the last
 //   loaded version is shown. Everything else always goes to the network.
@@ -6,6 +6,8 @@
 const ASSET_CACHE = 'e11lifeos-assets-v1';
 const PAGE_CACHE = 'e11lifeos-pages';
 const OFFLINE_PAGES = ['shopping-list', 'dashboard', 'tasks', 'inbox'];
+// Travel plans of trips ("Offline plan"): kept once opened, to read on the road without a connection.
+const OFFLINE_PATTERNS = [/^trips\/\d+\/itinerary$/];
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -50,11 +52,12 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Full page loads and wire:navigate fetches (both return the whole page).
-    if (OFFLINE_PAGES.includes(path) && (request.mode === 'navigate' || request.headers.has('X-Livewire-Navigate'))) {
+    if ((OFFLINE_PAGES.includes(path) || OFFLINE_PATTERNS.some((pattern) => pattern.test(path))) && (request.mode === 'navigate' || request.headers.has('X-Livewire-Navigate'))) {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    if (response.ok && !response.redirected) {
+                    // Only pages (a PDF download of the travel plan must not replace it).
+                    if (response.ok && !response.redirected && (response.headers.get('Content-Type') || '').startsWith('text/html')) {
                         const copy = response.clone();
                         caches.open(PAGE_CACHE).then((cache) => cache.put(scope + path, copy));
                     }

@@ -226,7 +226,7 @@ class CalendarFeed
     /**
      * Escapes a TEXT value (RFC 5545 §3.3.11).
      */
-    private static function text(string $value): string
+    public static function text(string $value): string
     {
         return str_replace(['\\', ';', ',', "\r\n", "\n", "\r"], ['\\\\', '\\;', '\\,', '\\n', '\\n', ''], $value);
     }
@@ -234,7 +234,7 @@ class CalendarFeed
     /**
      * Lines longer than 75 octets continue on the next line after a space (RFC 5545 §3.1).
      */
-    private static function fold(string $line): string
+    public static function fold(string $line): string
     {
         if (strlen($line) <= 75) {
             return $line;

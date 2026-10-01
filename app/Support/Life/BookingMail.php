@@ -2,6 +2,7 @@
 
 namespace App\Support\Life;
 
+use App\Support\Mail\MimeMessage;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -41,7 +42,7 @@ class BookingMail
             return $bookings;
         }
 
-        $text = $mail['text'] !== '' ? $mail['text'] : self::htmlToText($mail['html']);
+        $text = $mail['text'] !== '' ? $mail['text'] : MimeMessage::htmlToText($mail['html']);
         $draft = self::fromText($mail['subject'], $text);
 
         return $draft ? [$draft] : [];
@@ -53,98 +54,25 @@ class BookingMail
     }
 
     /**
-     * Subject, HTML and text body of a MIME mail (nested multipart, base64 and quoted-printable).
+     * Subject, HTML and text body of a MIME mail.
      *
      * @return array{subject: string, html: string, text: string}
      */
     public static function parseMime(string $raw): array
     {
-        [$headers, $body] = self::split($raw);
-        $mail = ['subject' => self::decodeHeader($headers['subject'] ?? ''), 'html' => '', 'text' => ''];
-        self::walk($headers, $body, $mail);
+        $message = MimeMessage::parse($raw);
 
-        return $mail;
+        return ['subject' => $message->subject, 'html' => $message->html, 'text' => $message->text];
     }
 
     /**
-     * @return array{0: array<string, string>, 1: string}
+     * Draft bookings from an already parsed mail (used by the mail intake).
+     *
+     * @return list<array{kind: string, title: string, provider: string, starts_at: string, ends_at: string, reference: string, amount: string, currency: string}>
      */
-    private static function split(string $part): array
+    public static function fromMessage(MimeMessage $message): array
     {
-        $part = str_replace("\r\n", "\n", $part);
-        [$head, $body] = array_pad(explode("\n\n", $part, 2), 2, '');
-        $headers = [];
-
-        foreach (preg_split('/\n(?![ \t])/', $head) ?: [] as $line) {
-            if (str_contains($line, ':')) {
-                [$name, $value] = explode(':', $line, 2);
-                $headers[strtolower(trim($name))] = trim((string) preg_replace('/\n[ \t]+/', ' ', $value));
-            }
-        }
-
-        return [$headers, $body];
-    }
-
-    /**
-     * @param  array<string, string>  $headers
-     * @param  array{subject: string, html: string, text: string}  $mail
-     */
-    private static function walk(array $headers, string $body, array &$mail, int $depth = 0): void
-    {
-        $type = strtolower($headers['content-type'] ?? 'text/plain');
-
-        if ($depth < 6 && str_starts_with($type, 'multipart/') && preg_match('/boundary="?([^";]+)"?/i', $headers['content-type'] ?? '', $match)) {
-            foreach (array_slice(explode('--'.$match[1], $body), 1) as $part) {
-                if (str_starts_with($part, '--')) {
-                    break;
-                }
-
-                [$partHeaders, $partBody] = self::split(ltrim($part, "\n"));
-                self::walk($partHeaders, $partBody, $mail, $depth + 1);
-            }
-
-            return;
-        }
-
-        if (! str_starts_with($type, 'text/plain') && ! str_starts_with($type, 'text/html')) {
-            return;
-        }
-
-        $content = match (strtolower($headers['content-transfer-encoding'] ?? '')) {
-            'base64' => (string) base64_decode(preg_replace('/\s+/', '', $body) ?? '', true),
-            'quoted-printable' => quoted_printable_decode($body),
-            default => $body,
-        };
-
-        if (preg_match('/charset="?([\w-]+)"?/i', $type, $charset) && strtolower($charset[1]) !== 'utf-8') {
-            try {
-                $content = (string) mb_convert_encoding($content, 'UTF-8', $charset[1]);
-            } catch (Throwable) {
-                // Keep the bytes as they are.
-            }
-        }
-
-        $key = str_starts_with($type, 'text/html') ? 'html' : 'text';
-
-        if ($mail[$key] === '') {
-            $mail[$key] = $content;
-        }
-    }
-
-    private static function decodeHeader(string $value): string
-    {
-        $decoded = @iconv_mime_decode($value, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8');
-
-        return trim($decoded !== false ? $decoded : $value);
-    }
-
-    public static function htmlToText(string $html): string
-    {
-        $html = (string) preg_replace('~<(script|style)\b[^>]*>.*?</\1>~is', ' ', $html);
-        $html = (string) preg_replace('~<(br|/p|/div|/tr|/li|/h\d)\b[^>]*>~i', "\n", $html);
-        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        return trim((string) preg_replace(["/[ \t\x{00A0}]+/u", "/\n\s*\n+/"], [' ', "\n"], $text));
+        return self::fromSchema($message->html !== '' ? $message->html : $message->text);
     }
 
     /**

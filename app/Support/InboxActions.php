@@ -32,7 +32,8 @@ class InboxActions
      */
     public static function toPage(Item $item): void
     {
-        $item->update(['type' => Item::TYPE_NOTE, 'content' => ['body' => '']]);
+        // A text that came with the entry (e.g. the body of a mail) stays on the page.
+        $item->update(['type' => Item::TYPE_NOTE, 'content' => ['body' => (string) data_get($item->content, 'body', '')]]);
     }
 
     /**

@@ -9,7 +9,9 @@ use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Models\TripPlace;
 use App\Models\TripStop;
+use App\Models\InboundMail;
 use App\Support\Life\BookingMail;
+use App\Support\Mail\MailIntake;
 use App\Support\Life\ExchangeRates;
 use App\Support\Life\TripCovers;
 use App\Support\Life\TripDayPlanner;
@@ -814,6 +816,30 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * Takes over a booking that arrived at the household's mail address for this trip.
+     */
+    public function takeInboundDraft(int $mailId, int $index): void
+    {
+        $mail = InboundMail::where('trip_id', $this->findTrip()->id)->findOrFail($mailId);
+        $drafts = $mail->drafts ?? [];
+        $draft = $drafts[$index] ?? abort(404);
+        $this->mailDrafts = [$draft];
+        $this->takeMailDraft(0);
+
+        if ($this->getErrorBag()->isEmpty()) {
+            $this->dropInboundDraft($mailId, $index);
+        }
+    }
+
+    public function dropInboundDraft(int $mailId, int $index): void
+    {
+        $mail = InboundMail::where('trip_id', $this->findTrip()->id)->findOrFail($mailId);
+        $drafts = $mail->drafts ?? [];
+        unset($drafts[$index]);
+        $mail->update(['drafts' => array_values($drafts) ?: null]);
+    }
+
     public function takeMailDraft(int $index): void
     {
         $draft = $this->mailDrafts[$index] ?? abort(404);
@@ -909,6 +935,7 @@ new #[Layout('layouts.app')] class extends Component
             'people' => $trip->packingItems->pluck('person')->filter()->unique()->values(),
             'expenseGroups' => ExpenseGroup::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->get(),
             'currencies' => ExchangeRates::COMMON,
+            'inboundDrafts' => $this->tab === 'bookings' ? MailIntake::pendingFor($trip) : collect(),
             'tripRate' => $trip->currency && $this->tab === 'overview' ? ExchangeRates::rate($trip->currency) : null,
             'places' => Place::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->orderBy('visited')->orderBy('name')->get(),
         ];
@@ -1395,6 +1422,22 @@ new #[Layout('layouts.app')] class extends Component
                         <textarea wire:model="bookingMailText" rows="5" class="{{ $input }}" placeholder="{{ __('Paste the confirmation mail here') }}"></textarea>
                         <x-secondary-button type="submit">{{ __('Read booking') }}</x-secondary-button>
                     </form>
+                    @foreach ($inboundDrafts as $inboundMail)
+                        <div wire:key="inbound-{{ $inboundMail->id }}" class="mt-3 rounded-xl bg-indigo-50/60 p-3 ring-1 ring-indigo-100 dark:bg-indigo-900/20 dark:ring-indigo-900">
+                            <p class="text-xs text-gray-600 dark:text-gray-300">📬 {{ __('Received by mail') }} · {{ $inboundMail->created_at->translatedFormat('j. M, H:i') }} · {{ $inboundMail->subject }}</p>
+                            @foreach ($inboundMail->drafts as $index => $draft)
+                                <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                                    <span class="text-xl" aria-hidden="true">{{ $kinds[$draft['kind']]['icon'] ?? '📌' }}</span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $draft['title'] }}</span>
+                                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ collect([$draft['starts_at'] ? \Illuminate\Support\Carbon::parse($draft['starts_at'])->translatedFormat('D, j. M Y H:i') : null, $draft['provider'], $draft['reference'] ? __('Code :code', ['code' => $draft['reference']]) : null, $draft['amount'] !== '' ? $draft['amount'].' '.$draft['currency'] : null])->filter()->implode(' · ') }}</span>
+                                    </span>
+                                    <button type="button" wire:click="takeInboundDraft({{ $inboundMail->id }}, {{ $index }})" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">{{ __('Add') }}</button>
+                                    <button type="button" wire:click="dropInboundDraft({{ $inboundMail->id }}, {{ $index }})" class="rounded-lg px-2 py-1.5 text-xs text-gray-500 hover:text-red-600" aria-label="{{ __('Discard') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endforeach
                     @if ($mailDrafts !== [])
                         <ul class="mt-3 divide-y divide-gray-100 rounded-xl ring-1 ring-indigo-100 dark:divide-gray-700 dark:ring-indigo-900">
                             @foreach ($mailDrafts as $index => $draft)

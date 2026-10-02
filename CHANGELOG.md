@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.23.0] – 2026-10-02
+
+### Neu
+- Vertragskosten: neuen Vertrag direkt anlegen (Liste wählbar, optional mit Zahlung aus Finanzen) und unter „Alle weiteren Zahlungen“ jede Abbuchung als Vertrag anlegen oder mit einem verknüpfen – auch einmalige und jährliche.
+
 ## [1.22.1] – 2026-10-01
 
 ### Verbessert

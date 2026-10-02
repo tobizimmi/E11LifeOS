@@ -120,9 +120,9 @@ class SubscriptionMatcher
      *
      * @param  array<string, mixed>  $payment
      */
-    public static function adopt(User $user, int $householdId, array $payment): Item
+    public static function adopt(User $user, int $householdId, array $payment, ?Collection $collection = null): Item
     {
-        $collection = self::contractCollection($user, $householdId);
+        $collection ??= self::contractCollection($user, $householdId);
         $item = new Item([
             'household_id' => $householdId,
             'collection_id' => $collection->id,
@@ -152,6 +152,49 @@ class SubscriptionMatcher
         $item->save();
 
         return $item;
+    }
+
+    /**
+     * A new contract entry entered by hand in the chosen list, optionally linked to a payment.
+     */
+    public static function create(User $user, int $householdId, Collection $collection, string $title, ?string $provider, ?float $monthly, ?string $paymentKey = null): Item
+    {
+        $item = new Item([
+            'household_id' => $householdId,
+            'collection_id' => $collection->id,
+            'type' => Item::TYPE_ENTRY,
+            'visibility' => $collection->entryVisibility(),
+            'title' => mb_substr($title, 0, 255),
+            'created_by' => $user->id,
+            'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
+        ]);
+
+        if ($provider && ($providerProperty = ContractOverview::property($collection, ['Provider']))) {
+            $item->setPropertyValue($providerProperty, mb_substr($provider, 0, 255));
+        }
+
+        if ($monthly !== null && ($cost = self::costProperty($collection))) {
+            $item->setPropertyValue($cost, self::costValue($cost, $monthly));
+        }
+
+        if ($paymentKey !== null) {
+            $item->content = ['payment_keys' => [$paymentKey]] + ($item->content ?? []);
+        }
+
+        $item->save();
+
+        return $item;
+    }
+
+    /**
+     * Lists the user can see that hold contracts (a cost field); the default one first.
+     *
+     * @return \Illuminate\Support\Collection<int, Collection>
+     */
+    public static function contractCollections(User $user, int $householdId): \Illuminate\Support\Collection
+    {
+        return Collection::query()->visibleTo($user, $householdId)->whereNull('system_key')->with('properties')->orderBy('name')->get()
+            ->filter(fn (Collection $collection) => self::costProperty($collection) !== null)->values();
     }
 
     /**

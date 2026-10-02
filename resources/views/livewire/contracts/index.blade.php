@@ -12,6 +12,18 @@ use Livewire\Volt\Component;
  */
 new #[Layout('layouts.app')] class extends Component
 {
+    /** List new contracts go to (a collection with a cost field); 0 = the default contracts list. */
+    public int $listId = 0;
+
+    public bool $creating = false;
+
+    public bool $showAllPayments = false;
+
+    /**
+     * @var array{title: string, provider: string, monthly: string, payment: string}
+     */
+    public array $contract = ['title' => '', 'provider' => '', 'monthly' => '', 'payment' => ''];
+
     private function householdId(): int
     {
         $household = Auth::user()->currentHousehold();
@@ -25,15 +37,37 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function payment(string $key): array
     {
-        return collect(SubscriptionMatcher::for(Auth::user(), $this->householdId())['unmatched'])->firstWhere('key', $key) ?? abort(404);
+        return collect(SubscriptionMatcher::for(Auth::user(), $this->householdId())['unmatched'])->firstWhere('key', $key)
+            ?? collect(SubscriptionMatcher::payees(Auth::user(), $this->householdId(), PHP_INT_MAX))->firstWhere('key', $key)
+            ?? abort(404);
     }
 
     /**
-     * Creates a contract entry for a recurring payment.
+     * The chosen contracts list, or the default one (created from the template if there is none).
+     */
+    private function targetList(): \App\Models\Collection
+    {
+        return $this->listId
+            ? (SubscriptionMatcher::contractCollections(Auth::user(), $this->householdId())->firstWhere('id', $this->listId) ?? abort(404))
+            : SubscriptionMatcher::contractCollection(Auth::user(), $this->householdId());
+    }
+
+    /**
+     * Creates a contract entry for a payment (regular or any other debit).
      */
     public function adopt(string $key): void
     {
-        $item = SubscriptionMatcher::adopt(Auth::user(), $this->householdId(), $this->payment($key));
+        $payment = $this->payment($key);
+
+        if ($payment['frequency'] === null) {
+            // Seen only once (e.g. a yearly payment): prefill the form instead of guessing a monthly amount.
+            $this->contract = ['title' => $payment['name'], 'provider' => $payment['name'], 'monthly' => '', 'payment' => $payment['key']];
+            $this->creating = true;
+
+            return;
+        }
+
+        $item = SubscriptionMatcher::adopt(Auth::user(), $this->householdId(), $payment, $this->targetList());
         $this->dispatch('toast', message: __('":name" added to your contracts.', ['name' => $item->title]));
     }
 
@@ -46,6 +80,34 @@ new #[Layout('layouts.app')] class extends Component
         $contract = collect(ContractOverview::for(Auth::user(), $this->householdId())['contracts'])->first(fn (array $contract) => $contract['item']->id === $itemId)['item'] ?? abort(404);
         SubscriptionMatcher::link($contract, $payment['key']);
         $this->dispatch('toast', message: __('Payment linked with ":name".', ['name' => $contract->title]));
+    }
+
+    public function startCreate(): void
+    {
+        $this->contract = ['title' => '', 'provider' => '', 'monthly' => '', 'payment' => ''];
+        $this->resetValidation();
+        $this->creating = true;
+    }
+
+    /**
+     * A new contract entered by hand, optionally linked to a payment from the bank bookings.
+     */
+    public function saveContract(): void
+    {
+        $this->contract['monthly'] = str_replace(',', '.', trim($this->contract['monthly']));
+        $data = $this->validate([
+            'contract.title' => ['required', 'string', 'max:255'],
+            'contract.provider' => ['nullable', 'string', 'max:255'],
+            'contract.monthly' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'contract.payment' => ['nullable', 'string', 'max:255'],
+        ], attributes: ['contract.title' => __('Contract'), 'contract.monthly' => __('Per month')])['contract'];
+
+        $payment = $data['payment'] ? $this->payment($data['payment']) : null;
+        $monthly = $data['monthly'] !== '' && $data['monthly'] !== null ? (float) $data['monthly'] : (($payment['frequency'] ?? null) ? $payment['monthly'] : null);
+        $item = SubscriptionMatcher::create(Auth::user(), $this->householdId(), $this->targetList(), trim($data['title']), trim((string) $data['provider']) ?: null, $monthly, $payment['key'] ?? null);
+
+        $this->creating = false;
+        $this->dispatch('toast', message: __('":name" added to your contracts.', ['name' => $item->title]));
     }
 
     /**
@@ -71,9 +133,18 @@ new #[Layout('layouts.app')] class extends Component
     {
         $user = Auth::user();
 
+        $matching = SubscriptionMatcher::for($user, $this->householdId());
+        $linkedKeys = collect(ContractOverview::for($user, $this->householdId())['contracts'])->flatMap(fn (array $contract) => SubscriptionMatcher::linkedKeys($contract['item']))->all();
+        $matchedKeys = collect($matching['matched'])->pluck('payment.key')->all();
+
         return [
             'overview' => ContractOverview::for($user, $this->householdId()),
-            'matching' => SubscriptionMatcher::for($user, $this->householdId()),
+            'matching' => $matching,
+            'lists' => SubscriptionMatcher::contractCollections($user, $this->householdId()),
+            'unmatchedPayments' => collect($matching['unmatched']),
+            // Every other debit that is not linked to a contract yet.
+            'otherPayments' => collect(SubscriptionMatcher::payees($user, $this->householdId()))
+                ->reject(fn (array $payee) => in_array($payee['key'], [...$linkedKeys, ...$matchedKeys, ...collect($matching['unmatched'])->pluck('key')->all()], true))->values(),
         ];
     }
 }; ?>
@@ -91,12 +162,40 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-end">
+            <div class="flex flex-wrap justify-end gap-2">
+                <button type="button" wire:click="startCreate" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500">+ {{ __('New contract') }}</button>
                 <a href="{{ route('letters.index') }}" wire:navigate class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">✉️ {{ __('Write a letter') }}</a>
             </div>
 
+            @if ($creating)
+                <form wire:submit="saveContract" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 sm:col-span-2 dark:text-gray-100">📄 {{ __('New contract') }}</h3>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Contract') }}<input type="text" wire:model="contract.title" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('e.g. Gym, mobile phone, electricity') }}" autofocus><x-input-error :messages="$errors->get('contract.title')" /></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Provider') }}<input type="text" wire:model="contract.provider" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Per month') }}<input type="text" inputmode="decimal" wire:model="contract.monthly" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('from the payment') }}"><x-input-error :messages="$errors->get('contract.monthly')" /></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Payment from Finances') }}
+                        <select wire:model="contract.payment" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                            <option value="">–</option>
+                            @include('provision.partials.payment-options')
+                        </select>
+                    </label>
+                    <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('List') }}
+                        <select wire:model="listId" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                            <option value="0">{{ $lists->isEmpty() ? __('New list “Contracts & documents”') : __('Default: :name', ['name' => $lists->first()->name]) }}</option>
+                            @foreach ($lists as $list)
+                                <option value="{{ $list->id }}">{{ $list->icon }} {{ $list->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <div class="flex gap-2 sm:col-span-2">
+                        <x-primary-button>{{ __('Save') }}</x-primary-button>
+                        <x-secondary-button type="button" wire:click="$set('creating', false)">{{ __('Cancel') }}</x-secondary-button>
+                    </div>
+                </form>
+            @endif
+
             @php($changes = array_values(array_filter($matching['matched'], fn ($match) => $match['difference'] !== null)))
-            @if ($matching['unmatched'] !== [] || $changes !== [] || $matching['without_payment'] !== [])
+            @if ($matching['unmatched'] !== [] || $changes !== [] || $matching['without_payment'] !== [] || $otherPayments->isNotEmpty())
                 <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔍 {{ __('Compared with your bank bookings') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Recurring payments of the last months next to your contracts – so no subscription is forgotten.') }}</p>
@@ -134,6 +233,31 @@ new #[Layout('layouts.app')] class extends Component
                                 </li>
                             @endforeach
                         </ul>
+                    @endif
+
+                    @if ($otherPayments->isNotEmpty())
+                        <div class="mt-4">
+                            <button type="button" wire:click="$toggle('showAllPayments')" class="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400" aria-expanded="{{ $showAllPayments ? 'true' : 'false' }}">{{ $showAllPayments ? '▾' : '▸' }} {{ __('All other payments (:count)', ['count' => $otherPayments->count()]) }}</button>
+                            @if ($showAllPayments)
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Every debit of the last months – also one-off and yearly payments. Add one as a contract or link it to one.') }}</p>
+                                <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700">
+                                    @foreach ($otherPayments as $payment)
+                                        <li wire:key="other-payment-{{ md5($payment['key']) }}" class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+                                            <span class="min-w-0 basis-full sm:basis-0 sm:flex-1"><span class="font-medium text-gray-900 dark:text-gray-100">{{ $payment['name'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $euro($payment['amount']) }} · {{ __('last :date', ['date' => $payment['lastDate']->format('d.m.Y')]) }}{{ $payment['count'] > 1 ? ' · '.$payment['count'].'×' : '' }}</span></span>
+                                            <button type="button" wire:click="adopt(@js($payment['key']))" class="rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">+ {{ __('Add as contract') }}</button>
+                                            @if ($overview['contracts'] !== [])
+                                                <select x-on:change="$event.target.value && $wire.link(@js($payment['key']), $event.target.value)" class="rounded-lg border-gray-300 py-1 ps-2 pe-8 text-xs dark:border-gray-700" aria-label="{{ __('Link to a contract') }}">
+                                                    <option value="">🔗 {{ __('Link to …') }}</option>
+                                                    @foreach ($overview['contracts'] as $contract)
+                                                        <option value="{{ $contract['item']->id }}">{{ $contract['item']->title }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
                     @endif
 
                     @if ($matching['has_bookings'] && $matching['without_payment'] !== [])

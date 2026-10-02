@@ -5496,5 +5496,11 @@
     "Regular payments without a contract": "Regelmäßige Zahlungen ohne Vertrag",
     "All other payments": "Alle weiteren Zahlungen",
     "No payments in Finances": "Keine Zahlungen in Finanzen",
-    "Debit: :name, :amount € on :date": "Abbuchung: :name, :amount € am :date"
+    "Debit: :name, :amount € on :date": "Abbuchung: :name, :amount € am :date",
+    "New contract": "Neuer Vertrag",
+    "e.g. Gym, mobile phone, electricity": "z. B. Fitnessstudio, Handy, Strom",
+    "New list “Contracts & documents”": "Neue Liste „Verträge & Dokumente“",
+    "Default: :name": "Standard: :name",
+    "All other payments (:count)": "Alle weiteren Zahlungen (:count)",
+    "Every debit of the last months – also one-off and yearly payments. Add one as a contract or link it to one.": "Alle Abbuchungen der letzten Monate – auch einmalige und jährliche. Als Vertrag anlegen oder mit einem verknüpfen."
 }

@@ -61,4 +61,33 @@ class SubscriptionMatcherTest extends TestCase
         $this->assertSame([$spotify], $user->fresh()->dismissed_subscriptions);
         $this->assertSame([], SubscriptionMatcher::for($user, $household->id)['unmatched']);
     }
+
+    public function test_any_payment_becomes_a_contract_and_contracts_are_added_by_hand(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-28 10:00'));
+        [$user, $household] = $this->memberWithHousehold();
+        $mine = Collection::factory()->create(['household_id' => $household->id, 'name' => 'Meine Verträge']);
+        CollectionTemplates::apply($mine, 'contracts');
+        $cost = $mine->properties()->where('name', 'Monatliche Kosten (€)')->sole()->id;
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        Transaction::factory()->create(['bank_account_id' => $account->id, 'booked_on' => '2026-04-01', 'amount' => -59, 'counterparty' => 'ADAC', 'purpose' => null, 'category' => 'mobility']);
+
+        $this->assertSame([], SubscriptionMatcher::for($user, $household->id)['unmatched']);
+        $adac = collect(SubscriptionMatcher::payees($user, $household->id))->firstWhere('name', 'ADAC')['key'];
+
+        $this->actingAs($user);
+        Volt::test('contracts.index')
+            ->set('showAllPayments', true)->assertSee('Alle weiteren Zahlungen (1)')->assertSee('ADAC')
+            // A payment seen once opens the form, the yearly amount is entered as monthly cost.
+            ->call('adopt', $adac)->assertSet('creating', true)->assertSet('contract.payment', $adac)
+            ->set('contract.monthly', '4,92')->set('listId', $mine->id)->call('saveContract')->assertHasNoErrors()
+            ->assertSee('Abbuchung')->assertDontSee('Alle weiteren Zahlungen')
+            // A contract without any payment yet.
+            ->call('startCreate')->set('contract.title', 'Fitnessstudio')->set('contract.provider', 'FitX')->set('contract.monthly', '24,90')->call('saveContract')
+            ->call('startCreate')->call('saveContract')->assertHasErrors('contract.title');
+
+        $contract = Item::where('title', 'ADAC')->sole();
+        $this->assertSame([$mine->id, 4.92, [$adac]], [$contract->collection_id, $contract->propertyValue($cost), $contract->content['payment_keys']]);
+        $this->assertSame([$mine->id, 24.9], [Item::where('title', 'Fitnessstudio')->sole()->collection_id, Item::where('title', 'Fitnessstudio')->sole()->propertyValue($cost)]);
+    }
 }

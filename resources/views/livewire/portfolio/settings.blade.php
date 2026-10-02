@@ -221,7 +221,52 @@ new #[Layout('layouts.app')] class extends Component
             'portfolioList' => $this->portfolios()->orderBy('id')->get(),
             'hasPushoverToken' => filled($settings->pushover_app_token) || filled(config('services.pushover.token')),
             'hasOwnPushoverToken' => filled($settings->pushover_app_token),
+            'jobs' => $this->scheduledJobs(),
         ];
+    }
+
+    /**
+     * The portfolio's automatic jobs (cron jobs of the scheduler) with their next run.
+     *
+     * @return list<array{label: string, when: string, next: ?\Illuminate\Support\Carbon}>
+     */
+    private function scheduledJobs(): array
+    {
+        $labels = [
+            'portfolio:update-prices --history' => __('Load price histories'),
+            'portfolio:update-prices' => __('Update prices'),
+            'portfolio:check-alerts' => __('Check price alerts'),
+            'portfolio:execute-savings-plans' => __('Execute savings plans'),
+            'portfolio:market-scan' => __('Market scan, key figures and recommendations'),
+            'portfolio:fetch-news' => __('Fetch news'),
+            'portfolio:instagram' => __('Analyse Instagram posts'),
+        ];
+        $jobs = [];
+        $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+
+        // The schedule is only defined when the console starts – in a web request it is read here.
+        if ($schedule->events() === []) {
+            require base_path('routes/console.php');
+        }
+
+        foreach ($schedule->events() as $event) {
+            $command = (string) $event->command;
+
+            foreach ($labels as $key => $label) {
+                if (str_contains($command, "'artisan' ".$key) && ($key !== 'portfolio:update-prices' || ! str_contains($command, '--history'))) {
+                    try {
+                        $next = \Illuminate\Support\Carbon::instance($event->nextRunDate(timezone: config('app.timezone')));
+                    } catch (Throwable) {
+                        $next = null;
+                    }
+
+                    $jobs[] = ['label' => $label, 'when' => $event->expression, 'next' => $next];
+                    break;
+                }
+            }
+        }
+
+        return $jobs;
     }
 }; ?>
 
@@ -433,6 +478,21 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 @endif
             </section>
+
+            @if ($jobs !== [])
+                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="portfolio-jobs">
+                    <h3 id="portfolio-jobs" class="font-semibold text-gray-900 dark:text-gray-100">⏱ {{ __('Automatic jobs') }}</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('These run on the server by themselves (cron jobs) – nothing to set up. Prices are updated on weekdays during trading hours.') }}</p>
+                    <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-700">
+                        @foreach ($jobs as $job)
+                            <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+                                <span class="text-gray-900 dark:text-gray-100">{{ $job['label'] }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400"><code>{{ $job['when'] }}</code>@if ($job['next']) · {{ __('next: :time', ['time' => $job['next']->format('d.m. H:i')]) }}@endif</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
         </div>
     </div>
 </div>

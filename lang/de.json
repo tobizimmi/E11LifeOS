@@ -5502,5 +5502,16 @@
     "New list “Contracts & documents”": "Neue Liste „Verträge & Dokumente“",
     "Default: :name": "Standard: :name",
     "All other payments (:count)": "Alle weiteren Zahlungen (:count)",
-    "Every debit of the last months – also one-off and yearly payments. Add one as a contract or link it to one.": "Alle Abbuchungen der letzten Monate – auch einmalige und jährliche. Als Vertrag anlegen oder mit einem verknüpfen."
+    "Every debit of the last months – also one-off and yearly payments. Add one as a contract or link it to one.": "Alle Abbuchungen der letzten Monate – auch einmalige und jährliche. Als Vertrag anlegen oder mit einem verknüpfen.",
+    "Load price histories": "Kursverläufe laden",
+    "Check price alerts": "Kursalarme prüfen",
+    "Execute savings plans": "Sparpläne ausführen",
+    "Market scan, key figures and recommendations": "Markt-Scan, Kennzahlen und Empfehlungen",
+    "Analyse Instagram posts": "Instagram-Beiträge auswerten",
+    "Automatic jobs": "Automatische Abläufe",
+    "These run on the server by themselves (cron jobs) – nothing to set up. Prices are updated on weekdays during trading hours.": "Diese laufen von selbst auf dem Server (Cronjobs) – nichts einzurichten. Kurse werden werktags während der Handelszeiten aktualisiert.",
+    "next: :time": "nächster Lauf: :time",
+    "Other shares in the market": "Weitere Aktien im Markt",
+    "Shares from the daily market scan that are not in your portfolio or on your watchlist.": "Aktien aus dem täglichen Markt-Scan, die nicht in deinem Depot oder auf deiner Watchlist sind.",
+    "Load insider trades of more shares": "Insidergeschäfte weiterer Aktien laden"
 }

@@ -35,10 +35,10 @@ class RecipeImporter
     /**
      * @return array<string, mixed>
      */
-    public function fromUrl(string $url): array
+    public function fromUrl(string $url, ?string $caption = null): array
     {
         if ($shortcode = InstagramPostReader::shortcode($url)) {
-            return $this->fromInstagram($url, $shortcode);
+            return $this->fromInstagram($url, $shortcode, $caption);
         }
 
         $html = $this->fetch($url)->body();
@@ -57,12 +57,23 @@ class RecipeImporter
      *
      * @return array<string, mixed>
      */
-    private function fromInstagram(string $url, string $shortcode): array
+    private function fromInstagram(string $url, string $shortcode, ?string $caption = null): array
     {
-        $post = $this->instagram->read($shortcode);
+        $post = $this->instagram->read($shortcode, $url);
+        // A pasted caption is complete; Instagram's own description is often shortened.
+        $post['caption'] = filled($caption) ? $caption : $post['caption'];
+
+        if (blank($post['caption']) && filled($post['imageUrl'])) {
+            // As in RezepteApp2: the form opens with the photo, the rest is filled in by hand.
+            return [
+                'sourceUrl' => $url, 'sourceType' => 'INSTAGRAM', 'title' => __('Instagram recipe'), 'description' => '', 'servings' => null,
+                'prepTime' => null, 'cookTime' => null, 'ingredients' => [], 'steps' => [], 'imageUrl' => $post['imageUrl'],
+                'notice' => __('Instagram gave out only the photo. Paste the post text into “Post text” on the import page, or fill in ingredients and steps here.'),
+            ];
+        }
 
         if (blank($post['caption'])) {
-            throw new RecipeAiException(__('Instagram does not give out the text of this post. Copy the description into “Text” or import a screenshot as photo.'));
+            throw new RecipeAiException(__('Instagram does not give out the text of this post. Paste the post text into “Post text” or import a screenshot as photo.'));
         }
 
         $draft = $this->normalize($this->ai->extractFromText($post['caption']));
@@ -103,8 +114,11 @@ class RecipeImporter
      */
     public function downloadImage(string $url, int $householdId): ?string
     {
+        // Signed CDN links (Instagram, Facebook) break when &amp; stays encoded.
+        $url = html_entity_decode(trim($url), ENT_QUOTES | ENT_HTML5);
+
         try {
-            $response = $this->fetch($url);
+            $response = $this->fetch($url, preg_match('/instagram|cdninstagram|fbcdn/i', (string) parse_url($url, PHP_URL_HOST)) ? 'https://www.instagram.com/' : null);
 
             return str_starts_with((string) $response->header('Content-Type'), 'image/')
                 ? RecipeImages::store($response->body(), $householdId)
@@ -174,15 +188,16 @@ class RecipeImporter
         return ['amount' => '', 'unit' => '', 'name' => $line];
     }
 
-    private function fetch(string $url): Response
+    private function fetch(string $url, ?string $referer = null): Response
     {
         $this->assertPublicUrl($url);
 
         return Http::timeout(20)
-            ->withHeaders([
+            ->withHeaders(array_filter([
                 'User-Agent' => 'Mozilla/5.0 (compatible; E11LifeOS recipe import)',
                 'Accept-Language' => 'de,en;q=0.5',
-            ])
+                'Referer' => $referer,
+            ]))
             ->withOptions(['allow_redirects' => [
                 'max' => 5,
                 'on_redirect' => fn ($request, $response, UriInterface $uri) => $this->assertPublicUrl((string) $uri),

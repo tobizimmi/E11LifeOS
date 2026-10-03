@@ -32,6 +32,9 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $text = '';
 
+    /** Optional caption for Instagram links (Instagram itself often gives out a shortened one). */
+    public string $caption = '';
+
     public ?string $failure = null;
 
     /**
@@ -45,7 +48,7 @@ new #[Layout('layouts.app')] class extends Component
             'photo' => ['photos' => ['required', 'array', 'min:1', 'max:'.RecipeAi::MAX_IMAGES], 'photos.*' => ['image', 'max:15360']],
             'pdf' => ['pdf' => ['required', 'file', 'mimes:pdf', 'max:20480']],
             'text' => ['text' => ['required', 'string', 'min:20', 'max:50000']],
-            default => ['url' => ['required', 'url:http,https', 'max:2000']],
+            default => ['url' => ['required', 'url:http,https', 'max:2000'], 'caption' => ['nullable', 'string', 'max:20000']],
         });
 
         try {
@@ -53,7 +56,7 @@ new #[Layout('layouts.app')] class extends Component
                 'photo' => $importer->fromImages($this->photos),
                 'pdf' => $importer->fromPdf($this->pdf),
                 'text' => $importer->fromText($this->text),
-                default => $importer->fromUrl(trim($this->url)),
+                default => $importer->fromUrl(trim($this->url), trim($this->caption) ?: null),
             };
         } catch (RecipeAiException $exception) {
             $this->failure = $exception->getMessage();
@@ -112,6 +115,12 @@ new #[Layout('layouts.app')] class extends Component
                                 {{ __('Instagram posts and reels work too: the AI reads the recipe from the post text.') }}
                             @endif
                         </p>
+                    </div>
+                    <div x-data x-show="($wire.url || '').toLowerCase().includes('instagr')" x-cloak>
+                        <x-input-label for="caption" :value="__('Post text (optional)')" />
+                        <textarea wire:model="caption" id="caption" rows="5" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs" placeholder="{{ __('In Instagram: tap “…” › “Copy” or hold the post text, copy it and paste it here.') }}"></textarea>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">💡 {{ __('Without the text, amounts are often missing, because Instagram shortens it.') }}</p>
+                        <x-input-error :messages="$errors->get('caption')" class="mt-1" />
                     </div>
                 @elseif (! $aiAvailable)
                     <p class="rounded-md bg-amber-50 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-200">{{ __('Importing photos, PDFs and text needs the AI, which is not set up on this server (ANTHROPIC_API_KEY).') }}</p>

@@ -30,13 +30,17 @@ class RecipeImporter
      */
     private const UNITS = 'kg|g|mg|l|ml|cl|dl|EL|TL|Tl|El|Msp|Prise|Prisen|Pck|Päckchen|Packung|Dose|Dosen|Becher|Bund|Stück|Stk|Scheibe|Scheiben|Zehe|Zehen|Tasse|Tassen|Glas|Gläser|Handvoll|Tbsp|tbsp|Tsp|tsp|cup|cups|oz|lb';
 
-    public function __construct(private RecipeAi $ai) {}
+    public function __construct(private RecipeAi $ai, private InstagramPostReader $instagram) {}
 
     /**
      * @return array<string, mixed>
      */
     public function fromUrl(string $url): array
     {
+        if ($shortcode = InstagramPostReader::shortcode($url)) {
+            return $this->fromInstagram($url, $shortcode);
+        }
+
         $html = $this->fetch($url)->body();
 
         $schema = $this->jsonLdRecipe($html) ?? $this->microdataRecipe($html);
@@ -46,6 +50,25 @@ class RecipeImporter
         $draft['imageUrl'] = $draft['imageUrl'] ? $this->absoluteUrl($draft['imageUrl'], $url) : null;
 
         return ['sourceUrl' => $url, 'sourceType' => 'WEB'] + $draft;
+    }
+
+    /**
+     * Instagram posts and reels: the caption holds the recipe, the AI turns it into the draft.
+     *
+     * @return array<string, mixed>
+     */
+    private function fromInstagram(string $url, string $shortcode): array
+    {
+        $post = $this->instagram->read($shortcode);
+
+        if (blank($post['caption'])) {
+            throw new RecipeAiException(__('Instagram does not give out the text of this post. Copy the description into “Text” or import a screenshot as photo.'));
+        }
+
+        $draft = $this->normalize($this->ai->extractFromText($post['caption']));
+        $draft['imageUrl'] = $post['imageUrl'];
+
+        return ['sourceUrl' => $url, 'sourceType' => 'INSTAGRAM'] + $draft;
     }
 
     /**

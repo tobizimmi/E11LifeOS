@@ -16,7 +16,7 @@
 
 <div class="fin-root space-y-5">
     @if ($report['count'] === 0)
-        <p class="rounded-2xl bg-white p-6 text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">{{ __('No bookings in this period.') }}</p>
+        <p class="rounded-2xl bg-white p-6 text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">{{ __('No bookings in this period.') }}</p>
     @else
         {{-- Headline figures --}}
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -26,7 +26,7 @@
                 [__('Left over'), $euro($report['balance'], 0), $report['savingsTransfers'] > 0 ? __(':amount of it moved to savings', ['amount' => $euro($report['savingsTransfers'], 0)]) : __('Income minus expenses'), null],
                 [__('Savings rate'), $report['savingsRate'] !== null ? number_format($report['savingsRate'], 1, ',', '.').' %' : '—', __('Guideline: at least 10–20 %'), null],
             ] as [$label, $value, $hint, $color])
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                         @if ($color)<span class="h-2.5 w-2.5 rounded-full" style="background: {{ $color }}" aria-hidden="true"></span>@endif
                         {{ $label }}
@@ -53,12 +53,12 @@
 
         <div class="grid gap-5 lg:grid-cols-5">
             {{-- Month by month --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800 lg:col-span-3">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800 lg:col-span-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Income and expenses per month') }}</h3>
                     <div class="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
-                        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background: var(--fin-income)"></span>{{ __('Income') }}</span>
-                        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background: var(--fin-expense)"></span>{{ __('Expenses') }}</span>
+                        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-xs" style="background: var(--fin-income)"></span>{{ __('Income') }}</span>
+                        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-xs" style="background: var(--fin-expense)"></span>{{ __('Expenses') }}</span>
                     </div>
                 </div>
                 <div class="mt-4 flex gap-2" x-data="{ hover: null }">
@@ -77,8 +77,8 @@
                             @foreach ($report['monthly'] as $index => $month)
                                 <div class="relative flex flex-1 flex-col items-center" x-on:mouseenter="hover = {{ $index }}" x-on:mouseleave="hover = null" x-on:focusin="hover = {{ $index }}" x-on:focusout="hover = null" tabindex="0" role="img" aria-label="{{ $month['label'] }}: {{ __('Income') }} {{ $euro($month['income']) }}, {{ __('Expenses') }} {{ $euro($month['expenses']) }}">
                                     <div class="flex flex-1 items-end gap-[2px] pb-0">
-                                        <div class="w-3 rounded-t sm:w-5" style="max-width: 24px; height: {{ round($month['income'] / $axisMax * 100, 2) }}%; background: var(--fin-income)"></div>
-                                        <div class="w-3 rounded-t sm:w-5" style="max-width: 24px; height: {{ round($month['expenses'] / $axisMax * 100, 2) }}%; background: var(--fin-expense)"></div>
+                                        <div class="w-3 rounded-t-sm sm:w-5" style="max-width: 24px; height: {{ round($month['income'] / $axisMax * 100, 2) }}%; background: var(--fin-income)"></div>
+                                        <div class="w-3 rounded-t-sm sm:w-5" style="max-width: 24px; height: {{ round($month['expenses'] / $axisMax * 100, 2) }}%; background: var(--fin-expense)"></div>
                                     </div>
                                     <span class="h-5 pt-1 text-[10px] text-gray-500 dark:text-gray-400">{{ $month['label'] }}</span>
                                     <div x-show="hover === {{ $index }}" x-cloak class="pointer-events-none absolute bottom-full z-10 mb-1 w-40 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg dark:bg-gray-100 dark:text-gray-900">
@@ -106,7 +106,7 @@
             </section>
 
             {{-- 50/30/20 --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800 lg:col-span-2">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800 lg:col-span-2">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('50/30/20 check') }}</h3>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ __('Share of your income: needs (guideline 50 %), wishes (30 %), saving (20 %).') }}</p>
                 @if ($report['split']['needs'] !== null)
@@ -115,7 +115,7 @@
                             @php $value = (float) $report['split'][$key]; @endphp
                             <li>
                                 <div class="flex items-baseline justify-between text-sm">
-                                    <span class="flex items-center gap-1.5 text-gray-700 dark:text-gray-200"><span class="h-2.5 w-2.5 rounded-sm" style="background: {{ $color }}"></span>{{ $label }}</span>
+                                    <span class="flex items-center gap-1.5 text-gray-700 dark:text-gray-200"><span class="h-2.5 w-2.5 rounded-xs" style="background: {{ $color }}"></span>{{ $label }}</span>
                                     <span class="tabular-nums text-gray-900 dark:text-gray-100"><strong>{{ number_format($value, 0, ',', '.') }} %</strong> <span class="text-xs text-gray-500">/ {{ $target }} %</span></span>
                                 </div>
                                 <div class="relative mt-1.5 h-2.5 rounded-full bg-gray-100 dark:bg-gray-700">
@@ -132,7 +132,7 @@
         </div>
 
         {{-- Savings potential --}}
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Savings potential') }}</h3>
                 @if ($report['potential'] > 0)
@@ -161,7 +161,7 @@
 
         {{-- AI analyst --}}
         @if ($aiAvailable)
-            <section class="rounded-2xl bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm ring-1 ring-indigo-100 dark:from-indigo-950/40 dark:to-gray-800 dark:ring-indigo-900">
+            <section class="rounded-2xl bg-gradient-to-br from-indigo-50 to-white p-5 shadow-xs ring-1 ring-indigo-100 dark:from-indigo-950/40 dark:to-gray-800 dark:ring-indigo-900">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">✨ {{ __('Your financial analyst') }}</h3>
@@ -188,7 +188,7 @@
                         @endif
                         <ol class="space-y-2">
                             @foreach ($advice['recommendations'] as $recommendation)
-                                <li class="rounded-xl bg-white p-3 shadow-sm dark:bg-gray-800">
+                                <li class="rounded-xl bg-white p-3 shadow-xs dark:bg-gray-800">
                                     <p class="flex flex-wrap items-baseline justify-between gap-2 font-medium text-gray-900 dark:text-gray-100">
                                         <span>{{ $loop->iteration }}. {{ $recommendation['title'] }}</span>
                                         @if ($recommendation['yearly_saving'] > 0)
@@ -206,7 +206,7 @@
 
         <div class="grid gap-5 lg:grid-cols-2">
             {{-- Categories --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Expenses by category') }}</h3>
                 <ul class="mt-4 space-y-2.5">
                     @foreach ($report['categories'] as $category)
@@ -227,7 +227,7 @@
 
             <div class="space-y-5">
                 {{-- Recurring --}}
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔁 {{ __('Recurring payments') }}</h3>
                         @if ($report['recurring'] !== [])
@@ -251,7 +251,7 @@
                 </section>
 
                 {{-- Top payees --}}
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Where most of the money goes') }}</h3>
                     <ol class="mt-3 space-y-1.5 text-sm">
                         @foreach ($report['payees'] as $payee)

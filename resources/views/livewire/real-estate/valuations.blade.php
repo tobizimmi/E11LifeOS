@@ -104,11 +104,11 @@ new class extends Component
 
 <div class="space-y-5">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Current value') }}</p>
             <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $current !== null ? $euro($current) : '–' }}</p>
         </div>
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Change since purchase') }}</p>
             <p @class(['text-xl font-semibold', 'text-green-700 dark:text-green-400' => ($gain ?? 0) >= 0, 'text-red-700 dark:text-red-400' => ($gain ?? 0) < 0])>
                 {{ $gain !== null ? ($gain >= 0 ? '+' : '').$euro($gain) : '–' }}
@@ -117,18 +117,18 @@ new class extends Component
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':rate % per year', ['rate' => number_format($yearlyGrowth, 1, ',', '.')]) }}</p>
             @endif
         </div>
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Value per m²') }}</p>
             <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $perSquareMeter !== null ? $euro($perSquareMeter) : '–' }}</p>
         </div>
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Equity in the property') }}</p>
             <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $equity !== null ? $euro($equity) : '–' }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Remaining loans: :amount', ['amount' => $euro($debt)]) }}</p>
         </div>
     </div>
 
-    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="value-heading">
+    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="value-heading">
         <h3 id="value-heading" class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Value development') }}</h3>
         @if (count($chart) >= 2)
             <x-line-chart :points="$chart" :value-label="__('Value')" class="mt-3" wire:key="value-chart-{{ count($chart) }}" />

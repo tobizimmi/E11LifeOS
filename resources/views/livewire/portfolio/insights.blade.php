@@ -46,6 +46,28 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Loads insider trades for shares of the market scan that have none yet (a few at a time).
+     */
+    public function loadMarketInsiders(MarketData $market): void
+    {
+        $own = $this->ownSymbols();
+        $loaded = 0;
+
+        Security::query()->where('scanned_at', '>=', now()->subWeeks(2))->whereNotIn('symbol', $own)
+            ->where(fn ($query) => $query->whereNull('asset_type')->orWhere('asset_type', 'stock'))
+            ->orderBy('fundamentals_updated_at')->limit(80)->get()
+            ->filter(fn (Security $security) => ! is_array($security->fundamentals) || ! array_key_exists('insider', $security->fundamentals) || ! $security->fundamentals_updated_at?->gt(now()->subWeek()))
+            ->take(20)
+            ->each(function (Security $security) use ($market, &$loaded) {
+                if ($market->fundamentals($security, refresh: true)) {
+                    $loaded++;
+                }
+            });
+
+        $this->dispatch('toast', message: trans_choice(':count security updated.|:count securities updated.', $loaded));
+    }
+
+    /**
      * @return list<string>
      */
     private function ownSymbols(): array
@@ -80,9 +102,9 @@ new #[Layout('layouts.app')] class extends Component
             ];
         });
 
-        // Insider barometer: own positions and watchlist, or everything the market scan knows.
+        // Insider barometer: own positions and watchlist, or the other shares the market scan knows.
         $barometer = Security::query()->whereNotNull('fundamentals')
-            ->when($this->scope === 'mine', fn ($query) => $query->whereIn('symbol', $this->ownSymbols()))
+            ->when($this->scope === 'mine', fn ($query) => $query->whereIn('symbol', $this->ownSymbols()), fn ($query) => $query->whereNotIn('symbol', $this->ownSymbols()))
             ->get()
             ->map(fn (Security $security) => ['security' => $security, 'insider' => StockInsights::insiderBarometer($security->fundamentals ?? [])])
             ->filter(fn (array $entry) => $entry['insider'] && $entry['insider']['buys'] + $entry['insider']['sells'] > 0)
@@ -124,7 +146,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.insights'])
 
-            <section class="rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-labelledby="positions-check">
+            <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-labelledby="positions-check">
                 <div class="flex flex-wrap items-center justify-between gap-2 px-5 pt-5">
                     <div>
                         <h3 id="positions-check" class="font-semibold text-gray-900 dark:text-gray-100">🩺 {{ __('My positions in check') }}</h3>
@@ -188,18 +210,28 @@ new #[Layout('layouts.app')] class extends Component
                 <p class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Analyst votes and price targets are opinions, not advice – use them as one piece of the picture.') }}</p>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="insider-barometer">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="insider-barometer">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <h3 id="insider-barometer" class="font-semibold text-gray-900 dark:text-gray-100">🕵️ {{ __('Insider barometer') }}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Purchases and sales of board members and major shareholders in the last six months. Purchases with own money are the stronger signal – sales often have private reasons.') }}</p>
                     </div>
                     <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="tablist">
-                        @foreach (['mine' => __('My positions & watchlist'), 'market' => __('Whole market scan')] as $scopeKey => $scopeLabel)
-                            <button type="button" role="tab" wire:click="$set('scope', '{{ $scopeKey }}')" aria-selected="{{ $scope === $scopeKey ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $scope === $scopeKey, 'text-gray-600 dark:text-gray-400' => $scope !== $scopeKey])>{{ $scopeLabel }}</button>
+                        @foreach (['mine' => __('My positions & watchlist'), 'market' => __('Other shares in the market')] as $scopeKey => $scopeLabel)
+                            <button type="button" role="tab" wire:click="$set('scope', '{{ $scopeKey }}')" aria-selected="{{ $scope === $scopeKey ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $scope === $scopeKey, 'text-gray-600 dark:text-gray-400' => $scope !== $scopeKey])>{{ $scopeLabel }}</button>
                         @endforeach
                     </div>
                 </div>
+
+                @if ($scope === 'market')
+                    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span>{{ __('Shares from the daily market scan that are not in your portfolio or on your watchlist.') }}</span>
+                        <button type="button" wire:click="loadMarketInsiders" wire:loading.attr="disabled" wire:target="loadMarketInsiders" class="font-medium text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400">
+                            <span wire:loading.remove wire:target="loadMarketInsiders">↻ {{ __('Load insider trades of more shares') }}</span>
+                            <span wire:loading wire:target="loadMarketInsiders">{{ __('Loading …') }}</span>
+                        </button>
+                    </div>
+                @endif
 
                 @if ($buying->isEmpty() && $selling->isEmpty())
                     <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">{{ __('No insider trades known yet. They are loaded with the key figures (daily market scan or “Update data”).') }}</p>

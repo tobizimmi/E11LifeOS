@@ -3,6 +3,29 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.25.0] – 2026-10-03
+
+### Neu
+- Reisen: aufklappbare „Tipps für …“ in der Übersicht – kurze Einführung aus Wikipedia, sehenswerte Orte und Restaurants & Cafés, mit einem Tipp direkt als Idee in den Plan.
+- Reisen: Plan nach Kategorie anzeigen (z. B. alle geplanten und möglichen Restaurants) und Orte als besucht abhaken – auch Ideen ohne Tag.
+- Reisekarte: „Orte in der Nähe“ lassen sich nach Art (Sehenswürdigkeiten, Essen & Trinken, Aktivitäten, Einkaufen …) ein- und ausblenden und direkt auf der Karte auswählen.
+
+### Sicherheit
+- Oberfläche auf Tailwind CSS 4 umgestellt – damit ist eine Sicherheitslücke in den Build-Werkzeugen von Tailwind 3 behoben. Das Aussehen bleibt gleich.
+
+## [1.24.0] – 2026-10-02
+
+### Neu
+- Portfolio-Einstellungen: Abschnitt „Automatische Abläufe“ zeigt, wann Kurse, Kursalarme, Sparpläne, Markt-Scan mit Kennzahlen, News und Instagram automatisch laufen.
+
+### Verbessert
+- Insiderbarometer: „Weitere Aktien im Markt“ zeigt jetzt Aktien aus dem Markt-Scan, die nicht in deinem Depot oder auf der Watchlist sind – mit Knopf zum Nachladen weiterer Insidergeschäfte.
+
+## [1.23.0] – 2026-10-02
+
+### Neu
+- Vertragskosten: neuen Vertrag direkt anlegen (Liste wählbar, optional mit Zahlung aus Finanzen) und unter „Alle weiteren Zahlungen“ jede Abbuchung als Vertrag anlegen oder mit einem verknüpfen – auch einmalige und jährliche.
+
 ## [1.22.1] – 2026-10-01
 
 ### Verbessert

@@ -166,7 +166,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             <form wire:submit="save" class="space-y-5">
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Business & address') }}</h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         @foreach ([
@@ -188,7 +188,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Taxes') }}</h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
@@ -200,7 +200,7 @@ new #[Layout('layouts.app')] class extends Component
                             <x-text-input id="profile-vat_id" wire:model="form.vat_id" class="mt-1 block w-full" placeholder="DE123456789" />
                         </div>
                         <label class="flex items-start gap-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/40 sm:col-span-2">
-                            <input type="checkbox" wire:model.live="form.small_business" class="mt-0.5 rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
+                            <input type="checkbox" wire:model.live="form.small_business" class="mt-0.5 rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                             <span class="text-sm">
                                 <strong class="text-gray-900 dark:text-gray-100">{{ __('Small business rule (§ 19 UStG)') }}</strong><br>
                                 <span class="text-gray-600 dark:text-gray-400">{{ __('Invoices without VAT with the note “According to § 19 UStG no VAT is charged.” Possible if revenue stayed below 25,000 € last year and stays below 100,000 € this year.') }}</span>
@@ -220,7 +220,7 @@ new #[Layout('layouts.app')] class extends Component
                     <x-input-error :messages="$errors->get('form.default_vat_rate')" class="mt-1" />
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Bank details & invoices') }}</h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-3">
                         <div>
@@ -265,7 +265,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Dunning & time tracking') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Deadline and fees for payment reminders and dunning letters, default hourly rate for tracked time.') }}</p>
                     <div class="mt-4 grid gap-4 sm:grid-cols-3">
@@ -290,14 +290,14 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Look of your documents') }}</h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
                             <x-input-label for="profile-logo" :value="__('Logo (PNG or JPG, max. 1 MB)')" />
                             @if ($profile?->logo_path)
                                 <div class="mt-1 flex items-center gap-3">
-                                    <img src="{{ $profile->logoDataUri() }}" alt="{{ __('Logo') }}" class="h-12 max-w-[10rem] rounded bg-white object-contain p-1 ring-1 ring-gray-200">
+                                    <img src="{{ $profile->logoDataUri() }}" alt="{{ __('Logo') }}" class="h-12 max-w-[10rem] rounded-sm bg-white object-contain p-1 ring-1 ring-gray-200">
                                     <button type="button" wire:click="removeLogo" class="text-xs text-red-600 hover:underline dark:text-red-400">{{ __('Remove') }}</button>
                                 </div>
                             @endif
@@ -307,7 +307,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div>
                             <x-input-label for="profile-color" :value="__('Accent colour')" />
                             <div class="mt-1 flex items-center gap-2">
-                                <input id="profile-color" type="color" wire:model="form.accent_color" class="h-10 w-14 cursor-pointer rounded border-gray-300 dark:border-gray-600">
+                                <input id="profile-color" type="color" wire:model="form.accent_color" class="h-10 w-14 cursor-pointer rounded-sm border-gray-300 dark:border-gray-600">
                                 <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Used for headings and lines in the PDF.') }}</span>
                             </div>
                             <x-input-error :messages="$errors->get('form.accent_color')" class="mt-1" />

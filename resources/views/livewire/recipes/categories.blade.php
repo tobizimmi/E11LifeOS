@@ -96,7 +96,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <a href="{{ route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:underline">&larr; {{ __('All recipes') }}</a>
 
-            <form wire:submit="create" class="flex flex-wrap items-end gap-2 rounded-lg bg-white dark:bg-gray-800 p-4 shadow-sm">
+            <form wire:submit="create" class="flex flex-wrap items-end gap-2 rounded-lg bg-white dark:bg-gray-800 p-4 shadow-xs">
                 <div class="w-20">
                     <x-input-label for="icon" :value="__('Icon')" />
                     <x-text-input wire:model="icon" id="icon" class="mt-1 block w-full text-center" maxlength="16" placeholder="🥗" />
@@ -109,7 +109,7 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('name')" class="w-full" />
             </form>
 
-            <ul class="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+            <ul class="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-xs">
                 @forelse ($categories as $category)
                     <li wire:key="category-{{ $category->id }}" class="flex items-center gap-2 p-3">
                         <input type="text" value="{{ $category->icon }}" maxlength="16" aria-label="{{ __('Icon') }}" wire:change="changeIcon({{ $category->id }}, $event.target.value)" class="w-14 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-center" />

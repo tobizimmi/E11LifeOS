@@ -82,7 +82,7 @@ new class extends Component
     <form wire:submit="save" class="mt-4 grid gap-4 sm:grid-cols-3">
         <div>
             <x-input-label for="briefing-channel" :value="__('Send')" />
-            <select id="briefing-channel" wire:model="channel" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <select id="briefing-channel" wire:model="channel" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                 <option value="off">{{ __('Off') }}</option>
                 <option value="email">{{ __('By e-mail') }}</option>
                 <option value="push">{{ __('As push notification') }}</option>
@@ -91,7 +91,7 @@ new class extends Component
         </div>
         <div>
             <x-input-label for="briefing-hour" :value="__('Time')" />
-            <select id="briefing-hour" wire:model="hour" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <select id="briefing-hour" wire:model="hour" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                 @foreach (range(4, 12) as $h)
                     <option value="{{ $h }}">{{ sprintf('%02d:00', $h) }}</option>
                 @endforeach

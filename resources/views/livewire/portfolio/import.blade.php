@@ -133,7 +133,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('portfolio.partials.nav', ['active' => 'portfolio.import'])
 
             @if ($portfolioList->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-400">
+                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-400">
                     {{ __('Create a portfolio first.') }} <a href="{{ route('portfolio.index') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-300">{{ __('Overview') }}</a>
                 </div>
             @else
@@ -144,7 +144,7 @@ new #[Layout('layouts.app')] class extends Component
                     </p>
                 @endif
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Import transactions') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         {{ __('Upload the CSV export of your broker (Trade Republic, DKB, ING, Smartbroker+, comdirect, Consorsbank, flatex, OnVista, Outbank, Finanzguru or any CSV).') }}
@@ -180,7 +180,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 @if ($rows !== [])
-                    <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ trans_choice(':count transaction found|:count transactions found', count($rows)) }}</h3>
@@ -220,7 +220,7 @@ new #[Layout('layouts.app')] class extends Component
                                             <td class="px-3 py-2 text-end tabular-nums">{{ $quantity($row['quantity']) }}</td>
                                             <td class="px-3 py-2 text-end tabular-nums">{{ number_format($row['price'], 2, ',', '.') }} {{ $row['currency'] }}</td>
                                             <td class="px-3 py-2 text-end tabular-nums">{{ number_format($row['fees'], 2, ',', '.') }}</td>
-                                            <td class="pe-2"><button type="button" wire:click="removeRow({{ $index }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button></td>
+                                            <td class="pe-2"><button type="button" wire:click="removeRow({{ $index }})" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button></td>
                                         </tr>
                                     @endforeach
                                 </tbody>

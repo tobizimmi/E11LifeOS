@@ -487,7 +487,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($showForm)
                 {{-- Create / edit --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                         {{ $editingId ? __('Edit page') : __('New page') }}
                     </h3>
@@ -508,7 +508,7 @@ new #[Layout('layouts.app')] class extends Component
 
                         <div>
                             <x-input-label for="parentId" :value="__('Parent page')" />
-                            <select wire:model="parentId" id="parentId" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm">
+                            <select wire:model="parentId" id="parentId" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-xs">
                                 <option value="">{{ __('— None (top level) —') }}</option>
                                 @foreach ($parentOptions as $option)
                                     <option value="{{ $option['page']->id }}" wire:key="parent-option-{{ $option['page']->id }}">
@@ -522,7 +522,7 @@ new #[Layout('layouts.app')] class extends Component
                         @if ($spaces->isNotEmpty())
                             <div>
                                 <x-input-label for="spaceId" :value="__('Space')" />
-                                <select wire:model="spaceId" id="spaceId" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm">
+                                <select wire:model="spaceId" id="spaceId" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-xs">
                                     <option value="">{{ __('— No space —') }}</option>
                                     @foreach ($spaces as $spaceOption)
                                         <option value="{{ $spaceOption->id }}" wire:key="space-option-{{ $spaceOption->id }}">{{ $spaceOption->icon }} {{ $spaceOption->name }}</option>
@@ -554,7 +554,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" x-on:click="run('toggleBold')" :class="isActive('bold') && 'is-active'" title="{{ __('Bold') }}"><strong>B</strong></button>
                                     <button type="button" x-on:click="run('toggleItalic')" :class="isActive('italic') && 'is-active'" title="{{ __('Italic') }}"><em>I</em></button>
                                     <button type="button" x-on:click="run('toggleStrike')" :class="isActive('strike') && 'is-active'" title="{{ __('Strikethrough') }}"><s>S</s></button>
-                                    <button type="button" x-on:click="run('toggleMark', 'highlight')" :class="isActive('highlight') && 'is-active'" title="{{ __('Highlight') }}"><mark class="rounded bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40">A</mark></button>
+                                    <button type="button" x-on:click="run('toggleMark', 'highlight')" :class="isActive('highlight') && 'is-active'" title="{{ __('Highlight') }}"><mark class="rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40">A</mark></button>
                                     <button type="button" x-on:click="run('toggleCode')" :class="isActive('code') && 'is-active'" title="{{ __('Code') }}"><code>&lt;/&gt;</code></button>
                                     <button type="button" x-on:click="setLink()" :class="isActive('link') && 'is-active'" title="{{ __('Link') }}">🔗</button>
                                     <span class="editor-bubble-divider" aria-hidden="true"></span>
@@ -570,7 +570,7 @@ new #[Layout('layouts.app')] class extends Component
                             <p x-show="hasUnsupportedContent && mode === 'markdown'" x-cloak class="mt-1 rounded-md bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
                                 {{ __('This page contains HTML that the editor cannot show, so it opens as Markdown to keep it intact.') }}
                             </p>
-                            <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" x-on:input="scheduleAutosave()" x-on:page-title-typed.window="scheduleAutosave()" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm"></textarea>
+                            <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" x-on:input="scheduleAutosave()" x-on:page-title-typed.window="scheduleAutosave()" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-xs"></textarea>
 
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
@@ -626,7 +626,7 @@ new #[Layout('layouts.app')] class extends Component
             @elseif ($selectedId)
                 {{-- Single page --}}
                 @if ($selectedPage)
-                    <article class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 sm:p-8 space-y-6">
+                    <article class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6 sm:p-8 space-y-6">
                         <nav aria-label="{{ __('Breadcrumb') }}" class="flex flex-wrap items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                             <a href="{{ route('pages.index') }}" wire:navigate class="hover:underline">{{ __('Pages') }}</a>
                             @foreach ($breadcrumbs as $ancestor)
@@ -709,7 +709,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <ul class="mt-2 space-y-1">
                                     @foreach ($pageTasks as $pageTask)
                                         <li wire:key="page-task-{{ $pageTask->id }}" class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <input type="checkbox" wire:click="togglePageTask({{ $pageTask->id }})" @checked($pageTask->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $pageTask->title }}">
+                                            <input type="checkbox" wire:click="togglePageTask({{ $pageTask->id }})" @checked($pageTask->done) class="rounded-sm border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $pageTask->title }}">
                                             <a href="{{ route('tasks.index', ['task' => $pageTask->id]) }}" data-open-task="{{ $pageTask->id }}" @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $pageTask->done, 'text-gray-400 line-through' => $pageTask->done])>{{ $pageTask->title }}</a>
                                         </li>
                                     @endforeach
@@ -753,14 +753,14 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     </article>
                 @else
-                    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 text-gray-600 dark:text-gray-400">
+                    <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6 text-gray-600 dark:text-gray-400">
                         {{ __('This page no longer exists.') }}
                         <a href="{{ route('pages.index') }}" wire:navigate class="underline">{{ __('All pages') }}</a>
                     </div>
                 @endif
             @else
                 {{-- Overview --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-4 space-y-3">
+                <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4 space-y-3">
                     <div class="flex gap-3">
                         <x-text-input wire:model.live.debounce.300ms="search" class="block w-full" type="search" placeholder="{{ __('Search pages...') }}" />
                         <x-secondary-button type="button" wire:click="$toggle('showTemplates')" class="shrink-0" aria-expanded="{{ $showTemplates ? 'true' : 'false' }}">📑 {{ __('Templates') }}</x-secondary-button>
@@ -771,19 +771,19 @@ new #[Layout('layouts.app')] class extends Component
                         <section class="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/40" aria-label="{{ __('Templates') }}">
                             <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach (\App\Support\PageTemplates::builtIn() as $key => $template)
-                                    <button type="button" wire:click="createFromTemplate('{{ $key }}')" wire:key="template-{{ $key }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-gray-200 hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700">
+                                    <button type="button" wire:click="createFromTemplate('{{ $key }}')" wire:key="template-{{ $key }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-xs ring-1 ring-gray-200 hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700">
                                         <span class="text-2xl" aria-hidden="true">{{ $template['icon'] }}</span>
                                         <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $template['title'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $template['description'] }}</span></span>
                                     </button>
                                 @endforeach
                                 @foreach (\App\Support\PageTemplates::own(Auth::user(), (int) $this->householdId) as $ownTemplate)
-                                    <button type="button" wire:click="createFromTemplate('page:{{ $ownTemplate->id }}')" wire:key="template-page-{{ $ownTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
+                                    <button type="button" wire:click="createFromTemplate('page:{{ $ownTemplate->id }}')" wire:key="template-page-{{ $ownTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-xs ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
                                         <span class="text-2xl" aria-hidden="true">{{ $ownTemplate->displayIcon() }}</span>
                                         <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $ownTemplate->title }}</span><span class="block text-xs text-indigo-600 dark:text-indigo-400">{{ __('Your template') }}</span></span>
                                     </button>
                                 @endforeach
                                 @foreach (\App\Models\ChecklistTemplate::query()->visibleTo(Auth::user(), (int) $this->householdId)->orderBy('name')->limit(30)->get() as $checklistTemplate)
-                                    <button type="button" wire:click="createFromTemplate('checklist:{{ $checklistTemplate->id }}')" wire:key="template-checklist-{{ $checklistTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
+                                    <button type="button" wire:click="createFromTemplate('checklist:{{ $checklistTemplate->id }}')" wire:key="template-checklist-{{ $checklistTemplate->id }}" class="flex items-start gap-3 rounded-xl bg-white p-3 text-left shadow-xs ring-1 ring-indigo-200 hover:ring-indigo-400 dark:bg-gray-800 dark:ring-indigo-800">
                                         <span class="text-2xl" aria-hidden="true">{{ $checklistTemplate->icon ?: '📋' }}</span>
                                         <span><span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ $checklistTemplate->name }}@if ($checklistTemplate->isPrivate()) 🔒@endif</span><span class="block text-xs text-indigo-600 dark:text-indigo-400">{{ __('Your checklist') }}</span></span>
                                     </button>
@@ -820,7 +820,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
 
-                <ul class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl divide-y divide-gray-100 dark:divide-gray-700" wire:loading.class="opacity-50">
+                <ul class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl divide-y divide-gray-100 dark:divide-gray-700" wire:loading.class="opacity-50">
                     @forelse ($pages as $page)
                         <li wire:key="page-{{ $page->id }}">
                             <a href="{{ route('pages.index', ['item' => $page->id]) }}" wire:navigate class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">

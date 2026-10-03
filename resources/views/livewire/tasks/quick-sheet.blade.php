@@ -206,7 +206,7 @@ new class extends Component
                     <ul class="space-y-1">
                         @foreach ($subtasks as $subtask)
                             <li wire:key="quick-subtask-{{ $subtask['id'] }}" class="flex items-center gap-2">
-                                <input type="checkbox" wire:click="toggleSubtask('{{ $subtask['id'] }}')" @checked($subtask['done'] ?? false) class="h-4 w-4 rounded border-gray-300 text-green-600 dark:border-gray-600" aria-label="{{ $subtask['text'] }}" />
+                                <input type="checkbox" wire:click="toggleSubtask('{{ $subtask['id'] }}')" @checked($subtask['done'] ?? false) class="h-4 w-4 rounded-sm border-gray-300 text-green-600 dark:border-gray-600" aria-label="{{ $subtask['text'] }}" />
                                 <span @class(['flex-1 text-sm', 'text-gray-400 line-through' => $subtask['done'] ?? false, 'text-gray-800 dark:text-gray-200' => ! ($subtask['done'] ?? false)])>{{ $subtask['text'] }}</span>
                             </li>
                         @endforeach

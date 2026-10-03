@@ -81,7 +81,7 @@ new class extends Component
         <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">💬 {{ __('Comments') }}@if ($commentCount) ({{ $commentCount }})@endif</h3>
         @if ($historyCount > 0)
             <label class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                <input type="checkbox" wire:model.live="showHistory" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
+                <input type="checkbox" wire:model.live="showHistory" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                 {{ __('Show history') }}
             </label>
         @endif

@@ -72,9 +72,9 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $card = 'rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800';
+    $card = 'rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800';
     $label = 'block text-sm font-medium text-gray-700 dark:text-gray-300';
-    $segment = fn (bool $active) => $active ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300';
+    $segment = fn (bool $active) => $active ? 'bg-white text-gray-900 shadow-xs dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300';
 @endphp
 
 <div>
@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <button type="button" wire:click="$set('general.accent', '{{ $color }}')" class="h-8 w-8 rounded-full ring-2 ring-offset-2 dark:ring-offset-gray-800 {{ $general['accent'] === $color ? 'ring-gray-900 dark:ring-white' : 'ring-transparent' }}" style="background: {{ $color }}" aria-label="{{ $color }}" aria-pressed="{{ $general['accent'] === $color ? 'true' : 'false' }}"></button>
                             @endforeach
                             <label class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                <input type="color" wire:model.live.debounce.300ms="general.accent" class="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0" aria-label="{{ __('Own colour') }}">
+                                <input type="color" wire:model.live.debounce.300ms="general.accent" class="h-8 w-10 cursor-pointer rounded-sm border-0 bg-transparent p-0" aria-label="{{ __('Own colour') }}">
                                 {{ __('Own') }}
                             </label>
                         </div>
@@ -120,7 +120,7 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="{{ $label }}">{{ __('Footer') }}
                         <input type="text" wire:model.live.debounce.500ms="general.footer" maxlength="120" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('e.g. Family Zimmermann') }}">
                     </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="general.date" class="rounded border-gray-300 text-indigo-600"> {{ __('Date in the footer') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="general.date" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Date in the footer') }}</label>
                 </section>
 
                 <section class="{{ $card }} space-y-4">
@@ -145,7 +145,7 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="{{ $label }}">{{ __('Show') }}</span>
                         <div class="mt-2 grid grid-cols-2 gap-2">
                             @foreach (['description' => __('Description'), 'nutrition' => __('Nutrition'), 'tags' => __('Tags'), 'source' => __('Source'), 'notes' => __('Lines for notes')] as $key => $optionLabel)
-                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="recipe.{{ $key }}" class="rounded border-gray-300 text-indigo-600"> {{ $optionLabel }}</label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="recipe.{{ $key }}" class="rounded-sm border-gray-300 text-indigo-600"> {{ $optionLabel }}</label>
                             @endforeach
                         </div>
                     </div>

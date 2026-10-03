@@ -90,7 +90,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.recommendations'])
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Buy recommendations') }}</h3>
@@ -111,14 +111,14 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if ($recommendations->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-400">
+                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-400">
                     <p class="text-4xl" aria-hidden="true">🔎</p>
                     <p class="mt-2">{{ __('No securities match your strategy right now. Markets are calm – or the daily scan has not run yet.') }}</p>
                 </div>
             @else
                 <div class="grid gap-3 md:grid-cols-2">
                     @foreach ($recommendations as $recommendation)
-                        <article class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="recommendation-{{ $recommendation->id }}">
+                        <article class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" wire:key="recommendation-{{ $recommendation->id }}">
                             <div class="flex items-start gap-3">
                                 <div class="min-w-0 flex-1">
                                     <a href="{{ route('portfolio.security', ['symbol' => $recommendation->symbol]) }}" wire:navigate class="block truncate font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $recommendation->name }}</a>
@@ -159,7 +159,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             {{-- Backtest --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Backtest of the drop strategy') }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('How would it have gone? Each time a price fell by the threshold from its high, it is bought and sold after the holding period (last 2 years, scanned and own securities).') }}</p>
                 <form wire:submit="runBacktest" class="mt-4 flex flex-wrap items-end gap-3">

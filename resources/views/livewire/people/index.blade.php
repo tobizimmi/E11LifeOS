@@ -210,7 +210,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $days = fn (\Illuminate\Support\Carbon $date) => (int) today()->diffInDays($date);
     $statusLabels = ['idea' => __('Idea'), 'bought' => __('Bought'), 'given' => __('Given')];
 @endphp
@@ -223,7 +223,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
             @if ($upcoming->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎉 {{ __('Next birthdays') }}</h3>
                     <ul class="mt-3 flex gap-3 overflow-x-auto pb-1">
                         @foreach ($upcoming as $row)
@@ -242,10 +242,10 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid gap-5 md:grid-cols-5">
                 <section class="space-y-3 md:col-span-2">
                     <div class="flex gap-2">
-                        <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search people…') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                        <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search people…') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                         <x-primary-button type="button" wire:click="add">+</x-primary-button>
                     </div>
-                    <ul class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <ul class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                         @forelse ($people as $person)
                             <li wire:key="person-{{ $person->id }}" class="border-b border-gray-100 last:border-0 dark:border-gray-700">
                                 <button type="button" wire:click="select({{ $person->id }})" @class(['flex w-full items-center justify-between gap-2 px-4 py-3 text-left', 'bg-indigo-50 dark:bg-indigo-900/30' => $selected?->id === $person->id, 'hover:bg-gray-50 dark:hover:bg-gray-700/40' => $selected?->id !== $person->id])>
@@ -266,7 +266,7 @@ new #[Layout('layouts.app')] class extends Component
 
                 <section class="md:col-span-3">
                     @if ($selected)
-                        <div class="space-y-4 rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <div class="space-y-4 rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $selected->name }}</h3>
@@ -327,17 +327,17 @@ new #[Layout('layouts.app')] class extends Component
                                     @endforelse
                                 </ul>
                                 <form wire:submit="addGift" class="mt-3 grid gap-2 sm:grid-cols-6">
-                                    <input type="text" wire:model="gift.title" placeholder="{{ __('Gift idea') }}" class="rounded-md border-gray-300 text-sm shadow-sm sm:col-span-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                                    <input type="text" wire:model="gift.occasion" placeholder="{{ __('Occasion') }}" class="rounded-md border-gray-300 text-sm shadow-sm sm:col-span-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                                    <input type="text" inputmode="decimal" wire:model="gift.price" placeholder="€" class="rounded-md border-gray-300 text-sm shadow-sm sm:col-span-1 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                                    <input type="url" wire:model="gift.url" placeholder="https://" class="rounded-md border-gray-300 text-sm shadow-sm sm:col-span-5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                    <input type="text" wire:model="gift.title" placeholder="{{ __('Gift idea') }}" class="rounded-md border-gray-300 text-sm shadow-xs sm:col-span-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                    <input type="text" wire:model="gift.occasion" placeholder="{{ __('Occasion') }}" class="rounded-md border-gray-300 text-sm shadow-xs sm:col-span-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                    <input type="text" inputmode="decimal" wire:model="gift.price" placeholder="€" class="rounded-md border-gray-300 text-sm shadow-xs sm:col-span-1 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                    <input type="url" wire:model="gift.url" placeholder="https://" class="rounded-md border-gray-300 text-sm shadow-xs sm:col-span-5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                                     <x-secondary-button type="submit" class="sm:col-span-1">+</x-secondary-button>
                                     <x-input-error class="sm:col-span-6" :messages="array_merge($errors->get('gift.title'), $errors->get('gift.url'), $errors->get('gift.price'))" />
                                 </form>
                             </div>
                         </div>
                     @else
-                        <div class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('Pick a person or add a new one.') }}</div>
+                        <div class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('Pick a person or add a new one.') }}</div>
                     @endif
                 </section>
             </div>
@@ -351,7 +351,7 @@ new #[Layout('layouts.app')] class extends Component
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="contact.name" class="{{ $input }}"><x-input-error :messages="$errors->get('contact.name')" /></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Relationship') }}<input type="text" wire:model="contact.relation" class="{{ $input }}" placeholder="{{ __('e.g. Sister, friend') }}"></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Birthday') }}<input type="date" wire:model="contact.birthday" class="{{ $input }}"><x-input-error :messages="$errors->get('contact.birthday')" /></label>
-                <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="contact.birth_year_known" class="rounded border-gray-300 text-indigo-600"> {{ __('Year of birth is correct') }}</label>
+                <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="contact.birth_year_known" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Year of birth is correct') }}</label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Anniversary') }}<input type="date" wire:model="contact.anniversary" class="{{ $input }}"></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Anniversary name') }}<input type="text" wire:model="contact.anniversary_label" class="{{ $input }}" placeholder="{{ __('e.g. Wedding day') }}"></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Phone') }}<input type="tel" wire:model="contact.phone" class="{{ $input }}"></label>
@@ -359,7 +359,7 @@ new #[Layout('layouts.app')] class extends Component
                 <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Address') }}<textarea wire:model="contact.address" rows="2" class="{{ $input }}"></textarea></label>
                 <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Notes') }}<textarea wire:model="contact.notes" rows="3" class="{{ $input }}" placeholder="{{ __('Interests, sizes, children’s names …') }}"></textarea></label>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Remind days before') }}<input type="number" min="0" max="60" wire:model="contact.remind_days" class="{{ $input }}"></label>
-                <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="contact.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="contact.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
             </form>
             <x-slot name="footer">
                 <div class="flex items-center gap-2">

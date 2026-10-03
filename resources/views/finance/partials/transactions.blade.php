@@ -41,7 +41,7 @@
 
     @if ($manualOpen)
         <x-drop-zone model="receiptPhoto" :label="__('Drop the receipt here')">
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="manual-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="manual-heading">
             <div class="flex items-center justify-between gap-2">
                 <h3 id="manual-heading" class="font-semibold text-gray-900 dark:text-gray-100">🧾 {{ __('Add receipt or cash expense') }}</h3>
                 <button type="button" wire:click="closeManual" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
@@ -125,7 +125,7 @@
         <p class="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $aiError }}</p>
     @endif
 
-    <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+    <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
         <p class="border-b border-gray-100 px-4 py-2.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
             {{ trans_choice(':count booking|:count bookings', $transactionCount) }} · {{ __('Change a category to correct it – with “always” the payee is remembered for future imports.') }}
         </p>
@@ -179,7 +179,7 @@
                                 </select>
                             @endif
                             <label class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400" title="{{ __('Remember for this payee') }}">
-                                <input type="checkbox" x-model="remember" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
+                                <input type="checkbox" x-model="remember" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                                 {{ __('always') }}
                             </label>
                         </div>
@@ -204,7 +204,7 @@
     </section>
 
     @if ($rules->isNotEmpty())
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Remembered categories') }}</h3>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Bookings containing this text always get this category.') }}</p>
             <ul class="mt-3 flex flex-wrap gap-2">

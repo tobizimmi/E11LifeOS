@@ -97,7 +97,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endforeach
             </div>
 
-            <form wire:submit="import" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+            <form wire:submit="import" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-4">
                 @if ($source === 'link')
                     <div>
                         <x-input-label for="url" :value="__('Link to the recipe')" />
@@ -137,7 +137,7 @@ new #[Layout('layouts.app')] class extends Component
                 @else
                     <div>
                         <x-input-label for="text" :value="__('Recipe text')" />
-                        <textarea wire:model="text" id="text" rows="10" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" placeholder="{{ __('Paste the recipe, e.g. from an e-mail, a chat or an Instagram post.') }}"></textarea>
+                        <textarea wire:model="text" id="text" rows="10" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs" placeholder="{{ __('Paste the recipe, e.g. from an e-mail, a chat or an Instagram post.') }}"></textarea>
                         <x-input-error :messages="$errors->get('text')" class="mt-1" />
                     </div>
                 @endif

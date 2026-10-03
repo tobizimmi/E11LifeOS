@@ -197,7 +197,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $chip = 'shrink-0 rounded-full px-3 py-1.5 text-sm pointer-coarse:min-h-11';
     $chipOn = 'bg-indigo-600 text-white';
     $chipOff = 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700';
@@ -219,14 +219,14 @@ new #[Layout('layouts.app')] class extends Component
             </nav>
 
             @if ($section === 'overview')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-end justify-between gap-3">
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Filled in') }}</p>
                             <p class="mt-1 text-4xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $progress['percent'] }} %</p>
                             <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ __(':done of :total checklist points', ['done' => $progress['done'], 'total' => $progress['total']]) }}</p>
                         </div>
-                        <a href="{{ route('emergency.pdf') }}" class="rounded-md bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">🖨️ {{ __('PDF to print') }}</a>
+                        <a href="{{ route('emergency.pdf') }}" class="rounded-md bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-xs ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">🖨️ {{ __('PDF to print') }}</a>
                     </div>
                     <div class="mt-4 h-3 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $progress['percent'] }}" aria-label="{{ __('Filled in') }}">
                         <div class="h-full rounded-full bg-emerald-600 dark:bg-emerald-500" style="width: {{ $progress['percent'] }}%"></div>
@@ -257,7 +257,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">📚 {{ __('From your modules') }}</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Accounts, securities accounts, properties, loans and contracts are taken over automatically – your trusted people see them too.') }}</p>
                     @forelse ($overview as $group)
@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </section>
             @elseif ($section === 'access')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔐 {{ __('Trusted people') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ __('A trusted person gets a personal link by e-mail. In an emergency they request access with it; you are informed by push and e-mail and can decline. Without an answer the folder opens for them after the waiting period – read only.') }}</p>
 
@@ -330,7 +330,7 @@ new #[Layout('layouts.app')] class extends Component
                     $info = $sections[$section];
                     $sectionEntries = $entries->where('section', $section);
                 @endphp
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $info['icon'] }} {{ $info['label'] }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ $info['hint'] }}</p>
 

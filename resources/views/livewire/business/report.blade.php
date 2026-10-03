@@ -88,7 +88,7 @@ new #[Layout('layouts.app')] class extends Component
                     [__('Business expenses'), $euro($report['expenseTotal']), 'var(--biz-expense)'],
                     [$report['profit'] >= 0 ? __('Profit') : __('Loss'), $euro($report['profit']), null],
                 ] as [$label, $value, $color])
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                             @if ($color)<span class="h-2.5 w-2.5 rounded-full" style="background: {{ $color }}" aria-hidden="true"></span>@endif
                             {{ $label }}
@@ -117,7 +117,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="grid gap-5 lg:grid-cols-5">
                 {{-- Anlage EÜR --}}
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800 lg:col-span-3">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800 lg:col-span-3">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Figures for the Anlage EÜR') }}</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Enter these amounts in the matching fields of the Anlage EÜR in ELSTER. Line numbers change from year to year – the names are the same.') }}</p>
 
@@ -155,12 +155,12 @@ new #[Layout('layouts.app')] class extends Component
 
                 <div class="space-y-5 lg:col-span-2">
                     {{-- Months --}}
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <div class="flex items-center justify-between gap-2">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Month by month') }}</h3>
                             <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-300">
-                                <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background: var(--biz-income)"></span>{{ __('Income') }}</span>
-                                <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background: var(--biz-expense)"></span>{{ __('Expenses') }}</span>
+                                <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-xs" style="background: var(--biz-income)"></span>{{ __('Income') }}</span>
+                                <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-xs" style="background: var(--biz-expense)"></span>{{ __('Expenses') }}</span>
                             </div>
                         </div>
                         <div class="mt-4 flex h-40 items-end gap-1 border-b border-gray-200 dark:border-gray-700">
@@ -168,7 +168,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <div class="group relative flex h-full flex-1 items-end justify-center gap-px" tabindex="0">
                                     <div class="w-full max-w-[10px] rounded-t-sm" style="height: {{ $month['income'] / $maxMonth * 100 }}%; background: var(--biz-income)"></div>
                                     <div class="w-full max-w-[10px] rounded-t-sm" style="height: {{ $month['expenses'] / $maxMonth * 100 }}%; background: var(--biz-expense)"></div>
-                                    <div class="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow group-hover:block group-focus:block">
+                                    <div class="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow-sm group-hover:block group-focus:block">
                                         {{ $month['label'] }}: {{ $euro($month['income'], 0) }} / {{ $euro($month['expenses'], 0) }}
                                     </div>
                                 </div>
@@ -182,7 +182,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
 
                     @unless ($report['smallBusiness'])
-                        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('VAT overview') }}</h3>
                             <dl class="mt-2 space-y-1 text-sm">
                                 <div class="flex justify-between"><dt class="text-gray-600 dark:text-gray-300">{{ __('VAT received') }}</dt><dd class="tabular-nums">{{ $euro($report['vat']['received']) }}</dd></div>
@@ -195,7 +195,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                     @endunless
 
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🗂 {{ __('Your tax return checklist') }}</h3>
                         <ol class="mt-2 list-decimal space-y-1.5 ps-5 text-sm text-gray-700 dark:text-gray-300">
                             <li>{{ __('Anlage EÜR: enter the figures on the left (ELSTER, due with the income tax return).') }}</li>
@@ -214,7 +214,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($vatPeriods)
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('VAT advance return (USt-VA)') }}</h3>

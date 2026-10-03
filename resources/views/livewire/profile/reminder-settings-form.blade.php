@@ -31,7 +31,7 @@ new class extends Component
 
     <div class="mt-4 flex items-center gap-4">
         <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input type="checkbox" wire:model.live="reminderEmails" class="rounded border-gray-300 dark:border-gray-700 text-indigo-600" />
+            <input type="checkbox" wire:model.live="reminderEmails" class="rounded-sm border-gray-300 dark:border-gray-700 text-indigo-600" />
             {{ __('Send me daily task reminders by e-mail') }}
         </label>
         <x-action-message on="reminders-saved">{{ __('Saved.') }}</x-action-message>

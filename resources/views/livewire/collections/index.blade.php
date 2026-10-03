@@ -123,7 +123,7 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Collections are lists with your own properties – as a table or a board.') }}</p>
 
             @if ($showForm)
-                <form wire:submit="create" class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 space-y-4">
+                <form wire:submit="create" class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6 space-y-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('New collection') }}</h3>
 
                     <div class="flex gap-3">
@@ -188,7 +188,7 @@ new #[Layout('layouts.app')] class extends Component
             <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($collections as $collection)
                     <li wire:key="collection-{{ $collection->id }}">
-                        <a href="{{ route('collections.show', $collection) }}" wire:navigate class="block rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm hover:ring-2 hover:ring-indigo-300">
+                        <a href="{{ route('collections.show', $collection) }}" wire:navigate class="block rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs hover:ring-2 hover:ring-indigo-300">
                             <div class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
                                 <span aria-hidden="true">{{ $collection->displayIcon() }}</span>
                                 <span class="truncate">{{ $collection->name }}</span>

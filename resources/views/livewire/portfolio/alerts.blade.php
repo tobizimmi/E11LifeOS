@@ -89,7 +89,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.alerts'])
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('New price alert') }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Prices are checked every 15 minutes while the markets are open. You get a push notification – and via Pushover if set up.') }}</p>
                 <form wire:submit="saveAlert" class="mt-4 grid gap-3 sm:grid-cols-4 sm:items-start">
@@ -115,7 +115,7 @@ new #[Layout('layouts.app')] class extends Component
                 </form>
             </section>
 
-            <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Price alerts') }}</h3>
                 @if ($alerts->isEmpty())
                     <p class="border-t border-gray-100 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">{{ __('No price alerts yet.') }}</p>
@@ -133,14 +133,14 @@ new #[Layout('layouts.app')] class extends Component
                                 @else
                                     <span class="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">{{ __('active') }}</span>
                                 @endif
-                                <button type="button" wire:click="deleteAlert({{ $alert->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                <button type="button" wire:click="deleteAlert({{ $alert->id }})" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </li>
                         @endforeach
                     </ul>
                 @endif
             </section>
 
-            <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <h3 class="px-4 pt-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Stop loss and target prices of your positions') }}</h3>
                 <p class="px-4 pb-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Set them on the overview with ✎ next to a position.') }}</p>
                 @if ($marks->isEmpty())
@@ -152,10 +152,10 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $position->name ?: $position->symbol }} <span class="text-xs text-gray-500">· {{ $position->portfolio->name }}</span></span>
                                 <span class="tabular-nums text-gray-600 dark:text-gray-300">{{ __('now') }} {{ $euro($price($position->symbol)) }}</span>
                                 @if ($position->stop_loss_price)
-                                    <span class="rounded bg-orange-50 px-1.5 text-xs tabular-nums text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">SL {{ $euro($position->stop_loss_price) }}</span>
+                                    <span class="rounded-sm bg-orange-50 px-1.5 text-xs tabular-nums text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">SL {{ $euro($position->stop_loss_price) }}</span>
                                 @endif
                                 @if ($position->take_profit_price)
-                                    <span class="rounded bg-emerald-50 px-1.5 text-xs tabular-nums text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">TP {{ $euro($position->take_profit_price) }}</span>
+                                    <span class="rounded-sm bg-emerald-50 px-1.5 text-xs tabular-nums text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">TP {{ $euro($position->take_profit_price) }}</span>
                                 @endif
                             </li>
                         @endforeach

@@ -349,7 +349,7 @@ new class extends Component
                     <div class="py-2" x-data="{ recent: window.E11Recent?.list() ?? [] }" x-on:open-search.window="recent = window.E11Recent?.list() ?? []" x-show="recent.length">
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Recently opened') }}</h4>
                         <template x-for="item in recent" :key="item.url">
-                            <a :href="item.url" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                            <a :href="item.url" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                                 <span class="text-gray-400" aria-hidden="true">↺</span> <span class="truncate" x-text="item.title"></span>
                             </a>
                         </template>
@@ -359,7 +359,7 @@ new class extends Component
                     <div class="py-2">
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Create') }}</h4>
                         @foreach ([['createTask', '✅', __('Task: “:text”', ['text' => $typed])], ['addToShopping', '🛒', __('Shopping list: “:text”', ['text' => $typed])], ['addToInbox', '📥', __('Inbox: “:text”', ['text' => $typed])]] as [$method, $icon, $label])
-                            <button type="button" wire:click="{{ $method }}" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                            <button type="button" wire:click="{{ $method }}" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                                 <span aria-hidden="true">{{ $icon }}</span> <span class="truncate">{{ $label }}</span>
                             </button>
                         @endforeach
@@ -369,7 +369,7 @@ new class extends Component
                     <div class="py-2">
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Go to') }}</h4>
                         @foreach ($destinations as $destination)
-                            <a href="{{ $destination['url'] }}" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                            <a href="{{ $destination['url'] }}" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                                 <span class="truncate">{{ $destination['label'] }}</span>
                             </a>
                         @endforeach
@@ -384,7 +384,7 @@ new class extends Component
                                 wire:navigate
                                 data-search-result
                                 x-on:click="open = false"
-                                class="flex items-center gap-2 px-4 py-2 text-gray-900 dark:text-gray-100 hover:bg-indigo-50 dark:hover:bg-gray-700 focus:bg-indigo-50 dark:focus:bg-gray-700 focus:outline-none"
+                                class="flex items-center gap-2 px-4 py-2 text-gray-900 dark:text-gray-100 hover:bg-indigo-50 dark:hover:bg-gray-700 focus:bg-indigo-50 dark:focus:bg-gray-700 focus:outline-hidden"
                             >
                                 <span class="truncate">{{ $entry['label'] }}</span>
                                 @if ($entry['private'])
@@ -403,13 +403,13 @@ new class extends Component
                         <div class="py-2">
                             <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('paperless (full text)') }}</h4>
                             @forelse ($paperlessResults as $document)
-                                <a href="{{ $document['url'] }}" target="_blank" rel="noopener noreferrer" data-search-result class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700"><span class="truncate">{{ $document['label'] }}</span></a>
+                                <a href="{{ $document['url'] }}" target="_blank" rel="noopener noreferrer" data-search-result class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700"><span class="truncate">{{ $document['label'] }}</span></a>
                             @empty
                                 <p class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{ $paperlessError ?? __('No documents found.') }}</p>
                             @endforelse
                         </div>
                     @else
-                        <button type="button" wire:click="searchPaperless" wire:loading.attr="disabled" wire:target="searchPaperless" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                        <button type="button" wire:click="searchPaperless" wire:loading.attr="disabled" wire:target="searchPaperless" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                             <span aria-hidden="true" wire:loading.remove wire:target="searchPaperless">📄</span><span aria-hidden="true" wire:loading wire:target="searchPaperless">⏳</span>
                             <span class="truncate">{{ __('Search documents in paperless for “:text”', ['text' => $typed]) }}</span>
                         </button>
@@ -421,7 +421,7 @@ new class extends Component
                         wire:navigate
                         data-search-result
                         x-on:click="open = false"
-                        class="flex items-center gap-2 px-4 py-2 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-gray-700 focus:bg-indigo-50 dark:focus:bg-gray-700 focus:outline-none"
+                        class="flex items-center gap-2 px-4 py-2 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-gray-700 focus:bg-indigo-50 dark:focus:bg-gray-700 focus:outline-hidden"
                     >✨ <span class="truncate">{{ __('Ask your Second Brain: “:question”', ['question' => trim($query)]) }}</span></a>
                 @endif
             </div>

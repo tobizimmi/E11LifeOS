@@ -84,10 +84,10 @@ new class extends Component
                 <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ __('What the subscription contains') }}</p>
                 <div class="mt-2 grid gap-1 sm:grid-cols-2">
                     @foreach ($sectionLabels as $key => $label)
-                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" value="{{ $key }}" wire:model="sections" class="rounded border-gray-300 text-indigo-600"> {{ $label }}</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" value="{{ $key }}" wire:model="sections" class="rounded-sm border-gray-300 text-indigo-600"> {{ $label }}</label>
                     @endforeach
                 </div>
-                <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="details" class="rounded border-gray-300 text-indigo-600"> {{ __('Include notes, amounts and links (off: titles and dates only)') }}</label>
+                <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="details" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Include notes, amounts and links (off: titles and dates only)') }}</label>
                 <x-secondary-button type="submit" class="mt-2">{{ __('Save') }}</x-secondary-button>
             </form>
             <div class="flex flex-wrap gap-3 text-sm">

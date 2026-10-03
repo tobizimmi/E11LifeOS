@@ -659,7 +659,7 @@ new class extends Component
 @php
     $euro = fn ($value, $decimals = 2) => number_format((float) $value, $decimals, ',', '.').' €';
     $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
-    $card = 'rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800';
+    $card = 'rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800';
 @endphp
 
 <div class="space-y-5">
@@ -668,7 +668,7 @@ new class extends Component
     @endunless
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="inline-flex rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist" aria-label="{{ __('Letting') }}">
+        <div class="inline-flex rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist" aria-label="{{ __('Letting') }}">
             @foreach (['tenants' => '👥 '.__('Tenants'), 'rent' => '💶 '.__('Rent received'), 'utilities' => '🧮 '.__('Utility statement'), 'handovers' => '📋 '.__('Handovers'), 'applicants' => '📝 '.__('Applicants')] as $key => $label)
                 <button type="button" role="tab" aria-selected="{{ $section === $key ? 'true' : 'false' }}" wire:click="$set('section', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm whitespace-nowrap', 'bg-indigo-600 text-white' => $section === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $section !== $key])>
                     {{ $label }}@if ($key === 'applicants' && ($applicantCounts['new'] ?? 0) > 0) <span class="ms-1 rounded-full bg-red-500 px-1.5 text-xs text-white">{{ $applicantCounts['new'] }}</span>@endif
@@ -1063,7 +1063,7 @@ new class extends Component
                         @foreach ($handover['rooms'] ?? [] as $index => $room)
                             <div wire:key="room-{{ $index }}" class="mt-1 grid grid-cols-[1fr_auto_2fr_auto] items-center gap-2">
                                 <input wire:model="handover.rooms.{{ $index }}.label" placeholder="{{ __('Room') }}" aria-label="{{ __('Room') }}" class="{{ $input }} mt-0">
-                                <label class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="handover.rooms.{{ $index }}.ok" class="rounded border-gray-300"> {{ __('OK') }}</label>
+                                <label class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="handover.rooms.{{ $index }}.ok" class="rounded-sm border-gray-300"> {{ __('OK') }}</label>
                                 <input wire:model="handover.rooms.{{ $index }}.notes" placeholder="{{ __('Notes / defects') }}" aria-label="{{ __('Notes / defects') }}" class="{{ $input }} mt-0">
                                 <button type="button" wire:click="removeHandoverRow('rooms', {{ $index }})" class="px-2 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}">×</button>
                             </div>
@@ -1258,7 +1258,7 @@ new class extends Component
                 <h3 id="applicants-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Applicants') }}</h3>
                 <div class="ms-auto inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="group" aria-label="{{ __('View') }}">
                     @foreach (['list' => '☰ '.__('List'), 'board' => '▦ '.__('Board')] as $view => $viewLabel)
-                        <button type="button" wire:click="$set('applicantView', '{{ $view }}')" aria-pressed="{{ $applicantView === $view ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => $applicantView === $view, 'text-gray-600 dark:text-gray-400' => $applicantView !== $view])>{{ $viewLabel }}</button>
+                        <button type="button" wire:click="$set('applicantView', '{{ $view }}')" aria-pressed="{{ $applicantView === $view ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => $applicantView === $view, 'text-gray-600 dark:text-gray-400' => $applicantView !== $view])>{{ $viewLabel }}</button>
                     @endforeach
                 </div>
                 <select @if ($applicantView === 'board') hidden @endif wire:model.live="applicantStatus" aria-label="{{ __('Status') }}" class="rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
@@ -1277,7 +1277,7 @@ new class extends Component
                             <h4 class="flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }} <span>{{ $applicants->where('status', $status)->count() }}</span></h4>
                             <ul class="mt-2 flex min-h-[4rem] flex-1 flex-col gap-2" x-data x-sort="$wire.setApplicantStatus($item, @js($status))" x-sort:group="applicants" x-sort:config="{ animation: 150, ghostClass: 'opacity-40' }" aria-label="{{ $label }}">
                                 @foreach ($applicants->where('status', $status) as $applicant)
-                                    <li wire:key="applicant-card-{{ $applicant->id }}" x-sort:item="{{ $applicant->id }}" class="cursor-grab rounded-lg bg-white p-2 text-sm shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                    <li wire:key="applicant-card-{{ $applicant->id }}" x-sort:item="{{ $applicant->id }}" class="cursor-grab rounded-lg bg-white p-2 text-sm shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
                                         <button type="button" wire:click="openApplicant({{ $applicant->id }})" class="block w-full text-start">
                                             <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $applicant->name }}</span>
                                             <span class="block text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count person|:count persons', $applicant->persons) }}@if ($applicant->net_income) · {{ __(':amount net', ['amount' => $euro($applicant->net_income, 0)]) }}@endif</span>

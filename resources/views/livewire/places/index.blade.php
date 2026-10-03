@@ -199,7 +199,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $categories = \App\Models\Place::categories();
     $chip = fn (bool $active) => $active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600';
 @endphp
@@ -211,7 +211,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="space-y-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+            <div class="space-y-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap gap-2">
                     <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search name, cuisine, address, notes …') }}" aria-label="{{ __('Search places') }}" class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                     <x-secondary-button type="button" wire:click="suggest" class="shrink-0">🎲 {{ __('Where to go?') }}</x-secondary-button>
@@ -238,7 +238,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($showForm)
-                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="place.name" class="{{ $input }}" autofocus><x-input-error :messages="$errors->get('place.name')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
                         <select wire:model="place.category" class="{{ $input }}">
@@ -279,8 +279,8 @@ new #[Layout('layouts.app')] class extends Component
                         </label>
                     @endif
                     <div class="flex flex-wrap items-end gap-4 text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">
-                        <label class="flex items-center gap-2"><input type="checkbox" wire:model="place.visited" class="rounded border-gray-300 text-indigo-600"> {{ __('Been there') }}</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" wire:model="place.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model="place.visited" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Been there') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model="place.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     </div>
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingId ? __('Save changes') : __('Add') }}</x-primary-button>
@@ -309,7 +309,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="grid gap-3 sm:grid-cols-2">
                 @forelse ($places as $item)
-                    <article wire:key="place-{{ $item->id }}" class="flex flex-col rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <article wire:key="place-{{ $item->id }}" class="flex flex-col rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $categories[$item->category]['icon'] ?? '📍' }} {{ $item->name }}
@@ -356,7 +356,7 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     </article>
                 @empty
-                    <section class="rounded-2xl bg-white p-6 text-center shadow-sm sm:col-span-2 dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-6 text-center shadow-xs sm:col-span-2 dark:bg-gray-800">
                         <p class="text-4xl" aria-hidden="true">📍</p>
                         @if ($total === 0)
                             <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No places yet.') }}</p>

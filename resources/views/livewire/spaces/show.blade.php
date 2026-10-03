@@ -97,7 +97,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto grid max-w-5xl gap-5 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="space-pages-heading">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="space-pages-heading">
                 <div class="flex items-center justify-between gap-3">
                     <h3 id="space-pages-heading" class="font-semibold text-gray-900 dark:text-gray-100">📄 {{ __('Pages') }}</h3>
                     <a href="{{ route('pages.index', ['create' => 1, 'space' => $space->id]) }}" wire:navigate class="text-sm text-indigo-600 underline dark:text-indigo-400">+ {{ __('New page') }}</a>
@@ -121,11 +121,11 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="space-tasks-heading">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="space-tasks-heading">
                 <div class="flex items-center justify-between gap-3">
                     <h3 id="space-tasks-heading" class="font-semibold text-gray-900 dark:text-gray-100">✅ {{ __('Tasks') }}</h3>
                     <span class="flex items-center gap-3 text-sm">
-                        <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showDone" class="rounded border-gray-300 text-indigo-600"> {{ __('Show done') }}</label>
+                        <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showDone" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Show done') }}</label>
                         <a href="{{ route('tasks.index', ['space' => $space->id]) }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('In task list') }}</a>
                     </span>
                 </div>
@@ -139,7 +139,7 @@ new #[Layout('layouts.app')] class extends Component
                         @foreach ($tasks as $task)
                             @php($due = $lists->due($task))
                             <li wire:key="space-task-{{ $task->id }}-{{ $task->done ? 1 : 0 }}" class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <input type="checkbox" wire:click="toggleTask({{ $task->id }})" @checked($task->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $task->title }}">
+                                <input type="checkbox" wire:click="toggleTask({{ $task->id }})" @checked($task->done) class="rounded-sm border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}: {{ $task->title }}">
                                 <a href="{{ route('tasks.index', ['task' => $task->id]) }}" data-open-task="{{ $task->id }}" @class(['min-w-0 flex-1 truncate text-sm hover:underline', 'text-gray-900 dark:text-gray-100' => ! $task->done, 'text-gray-400 line-through' => $task->done])>{{ $task->title }}</a>
                                 @if ($due !== '')
                                     <span @class(['shrink-0 text-xs', 'text-red-600 dark:text-red-400' => $lists->isOverdue($task), 'text-gray-500 dark:text-gray-400' => ! $lists->isOverdue($task)])>{{ \App\Support\TaskInput::dueLabel($due) }}</span>

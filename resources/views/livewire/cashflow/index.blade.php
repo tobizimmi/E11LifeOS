@@ -177,7 +177,7 @@ new #[Layout('layouts.app')] class extends Component
     $pattern = $patterns[$statement['pattern']];
     $kindLabels = ['earned' => __('earned'), 'self_employed' => __('self-employed'), 'business' => __('business'), 'portfolio' => __('portfolio'), 'passive' => __('passive'), 'other' => __('other')];
     $incomeGroups = ['earned' => __('Earned income'), 'self_employed' => __('Self-employed income'), 'business' => __('Business income'), 'portfolio' => __('Portfolio income'), 'passive' => __('Passive income'), 'other' => __('Other income')];
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $fromAssets = collect($statement['income']['rows'])->whereIn('kind', ['portfolio', 'passive', 'business'])->sum('value');
     $earnedFlow = collect($statement['income']['rows'])->whereIn('kind', ['earned', 'self_employed'])->sum('value');
     $otherFlow = collect($statement['income']['rows'])->where('kind', 'other')->sum('value');
@@ -221,18 +221,18 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <div class="flex flex-wrap gap-2">
                     @foreach (['income' => __('Income (entry)'), 'expense' => __('Expense'), 'asset' => __('Asset'), 'liability' => __('Liability')] as $kind => $label)
-                        <button type="button" wire:click="add('{{ $kind }}')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 pointer-coarse:min-h-11 dark:bg-indigo-500 dark:hover:bg-indigo-400">+ {{ $label }}</button>
+                        <button type="button" wire:click="add('{{ $kind }}')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-indigo-500 pointer-coarse:min-h-11 dark:bg-indigo-500 dark:hover:bg-indigo-400">+ {{ $label }}</button>
                     @endforeach
                 </div>
             </div>
 
             <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input type="checkbox" wire:click="toggleManualOnly" @checked($statement['manual_only']) class="rounded border-gray-300 text-indigo-600">
+                <input type="checkbox" wire:click="toggleManualOnly" @checked($statement['manual_only']) class="rounded-sm border-gray-300 text-indigo-600">
                 {{ __('Only use my own entries (ignore bank transactions, portfolio and properties)') }}
             </label>
 
             @if ($financeCategories !== [])
-                <details class="group rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <details class="group rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
                         <span>
                             <span class="font-semibold text-gray-900 dark:text-gray-100">🏦 {{ __('Values from Finances') }}</span>
@@ -258,7 +258,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             {{-- Hamster wheel + flow diagram --}}
-            <section class="grid gap-5 rounded-2xl bg-white p-5 shadow-sm lg:grid-cols-2 dark:bg-gray-800">
+            <section class="grid gap-5 rounded-2xl bg-white p-5 shadow-xs lg:grid-cols-2 dark:bg-gray-800">
                 <div class="flex flex-col justify-center border-l-4 border-indigo-500 pl-4">
                     @if ($statement['expenses']['total'] <= 0)
                         <h4 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('No expenses entered yet') }}</h4>
@@ -324,22 +324,22 @@ new #[Layout('layouts.app')] class extends Component
 
             {{-- Key figures --}}
             <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p @class(['text-2xl font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $statement['cashflow'] >= 0, 'text-rose-700 dark:text-rose-400' => $statement['cashflow'] < 0])>{{ $euro($statement['cashflow']) }}</p>
                     <p class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-200">💸 {{ __('Monthly cashflow') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Income – expenses') }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{{ $euro($statement['asset_income']) }}</p>
                     <p class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-200">🌱 {{ __('Passive income per month') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Money that works for you') }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p @class(['text-2xl font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $statement['net_worth']['rich_dad'] >= 0, 'text-rose-700 dark:text-rose-400' => $statement['net_worth']['rich_dad'] < 0])>{{ $euro($statement['net_worth']['rich_dad']) }}</p>
                     <p class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-200">🏦 {{ __('Net worth after Rich Dad') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('without doodads · classic :amount', ['amount' => $euro($statement['net_worth']['classic'])]) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-2xl font-semibold tabular-nums text-indigo-700 dark:text-indigo-300">{{ $statement['wealth_days'] !== null ? __(':days days', ['days' => number_format(min(999, $statement['wealth_days']), 1, ',', '.')]) : '–' }}</p>
                     <p class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-200">⏳ {{ __('Wealth per month') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('So many days a month your asset income covers your expenses. Reserve: liquid funds (:liquid) last :months.', ['liquid' => $euro($statement['liquid']), 'months' => $statement['reserve_months'] !== null ? trans_choice(':count month|:count months', (int) floor($statement['reserve_months'])) : '–']) }}</p>
@@ -347,7 +347,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if (count($history) >= 2)
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Development') }}</h3>
                     <div class="mt-3 grid gap-5 md:grid-cols-2">
                         <div>
@@ -373,7 +373,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Cashflow quadrant --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔲 {{ __('Cashflow quadrant') }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ __('From “Rich Dad’s Cashflow Quadrant”: on the left you trade time for money (E, S), on the right systems and investments work for you (B, I).') }}</p>
                 <div class="mt-4 grid max-w-md grid-cols-2 gap-1.5">
@@ -387,7 +387,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Income statement --}}
-            <section class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <h3 class="border-b border-gray-100 px-5 py-3 font-semibold text-gray-900 dark:border-gray-700 dark:text-gray-100">📄 {{ __('Income statement') }} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">· {{ __('per month') }}</span></h3>
                 <div class="grid gap-0 md:grid-cols-2 md:divide-x md:divide-gray-100 dark:md:divide-gray-700">
                     <div class="p-5">
@@ -440,7 +440,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Balance sheet --}}
-            <section class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <h3 class="border-b border-gray-100 px-5 py-3 font-semibold text-gray-900 dark:border-gray-700 dark:text-gray-100">⚖️ {{ __('Balance sheet') }}</h3>
                 <div class="grid gap-0 md:grid-cols-2 md:divide-x md:divide-gray-100 dark:md:divide-gray-700">
                     @foreach (['assets' => [__('Assets (balance sheet)'), __('Put money in your pocket'), 'text-emerald-700 dark:text-emerald-400'], 'liabilities' => [__('Liabilities (balance sheet)'), __('Take money out of your pocket'), 'text-rose-700 dark:text-rose-400']] as $side => [$title, $subtitle, $color])
@@ -509,7 +509,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if ($steps !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">👣 {{ __('Next steps') }}</h3>
                     <ul class="mt-3 space-y-3 text-sm">
                         @foreach ($steps as $step)
@@ -527,7 +527,7 @@ new #[Layout('layouts.app')] class extends Component
                 $closedTips = collect($tips)->whereNotNull('status');
                 $potential = $openTips->sum('yearly');
             @endphp
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="saving-tips">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="saving-tips">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                     <h3 id="saving-tips" class="font-semibold text-gray-900 dark:text-gray-100">💶 {{ __('Your personal savings tips') }}</h3>
                     @if ($potential > 0)
@@ -614,9 +614,9 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
                 <label class="block text-sm text-gray-700 dark:text-gray-300">{{ ['income' => __('Amount per month (€)'), 'expense' => __('Amount per month (€)'), 'asset' => __('Income per month (€)'), 'liability' => __('Instalment per month (€)')][$entry['kind']] ?? '' }}<input type="text" inputmode="decimal" wire:model="entry.amount" class="{{ $input }}"><x-input-error :messages="$errors->get('entry.amount')" /></label>
                 @if ($entry['kind'] === 'asset')
-                    <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="entry.productive" class="mt-0.5 rounded border-gray-300 text-indigo-600"> {{ __('Real asset: it puts money in my pocket (otherwise it counts as a doodad, e.g. own car or home)') }}</label>
+                    <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="entry.productive" class="mt-0.5 rounded-sm border-gray-300 text-indigo-600"> {{ __('Real asset: it puts money in my pocket (otherwise it counts as a doodad, e.g. own car or home)') }}</label>
                 @elseif ($entry['kind'] === 'liability')
-                    <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="entry.productive" class="mt-0.5 rounded border-gray-300 text-indigo-600"> {{ __('Good debt: it financed an asset that pays the instalment') }}</label>
+                    <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="entry.productive" class="mt-0.5 rounded-sm border-gray-300 text-indigo-600"> {{ __('Good debt: it financed an asset that pays the instalment') }}</label>
                 @endif
             </form>
             <x-slot name="footer">

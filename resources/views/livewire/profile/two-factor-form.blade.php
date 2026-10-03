@@ -126,7 +126,7 @@ new class extends Component
         <div class="mt-4 space-y-3 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/50">
             <p class="text-sm text-gray-700 dark:text-gray-300">{{ __('1. Scan the code with your authenticator app (on the phone: tap the link).') }}</p>
             <div class="flex flex-wrap items-center gap-4">
-                <div class="rounded bg-white p-1">{!! $qr !!}</div>
+                <div class="rounded-sm bg-white p-1">{!! $qr !!}</div>
                 <div class="space-y-1 text-sm">
                     <a href="{{ $otpauth }}" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Open in authenticator app') }}</a>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Or enter the key manually:') }}</p>

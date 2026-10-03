@@ -259,12 +259,12 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Income from paid invoices is counted automatically – enter only income without an invoice here (e.g. cash sales).') }}</p>
 
             @if ($entries->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">📥</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('No receipts in :year yet. Add expenses such as material, software or travel costs – with a photo of the receipt.', ['year' => $year]) }}</p>
                 </div>
             @else
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <p class="flex flex-wrap gap-x-4 border-b border-gray-100 px-4 py-2.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
                         <span>{{ trans_choice(':count receipt|:count receipts', $entries->count()) }}</span>
                         <span>{{ __('Expenses') }}: <strong class="text-gray-800 dark:text-gray-200">{{ $euro($expenseSum) }}</strong></span>
@@ -305,7 +305,7 @@ new #[Layout('layouts.app')] class extends Component
             <form id="entry-form" wire:submit="saveEntry" class="space-y-4">
                 <div class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-gray-900" role="radiogroup" aria-label="{{ __('Type') }}">
                     @foreach (['expense' => __('Expense'), 'income' => __('Income')] as $value => $label)
-                        <label @class(['cursor-pointer rounded-md px-3 py-1.5 text-sm', 'bg-white shadow-sm text-gray-900 dark:bg-gray-700 dark:text-gray-100' => $form['kind'] === $value, 'text-gray-600 dark:text-gray-400' => $form['kind'] !== $value])>
+                        <label @class(['cursor-pointer rounded-md px-3 py-1.5 text-sm', 'bg-white shadow-xs text-gray-900 dark:bg-gray-700 dark:text-gray-100' => $form['kind'] === $value, 'text-gray-600 dark:text-gray-400' => $form['kind'] !== $value])>
                             <input type="radio" class="sr-only" wire:model.live="form.kind" value="{{ $value }}">{{ $label }}
                         </label>
                     @endforeach

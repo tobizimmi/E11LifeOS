@@ -98,7 +98,7 @@ new #[Layout('layouts.guest')] class extends Component
         <p class="text-sm text-gray-700 dark:text-gray-200">{{ __('Only request access in an emergency – for example if :name is ill or has had an accident. :name is informed immediately and can decline.', ['name' => $owner->name]) }}</p>
         <form wire:submit="requestAccess" class="space-y-3">
             <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Your e-mail address (for confirmation)') }}
-                <input type="email" wire:model="email" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" autocomplete="email">
+                <input type="email" wire:model="email" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" autocomplete="email">
                 <x-input-error :messages="$errors->get('email')" />
             </label>
             <x-danger-button>{{ __('Request emergency access') }}</x-danger-button>

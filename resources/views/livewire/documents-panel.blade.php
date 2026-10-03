@@ -399,8 +399,8 @@ new class extends Component
             <ul class="mt-1 max-h-64 overflow-y-auto">
                 @forelse ($results as $result)
                     <li wire:key="paperless-result-{{ $result['id'] }}">
-                        <button type="button" wire:click="linkPaperless({{ $result['id'] }}, @js($result['title']))" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-sm hover:bg-white dark:hover:bg-gray-800">
-                            <img src="{{ route('paperless.document', [$instanceId, $result['id'], 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 shrink-0 rounded object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                        <button type="button" wire:click="linkPaperless({{ $result['id'] }}, @js($result['title']))" class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start text-sm hover:bg-white dark:hover:bg-gray-800">
+                            <img src="{{ route('paperless.document', [$instanceId, $result['id'], 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 shrink-0 rounded-sm object-cover ring-1 ring-gray-200 dark:ring-gray-700">
                             <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $result['title'] }}</span>
                             <span class="shrink-0 text-xs text-gray-500">{{ $result['created'] ? \Illuminate\Support\Carbon::parse($result['created'])->format('d.m.Y') : '' }}</span>
                         </button>
@@ -445,7 +445,7 @@ new class extends Component
                     <div class="flex items-center gap-2">
                         @if ($viewable)
                             <a href="{{ route('paperless.document', [$document->paperless_instance_id, $document->paperless_document_id, 'preview']) }}" target="_blank" class="shrink-0" title="{{ __('Preview') }}">
-                                <img src="{{ route('paperless.document', [$document->paperless_instance_id, $document->paperless_document_id, 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 rounded object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                                <img src="{{ route('paperless.document', [$document->paperless_instance_id, $document->paperless_document_id, 'thumb']) }}" alt="" loading="lazy" class="h-10 w-8 rounded-sm object-cover ring-1 ring-gray-200 dark:ring-gray-700">
                             </a>
                         @else
                             <span class="w-8 shrink-0 text-center text-lg" aria-hidden="true">{{ ['paperless' => '📄', 'mail' => '✉️', 'file' => '📎'][$document->kind] ?? '📄' }}</span>

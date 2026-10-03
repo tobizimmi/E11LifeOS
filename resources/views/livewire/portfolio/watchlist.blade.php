@@ -92,12 +92,12 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($items->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">👀</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Follow securities you are interested in – with price, daily change and 52-week range.') }}</p>
                 </div>
             @else
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                     @foreach ($items as $item)
                         @php
                             $security = $quotes[$item->symbol] ?? null;
@@ -108,13 +108,13 @@ new #[Layout('layouts.app')] class extends Component
                         @endphp
                         <li wire:key="watch-{{ $item->id }}" class="flex flex-wrap items-center gap-3 px-4 py-3">
                             <a href="{{ route('portfolio.security', ['symbol' => $item->symbol]) }}" wire:navigate class="min-w-0 flex-1">
-                                <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->name ?: $item->symbol }} @if ($held->has($item->symbol))<span class="ms-1 rounded bg-indigo-50 px-1 text-xs font-normal text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{{ __('in portfolio') }}</span>@endif</span>
+                                <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->name ?: $item->symbol }} @if ($held->has($item->symbol))<span class="ms-1 rounded-sm bg-indigo-50 px-1 text-xs font-normal text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{{ __('in portfolio') }}</span>@endif</span>
                                 <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $item->symbol }}{{ $item->notes ? ' · '.$item->notes : '' }}</span>
                             </a>
                             @if ($low && $high && $price && $high > $low)
                                 <span class="hidden w-32 sm:block" title="{{ __('52-week range') }}">
                                     <span class="relative block h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
-                                        <span class="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded bg-gray-700 dark:bg-gray-200" style="left: {{ max(0, min(100, ($price - $low) / ($high - $low) * 100)) }}%"></span>
+                                        <span class="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-gray-700 dark:bg-gray-200" style="left: {{ max(0, min(100, ($price - $low) / ($high - $low) * 100)) }}%"></span>
                                     </span>
                                     <span class="mt-0.5 flex justify-between text-[10px] tabular-nums text-gray-500 dark:text-gray-400"><span>{{ number_format($low, 2, ',', '.') }}</span><span>{{ number_format($high, 2, ',', '.') }}</span></span>
                                 </span>
@@ -124,8 +124,8 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="block text-xs tabular-nums {{ ($change ?? 0) > 0 ? 'text-emerald-700 dark:text-emerald-400' : (($change ?? 0) < 0 ? 'text-orange-700 dark:text-orange-400' : 'text-gray-500') }}">{{ $change !== null ? ($change > 0 ? '+' : ($change < 0 ? '−' : '±')).number_format(abs($change), 2, ',', '.').' %' : '' }}</span>
                             </span>
                             <span class="flex shrink-0 gap-1">
-                                <button type="button" wire:click="editNotes({{ $item->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Notes') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
-                                <button type="button" wire:click="remove({{ $item->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                <button type="button" wire:click="editNotes({{ $item->id }})" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Notes') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                                <button type="button" wire:click="remove({{ $item->id }})" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </span>
                             @if ($editingId === $item->id)
                                 <form wire:submit="saveNotes" class="flex w-full gap-2">

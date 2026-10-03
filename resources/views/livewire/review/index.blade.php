@@ -32,7 +32,7 @@ new #[Layout('layouts.app')] class extends Component
 
 @php
     $euro = fn (float $value) => number_format($value, 0, ',', '.').' €';
-    $tile = 'rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800';
+    $tile = 'rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800';
     $label = 'text-sm text-gray-500 dark:text-gray-400';
     $value = 'mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100';
 @endphp
@@ -47,7 +47,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $review['year'] }}</p>
                 <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Year') }}
-                    <select wire:model.live="year" class="ms-2 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    <select wire:model.live="year" class="ms-2 rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                         @foreach ($years as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach

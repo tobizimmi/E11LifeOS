@@ -282,7 +282,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $fmt = fn (int $minutes, bool $signed = false) => \App\Support\Life\WorkTime::format($minutes, $signed);
     $types = \App\Models\WorkDay::types();
     $days = fn (float $value) => rtrim(rtrim(number_format($value, 1, ',', '.'), '0'), ',');
@@ -297,7 +297,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <section class="grid gap-3 sm:grid-cols-3">
-                <div class="flex flex-col rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="flex flex-col rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Today') }}</p>
                     <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $fmt($todayMinutes) }} <span class="text-sm font-normal text-gray-500">/ {{ $fmt($time->targetMinutes(today())) }}</span></p>
                     @if ($today?->starts_at)
@@ -307,19 +307,19 @@ new #[Layout('layouts.app')] class extends Component
                         {{ $today?->starts_at && ! $today->ends_at ? '⏹ '.__('Stop work') : '▶ '.__('Start work') }}
                     </button>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Overtime balance') }}</p>
                     <p @class(['mt-1 text-xl font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-300' => $balance > 0, 'text-red-700 dark:text-red-300' => $balance < 0, 'text-gray-900 dark:text-gray-100' => $balance === 0])>{{ $fmt($balance, true) }} h</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':hours h per week, :days', ['hours' => $days($profile->weekly_hours), 'days' => collect($profile->work_days)->sort()->map(fn ($day) => $weekdayNames[$day])->implode(', ')]) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Leave left :year', ['year' => today()->year]) }}</p>
                     <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $days($leaveStats['remaining']) }} <span class="text-sm font-normal text-gray-500">/ {{ $days($leaveStats['entitlement']) }} {{ __('days') }}</span></p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':taken taken · :planned planned', ['taken' => $days($leaveStats['taken']), 'planned' => $days($leaveStats['planned'])]) }}</p>
                 </div>
             </section>
 
-            <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
+            <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
                 @foreach (['week' => '📅 '.__('Week'), 'month' => '🗓️ '.__('Month'), 'leave' => '🏖️ '.__('Leave'), 'settings' => '⚙️ '.__('Settings')] as $key => $label)
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                 @endforeach
@@ -327,7 +327,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($tab === 'week' || $tab === 'month')
                 @php($data = $tab === 'week' ? $weekData : $monthData)
-                <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <div class="flex items-center justify-between gap-3">
                         <button type="button" wire:click="{{ $tab === 'week' ? 'shiftWeek(-1)' : 'shiftMonth(-1)' }}" class="rounded-md px-2 py-1 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="{{ __('Previous') }}">‹</button>
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">
@@ -401,18 +401,18 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($tab === 'leave')
-                <form wire:submit="planLeave" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="planLeave" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ __('Plan leave') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('From') }}<input type="date" wire:model.live="leave.from" class="{{ $input }}"><x-input-error :messages="$errors->get('leave.from')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Until') }}<input type="date" wire:model.live="leave.to" class="{{ $input }}"><x-input-error :messages="$errors->get('leave.to')" /></label>
-                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-2 dark:text-gray-300"><input type="checkbox" wire:model.live="leave.half" class="rounded border-gray-300 text-indigo-600"> {{ __('Half days') }}</label>
+                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-2 dark:text-gray-300"><input type="checkbox" wire:model.live="leave.half" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Half days') }}</label>
                     @if ($leaveCost !== null)
                         <p class="text-sm text-gray-600 sm:col-span-6 dark:text-gray-400">{{ __('Costs :days leave days (weekends and public holidays are not counted) – :left left afterwards.', ['days' => $days($leaveCost), 'left' => $days($leaveStats['remaining'] - $leaveCost)]) }}</p>
                     @endif
                     <div class="sm:col-span-6"><x-primary-button>{{ __('Book leave') }}</x-primary-button></div>
                 </form>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏖️ {{ __('Planned leave') }}</h3>
                     @forelse ($leaveRanges as $range)
                         <div wire:key="leave-{{ $range['from']->toDateString() }}" class="mt-2 flex items-center gap-3 text-sm">
@@ -428,7 +428,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🌉 {{ __('Bridge days') }}</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Few leave days next to a public holiday give a long break (:state).', ['state' => \App\Support\Life\PublicHolidays::states()[$profile->state] ?? $profile->state]) }}</p>
                     @forelse ($bridgeDays as $tip)
@@ -442,7 +442,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎉 {{ __('Next public holidays') }}</h3>
                     <ul class="mt-2 space-y-1 text-sm">
                         @foreach ($upcomingHolidays as $date => $name)
@@ -453,7 +453,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($tab === 'settings')
-                <form wire:submit="saveSettings" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveSettings" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Hours per week') }}<input type="text" inputmode="decimal" wire:model="settings.weekly_hours" class="{{ $input }}"><x-input-error :messages="$errors->get('settings.weekly_hours')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Leave days per year') }}<input type="text" inputmode="decimal" wire:model="settings.vacation_days" class="{{ $input }}"><x-input-error :messages="$errors->get('settings.vacation_days')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Carried over from last year') }}<input type="text" inputmode="decimal" wire:model="settings.carry_over_days" class="{{ $input }}"></label>
@@ -461,7 +461,7 @@ new #[Layout('layouts.app')] class extends Component
                         <legend>{{ __('Working days') }}</legend>
                         <div class="mt-1 flex flex-wrap gap-3">
                             @foreach ($weekdayNames as $number => $name)
-                                <label class="flex items-center gap-1.5"><input type="checkbox" value="{{ $number }}" wire:model="settings.work_days" class="rounded border-gray-300 text-indigo-600"> {{ $name }}</label>
+                                <label class="flex items-center gap-1.5"><input type="checkbox" value="{{ $number }}" wire:model="settings.work_days" class="rounded-sm border-gray-300 text-indigo-600"> {{ $name }}</label>
                             @endforeach
                         </div>
                         <x-input-error :messages="$errors->get('settings.work_days')" />

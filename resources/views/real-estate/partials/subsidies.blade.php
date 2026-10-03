@@ -1,7 +1,7 @@
 {{-- Subsidies: own list and matching programmes (variables from real-estate/show). --}}
 <div class="grid gap-5 lg:grid-cols-3">
     <div class="space-y-5 lg:col-span-2">
-        <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-label="{{ __('Subsidies') }}">
+        <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-label="{{ __('Subsidies') }}">
             <p class="border-b border-gray-100 px-5 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">{{ __(':secured secured, :pending applied for or planned', ['secured' => $euro($summary['funding']['grants']), 'pending' => $euro($summary['funding']['pending_grants'])]) }}</p>
             @if ($model->subsidies->isEmpty())
                 <p class="p-5 text-sm text-gray-500 dark:text-gray-400">{{ __('No subsidies yet – pick a programme on the right.') }}</p>
@@ -31,7 +31,7 @@
             @endif
         </section>
 
-        <form wire:submit="saveSubsidy" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-3 dark:bg-gray-800">
+        <form wire:submit="saveSubsidy" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-2 lg:grid-cols-3 dark:bg-gray-800">
             <h3 class="font-semibold text-gray-900 sm:col-span-2 lg:col-span-3 dark:text-gray-100">{{ $editingSubsidyId ? __('Edit subsidy') : __('New subsidy') }}</h3>
             <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Programme') }}<input type="text" wire:model="subsidy.title" class="{{ $input }}"><x-input-error :messages="$errors->get('subsidy.title')" /></label>
             <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Type') }}
@@ -73,7 +73,7 @@
         </form>
     </div>
 
-    <section class="space-y-3 rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="programs-heading">
+    <section class="space-y-3 rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="programs-heading">
         <h3 id="programs-heading" class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Programmes that may fit') }}</h3>
         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Based on the usage and the planned energy measures. Conditions change often – check them before applying. Most programmes must be applied for before the contract is signed.') }}</p>
         @forelse ($suggestions as $key => $program)

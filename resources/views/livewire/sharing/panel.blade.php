@@ -78,7 +78,7 @@ new class extends Component
     }
 }; ?>
 
-<section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" aria-label="{{ __('Who sees this?') }}">
+<section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" aria-label="{{ __('Who sees this?') }}">
     <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('Who sees this?') }}</h3>
         <x-audience-badge :model="$content" />
@@ -105,7 +105,7 @@ new class extends Component
                 <div class="mt-1 flex flex-wrap gap-2">
                     @foreach ($groups as $group)
                         <label wire:key="share-group-{{ $group->id }}" class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1 text-sm ring-1 {{ in_array($group->id, $sharedIds, true) ? 'bg-sky-50 text-sky-900 ring-sky-300 dark:bg-sky-900/30 dark:text-sky-100 dark:ring-sky-700' : 'text-gray-700 ring-gray-200 dark:text-gray-200 dark:ring-gray-700' }}">
-                            <input type="checkbox" class="rounded border-gray-300 text-sky-600" @checked(in_array($group->id, $sharedIds, true)) wire:click="toggle({{ $group->id }})">
+                            <input type="checkbox" class="rounded-sm border-gray-300 text-sky-600" @checked(in_array($group->id, $sharedIds, true)) wire:click="toggle({{ $group->id }})">
                             {{ $group->icon }} {{ $group->name }} <span class="text-xs text-gray-500 dark:text-gray-400">({{ trans_choice(':count person|:count people', $group->members_count) }})</span>
                         </label>
                     @endforeach

@@ -4,6 +4,7 @@ namespace App\Support\Life;
 
 use App\Models\Trip;
 use App\Models\TripPlace;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -107,6 +108,64 @@ class TripDiscover
                 return '';
             }
         }) ?: null;
+    }
+
+    /**
+     * A short introduction to the destination from Wikipedia (in the language of the tool), cached for a week.
+     *
+     * @return array{title: string, extract: string, url: string, image: ?string}|null
+     */
+    public static function destinationSummary(string $destination, string $language = 'de'): ?array
+    {
+        $title = trim(explode(',', $destination)[0]);
+        $language = preg_match('/^[a-z]{2}$/', $language) ? $language : 'de';
+
+        if ($title === '') {
+            return null;
+        }
+
+        $summary = Cache::remember('wiki-summary:'.$language.':'.md5($title), now()->addWeek(), function () use ($language, $title): array {
+            try {
+                $response = Http::timeout(6)->withHeaders(['User-Agent' => 'E11LifeOS (trip planner)'])
+                    ->get("https://{$language}.wikipedia.org/api/rest_v1/page/summary/".rawurlencode(str_replace(' ', '_', $title)));
+
+                if (! $response->successful() || $response->json('type') === 'disambiguation' || trim((string) $response->json('extract')) === '') {
+                    return [];
+                }
+
+                $image = (string) ($response->json('thumbnail.source') ?? '');
+
+                return [
+                    'title' => (string) $response->json('title'),
+                    'extract' => trim((string) $response->json('extract')),
+                    'url' => (string) ($response->json('content_urls.desktop.page') ?? "https://{$language}.wikipedia.org/wiki/".rawurlencode(str_replace(' ', '_', $title))),
+                    'image' => str_starts_with($image, 'https://') ? $image : null,
+                ];
+            } catch (Throwable) {
+                return [];
+            }
+        });
+
+        return $summary === [] ? null : $summary;
+    }
+
+    /**
+     * The best described places of some categories that are not visited yet – the tips for the destination.
+     *
+     * @param  list<string>  $categories
+     * @return Collection<int, TripPlace>
+     */
+    public static function highlights(Trip $trip, array $categories, int $limit = 5): Collection
+    {
+        $types = collect(self::categories())->only($categories)->flatMap(fn (array $category) => $category['types'])->all();
+        $visited = $trip->visited_places ?? [];
+
+        return $trip->places()->whereIn('category', $types)
+            ->when($visited !== [], fn ($query) => $query->whereNotIn('osm_id', $visited))
+            ->get()
+            ->sortBy(fn (TripPlace $place) => [-self::richness($place), mb_strtolower($place->name)])
+            ->take($limit)
+            ->values();
     }
 
     /**

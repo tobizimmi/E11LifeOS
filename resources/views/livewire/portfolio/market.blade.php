@@ -76,9 +76,9 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('From the top down, as in the “Aktien- und Börsenführerschein”: first the global situation, then the sectors, then the single share.') }}</p>
 
             @if (! $global)
-                <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400" wire:loading.delay>⏳ {{ __('Loading market data …') }}</p>
+                <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400" wire:loading.delay>⏳ {{ __('Loading market data …') }}</p>
             @else
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="global-heading">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="global-heading">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 id="global-heading" class="font-semibold text-gray-900 dark:text-gray-100">🌍 {{ __('1. Global analysis') }}</h3>
                         <span @class(['rounded-full px-3 py-1 text-sm font-medium', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' => $global['light'] === 'green', 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200' => $global['light'] === 'yellow', 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' => $global['light'] === 'red', 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' => $global['light'] === 'unknown'])>
@@ -104,7 +104,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Rising indices are good for shares; rising interest rates and a rising VIX weigh on them. Trend = price compared with the 200-day line.') }}</p>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="sector-heading">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="sector-heading">
                     <h3 id="sector-heading" class="font-semibold text-gray-900 dark:text-gray-100">🏭 {{ __('2. Sector analysis') }}</h3>
                     <div class="mt-3 overflow-x-auto">
                         <table class="w-full text-sm tabular-nums">
@@ -127,7 +127,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Measured with the US sector ETFs. Strong sectors tend to stay strong for a while – shares from the top third get extra points.') }}</p>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="score-heading">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="score-heading">
                     <h3 id="score-heading" class="font-semibold text-gray-900 dark:text-gray-100">🏅 {{ __('3. Points system for your shares') }}</h3>
                     @if ($scores->isEmpty())
                         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No shares in your portfolio or on your watchlist yet.') }}</p>

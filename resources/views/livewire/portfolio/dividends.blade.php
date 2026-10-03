@@ -69,7 +69,7 @@ new #[Layout('layouts.app')] class extends Component
                     [__('Per month (Ø)'), $euro($report['expected'] / 12), __('expected')],
                     [__('Yield on cost'), $yieldOnCost !== null ? number_format($yieldOnCost, 2, ',', '.').' %' : '—', __('expected dividends ÷ purchase value')],
                 ] as [$label, $value, $hint])
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $label }}</p>
                         <p class="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:text-2xl">{{ $value }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $hint }}</p>
@@ -77,13 +77,13 @@ new #[Layout('layouts.app')] class extends Component
                 @endforeach
             </div>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Dividends per month') }}</h3>
                 <div class="mt-4 flex h-40 items-end gap-1 border-b border-gray-200 dark:border-gray-700">
                     @foreach ($report['by_month'] as $month)
                         <div class="group relative flex h-full flex-1 items-end justify-center" tabindex="0">
-                            <div class="w-full max-w-[18px] rounded-t bg-emerald-600 dark:bg-emerald-500" style="height: {{ $month['value'] > 0 ? max(2, $month['value'] / $maxMonth * 100) : 0 }}%"></div>
-                            <div class="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow group-hover:block group-focus:block">{{ $month['label'] }}: {{ $euro($month['value']) }}</div>
+                            <div class="w-full max-w-[18px] rounded-t-sm bg-emerald-600 dark:bg-emerald-500" style="height: {{ $month['value'] > 0 ? max(2, $month['value'] / $maxMonth * 100) : 0 }}%"></div>
+                            <div class="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow-sm group-hover:block group-focus:block">{{ $month['label'] }}: {{ $euro($month['value']) }}</div>
                         </div>
                     @endforeach
                 </div>
@@ -95,7 +95,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             <div class="grid gap-5 lg:grid-cols-2">
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Per year') }}</h3>
                     @if ($report['by_year'] === [])
                         <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No dividends recorded yet.') }}</p>
@@ -111,7 +111,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Per security') }}</h3>
                     @if ($report['by_security'] === [])
                         <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No dividends recorded yet.') }}</p>
@@ -135,7 +135,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($recent->isNotEmpty())
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Latest payments') }}</h3>
                     <ul class="divide-y divide-gray-100 border-t border-gray-100 text-sm dark:divide-gray-700 dark:border-gray-700">
                         @foreach ($recent as $transaction)

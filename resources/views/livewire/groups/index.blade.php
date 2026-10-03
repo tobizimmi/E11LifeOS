@@ -122,7 +122,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
 @endphp
 
 <div>
@@ -135,7 +135,7 @@ new #[Layout('layouts.app')] class extends Component
             @if (session('status'))
                 <p class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100" role="status">✓ {{ session('status') }}</p>
             @endif
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Who sees what?') }}</h3>
                 <div class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                     <div class="rounded-xl bg-amber-50 p-3 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100"><p class="font-medium">🔒 {{ __('Only me') }}</p><p class="mt-1 text-xs">{{ __('Private contents – nobody else, not even your household.') }}</p></div>
@@ -152,7 +152,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 @if ($showForm)
-                    <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-4 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                    <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-4 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                         <label class="text-sm text-gray-700 sm:col-span-1 dark:text-gray-300">{{ __('Icon') }}<input type="text" wire:model="form.icon" class="{{ $input }}" maxlength="16"></label>
                         <label class="text-sm text-gray-700 sm:col-span-5 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="form.name" class="{{ $input }}" placeholder="{{ __('e.g. Friends from Munich, Club trip 2027') }}"><x-input-error :messages="$errors->get('form.name')" /></label>
                         <div class="sm:col-span-6"><x-primary-button>{{ __('Create group') }}</x-primary-button></div>
@@ -161,7 +161,7 @@ new #[Layout('layouts.app')] class extends Component
 
                 @forelse ($groups as $group)
                     @php($isOwner = $group->members->contains(fn ($member) => $member->user_id === auth()->id() && $member->role === \App\Models\ShareGroup::ROLE_OWNER))
-                    <article wire:key="group-{{ $group->id }}" class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <article wire:key="group-{{ $group->id }}" class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <h4 class="font-semibold text-gray-900 dark:text-gray-100">{{ $group->icon }} {{ $group->name }}</h4>
                             <div class="flex gap-3 text-sm">
@@ -210,11 +210,11 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </article>
                 @empty
-                    <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No group yet. Create one to share single contents with friends or other households – everything else stays in your household.') }}</p>
+                    <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No group yet. Create one to share single contents with friends or other households – everything else stays in your household.') }}</p>
                 @endforelse
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('What I share outside the household') }}</h3>
                 <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse ($myShares as $share)
@@ -230,7 +230,7 @@ new #[Layout('layouts.app')] class extends Component
                 </ul>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Shared with me') }}</h3>
                 <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse ($sharedWithMe as $share)

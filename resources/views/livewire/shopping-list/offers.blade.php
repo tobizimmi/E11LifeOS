@@ -188,7 +188,7 @@ new #[Layout('layouts.app')] class extends Component
                 </label>
             </div>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="grid gap-4 md:grid-cols-[15rem_1fr]">
                     <form wire:submit="saveSettings">
                         <x-input-label for="offers-zip" :value="__('Your postcode')" />
@@ -237,15 +237,15 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if (! $zipValid)
-                <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">📍 {{ __('Enter your postcode to see the offers of the stores near you.') }}</p>
+                <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">📍 {{ __('Enter your postcode to see the offers of the stores near you.') }}</p>
             @elseif ($error)
                 <p class="rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">{{ $error }} {{ __('The weekly flyers of your stores are linked below.') }}</p>
             @elseif ($sections === [])
-                <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">⭐ {{ __('Follow brands or products, search, or tap “For my list” to see matching offers.') }}</p>
+                <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">⭐ {{ __('Follow brands or products, search, or tap “For my list” to see matching offers.') }}</p>
             @endif
 
             @foreach ($sections as $index => $section)
-                <section wire:key="offers-section-{{ $index }}-{{ md5($section['title']) }}" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section wire:key="offers-section-{{ $index }}-{{ md5($section['title']) }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $section['title'] }} <span class="text-sm font-normal text-gray-500">· {{ count($section['offers']) }}</span></h3>
                     @if ($section['offers'] === [])
                         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No current offers.') }}</p>
@@ -262,7 +262,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <p class="mt-0.5 flex items-baseline gap-2">
                                             @if ($offer['price'] !== null)<span class="font-semibold text-red-600 dark:text-red-400">{{ $euro($offer['price']) }}</span>@endif
                                             @if ($offer['old_price'])<span class="text-xs text-gray-400 line-through">{{ $euro($offer['old_price']) }}</span>@endif
-                                            @if ($offer['old_price'] && $offer['price'])<span class="rounded bg-red-50 px-1 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">−{{ round((1 - $offer['price'] / $offer['old_price']) * 100) }} %</span>@endif
+                                            @if ($offer['old_price'] && $offer['price'])<span class="rounded-sm bg-red-50 px-1 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">−{{ round((1 - $offer['price'] / $offer['old_price']) * 100) }} %</span>@endif
                                         </p>
                                         @if ($offer['unit'])<p class="text-xs text-gray-500">{{ $offer['unit'] }}</p>@endif
                                     </div>
@@ -274,7 +274,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endforeach
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">📰 {{ __('Weekly flyers') }}</h3>
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($chains === [] ? array_keys($allChains) : $chains as $key)

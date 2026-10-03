@@ -7,7 +7,7 @@
 @endphp
 
 <div class="space-y-5">
-    <form wire:submit="saveItem" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 dark:bg-gray-800">
+    <form wire:submit="saveItem" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-2 lg:grid-cols-4 dark:bg-gray-800">
         <h3 class="font-semibold text-gray-900 sm:col-span-2 lg:col-span-4 dark:text-gray-100">{{ $editingItemId ? __('Edit budget line') : __('New budget line') }}</h3>
         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Phase') }}
             <select wire:model="item.phase" class="{{ $input }}">
@@ -39,7 +39,7 @@
         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('End') }}<input type="date" wire:model="item.end_on" class="{{ $input }}"><x-input-error :messages="$errors->get('item.end_on')" /></label>
         <label class="text-sm text-gray-700 lg:col-span-2 dark:text-gray-300">{{ __('Contractor') }}<input type="text" wire:model="item.contractor" class="{{ $input }}"></label>
         <label class="flex items-center gap-2 self-end pb-2 text-sm text-gray-700 lg:col-span-2 dark:text-gray-300">
-            <input type="checkbox" wire:model="item.energy_measure" class="rounded border-gray-300 text-indigo-600"> 🌱 {{ __('Energy-efficiency measure (subsidies, § 35c)') }}
+            <input type="checkbox" wire:model="item.energy_measure" class="rounded-sm border-gray-300 text-indigo-600"> 🌱 {{ __('Energy-efficiency measure (subsidies, § 35c)') }}
         </label>
         <div class="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
             <x-primary-button>{{ $editingItemId ? __('Save') : '+ '.__('Add') }}</x-primary-button>
@@ -57,7 +57,7 @@
             $rows = $summary['items']->filter(fn ($row) => $row['item']->phase === $phase);
         @endphp
         @continue($rows->isEmpty())
-        <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-label="{{ $phaseLabel }}">
+        <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-label="{{ $phaseLabel }}">
             <div class="flex items-baseline justify-between border-b border-gray-100 px-5 py-3 dark:border-gray-700">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $phaseLabel }}</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-300">{{ __(':invoiced of :planned invoiced', ['invoiced' => $euro($rows->sum('invoiced')), 'planned' => $euro($rows->sum('planned'))]) }}</p>
@@ -115,7 +115,7 @@
     @endforeach
 
     @if ($dated->isNotEmpty())
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="schedule-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="schedule-heading">
             <h3 id="schedule-heading" class="font-semibold text-gray-900 dark:text-gray-100">🗓 {{ __('Schedule') }}</h3>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $timelineStart->translatedFormat('j. M Y') }} – {{ $timelineEnd->translatedFormat('j. M Y') }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Drag a bar to move the trade, drag its right edge to change the end.') }}</p>
@@ -127,21 +127,21 @@
                     @endphp
                     <li class="flex items-center gap-3 text-sm" wire:key="gantt-{{ $row['item']->id }}">
                         <span class="w-40 shrink-0 truncate text-gray-700 dark:text-gray-300">{{ $row['item']->title }}</span>
-                        <span class="relative h-5 flex-1 rounded bg-gray-50 dark:bg-gray-900"
+                        <span class="relative h-5 flex-1 rounded-sm bg-gray-50 dark:bg-gray-900"
                               x-data="{
                                   mode: null, startX: 0, days: 0,
                                   begin(event, mode) { this.mode = mode; this.startX = event.clientX; this.days = 0; event.target.setPointerCapture(event.pointerId) },
                                   move(event) { if (! this.mode) return; this.days = Math.round((event.clientX - this.startX) / this.$el.clientWidth * {{ $timelineDays }}) },
                                   end() { if (! this.mode) return; const mode = this.mode; this.mode = null; if (this.days !== 0) { $wire.shiftItem({{ $row['item']->id }}, this.days, mode === 'end') } },
                               }">
-                            <span @class(['absolute inset-y-0 cursor-grab touch-none rounded active:cursor-grabbing', 'opacity-50' => $row['item']->status === 'done'])
+                            <span @class(['absolute inset-y-0 cursor-grab touch-none rounded-sm active:cursor-grabbing', 'opacity-50' => $row['item']->status === 'done'])
                                   style="left: {{ $offset }}%; width: {{ min($width, 100 - $offset) }}%; background: #2a78d6"
                                   :style="mode ? (mode === 'move' ? { transform: 'translateX(' + (days / {{ $timelineDays }} * $el.parentElement.clientWidth) + 'px)' } : { width: 'calc({{ min($width, 100 - $offset) }}% + ' + (days / {{ $timelineDays }} * $el.parentElement.clientWidth) + 'px)' }) : {}"
                                   x-on:pointerdown="begin($event, 'move')" x-on:pointermove="move($event)" x-on:pointerup="end()" x-on:pointercancel="mode = null"
                                   title="{{ $row['item']->title }}: {{ $row['item']->start_on->translatedFormat('j. M') }}{{ $row['item']->end_on ? ' – '.$row['item']->end_on->translatedFormat('j. M') : '' }} · {{ \App\Models\RealEstateBudgetItem::statusLabels()[$row['item']->status] }}">
-                                <span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r bg-white/40" x-on:pointerdown.stop="begin($event, 'end')" x-on:pointermove="move($event)" x-on:pointerup.stop="end()" aria-hidden="true"></span>
+                                <span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r-sm bg-white/40" x-on:pointerdown.stop="begin($event, 'end')" x-on:pointermove="move($event)" x-on:pointerup.stop="end()" aria-hidden="true"></span>
                             </span>
-                            <span x-show="mode && days !== 0" x-cloak class="absolute -top-5 left-0 rounded bg-gray-900 px-1.5 text-xs text-white" x-text="(days > 0 ? '+' : '') + days + ' {{ __('days') }}'"></span>
+                            <span x-show="mode && days !== 0" x-cloak class="absolute -top-5 left-0 rounded-sm bg-gray-900 px-1.5 text-xs text-white" x-text="(days > 0 ? '+' : '') + days + ' {{ __('days') }}'"></span>
                         </span>
                         <span class="w-20 shrink-0 text-end text-xs text-gray-500 dark:text-gray-400">{{ $row['item']->status === 'done' ? '✓ ' : '' }}{{ \App\Models\RealEstateBudgetItem::statusLabels()[$row['item']->status] }}</span>
                     </li>

@@ -17,6 +17,7 @@ use App\Http\Controllers\HealthPdfController;
 use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
+use App\Http\Controllers\JournalPhotoController;
 use App\Http\Controllers\NetworkDriveController;
 use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicCollectionController;
@@ -90,6 +91,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('drives/google/connect', [GoogleDriveController::class, 'connect'])->middleware('throttle:10,1')->name('drives.google.connect');
     Route::get('drives/google/callback', [GoogleDriveController::class, 'callback'])->middleware('throttle:10,1')->name('drives.google.callback');
     Volt::route('work', 'work.index')->name('work.index');
+    Volt::route('journal', 'journal.index')->name('journal.index');
+    Route::get('journal/{entry}/photos/{index}', JournalPhotoController::class)->whereNumber(['entry', 'index'])->name('journal.photo');
     Volt::route('career', 'career.index')->name('career.index');
     Route::get('career/cv', CareerCvController::class)->middleware('throttle:20,1')->name('career.cv');
     Volt::route('trips', 'trips.index')->name('trips.index');

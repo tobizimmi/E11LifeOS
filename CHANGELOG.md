@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.27.0] – 2026-10-03
+
+### Neu
+- Tagebuch & Gewohnheiten (unter „Alltag“ › Routinen & Tagebuch, nur für dich sichtbar):
+  - Gewohnheiten abhaken oder zählen (z. B. 8 Gläser Wasser) – täglich, an bestimmten Wochentagen oder x-mal pro Woche, mit Push-Erinnerung zur Uhrzeit, solange sie noch offen ist.
+  - Serie, beste Serie, Erfolgsquote und Gewohnheitsstärke (ein verpasster Tag kostet nur ein wenig) sowie eine Jahresansicht.
+  - Tagebuch pro Tag: Stimmung, Aktivitäten, Fragen für morgens und abends, Notizen und Fotos – Texte verschlüsselt.
+  - „Der Tag in E11LifeOS“ mit Terminen, erledigten Aufgaben und Reisen und „An diesem Tag“ aus früheren Jahren.
+  - Auswertung: Stimmung der letzten 90 Tage, welche Aktivitäten und Gewohnheiten mit guter Stimmung zusammenhängen.
+- Übersicht: Kachel „Gewohnheiten heute“ zum Abhaken; der Wochenrückblick zeigt Gewohnheiten und Stimmung.
+
 ## [1.26.0] – 2026-10-03
 
 ### Neu

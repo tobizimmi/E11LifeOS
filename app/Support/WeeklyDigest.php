@@ -11,6 +11,7 @@ use App\Models\ShoppingListEntry;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Finance\Budgets;
+use App\Support\Life\HabitTracker;
 use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Carbon;
 
@@ -37,6 +38,7 @@ class WeeklyDigest
         $sections[] = ['icon' => '💡', 'title' => __('Insights'), 'lines' => WeeklyInsights::for($user, $household->id), 'url' => route('dashboard')];
         $sections[] = self::tasks($user, $household->id);
         $sections[] = self::deadlines($user, $household->id);
+        $sections[] = ['icon' => '🔥', 'title' => __('Habits & mood'), 'lines' => HabitTracker::weekLines($user), 'url' => route('journal.index', ['tab' => 'insights'])];
 
         if ($user->canUseAddon(Addons::RECIPES)) {
             $sections[] = self::meals($user, $household->id);

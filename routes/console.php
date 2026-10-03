@@ -24,6 +24,7 @@ Schedule::command('kids:allowance')->dailyAt('06:10')->withoutOverlapping();
 Schedule::command('emergency:grant-access')->everyFifteenMinutes();
 Schedule::command('health:medication-reminders')->everyMinute()->withoutOverlapping();
 Schedule::command('reminders:timed')->everyMinute()->withoutOverlapping();
+Schedule::command('habits:remind')->everyMinute()->withoutOverlapping();
 Schedule::command('digest:weekly')->hourlyAt(2)->withoutOverlapping();
 Schedule::command('briefing:morning')->hourlyAt(0)->withoutOverlapping();
 Schedule::command('finance:check-budgets')->dailyAt('19:05');

@@ -201,7 +201,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => ''])
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $security->name }}</h3>
@@ -225,12 +225,12 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Price history') }} ({{ $security->currency }})</h3>
                     <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900">
                         @foreach (['1m' => __('1M'), '3m' => __('3M'), '1y' => __('1Y'), '5y' => __('5Y'), 'max' => __('Max')] as $key => $label)
-                            <button type="button" wire:click="$set('range', '{{ $key }}')" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $range === $key, 'text-gray-600 dark:text-gray-400' => $range !== $key])>{{ $label }}</button>
+                            <button type="button" wire:click="$set('range', '{{ $key }}')" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $range === $key, 'text-gray-600 dark:text-gray-400' => $range !== $key])>{{ $label }}</button>
                         @endforeach
                     </div>
                 </div>
@@ -262,7 +262,7 @@ new #[Layout('layouts.app')] class extends Component
                 $analyst = ['strong_buy' => __('Strong buy'), 'buy' => __('Buy'), 'hold' => __('Hold'), 'underperform' => __('Underperform'), 'sell' => __('Sell')];
             @endphp
             @unless (str_starts_with($security->symbol, '^') || str_contains($security->symbol, '='))
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Key figures') }}</h3>
                         <button type="button" wire:click="loadFundamentals" wire:loading.attr="disabled" class="text-xs text-indigo-600 hover:underline dark:text-indigo-300">↻ {{ $figures ? __('Update') : __('Load key figures') }}</button>
@@ -336,7 +336,7 @@ new #[Layout('layouts.app')] class extends Component
                 @php($maxRevenue = collect($financials['years'])->max(fn ($year) => abs((float) ($year['revenue'] ?? 0))) ?: 1)
                 @php($levelClasses = ['strong_buy' => 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100', 'buy' => 'bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100', 'hold' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100', 'neutral' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100', 'sell' => 'bg-orange-100 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100', 'strong_sell' => 'bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-100'])
                 <section class="grid gap-5 lg:grid-cols-2">
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Revenue & profit') }}</h3>
                         @if ($financials['years'] !== [])
                             <ul class="mt-3 space-y-2">
@@ -368,7 +368,7 @@ new #[Layout('layouts.app')] class extends Component
                         </p>
                     </div>
 
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎯 {{ __('Analysts') }}</h3>
                         @if ($consensus)
                             <p class="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -397,7 +397,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </div>
 
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🕵️ {{ __('Insider barometer') }}</h3>
                         @if ($insider)
                             <p class="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -420,7 +420,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </div>
 
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Plans, products & deals') }}</h3>
                         @if ($plans->isNotEmpty())
                             <ul class="mt-2 space-y-1.5 text-sm">
@@ -437,7 +437,7 @@ new #[Layout('layouts.app')] class extends Component
             @endunless
 
             @if ($technical)
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="technical-heading">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="technical-heading">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <h3 id="technical-heading" class="font-semibold text-gray-900 dark:text-gray-100">📉 {{ __('Chart analysis') }}</h3>
                         <span @class(['rounded-full px-2.5 py-0.5 text-xs font-medium', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' => $technical['trend'] === 'up', 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' => $technical['trend'] === 'down', 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' => in_array($technical['trend'], ['sideways', 'unknown'], true)])>{{ ['up' => __('Uptrend'), 'down' => __('Downtrend'), 'sideways' => __('Sideways'), 'unknown' => __('Trend not yet known')][$technical['trend']] }}</span>
@@ -456,7 +456,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($stockScore && $stockScore['rows'] !== [])
                 @php($verdict = \App\Support\Portfolio\StockScore::verdicts()[$stockScore['verdict']])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="score-heading">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="score-heading">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 id="score-heading" class="font-semibold text-gray-900 dark:text-gray-100">🏅 {{ __('Points system') }} <span class="font-normal text-gray-500 dark:text-gray-400">{{ $stockScore['points'] }} / {{ $stockScore['max'] }}</span></h3>
                         <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ $verdict['color'] }}">{{ $verdict['label'] }}</span>
@@ -481,7 +481,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endif
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="notes-heading">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="notes-heading">
                 <h3 id="notes-heading" class="font-semibold text-gray-900 dark:text-gray-100">🗒 {{ __('My notes') }}</h3>
                 <form wire:submit="addNote" class="mt-2 flex flex-wrap gap-2">
                     <textarea wire:model="note" rows="2" class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="{{ __('e.g. annual report: margin under pressure – check again after Q3') }}" aria-label="{{ __('Note') }}"></textarea>
@@ -498,7 +498,7 @@ new #[Layout('layouts.app')] class extends Component
                 </ul>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="thesis-heading">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="thesis-heading">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 id="thesis-heading" class="font-semibold text-gray-900 dark:text-gray-100">📝 {{ __('My investment thesis') }}</h3>
                     @unless ($editingThesis)
@@ -506,7 +506,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endunless
                 </div>
                 @if ($editingThesis)
-                    @php($field = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
+                    @php($field = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
                     <form wire:submit="saveThesis" class="mt-3 grid gap-3 sm:grid-cols-2">
                         <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Why do I own it? (in two minutes, as Peter Lynch says)') }}<textarea wire:model="thesis.thesis" rows="3" class="{{ $field }}"></textarea></label>
                         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Competitive advantage (moat)') }}<textarea wire:model="thesis.moat" rows="2" class="{{ $field }}" placeholder="{{ __('e.g. brand, network effects, switching costs, cost advantage') }}"></textarea></label>
@@ -555,7 +555,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if ($rows !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Your position') }}</h3>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
                         @foreach ($rows as $row)
@@ -571,7 +571,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($transactions->isNotEmpty())
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Transactions') }}</h3>
                     <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-700 dark:border-gray-700">
                         @foreach ($transactions as $transaction)
@@ -587,7 +587,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($mentions !== [])
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Mentioned in') }}</h3>
                     <ul class="divide-y divide-gray-100 border-t border-gray-100 text-sm dark:divide-gray-700 dark:border-gray-700">
                         @foreach ($mentions as $node)
@@ -598,7 +598,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($news->isNotEmpty())
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('News') }}</h3>
                     <ul class="divide-y divide-gray-100 border-t border-gray-100 text-sm dark:divide-gray-700 dark:border-gray-700">
                         @foreach ($news as $article)

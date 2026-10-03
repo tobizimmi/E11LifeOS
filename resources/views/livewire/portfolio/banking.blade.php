@@ -318,7 +318,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.banking'])
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Bank sync (FinTS)') }}</h3>
@@ -333,7 +333,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if ($pinFor)
-                <form wire:submit="submitPin" class="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-5 shadow-sm ring-2 ring-indigo-200 dark:bg-gray-800 dark:ring-indigo-800">
+                <form wire:submit="submitPin" class="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-5 shadow-xs ring-2 ring-indigo-200 dark:bg-gray-800 dark:ring-indigo-800">
                     <div>
                         <x-input-label for="bank-pin" :value="__('PIN for :bank', ['bank' => $connections->firstWhere('id', $pinFor)?->bank_name])" />
                         <x-text-input id="bank-pin" type="password" wire:model="pin" class="mt-1 block w-56" autocomplete="off" autofocus />
@@ -346,7 +346,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($tanFor)
-                <section class="rounded-2xl bg-white p-5 shadow-sm ring-2 ring-amber-200 dark:bg-gray-800 dark:ring-amber-800" @if ($decoupled) wire:poll.5s="checkDecoupled" @endif>
+                <section class="rounded-2xl bg-white p-5 shadow-xs ring-2 ring-amber-200 dark:bg-gray-800 dark:ring-amber-800" @if ($decoupled) wire:poll.5s="checkDecoupled" @endif>
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔐 {{ $decoupled ? __('Confirm in your banking app') : __('Enter TAN') }}</h3>
                     <p class="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ $challenge }}</p>
                     @if ($decoupled)
@@ -367,14 +367,14 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($connections->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🏦</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('No bank connection yet. Trade Republic does not offer FinTS – please use its CSV export in the import.') }}</p>
                 </div>
             @endif
 
             @foreach ($connections as $connection)
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" wire:key="connection-{{ $connection->id }}">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" wire:key="connection-{{ $connection->id }}">
                     <div class="flex flex-wrap items-start gap-3">
                         <div class="min-w-0 flex-1">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏦 {{ $connection->bank_name }}</h3>
@@ -407,17 +407,17 @@ new #[Layout('layouts.app')] class extends Component
                                     @php($type = $accountTypes[$account['type']] ?? $accountTypes['other'])
                                     <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2" wire:key="account-{{ $connection->id }}-{{ $account['number'] }}">
                                         <div class="min-w-0 basis-full sm:basis-0 sm:flex-1">
-                                            <p class="text-sm text-gray-900 dark:text-gray-100"><span aria-hidden="true">{{ $type[0] }}</span> {{ $account['product'] ?: $type[1] }} <span class="ms-1 rounded bg-white px-1.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $type[1] }}</span></p>
+                                            <p class="text-sm text-gray-900 dark:text-gray-100"><span aria-hidden="true">{{ $type[0] }}</span> {{ $account['product'] ?: $type[1] }} <span class="ms-1 rounded-sm bg-white px-1.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $type[1] }}</span></p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $maskedIban($account['iban']) ?? __('Account no. :number', ['number' => $account['number']]) }}@if ($account['owner']) · {{ $account['owner'] }}@endif</p>
                                         </div>
                                         @if (($account['balance'] ?? null) !== null)
                                             <p class="me-auto text-sm font-medium tabular-nums sm:me-0 sm:text-end {{ $account['balance'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">{{ number_format($account['balance'], 2, ',', '.') }} {{ $account['currency'] ?? 'EUR' }}<span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('as of :date', ['date' => \Illuminate\Support\Carbon::parse($account['balance_on'])->format('d.m.Y')]) }}</span></p>
                                         @endif
                                         @if ($account['bookings'])
-                                            <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_bookings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_bookings')"> 💶 {{ __('Fetch bookings') }}</label>
+                                            <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_bookings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_bookings')"> 💶 {{ __('Fetch bookings') }}</label>
                                         @endif
                                         @if ($account['holdings'])
-                                            <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_holdings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_holdings')"> 📈 {{ __('Fetch holdings') }}</label>
+                                            <label class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"><input type="checkbox" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900" @checked($account['use_holdings'] ?? true) wire:click="toggleAccount({{ $connection->id }}, '{{ $account['number'] }}', 'use_holdings')"> 📈 {{ __('Fetch holdings') }}</label>
                                         @endif
                                         @if ($account['holdings'] && $portfolioList->isNotEmpty())
                                             <label class="flex w-full min-w-0 items-center gap-2 text-xs text-gray-600 dark:text-gray-400 sm:w-auto">{{ __('Compare with') }}
@@ -475,12 +475,12 @@ new #[Layout('layouts.app')] class extends Component
             @endforeach
 
             @if ($connections->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔔 {{ __('Notifications after the bank sync') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('As push message and in the bell – for bookings of the last three days, e.g. with the daily automatic sync.') }}</p>
                     <form wire:submit="saveAlerts" class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="alerts.salary" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"> 💼 {{ __('Salary received') }}</label>
-                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="alerts.forecast" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"> ⚠️ {{ __('Forecast goes below zero (30 days)') }}</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="alerts.salary" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"> 💼 {{ __('Salary received') }}</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="alerts.forecast" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"> ⚠️ {{ __('Forecast goes below zero (30 days)') }}</label>
                         <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">💸 {{ __('Large debit from') }}
                             <input type="text" inputmode="decimal" wire:model="alerts.large_debit" placeholder="{{ __('off') }}" class="w-24 rounded-md border-gray-300 py-1 text-end text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"> €
                             <x-input-error :messages="$errors->get('alerts.large_debit')" class="w-full" />
@@ -540,7 +540,7 @@ new #[Layout('layouts.app')] class extends Component
                     </select>
                 </div>
                 <label class="flex items-start gap-2 text-sm sm:col-span-2">
-                    <input type="checkbox" wire:model.live="form.save_pin" class="mt-0.5 rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
+                    <input type="checkbox" wire:model.live="form.save_pin" class="mt-0.5 rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                     <span>{{ __('Save PIN encrypted') }} <span class="block text-xs text-gray-500 dark:text-gray-400">{{ __('Needed for the automatic daily sync. Otherwise you enter the PIN each time.') }}</span></span>
                 </label>
                 @if ($form['save_pin'])
@@ -549,7 +549,7 @@ new #[Layout('layouts.app')] class extends Component
                         <x-text-input id="bank-save-pin" type="password" wire:model="form.pin" class="mt-1 block w-full" autocomplete="new-password" :placeholder="$editingId ? __('unchanged') : ''" />
                     </div>
                     <label class="flex items-center gap-2 pt-6 text-sm">
-                        <input type="checkbox" wire:model="form.auto_sync" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Sync automatically every morning') }}
+                        <input type="checkbox" wire:model="form.auto_sync" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Sync automatically every morning') }}
                     </label>
                 @endif
             </form>

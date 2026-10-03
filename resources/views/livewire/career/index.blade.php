@@ -227,8 +227,8 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
-    $card = 'rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $card = 'rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800';
 @endphp
 
 <div>
@@ -238,7 +238,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-sm dark:bg-gray-800" role="tablist">
+            <div class="flex gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs dark:bg-gray-800" role="tablist">
                 @foreach (['overview' => '🧭 '.__('Career path'), 'trainings' => '📜 '.__('Trainings & certificates'), 'contracts' => '📄 '.__('Contracts & info'), 'cv' => '🪪 '.__('CV'), 'applications' => '📨 '.__('Applications')] as $key => $label)
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                 @endforeach
@@ -251,7 +251,7 @@ new #[Layout('layouts.app')] class extends Component
             @if ($tab === 'overview')
                 <div class="flex flex-wrap gap-2">
                     @foreach (['job', 'education', 'training', 'milestone'] as $type)
-                        <button type="button" wire:click="add('{{ $type }}')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500">+ {{ $types[$type]['icon'] }} {{ $types[$type]['label'] }}</button>
+                        <button type="button" wire:click="add('{{ $type }}')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-indigo-500">+ {{ $types[$type]['icon'] }} {{ $types[$type]['label'] }}</button>
                     @endforeach
                 </div>
                 <section class="{{ $card }}">
@@ -281,7 +281,7 @@ new #[Layout('layouts.app')] class extends Component
                 @php($listType = $tab === 'trainings' ? 'training' : 'contract')
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <p class="text-sm text-gray-600 dark:text-gray-400">{{ $tab === 'trainings' ? __('Trainings you attended – keep the certificate with each one (paperless or upload).') : __('Work contracts and important information such as salary, notice period and holidays – with the contract documents.') }}</p>
-                    <button type="button" wire:click="add('{{ $listType }}')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500">+ {{ $types[$listType]['label'] }}</button>
+                    <button type="button" wire:click="add('{{ $listType }}')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-indigo-500">+ {{ $types[$listType]['label'] }}</button>
                 </div>
                 <ul class="space-y-3">
                     @forelse ($entries->where('type', $listType)->sortByDesc(fn ($item) => $item->starts_on?->toDateString() ?? '') as $item)
@@ -349,7 +349,7 @@ new #[Layout('layouts.app')] class extends Component
             @elseif ($tab === 'applications')
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Keep track of your applications – with documents, contact and status.') }}</p>
-                    <button type="button" wire:click="add('application')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500">+ {{ __('Application') }}</button>
+                    <button type="button" wire:click="add('application')" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-indigo-500">+ {{ __('Application') }}</button>
                 </div>
                 <ul class="space-y-3">
                     @forelse ($entries->where('type', 'application')->sortBy(fn ($item) => array_search($item->detail('status') ?? 'planned', \App\Models\CareerEntry::APPLICATION_STATUSES)) as $item)

@@ -422,7 +422,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($suggestions !== [])
-                <section class="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="suggestions-heading">
+                <section class="rounded-lg bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="suggestions-heading">
                     <h3 id="suggestions-heading" class="font-medium text-gray-900 dark:text-gray-100">✨ {{ __('Suggestions for dinner') }}</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('From your favorites, well-rated recipes and what is in the pantry – recently planned recipes come last.') }}</p>
                     <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
@@ -452,7 +452,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($choosingShopping)
-                <form wire:submit="addWeekToShoppingList" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-2">
+                <form wire:submit="addWeekToShoppingList" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-2">
                     <p class="font-medium text-gray-900 dark:text-gray-100">{{ __('Which ingredients do you need?') }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Scaled to the planned servings; equal ingredients are added up.') }}</p>
                     @php
@@ -471,11 +471,11 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                         @forelse ($weekIngredients as $index => $ingredient)
                             <label class="flex items-baseline gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="week-ingredient-{{ $index }}">
-                                <input type="checkbox" wire:model="selectedShopping" value="{{ $index }}" class="translate-y-0.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                                <input type="checkbox" wire:model="selectedShopping" value="{{ $index }}" class="translate-y-0.5 rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
                                 <span>
                                     <span class="font-medium">{{ $ingredient['quantity'] }}</span> {{ $ingredient['name'] }}
                                     @if (\App\Support\MealSuggestions::inStock($ingredient['name'], $pantryStock))
-                                        <span class="ms-1 rounded bg-emerald-50 px-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">🧺 {{ __('in stock') }}</span>
+                                        <span class="ms-1 rounded-sm bg-emerald-50 px-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">🧺 {{ __('in stock') }}</span>
                                     @endif
                                     <span class="block text-xs text-gray-500 dark:text-gray-400">{{ implode(', ', $ingredient['recipes']) }}</span>
                                 </span>
@@ -496,7 +496,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Drag a recipe onto a day:') }}</p>
                     <div class="flex gap-2 overflow-x-auto pb-1">
                         @foreach ($dragRecipes as $dragRecipe)
-                            <span wire:key="drag-recipe-{{ $dragRecipe->id }}" draggable="true" x-data x-on:dragstart="$event.dataTransfer.effectAllowed = 'copy'; $event.dataTransfer.setData('application/x-recipe', '{{ $dragRecipe->id }}')" class="flex shrink-0 cursor-grab items-center gap-2 rounded-full bg-white py-1 pe-3 ps-1 text-sm text-gray-800 shadow-sm ring-1 ring-gray-200 active:cursor-grabbing dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">
+                            <span wire:key="drag-recipe-{{ $dragRecipe->id }}" draggable="true" x-data x-on:dragstart="$event.dataTransfer.effectAllowed = 'copy'; $event.dataTransfer.setData('application/x-recipe', '{{ $dragRecipe->id }}')" class="flex shrink-0 cursor-grab items-center gap-2 rounded-full bg-white py-1 pe-3 ps-1 text-sm text-gray-800 shadow-xs ring-1 ring-gray-200 active:cursor-grabbing dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">
                                 @if ($dragRecipe->imageUrl())
                                     <img src="{{ $dragRecipe->imageUrl() }}" alt="" class="h-6 w-6 rounded-full object-cover" draggable="false" />
                                 @else
@@ -513,7 +513,7 @@ new #[Layout('layouts.app')] class extends Component
                 @foreach ($days as $day)
                     <section
                         wire:key="day-{{ $day['date']->toDateString() }}"
-                        @class(['flex flex-col rounded-lg bg-white dark:bg-gray-800 p-3 shadow-sm transition', 'ring-2 ring-indigo-500' => $day['date']->isToday()])
+                        @class(['flex flex-col rounded-lg bg-white dark:bg-gray-800 p-3 shadow-xs transition', 'ring-2 ring-indigo-500' => $day['date']->isToday()])
                         x-data="{ over: false }"
                         x-bind:class="over && 'ring-2 ring-emerald-500 bg-emerald-50/60 dark:bg-emerald-900/20'"
                         x-on:dragover="if ([...$event.dataTransfer.types].includes('application/x-recipe')) { $event.preventDefault(); over = true }"
@@ -544,7 +544,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @if ($entry->recipe)
                                         <a href="{{ route('recipes.show', $entry->recipe) }}" wire:navigate class="mt-0.5 flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100 hover:underline">
                                             @if ($entry->recipe->imageUrl())
-                                                <img src="{{ $entry->recipe->imageUrl() }}" alt="" loading="lazy" class="h-8 w-8 shrink-0 rounded object-cover" />
+                                                <img src="{{ $entry->recipe->imageUrl() }}" alt="" loading="lazy" class="h-8 w-8 shrink-0 rounded-sm object-cover" />
                                             @endif
                                             <span class="min-w-0 line-clamp-2 break-words">{{ $entry->recipe->title }}</span>
                                         </a>
@@ -603,9 +603,9 @@ new #[Layout('layouts.app')] class extends Component
                         <li wire:key="result-{{ $result->id }}">
                             <button type="button" wire:click="addRecipe({{ $result->id }})" class="flex w-full items-center gap-3 px-1 py-2 text-start hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                 @if ($result->imageUrl())
-                                    <img src="{{ $result->imageUrl() }}" alt="" class="h-10 w-10 rounded object-cover" />
+                                    <img src="{{ $result->imageUrl() }}" alt="" class="h-10 w-10 rounded-sm object-cover" />
                                 @else
-                                    <span class="flex h-10 w-10 items-center justify-center rounded bg-gray-100 dark:bg-gray-700" aria-hidden="true">🍽️</span>
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-sm bg-gray-100 dark:bg-gray-700" aria-hidden="true">🍽️</span>
                                 @endif
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $result->title }}</span>

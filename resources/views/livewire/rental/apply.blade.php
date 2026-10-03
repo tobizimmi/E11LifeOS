@@ -242,7 +242,7 @@ new #[Layout('layouts.guest')] class extends Component
                     'credit_report' => __('I can provide a current credit report (e.g. SCHUFA)'),
                 ] as $field => $label)
                     <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <input type="checkbox" wire:model="form.{{ $field }}" class="mt-0.5 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900">
+                        <input type="checkbox" wire:model="form.{{ $field }}" class="mt-0.5 rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900">
                         <span>{{ $label }}</span>
                     </label>
                 @endforeach
@@ -255,7 +255,7 @@ new #[Layout('layouts.guest')] class extends Component
             </div>
 
             <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" wire:model="form.consent" class="mt-0.5 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900">
+                <input type="checkbox" wire:model="form.consent" class="mt-0.5 rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900">
                 <span>{{ __('I confirm that the information is true and consent to it being processed to select tenants. It is deleted at the latest six months after a rejection.') }}</span>
             </label>
             <x-input-error :messages="$errors->get('form.consent')" />

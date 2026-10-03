@@ -4,7 +4,7 @@
     <input
         id="{{ $id }}"
         type="checkbox"
-        {{ $attributes->merge(['class' => 'rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-indigo-600 shadow-sm focus:ring-indigo-500']) }}
+        {{ $attributes->merge(['class' => 'rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-indigo-600 shadow-xs focus:ring-indigo-500']) }}
     />
     {{ __('Private (only visible to me)') }}
 </label>

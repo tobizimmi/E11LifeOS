@@ -784,7 +784,7 @@ new #[Layout('layouts.app')] class extends Component
                             aria-current="{{ $list === $key ? 'page' : 'false' }}"
                             @class([
                                 'shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left',
-                                'bg-indigo-600 text-white shadow-sm' => $list === $key,
+                                'bg-indigo-600 text-white shadow-xs' => $list === $key,
                                 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700 lg:ring-0 lg:bg-transparent lg:dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700' => $list !== $key,
                             ])
                         >
@@ -877,7 +877,7 @@ new #[Layout('layouts.app')] class extends Component
                             }
                             $wire.addTask(input.value).then((added) => { if (added) { input.value = ''; input.focus() } })
                         "
-                        class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm"
+                        class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-xs"
                     >
                         {{-- Phones: the field gets the full width, the buttons go below it. --}}
                         <div class="flex flex-wrap gap-2 sm:flex-nowrap">
@@ -919,15 +919,15 @@ new #[Layout('layouts.app')] class extends Component
                 {{-- Weekly review --}}
                 @if ($review)
                     <div class="grid grid-cols-3 gap-2 text-center">
-                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-xs">
                             <p class="text-2xl font-semibold text-green-600 dark:text-green-400">{{ $review['thisWeek'] }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Done this week') }}</p>
                         </div>
-                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-xs">
                             <p class="text-2xl font-semibold text-gray-700 dark:text-gray-200">{{ $review['lastWeek'] }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Last week') }}</p>
                         </div>
-                        <button type="button" wire:click="showList('{{ \App\Support\TaskLists::TODAY }}')" class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-sm hover:ring-1 hover:ring-red-300">
+                        <button type="button" wire:click="showList('{{ \App\Support\TaskLists::TODAY }}')" class="rounded-xl bg-white dark:bg-gray-800 p-3 shadow-xs hover:ring-1 hover:ring-red-300">
                             <p @class(['text-2xl font-semibold', 'text-red-600 dark:text-red-400' => $review['overdue'] > 0, 'text-gray-700 dark:text-gray-200' => $review['overdue'] === 0])>{{ $review['overdue'] }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Still overdue') }}</p>
                         </button>
@@ -991,7 +991,7 @@ new #[Layout('layouts.app')] class extends Component
                                         x-on:pointercancel="end()"
                                         :class="{ 'opacity-40': leaving }"
                                         @class([
-                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-sm ring-1 transition-[box-shadow,opacity] duration-300',
+                                            'relative flex items-start gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 shadow-xs ring-1 transition-[box-shadow,opacity] duration-300',
                                             'ring-indigo-500' => $isSelected || (int) $openTaskId === $task->id,
                                             'ring-gray-200 dark:ring-gray-700' => ! $isSelected && (int) $openTaskId !== $task->id,
                                         ])
@@ -1000,7 +1000,7 @@ new #[Layout('layouts.app')] class extends Component
                                             <span class="task-handle -ms-1 mt-1 hidden cursor-grab select-none text-gray-300 hover:text-gray-500 sm:inline dark:text-gray-500 dark:hover:text-gray-300" title="{{ __('Drag to another day or list') }}" aria-hidden="true">⋮⋮</span>
                                         @endif
                                         @if ($selecting)
-                                            <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />
+                                            <input type="checkbox" wire:model.live="selected" value="{{ $task->id }}" class="mt-1 h-5 w-5 rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" aria-label="{{ __('Select :title', ['title' => $task->title]) }}" />
                                         @else
                                             <button
                                                 type="button"
@@ -1083,7 +1083,7 @@ new #[Layout('layouts.app')] class extends Component
 
     {{-- Actions for several tasks --}}
     @if ($selecting && $selected !== [])
-        <div class="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur p-3 shadow-lg" role="toolbar" aria-label="{{ __('Actions for the selected tasks') }}">
+        <div class="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm p-3 shadow-lg" role="toolbar" aria-label="{{ __('Actions for the selected tasks') }}">
             <div class="max-w-5xl mx-auto flex flex-wrap items-center gap-2 text-sm">
                 <span class="font-medium text-gray-700 dark:text-gray-200">{{ trans_choice(':count selected|:count selected', count($selected)) }}</span>
                 @if ($list === \App\Support\TaskLists::DONE)
@@ -1264,7 +1264,7 @@ new #[Layout('layouts.app')] class extends Component
                         <ul class="space-y-1">
                             @foreach ($subtasks as $subtask)
                                 <li wire:key="subtask-{{ $subtask['id'] }}" class="group flex items-center gap-2">
-                                    <input type="checkbox" wire:click="toggleSubtask({{ $openTask->id }}, '{{ $subtask['id'] }}')" @checked($subtask['done'] ?? false) class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-green-600" aria-label="{{ $subtask['text'] }}" />
+                                    <input type="checkbox" wire:click="toggleSubtask({{ $openTask->id }}, '{{ $subtask['id'] }}')" @checked($subtask['done'] ?? false) class="h-4 w-4 rounded-sm border-gray-300 dark:border-gray-600 text-green-600" aria-label="{{ $subtask['text'] }}" />
                                     <span @class(['flex-1 text-sm', 'line-through text-gray-400' => $subtask['done'] ?? false, 'text-gray-800 dark:text-gray-200' => ! ($subtask['done'] ?? false)])>{{ $subtask['text'] }}</span>
                                     <button type="button" wire:click="removeSubtask({{ $openTask->id }}, '{{ $subtask['id'] }}')" class="text-gray-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label="{{ __('Remove') }}">×</button>
                                 </li>

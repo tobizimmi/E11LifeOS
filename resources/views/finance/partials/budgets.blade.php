@@ -1,5 +1,5 @@
 {{-- Monthly budgets per category (current month). --}}
-<section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+<section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎯 {{ __('Budgets for :month', ['month' => now()->translatedFormat('F Y')]) }}</h3>
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Set a monthly limit for the categories you want to keep an eye on. At 80 % and at 100 % you get a push notification (once per month).') }}</p>
     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">🫙 {{ __('Pot: what is left at the end of the month carries over – good for things you do not pay every month (clothes, gifts, car repairs).') }}</p>

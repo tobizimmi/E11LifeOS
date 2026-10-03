@@ -130,7 +130,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.rebalancing'])
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Rebalancing') }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Set a target weight for each security (across all portfolios). The table shows how much to buy or sell to get back to the targets – or how to split a new investment so that nothing has to be sold.') }}</p>
                 <div class="mt-4 flex flex-wrap items-end gap-4">
@@ -138,7 +138,7 @@ new #[Layout('layouts.app')] class extends Component
                         <x-input-label for="rebalance-additional" :value="__('New money to invest (€)')" />
                         <x-text-input id="rebalance-additional" wire:model.live.debounce.500ms="additional" inputmode="decimal" class="mt-1 block w-40" placeholder="0" />
                     </div>
-                    <label class="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" wire:model.live="buyOnly" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only buy, do not sell') }}</label>
+                    <label class="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" wire:model.live="buyOnly" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only buy, do not sell') }}</label>
                     <div class="w-full sm:ms-auto sm:w-72">
                         <x-input-label for="rebalance-add" :value="__('Add a security that you do not hold yet')" />
                         <div class="mt-1">@include('portfolio.partials.security-picker', ['id' => 'rebalance-add', 'model' => 'newSymbol', 'nameModel' => 'newName'])</div>
@@ -146,7 +146,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-            <form wire:submit="saveTargets" class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <form wire:submit="saveTargets" class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[40rem] text-sm">
                         <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">

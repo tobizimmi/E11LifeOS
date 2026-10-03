@@ -17,7 +17,7 @@
     </head>
     <body class="font-sans antialiased bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <article class="max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6">
-            <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+            <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xs">
                 @if ($recipe->image_path)
                     <img src="{{ route('recipes.public.image', $recipe->public_token) }}" alt="{{ $recipe->title }}" class="max-h-[26rem] w-full object-cover" />
                 @endif
@@ -41,7 +41,7 @@
             </div>
 
             <div class="grid gap-6 md:grid-cols-5">
-                <section class="md:col-span-2 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <section class="md:col-span-2 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <div class="flex items-center justify-between gap-2">
                         <h2 class="text-lg font-semibold">{{ __('Ingredients') }}</h2>
                         @if ($servings)
@@ -63,7 +63,7 @@
                     </ul>
                 </section>
 
-                <section class="md:col-span-3 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <section class="md:col-span-3 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <h2 class="text-lg font-semibold">{{ __('Preparation') }}</h2>
                     <ol class="mt-3 space-y-4">
                         @foreach ($steps as $number => $step)
@@ -77,7 +77,7 @@
             </div>
 
             @if ($nutrition !== [])
-                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <h2 class="text-lg font-semibold">{{ __('Nutrition per serving') }}</h2>
                     <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
                         @foreach ($nutrition as $key => $value)

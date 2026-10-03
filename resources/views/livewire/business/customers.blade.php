@@ -116,7 +116,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($customerList->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">👥</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ $search !== '' ? __('No customers found.') : __('No customers yet. Add your first customer – the address is then filled into invoices automatically.') }}</p>
                 </div>
@@ -124,7 +124,7 @@ new #[Layout('layouts.app')] class extends Component
                 <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ($customerList as $customer)
                         <li wire:key="customer-{{ $customer->id }}">
-                            <button type="button" wire:click="editCustomer({{ $customer->id }})" class="block h-full w-full rounded-2xl bg-white p-4 text-start shadow-sm ring-1 ring-transparent hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                            <button type="button" wire:click="editCustomer({{ $customer->id }})" class="block h-full w-full rounded-2xl bg-white p-4 text-start shadow-xs ring-1 ring-transparent hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                                 <p class="font-medium text-gray-900 dark:text-gray-100">{{ $customer->name }}</p>
                                 <p class="mt-0.5 whitespace-pre-line text-xs text-gray-500 dark:text-gray-400">{{ collect([$customer->contact_person, trim($customer->postal_code.' '.$customer->city)])->filter()->implode(' · ') ?: '—' }}</p>
                                 <p class="mt-2 text-xs text-gray-600 dark:text-gray-300">{{ trans_choice(':count invoice|:count invoices', $customer->invoices_count) }} · {{ __('paid') }} {{ number_format((float) $customer->paid_total, 2, ',', '.') }} €</p>

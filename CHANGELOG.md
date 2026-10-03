@@ -10,6 +10,9 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 - Reisen: Plan nach Kategorie anzeigen (z. B. alle geplanten und möglichen Restaurants) und Orte als besucht abhaken – auch Ideen ohne Tag.
 - Reisekarte: „Orte in der Nähe“ lassen sich nach Art (Sehenswürdigkeiten, Essen & Trinken, Aktivitäten, Einkaufen …) ein- und ausblenden und direkt auf der Karte auswählen.
 
+### Sicherheit
+- Oberfläche auf Tailwind CSS 4 umgestellt – damit ist eine Sicherheitslücke in den Build-Werkzeugen von Tailwind 3 behoben. Das Aussehen bleibt gleich.
+
 ## [1.24.0] – 2026-10-02
 
 ### Neu

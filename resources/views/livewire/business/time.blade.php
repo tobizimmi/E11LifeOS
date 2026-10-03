@@ -250,7 +250,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('business.partials.nav', ['active' => 'business.time'])
 
             {{-- Timer --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 @if ($running)
                     <div class="flex flex-wrap items-center gap-4" x-data="{ start: {{ $running->started_at->timestamp }}, now: Math.floor(Date.now() / 1000) }" x-init="setInterval(() => now = Math.floor(Date.now() / 1000), 1000)">
                         <span class="relative flex h-3 w-3"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span></span>
@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="grid grid-cols-3 gap-3">
                 @foreach ([[__('This week'), $hours($weekMinutes)], [__('This month'), $hours($monthMinutes)], [__('Not yet billed'), $euro($openAmount).' · '.$hours($openMinutes)]] as [$label, $value])
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $label }}</p>
                         <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:text-2xl">{{ $value }}</p>
                     </div>
@@ -305,16 +305,16 @@ new #[Layout('layouts.app')] class extends Component
             <x-input-error :messages="$errors->get('bill')" />
 
             @if ($entries->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">⏱</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('No times yet. Start the timer or add times manually – billable hours become an invoice with one click.') }}</p>
                 </div>
             @else
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                     @foreach ($entries as $entry)
                         <li wire:key="time-{{ $entry->id }}" class="flex items-center gap-3 px-4 py-3">
                             @if (! $entry->invoice_id)
-                                <input type="checkbox" wire:model.live="selected" value="{{ $entry->id }}" aria-label="{{ __('Select') }}" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
+                                <input type="checkbox" wire:model.live="selected" value="{{ $entry->id }}" aria-label="{{ __('Select') }}" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                             @else
                                 <span class="w-4 text-center text-xs" title="{{ __('Billed') }}">🧾</span>
                             @endif

@@ -251,7 +251,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $tabClass = 'flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 py-2 text-xs font-medium transition pointer-coarse:min-h-11 sm:px-3 sm:text-sm';
     $sexes = ['f' => __('female'), 'm' => __('male'), 'd' => __('diverse')];
 @endphp
@@ -271,7 +271,7 @@ new #[Layout('layouts.app')] class extends Component
             </nav>
 
             @if ($showProfileForm || ! $profile)
-                <form wire:submit="saveProfile" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveProfile" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ $isCreating || ! $profile ? __('New person') : __('Edit emergency card') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="person.name" class="{{ $input }}"><x-input-error :messages="$errors->get('person.name')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Date of birth') }}<input type="date" wire:model="person.birth_date" class="{{ $input }}"><x-input-error :messages="$errors->get('person.birth_date')" /></label>
@@ -298,12 +298,12 @@ new #[Layout('layouts.app')] class extends Component
             @if ($profile && ! $showProfileForm)
                 <nav class="flex gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
                     @foreach (['card' => '🆘 '.__('Emergency card'), 'prevention' => '🩺 '.__('Prevention'), 'medications' => '💊 '.__('Medication'), 'appointments' => '📅 '.__('Appointments')] as $key => $label)
-                        <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
+                        <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                     @endforeach
                 </nav>
 
                 @if ($tab === 'card')
-                    <section class="rounded-2xl bg-white p-5 shadow-sm ring-2 ring-rose-200 dark:bg-gray-800 dark:ring-rose-900">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs ring-2 ring-rose-200 dark:bg-gray-800 dark:ring-rose-900">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-400">🆘 {{ __('Emergency card') }}</p>
@@ -360,7 +360,7 @@ new #[Layout('layouts.app')] class extends Component
                         $shown = $entries->whereIn('kind', $kinds);
                     @endphp
 
-                    <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                         <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($shown as $item)
                                 <li wire:key="health-entry-{{ $item->id }}" @class(['flex items-center gap-3 px-5 py-3', 'opacity-60' => $item->kind === 'medication' && ! $item->active])>
@@ -391,7 +391,7 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
 
-                    <form wire:submit="addEntry" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                    <form wire:submit="addEntry" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                         @if ($tab === 'prevention')
                             <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
                                 <select wire:model="entry.kind" class="{{ $input }}"><option value="checkup">🩺 {{ __('Check-up') }}</option><option value="vaccination">💉 {{ __('Vaccination') }}</option></select>

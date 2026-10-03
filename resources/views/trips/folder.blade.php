@@ -21,7 +21,7 @@
             </header>
 
             @if ($participant)
-                <section class="rounded-2xl bg-white p-5 shadow-sm ring-2 ring-indigo-200 dark:bg-gray-800 dark:ring-indigo-800" aria-labelledby="personal">
+                <section class="rounded-2xl bg-white p-5 shadow-xs ring-2 ring-indigo-200 dark:bg-gray-800 dark:ring-indigo-800" aria-labelledby="personal">
                     <h2 id="personal" class="font-semibold">👋 {{ __('Hello :name', ['name' => $participant->name]) }}</h2>
                     @if (session('status'))
                         <p class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" role="status">✓ {{ session('status') }}</p>
@@ -51,7 +51,7 @@
                             </div>
                         </fieldset>
                         <label class="block text-sm">{{ __('Message to the organiser (optional)') }}
-                            <textarea name="reply" rows="2" maxlength="1000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900" placeholder="{{ __('e.g. arriving later, vegetarian, bringing a friend') }}">{{ old('reply', $participant->reply) }}</textarea>
+                            <textarea name="reply" rows="2" maxlength="1000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900" placeholder="{{ __('e.g. arriving later, vegetarian, bringing a friend') }}">{{ old('reply', $participant->reply) }}</textarea>
                         </label>
                         @error('status')
                             <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -62,7 +62,7 @@
             @endif
 
             @if ($trip->meeting_point || $trip->organizer_contact || trim((string) $trip->group_info) !== '')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h2 class="font-semibold">ℹ️ {{ __('Information') }}</h2>
                     @if ($trip->meeting_point)
                         <p class="mt-2 text-sm">🚩 <strong>{{ __('Meeting point') }}:</strong> {{ $trip->meeting_point }}</p>
@@ -77,7 +77,7 @@
             @endif
 
             @if ($program !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h2 class="font-semibold">🗓️ {{ __('Programme') }}</h2>
                     <ul class="mt-2 space-y-1 text-sm">
                         @foreach ($program as $line)
@@ -88,7 +88,7 @@
             @endif
 
             @if ($plan['days'] !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="day-plan">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="day-plan">
                     <h2 id="day-plan" class="font-semibold">🧭 {{ __('Day plan') }}</h2>
                     <div class="mt-3 space-y-4">
                         @foreach ($plan['days'] as $day)
@@ -102,14 +102,14 @@
             @endif
 
             @if ($plan['ideas'] !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="ideas">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="ideas">
                     <h2 id="ideas" class="font-semibold">💡 {{ __('Further ideas') }}</h2>
                     @include('trips.partials.folder-entries', ['entries' => $plan['ideas']])
                 </section>
             @endif
 
             @foreach ($pages as $page)
-                <details class="group rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <details class="group rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold">
                         <span>{{ $page->icon ?: \App\Models\Item::DEFAULT_PAGE_ICON }} {{ $page->title }}</span>
                         <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
@@ -119,7 +119,7 @@
             @endforeach
 
             @if ($links !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="links">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="links">
                     <h2 id="links" class="font-semibold">🔗 {{ __('Web links') }}</h2>
                     <ul class="mt-2 space-y-1 text-sm">
                         @foreach ($links as $link)
@@ -130,7 +130,7 @@
             @endif
 
             @if ($files->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h2 class="font-semibold">📎 {{ __('Documents') }}</h2>
                     <ul class="mt-2 space-y-1 text-sm">
                         @foreach ($files as $file)
@@ -140,7 +140,7 @@
                 </section>
             @endif
 
-            <section id="feedback" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="feedback-title">
+            <section id="feedback" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="feedback-title">
                 <h2 id="feedback-title" class="font-semibold">💬 {{ __('Feedback & suggestions') }}</h2>
                 @if (session('status') && ! $participant)
                     <p class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" role="status">✓ {{ session('status') }}</p>
@@ -182,12 +182,12 @@
                     <input type="hidden" name="type" value="comment">
                     @unless ($participant)
                         <label class="block text-sm">{{ __('Your name') }}
-                            <input type="text" name="name" value="{{ old('name', session('trip_folder.name')) }}" maxlength="100" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" name="name" value="{{ old('name', session('trip_folder.name')) }}" maxlength="100" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900">
                         </label>
                     @endunless
                     @if ($feedbackStops !== [])
                         <label class="block text-sm">{{ __('About') }}
-                            <select name="stop" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            <select name="stop" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900">
                                 <option value="">{{ __('The trip in general') }}</option>
                                 @foreach ($feedbackStops as $stop)
                                     <option value="{{ $stop['id'] }}">{{ $stop['title'] }}</option>
@@ -196,7 +196,7 @@
                         </label>
                     @endif
                     <label class="block text-sm">{{ __('Comment') }}
-                        <textarea name="body" rows="2" maxlength="2000" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900"></textarea>
+                        <textarea name="body" rows="2" maxlength="2000" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900"></textarea>
                     </label>
                     <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">💬 {{ __('Send comment') }}</button>
                 </form>
@@ -209,21 +209,21 @@
                         <div class="sm:col-span-2">
                     @unless ($participant)
                         <label class="block text-sm">{{ __('Your name') }}
-                            <input type="text" name="name" value="{{ old('name', session('trip_folder.name')) }}" maxlength="100" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" name="name" value="{{ old('name', session('trip_folder.name')) }}" maxlength="100" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900">
                         </label>
                     @endunless
                         </div>
                         <label class="block text-sm sm:col-span-2">{{ __('What do you suggest?') }}
-                            <input type="text" name="title" value="{{ old('title') }}" maxlength="255" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900" placeholder="{{ __('e.g. boat trip to the island') }}">
+                            <input type="text" name="title" value="{{ old('title') }}" maxlength="255" required class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900" placeholder="{{ __('e.g. boat trip to the island') }}">
                         </label>
                         <label class="block text-sm">{{ __('Day (optional)') }}
-                            <input type="date" name="day" value="{{ old('day') }}" min="{{ $trip->starts_on->toDateString() }}" max="{{ $trip->ends_on->toDateString() }}" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="date" name="day" value="{{ old('day') }}" min="{{ $trip->starts_on->toDateString() }}" max="{{ $trip->ends_on->toDateString() }}" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900">
                         </label>
                         <label class="block text-sm">{{ __('Place (optional)') }}
-                            <input type="text" name="location" value="{{ old('location') }}" maxlength="255" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" name="location" value="{{ old('location') }}" maxlength="255" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900">
                         </label>
                         <label class="block text-sm sm:col-span-2">{{ __('Why? (optional)') }}
-                            <textarea name="body" rows="2" maxlength="2000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">{{ old('type') === 'suggestion' ? old('body') : '' }}</textarea>
+                            <textarea name="body" rows="2" maxlength="2000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900">{{ old('type') === 'suggestion' ? old('body') : '' }}</textarea>
                         </label>
                         <div class="sm:col-span-2">
                             <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">{{ __('Send suggestion') }}</button>
@@ -234,7 +234,7 @@
             </section>
 
             @if ($trip->participants->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h2 class="font-semibold">👥 {{ __('Participants') }}</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count participant confirmed|:count participants confirmed', $trip->participants->where('status', 'confirmed')->count()) }}</p>
                     <ul class="mt-2 grid gap-1 text-sm sm:grid-cols-2">

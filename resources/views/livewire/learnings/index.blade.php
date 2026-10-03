@@ -150,7 +150,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $kinds = \App\Models\Learning::kinds();
     $areas = \App\Models\Learning::areas();
     $chip = fn (bool $active) => $active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200';
@@ -166,14 +166,14 @@ new #[Layout('layouts.app')] class extends Component
             <div class="flex flex-wrap items-center gap-2">
                 <nav class="flex flex-1 gap-1 rounded-xl bg-gray-100 p-1 text-sm dark:bg-gray-800" aria-label="{{ __('Sections') }}">
                     @foreach (['review' => '🔁 '.__('Review').($due->count() ? ' ('.$due->count().')' : ''), 'library' => '📚 '.__('All lessons').' ('.$total.')'] as $key => $label)
-                        <button type="button" wire:click="$set('tab', '{{ $key }}')" aria-pressed="{{ $tab === $key ? 'true' : 'false' }}" @class(['flex-1 rounded-lg px-3 py-2 font-medium', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $tab !== $key])>{{ $label }}</button>
+                        <button type="button" wire:click="$set('tab', '{{ $key }}')" aria-pressed="{{ $tab === $key ? 'true' : 'false' }}" @class(['flex-1 rounded-lg px-3 py-2 font-medium', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $tab !== $key])>{{ $label }}</button>
                     @endforeach
                 </nav>
                 <x-primary-button type="button" wire:click="create">+ {{ __('Lesson') }}</x-primary-button>
             </div>
 
             @if ($showForm)
-                <form wire:submit="save" @if (! $editingId) data-draft="learning" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" @if (! $editingId) data-draft="learning" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('What did you learn?') }}<input type="text" wire:model="learning.title" class="{{ $input }}" placeholder="{{ __('e.g. Never sign a contract on the same day') }}" autofocus><x-input-error :messages="$errors->get('learning.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('What happened, and what will you do differently?') }}<textarea wire:model="learning.body" rows="4" class="{{ $input }}" placeholder="{{ __('Situation – what I did – what came of it – what I take away') }}"></textarea></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
@@ -191,7 +191,7 @@ new #[Layout('layouts.app')] class extends Component
                         </select>
                     </label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Source') }}<input type="text" wire:model="learning.source" class="{{ $input }}" placeholder="{{ __('e.g. book title, person, situation') }}"></label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="learning.shared" class="rounded border-gray-300 text-indigo-600"> {{ __('Share with the household') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="learning.shared" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Share with the household') }}</label>
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingId ? __('Save changes') : __('Save') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -204,7 +204,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($tab === 'review')
                 @if ($current)
-                    <section class="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800" aria-labelledby="review-card" wire:key="review-{{ $current->id }}-{{ $current->review_count }}">
+                    <section class="rounded-2xl bg-white p-6 shadow-xs dark:bg-gray-800" aria-labelledby="review-card" wire:key="review-{{ $current->id }}-{{ $current->review_count }}">
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $kinds[$current->kind]['icon'] ?? '' }} {{ $kinds[$current->kind]['label'] ?? '' }} · {{ $areas[$current->area]['icon'] ?? '' }} {{ $areas[$current->area]['label'] ?? '' }} · {{ trans_choice(':count lesson due|:count lessons due', $due->count()) }}</p>
                         <h3 id="review-card" class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $current->title }}</h3>
                         @if ($revealed)
@@ -227,7 +227,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </section>
                 @else
-                    <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                         <p class="text-4xl" aria-hidden="true">{{ $total ? '✅' : '🎓' }}</p>
                         @if ($total)
                             <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('Nothing to review today.') }}</p>
@@ -242,13 +242,13 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 <section class="grid grid-cols-3 gap-3 text-center">
-                    <div class="rounded-2xl bg-white p-3 shadow-sm dark:bg-gray-800"><p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $total }}</p><p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Lessons') }}</p></div>
-                    <div class="rounded-2xl bg-white p-3 shadow-sm dark:bg-gray-800"><p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $due->count() }}</p><p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Due today') }}</p></div>
-                    <div class="rounded-2xl bg-white p-3 shadow-sm dark:bg-gray-800"><p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $mastered }}</p><p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Second nature') }}</p></div>
+                    <div class="rounded-2xl bg-white p-3 shadow-xs dark:bg-gray-800"><p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $total }}</p><p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Lessons') }}</p></div>
+                    <div class="rounded-2xl bg-white p-3 shadow-xs dark:bg-gray-800"><p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $due->count() }}</p><p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Due today') }}</p></div>
+                    <div class="rounded-2xl bg-white p-3 shadow-xs dark:bg-gray-800"><p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $mastered }}</p><p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Second nature') }}</p></div>
                 </section>
 
                 @if ($yearAgo->isNotEmpty())
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🕰️ {{ __('One year ago you learned') }}</h3>
                         <ul class="mt-2 space-y-1 text-sm">
                             @foreach ($yearAgo as $item)
@@ -260,7 +260,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($tab === 'library')
-                <div class="space-y-2 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="space-y-2 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search lessons …') }}" aria-label="{{ __('Search lessons') }}" class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                     <div class="flex flex-wrap gap-1.5 text-xs">
                         @foreach ($areas as $key => $option)
@@ -276,7 +276,7 @@ new #[Layout('layouts.app')] class extends Component
 
                 <ul class="space-y-3">
                     @forelse ($library as $item)
-                        <li wire:key="lesson-{{ $item->id }}" @class(['rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800', 'opacity-60' => $item->archived_at])>
+                        <li wire:key="lesson-{{ $item->id }}" @class(['rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800', 'opacity-60' => $item->archived_at])>
                             <div class="flex flex-wrap items-start justify-between gap-2">
                                 <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $kinds[$item->kind]['icon'] ?? '' }} {{ $item->title }}
                                     @unless ($item->isPrivate())
@@ -304,7 +304,7 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ $total ? __('No lesson matches the filter.') : __('No lessons yet.') }}</li>
+                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ $total ? __('No lesson matches the filter.') : __('No lessons yet.') }}</li>
                     @endforelse
                 </ul>
             @endif

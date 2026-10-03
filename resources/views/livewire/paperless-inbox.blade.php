@@ -415,7 +415,7 @@ new class extends Component
     }
 }; ?>
 
-<div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 space-y-4">
+<div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100">🗂 {{ __('paperless inbox') }}</h3>
         @if ($instances->count() > 1)
@@ -462,7 +462,7 @@ new class extends Component
             <li wire:key="paperless-inbox-{{ $paperlessDocument['id'] }}" draggable="true" x-data x-on:dragstart="$event.dataTransfer.setData('application/x-paperless-document', '{{ $paperlessDocument['id'] }}'); $event.dataTransfer.effectAllowed = 'move'" class="rounded-md border border-gray-200 dark:border-gray-700 p-3">
                 <div class="flex gap-3">
                     <a href="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'preview']) }}" target="_blank" rel="noopener" draggable="false" class="shrink-0">
-                        <img draggable="false" src="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'thumb']) }}" alt="" loading="lazy" class="h-20 w-16 rounded border border-gray-200 dark:border-gray-700 object-cover bg-gray-50">
+                        <img draggable="false" src="{{ route('paperless.document', [$instanceId, $paperlessDocument['id'], 'thumb']) }}" alt="" loading="lazy" class="h-20 w-16 rounded-sm border border-gray-200 dark:border-gray-700 object-cover bg-gray-50">
                     </a>
                     <div class="min-w-0 flex-1">
                         <p class="font-medium text-gray-900 dark:text-gray-100 break-words">{{ $paperlessDocument['title'] }}</p>
@@ -571,7 +571,7 @@ new class extends Component
                         </div>
 
                         <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                            <input type="checkbox" wire:model="form.remove_from_inbox" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900">
+                            <input type="checkbox" wire:model="form.remove_from_inbox" class="rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900">
                             {{ __('Remove the inbox tag in paperless') }}
                         </label>
 

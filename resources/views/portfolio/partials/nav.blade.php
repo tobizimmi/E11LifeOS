@@ -1,6 +1,6 @@
 {{-- Tabs of the portfolio section ($active: route name of the current tab). --}}
 <nav class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="{{ __('Portfolio') }}">
-    <div class="inline-flex min-w-max rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+    <div class="inline-flex min-w-max rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
         @foreach ([
             'portfolio.index' => '📈 '.__('Overview'),
             'portfolio.transactions' => '🧾 '.__('Transactions'),

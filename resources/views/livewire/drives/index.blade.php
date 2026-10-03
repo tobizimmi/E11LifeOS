@@ -150,7 +150,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $size = fn (?int $bytes) => $bytes === null ? '' : ($bytes >= 1048576 ? number_format($bytes / 1048576, 1, ',', '.').' MB' : number_format(max(1, $bytes / 1024), 0, ',', '.').' KB');
 @endphp
 
@@ -178,7 +178,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($showForm)
-                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="form.name" class="{{ $input }}" placeholder="{{ __('e.g. Synology at home') }}"><x-input-error :messages="$errors->get('form.name')" /></label>
                     @if ($editingGoogle)
                     <p class="text-sm text-gray-600 sm:col-span-4 dark:text-gray-300">{{ __('Connected via the Google sign-in.') }} <a href="{{ route('drives.google.connect') }}" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Connect again') }}</a></p>
@@ -198,7 +198,7 @@ new #[Layout('layouts.app')] class extends Component
                 </form>
             @endif
 
-            <details class="rounded-xl bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
+            <details class="rounded-xl bg-white px-4 py-3 text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">
                 <summary class="cursor-pointer font-medium text-gray-800 dark:text-gray-100">{{ __('Google Drive and iCloud?') }}</summary>
                 <p class="mt-2">{{ $googleReady ? __('Google Drive is connected with your Google sign-in. You can revoke the access at any time in your Google account under Security → Third-party apps.') : __('Google Drive can be connected as soon as the admin has entered a Google client under Admin → Settings → Google Drive.') }}</p>
                 <p class="mt-2">{{ __('iCloud Drive has no interface for other apps, so it cannot be connected directly. Ways that work: sync the iCloud Drive folder on a Mac to your NAS (e.g. with Synology Drive Client) and connect the NAS here, or save files from the Files app on the iPhone to the NAS or Google Drive.') }}</p>
@@ -209,7 +209,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($current)
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <nav class="flex flex-wrap items-center gap-1 text-sm" aria-label="{{ __('Folder') }}">
                             <button type="button" wire:click="open({{ $current->id }})" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">🗄️ {{ $current->name }}</button>
@@ -251,7 +251,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
             @elseif ($drives->isEmpty() && ! $showForm)
-                <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🗄️</p>
                     <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No network drive yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Connect your NAS (Synology, QNAP), a Nextcloud or a storage box via WebDAV to browse, download and upload documents – at home securely through the VPN.') }}</p>

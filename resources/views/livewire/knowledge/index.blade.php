@@ -137,7 +137,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 text-sm dark:bg-gray-800" aria-label="{{ __('Sections') }}">
                 @foreach (['tips' => '💡 '.__('Tips'), 'news' => '📰 '.__('What\'s new'), 'theses' => '📝 '.__('My theses').' ('.$theses->count().')', 'favorites' => '⭐ '.__('Favourites').' ('.$favorites->count().')'] as $key => $label)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class(['flex-1 rounded-lg px-3 py-2 font-medium transition pointer-coarse:min-h-11', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
+                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class(['flex-1 rounded-lg px-3 py-2 font-medium transition pointer-coarse:min-h-11', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </nav>
 
@@ -145,7 +145,7 @@ new #[Layout('layouts.app')] class extends Component
                 <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Your investment theses – why you own a security and when you would sell. Write them on the page of each security.') }}</p>
                 <ul class="space-y-3">
                     @forelse ($theses as $item)
-                        <li wire:key="thesis-{{ $item->id }}" class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <li wire:key="thesis-{{ $item->id }}" class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <div class="flex flex-wrap items-start justify-between gap-2">
                                 <a href="{{ route('portfolio.security', $item->symbol) }}" wire:navigate class="font-semibold text-gray-900 hover:underline dark:text-gray-100">{{ $securityNames[$item->symbol] ?? $item->symbol }} <span class="text-sm font-normal text-gray-500">{{ $item->symbol }}</span></a>
                                 @if ($item->isDueForReview())
@@ -162,14 +162,14 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No theses yet. Open a security in the portfolio and write down why you own it.') }}</li>
+                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No theses yet. Open a security in the portfolio and write down why you own it.') }}</li>
                     @endforelse
                 </ul>
             @endif
 
             @if ($tab === 'tips')
                 <div class="space-y-3">
-                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search tips…') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search tips…') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                     <div class="flex flex-wrap gap-2 text-sm">
                         <button type="button" wire:click="$set('category', '')" @class(['rounded-full px-3 py-1.5 pointer-coarse:min-h-11', 'bg-indigo-600 text-white' => $category === '', 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $category !== ''])>{{ __('All') }}</button>
                         @foreach ($categories as $key => $info)
@@ -181,7 +181,7 @@ new #[Layout('layouts.app')] class extends Component
                 <ul class="space-y-3">
                     @forelse ($tips as $key => $tip)
                         @php($isFavorite = isset($favoriteKeys['tip:'.$key]))
-                        <li wire:key="tip-{{ $key }}" x-data="{ open: false }" class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                        <li wire:key="tip-{{ $key }}" x-data="{ open: false }" class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                             <div class="flex items-start gap-3 p-4">
                                 <button type="button" @click="open = ! open" class="min-w-0 flex-1 text-left" :aria-expanded="open">
                                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ $categories[$tip['category']]['icon'] ?? '' }} {{ $categories[$tip['category']]['label'] ?? '' }}</span>
@@ -200,7 +200,7 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No tips match your search.') }}</li>
+                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No tips match your search.') }}</li>
                     @endforelse
                 </ul>
             @elseif ($tab === 'news')
@@ -213,7 +213,7 @@ new #[Layout('layouts.app')] class extends Component
                 <ul class="space-y-3" wire:loading.class="opacity-60">
                     @forelse ($news as $article)
                         @php($isFavorite = isset($favoriteKeys['news:'.$article['key']]))
-                        <li wire:key="news-{{ $article['key'] }}" class="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <li wire:key="news-{{ $article['key'] }}" class="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <div class="min-w-0 flex-1">
                                 <a href="{{ $article['url'] }}" target="_blank" rel="noopener noreferrer" class="font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $article['title'] }}</a>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $article['source'] ?? 'Google News' }}@if ($article['published_at']) · {{ $article['published_at']->diffForHumans() }}@endif</p>
@@ -224,14 +224,14 @@ new #[Layout('layouts.app')] class extends Component
                             </button>
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No news could be loaded right now. Please try again later.') }}</li>
+                        <li class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No news could be loaded right now. Please try again later.') }}</li>
                     @endforelse
                 </ul>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Headlines from Google News of the last 30 days, updated every few hours.') }}</p>
             @else
                 <ul class="space-y-3">
                     @forelse ($favorites as $favorite)
-                        <li wire:key="favorite-{{ $favorite->id }}" x-data="{ open: false }" class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                        <li wire:key="favorite-{{ $favorite->id }}" x-data="{ open: false }" class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                             <div class="flex items-start gap-3 p-4">
                                 <div class="min-w-0 flex-1">
                                     @if ($favorite->kind === \App\Models\KnowledgeFavorite::NEWS)
@@ -257,7 +257,7 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                        <li class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                             <p class="text-gray-700 dark:text-gray-200">{{ __('No favourites yet.') }}</p>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Tap the star on a tip or a news article to find it here again later.') }}</p>
                         </li>

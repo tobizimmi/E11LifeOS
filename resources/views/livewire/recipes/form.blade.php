@@ -383,7 +383,7 @@ new #[Layout('layouts.app')] class extends Component
                 <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>
             </div>
 
-            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-4">
                 <div>
                     <x-input-label for="title" :value="__('Title')" />
                     <x-text-input wire:model="title" id="title" class="mt-1 block w-full text-lg" required autofocus />
@@ -392,7 +392,7 @@ new #[Layout('layouts.app')] class extends Component
 
                 <div>
                     <x-input-label for="description" :value="__('Description')" />
-                    <textarea wire:model="description" id="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm"></textarea>
+                    <textarea wire:model="description" id="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs"></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -413,7 +413,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <div>
                         <x-input-label for="difficulty" :value="__('Difficulty')" />
-                        <select wire:model="difficulty" id="difficulty" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                        <select wire:model="difficulty" id="difficulty" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs">
                             <option value="">—</option>
                             <option value="easy">{{ __('Easy') }}</option>
                             <option value="medium">{{ __('Medium') }}</option>
@@ -442,7 +442,7 @@ new #[Layout('layouts.app')] class extends Component
                             <p wire:loading wire:target="photo" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
                             @if (($recipe?->image_path || $importedImagePath) && ! $photo)
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                    <input type="checkbox" wire:model.live="removePhoto" class="rounded border-gray-300 text-indigo-600" /> {{ __('Remove photo') }}
+                                    <input type="checkbox" wire:model.live="removePhoto" class="rounded-sm border-gray-300 text-indigo-600" /> {{ __('Remove photo') }}
                                 </label>
                             @endif
                         </div>
@@ -457,7 +457,7 @@ new #[Layout('layouts.app')] class extends Component
                         @foreach ($recipe?->additionalImageUrls() ?? [] as $photoIndex => $photoUrl)
                             <div wire:key="existing-photo-{{ $photoIndex }}" class="relative">
                                 <img src="{{ $photoUrl }}" alt="" @class(['h-20 w-20 rounded-md object-cover', 'opacity-30' => in_array($photoIndex, $removedPhotos, true)]) />
-                                <button type="button" wire:click="toggleRemovedPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ in_array($photoIndex, $removedPhotos, true) ? __('Keep photo') : __('Remove photo') }}">{{ in_array($photoIndex, $removedPhotos, true) ? '↺' : '✕' }}</button>
+                                <button type="button" wire:click="toggleRemovedPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow-sm" aria-label="{{ in_array($photoIndex, $removedPhotos, true) ? __('Keep photo') : __('Remove photo') }}">{{ in_array($photoIndex, $removedPhotos, true) ? '↺' : '✕' }}</button>
                             </div>
                         @endforeach
                         @foreach ($newPhotos as $photoIndex => $newPhoto)
@@ -467,7 +467,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @else
                                     <div class="flex h-20 w-20 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 text-xs text-gray-500">{{ __('Photo') }}</div>
                                 @endif
-                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow" aria-label="{{ __('Remove photo') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                <button type="button" wire:click="removeNewPhoto({{ $photoIndex }})" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-xs text-gray-700 shadow-sm" aria-label="{{ __('Remove photo') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                             </div>
                         @endforeach
                     </div>
@@ -479,7 +479,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Ingredients --}}
-            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-3">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Ingredients') }}</h2>
                 <div class="space-y-2">
                     @foreach ($ingredients as $index => $ingredient)
@@ -507,13 +507,13 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Steps --}}
-            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-3">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Preparation') }}</h2>
                 <div class="space-y-3">
                     @foreach ($steps as $index => $step)
                         <div wire:key="step-row-{{ $index }}" class="flex items-start gap-2">
                             <span class="mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">{{ $index + 1 }}</span>
-                            <textarea wire:model="steps.{{ $index }}" rows="2" class="block flex-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" placeholder="{{ __('Step :number …', ['number' => $index + 1]) }}" aria-label="{{ __('Step :number', ['number' => $index + 1]) }}"></textarea>
+                            <textarea wire:model="steps.{{ $index }}" rows="2" class="block flex-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs" placeholder="{{ __('Step :number …', ['number' => $index + 1]) }}" aria-label="{{ __('Step :number', ['number' => $index + 1]) }}"></textarea>
                             <div class="mt-2 flex shrink-0 flex-col text-gray-400">
                                 <button type="button" wire:click="moveStep({{ $index }}, -1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->first) aria-label="{{ __('Move up') }}">↑</button>
                                 <button type="button" wire:click="moveStep({{ $index }}, 1)" class="px-1 hover:text-gray-700 disabled:opacity-30" @disabled($loop->last) aria-label="{{ __('Move down') }}">↓</button>
@@ -526,7 +526,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Nutrition --}}
-            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-3">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Nutrition per serving') }} <span class="text-sm font-normal text-gray-500">({{ __('optional') }})</span></h2>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
                     @foreach (['calories' => __('Calories (kcal)'), 'protein' => __('Protein (g)'), 'carbs' => __('Carbohydrates (g)'), 'fat' => __('Fat (g)'), 'fiber' => __('Fiber (g)')] as $key => $label)
@@ -540,7 +540,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Organisation --}}
-            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+            <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-4">
                 <div>
                     <span class="block font-medium text-sm text-gray-700 dark:text-gray-300">{{ __('Categories') }}</span>
                     <div class="mt-2 flex flex-wrap gap-2">

@@ -283,7 +283,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('portfolio.partials.nav', ['active' => 'portfolio.settings'])
 
             <form wire:submit="save" class="space-y-5">
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('General') }}</h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-3">
                         <div>
@@ -318,7 +318,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Buy recommendations') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Criteria for the recommendations: which price drop, how oversold (RSI) and how large a company must be.') }}</p>
                     <div class="mt-4 grid gap-4 sm:grid-cols-3">
@@ -351,8 +351,8 @@ new #[Layout('layouts.app')] class extends Component
                             <x-input-error :messages="$errors->get('form.min_market_cap_bn')" class="mt-1" />
                         </div>
                         <div class="space-y-2 pt-6 text-sm">
-                            <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.check_200ma" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only above the 200-day line') }}</label>
-                            <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.prefer_dividends" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Prefer dividend stocks') }}</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.check_200ma" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only above the 200-day line') }}</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.prefer_dividends" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Prefer dividend stocks') }}</label>
                         </div>
                         <div>
                             <x-input-label for="settings-stability" :value="__('Minimum stability score (0–100)')" />
@@ -381,7 +381,7 @@ new #[Layout('layouts.app')] class extends Component
                     </details>
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Notifications') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Price alerts and news arrive as push notification in LifeOS. Additionally they can be sent via Pushover.') }}</p>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -399,9 +399,9 @@ new #[Layout('layouts.app')] class extends Component
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('The server token is used.') }}</p>
                             @endif
                         </div>
-                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.news_push_enabled" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Push news about my securities') }}</label>
-                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.news_push_portfolio_only" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only securities in my portfolios (not the watchlist)') }}</label>
-                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.notifications_enabled" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Send notifications via Pushover') }}</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.news_push_enabled" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Push news about my securities') }}</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.news_push_portfolio_only" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only securities in my portfolios (not the watchlist)') }}</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="form.notifications_enabled" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Send notifications via Pushover') }}</label>
                         <div>
                             <x-input-label for="settings-news-age" :value="__('Push only headlines not older than')" />
                             <select id="settings-news-age" wire:model="form.news_push_max_age_hours" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
@@ -421,7 +421,7 @@ new #[Layout('layouts.app')] class extends Component
                 <x-primary-button>{{ __('Save') }}</x-primary-button>
             </form>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Tracked securities') }} <span class="text-sm font-normal text-gray-500">({{ $trackedCount }})</span></h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Prices and news of these securities are fetched regularly, even if they are in no portfolio and on no watchlist (e.g. for analyses and recommendations). Applies to all users.') }}</p>
                 <div class="mt-4 flex flex-wrap items-start gap-2">
@@ -447,7 +447,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Symbol mapping (ISIN / WKN → symbol)') }} <span class="text-sm font-normal text-gray-500">({{ $mappingCount }})</span></h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('The broker import finds the trading symbol for ISIN and WKN automatically. If it picks the wrong exchange or finds nothing, assign it here.') }}</p>
                 <div class="mt-4 grid gap-3 sm:grid-cols-[10rem_1fr_auto] sm:items-start">
@@ -480,7 +480,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @if ($jobs !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="portfolio-jobs">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="portfolio-jobs">
                     <h3 id="portfolio-jobs" class="font-semibold text-gray-900 dark:text-gray-100">⏱ {{ __('Automatic jobs') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('These run on the server by themselves (cron jobs) – nothing to set up. Prices are updated on weekdays during trading hours.') }}</p>
                     <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-700">

@@ -118,7 +118,7 @@ new class extends Component
 <div x-data="{ sidebarOpen: false }" x-on:keydown.escape.window="sidebarOpen = false" x-on:open-sidebar.window="sidebarOpen = true">
     {{-- Mobile top bar: fixed, so the menu button stays reachable while scrolling (spacer below keeps the content clear of it) --}}
     <div class="lg:hidden h-14" aria-hidden="true"></div>
-    <div class="e11-material lg:hidden fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b bg-white/80 backdrop-blur transition-colors duration-200 dark:bg-gray-900/80 px-3" :class="$store.chrome.compact ? 'border-gray-200/70 dark:border-gray-800' : 'border-transparent'">
+    <div class="e11-material lg:hidden fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-2 border-b bg-white/80 backdrop-blur-sm transition-colors duration-200 dark:bg-gray-900/80 px-3" :class="$store.chrome.compact ? 'border-gray-200/70 dark:border-gray-800' : 'border-transparent'">
         <button type="button" x-on:click="sidebarOpen = true" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Open menu') }}">
             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -147,7 +147,7 @@ new class extends Component
 
     {{-- Sidebar --}}
     <aside
-        class="e11-material fixed inset-y-0 start-0 z-50 flex w-72 lg:w-64 flex-col border-e border-gray-200/70 dark:border-gray-800 bg-white/90 backdrop-blur dark:bg-gray-900 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:translate-x-0"
+        class="e11-material fixed inset-y-0 start-0 z-50 flex w-72 lg:w-64 flex-col border-e border-gray-200/70 dark:border-gray-800 bg-white/90 backdrop-blur-sm dark:bg-gray-900 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:translate-x-0"
         x-data="e11Drawer"
         x-on:pointerdown="drawerStart($event)"
         x-on:pointermove="drawerMove($event)"

@@ -246,7 +246,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('portfolio.partials.nav', ['active' => 'portfolio.transactions'])
 
             @if ($portfolioList->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-400">
+                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-400">
                     {{ __('Create a portfolio first.') }} <a href="{{ route('portfolio.index') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-300">{{ __('Overview') }}</a>
                 </div>
             @else
@@ -268,20 +268,20 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Purchases incl. fees') }}</p>
                         <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($totals['invested']) }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Dividends (net)') }}</p>
                         <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($totals['dividends']) }}</p>
                     </div>
                 </div>
 
                 @if ($transactionList->isEmpty())
-                    <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No transactions yet.') }}</div>
+                    <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No transactions yet.') }}</div>
                 @else
-                    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                         @foreach ($transactionList as $transaction)
                             <li wire:key="transaction-{{ $transaction->id }}">
                                 <button type="button" wire:click="editTransaction({{ $transaction->id }})" class="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-gray-50 dark:hover:bg-gray-700/40">

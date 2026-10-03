@@ -1,7 +1,7 @@
 {{-- Invoices of the property (variables from real-estate/show). --}}
 <div class="space-y-5">
     <x-drop-zone model="receipt" :label="__('Drop the invoice here')">
-    <form wire:submit="saveInvoice" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 dark:bg-gray-800">
+    <form wire:submit="saveInvoice" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-2 lg:grid-cols-4 dark:bg-gray-800">
         <h3 class="font-semibold text-gray-900 sm:col-span-2 lg:col-span-4 dark:text-gray-100">{{ $editingInvoiceId ? __('Edit invoice') : __('New invoice') }}</h3>
 
         <div class="flex flex-wrap items-center gap-2 rounded-xl bg-indigo-50/60 p-3 sm:col-span-2 lg:col-span-4 dark:bg-indigo-900/20">
@@ -16,7 +16,7 @@
                 </button>
             @endif
             @if (auth()->user()->hasPaperless())
-                <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="receiptToPaperless" class="rounded border-gray-300 text-indigo-600"> {{ __('Store in paperless') }}</label>
+                <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="receiptToPaperless" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Store in paperless') }}</label>
             @endif
             <span wire:loading wire:target="receipt" class="text-xs text-gray-500">{{ __('Uploading …') }}</span>
             @if ($receiptMessage)
@@ -63,12 +63,12 @@
     </x-drop-zone>
 
     @if ($editingInvoiceId)
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
             <livewire:documents-panel type="real_estate_invoice" :id="$editingInvoiceId" :wire:key="'documents-invoice-'.$editingInvoiceId" />
         </section>
     @endif
 
-    <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-label="{{ __('Invoices') }}">
+    <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-label="{{ __('Invoices') }}">
         <p class="border-b border-gray-100 px-5 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
             {{ trans_choice(':count invoice|:count invoices', $model->invoices->count()) }} · {{ __(':paid paid, :open open', ['paid' => $euro($summary['paid_total'], 2), 'open' => $euro($summary['invoiced_total'] - $summary['paid_total'], 2)]) }}
         </p>
@@ -87,7 +87,7 @@
                                 @if ($row->labor_amount > 0) · {{ __('labour :amount', ['amount' => $euro($row->labor_amount, 2)]) }}@endif
                             </p>
                             @if (isset($transactionMatches[$row->id]))
-                                <button type="button" wire:click="linkTransaction({{ $row->id }}, {{ $transactionMatches[$row->id]->id }})" class="mt-1 rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                <button type="button" wire:click="linkTransaction({{ $row->id }}, {{ $transactionMatches[$row->id]->id }})" class="mt-1 rounded-sm bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-200">
                                     🔗 {{ __('Paid on :date from your account (:payee)? Link booking', ['date' => $transactionMatches[$row->id]->booked_on->format('d.m.Y'), 'payee' => $transactionMatches[$row->id]->counterparty]) }}
                                 </button>
                             @elseif ($row->transaction)

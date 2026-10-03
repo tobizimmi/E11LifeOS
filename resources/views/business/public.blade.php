@@ -21,7 +21,7 @@
             <header class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
                     @if ($profile->logoDataUri())
-                        <img src="{{ $profile->logoDataUri() }}" alt="{{ $profile->company_name }}" class="h-10 max-w-[8rem] rounded bg-white object-contain p-1">
+                        <img src="{{ $profile->logoDataUri() }}" alt="{{ $profile->company_name }}" class="h-10 max-w-[8rem] rounded-sm bg-white object-contain p-1">
                     @endif
                     <p class="text-lg font-semibold">{{ $profile->company_name }}</p>
                 </div>
@@ -32,7 +32,7 @@
                 <p class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100" role="status">✓ {{ session('status') }}</p>
             @endif
 
-            <section class="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-6 shadow-xs dark:bg-gray-800">
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $title }} {{ $invoice->number }} · {{ $invoice->issued_on?->format('d.m.Y') }}</p>
                 <h1 class="mt-1 text-2xl font-semibold">{{ $invoice->subject ?: $title }}</h1>
                 <p class="mt-3 text-4xl font-semibold tabular-nums">{{ $euro($invoice->gross_total) }}</p>

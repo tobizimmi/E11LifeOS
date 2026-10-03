@@ -338,7 +338,7 @@ new #[Layout('layouts.app')] class extends Component
         <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <a href="{{ route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:underline">&larr; {{ __('All recipes') }}</a>
 
-            <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+            <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xs">
                 @if ($recipe->imageUrl())
                     <img src="{{ $recipe->imageUrl() }}" alt="{{ $recipe->title }}" class="max-h-[26rem] w-full object-cover" />
                 @endif
@@ -419,7 +419,7 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             <div>
                                 <x-input-label for="planMealType" :value="__('Meal')" />
-                                <select wire:model="planMealType" id="planMealType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                                <select wire:model="planMealType" id="planMealType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs">
                                     @foreach (\App\Models\MealPlan::MEAL_TYPES as $mealType)
                                         <option value="{{ $mealType }}">{{ \App\Models\MealPlan::mealTypeLabel($mealType) }}</option>
                                     @endforeach
@@ -465,7 +465,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="grid gap-6 md:grid-cols-5">
                 {{-- Ingredients --}}
-                <section class="md:col-span-2 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <section class="md:col-span-2 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <div class="flex items-center justify-between gap-2">
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Ingredients') }}</h2>
                         <div class="flex items-center gap-1" role="group" aria-label="{{ __('Servings') }}">
@@ -500,12 +500,12 @@ new #[Layout('layouts.app')] class extends Component
                                     <p class="pt-2 text-xs font-semibold uppercase text-gray-500">{{ $ingredient['name'] }}</p>
                                 @else
                                     <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200" wire:key="choose-{{ $index }}">
-                                        <input type="checkbox" wire:model="selectedIngredients" value="{{ $index }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                                        <input type="checkbox" wire:model="selectedIngredients" value="{{ $index }}" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
                                         <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}
                                             @if (in_array(\App\Support\IngredientUnits::nameKey($ingredient['name']), $alreadyOnList, true))
-                                                <span class="ms-1 rounded bg-indigo-50 px-1 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">🛒 {{ __('already on the list') }}</span>
+                                                <span class="ms-1 rounded-sm bg-indigo-50 px-1 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">🛒 {{ __('already on the list') }}</span>
                                             @elseif (in_array($index, $inPantry, true))
-                                                <span class="ms-1 rounded bg-emerald-50 px-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">🥫 {{ __('in the pantry') }}</span>
+                                                <span class="ms-1 rounded-sm bg-emerald-50 px-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">🥫 {{ __('in the pantry') }}</span>
                                             @endif
                                         </span>
                                     </label>
@@ -525,7 +525,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <li wire:key="ingredient-{{ $index }}">
                                         {{-- Ticking off while cooking is local to this device only. --}}
                                         <label class="flex cursor-pointer items-baseline gap-2 text-gray-800 dark:text-gray-200" :class="ticked.includes({{ $index }}) && 'line-through text-gray-400'">
-                                            <input type="checkbox" class="translate-y-0.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" x-on:change="ticked.includes({{ $index }}) ? ticked.splice(ticked.indexOf({{ $index }}), 1) : ticked.push({{ $index }})" />
+                                            <input type="checkbox" class="translate-y-0.5 rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" x-on:change="ticked.includes({{ $index }}) ? ticked.splice(ticked.indexOf({{ $index }}), 1) : ticked.push({{ $index }})" />
                                             <span><span class="font-medium">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}</span>
                                         </label>
                                     </li>
@@ -541,7 +541,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 {{-- Steps --}}
-                <section class="md:col-span-3 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <section class="md:col-span-3 rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Preparation') }}</h2>
                     <ol class="mt-3 space-y-4">
                         @forelse ($steps as $number => $step)
@@ -561,7 +561,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @foreach ($pantryUsage as $use)
                                     <li class="flex flex-wrap justify-between gap-2" wire:key="pantry-use-{{ $use['item_id'] }}">
                                         <span>{{ $use['name'] }}</span>
-                                        <span class="tabular-nums">{{ \App\Support\IngredientAmount::format($use['before']) }} → <strong>{{ \App\Support\IngredientAmount::format($use['after']) }}</strong> {{ $use['unit'] }} @if ($use['low'])<span class="ms-1 rounded bg-amber-100 px-1 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">{{ __('low') }}</span>@endif</span>
+                                        <span class="tabular-nums">{{ \App\Support\IngredientAmount::format($use['before']) }} → <strong>{{ \App\Support\IngredientAmount::format($use['after']) }}</strong> {{ $use['unit'] }} @if ($use['low'])<span class="ms-1 rounded-sm bg-amber-100 px-1 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">{{ __('low') }}</span>@endif</span>
                                     </li>
                                 @endforeach
                             </ul>
@@ -578,7 +578,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($nutritionValues !== [] || ($aiAvailable && collect($ingredients)->contains('isSection', false)))
-                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             {{ __('Nutrition per serving') }}
@@ -609,7 +609,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($photos !== [])
-                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm" x-data="{ open: null, photos: @js(array_values($photos)) }">
+                <section class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs" x-data="{ open: null, photos: @js(array_values($photos)) }">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('More photos') }}</h2>
                     <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                         @foreach (array_values($photos) as $photoIndex => $photoUrl)
@@ -642,13 +642,13 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @unless ($foreign)
-                <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <div class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs">
                     <livewire:links-panel type="recipe" :id="$recipe->id" :wire:key="'links-recipe-'.$recipe->id" />
                 </div>
             @endunless
 
             {{-- Ratings --}}
-            <section id="ratings" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-4">
+            <section id="ratings" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-4">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Ratings') }}</h2>
                     @if ($averageRating)
@@ -664,7 +664,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endfor
                     </div>
                     <x-input-error :messages="$errors->get('myRating')" />
-                    <textarea wire:model="myComment" rows="2" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm text-sm" placeholder="{{ __('Note for next time (optional)') }}" aria-label="{{ __('Comment') }}"></textarea>
+                    <textarea wire:model="myComment" rows="2" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs text-sm" placeholder="{{ __('Note for next time (optional)') }}" aria-label="{{ __('Comment') }}"></textarea>
                     <div class="flex items-center gap-3">
                         <x-secondary-button type="submit">{{ __('Save rating') }}</x-secondary-button>
                         @if ($recipe->ratings->contains('user_id', auth()->id()))

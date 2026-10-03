@@ -332,7 +332,7 @@ new #[Layout('layouts.app')] class extends Component
                 </p>
             @endif
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="space-y-3">
                         <div>
@@ -380,7 +380,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Items') }}</h3>
                 <ol class="mt-3 space-y-3">
                     @foreach ($items as $index => $item)
@@ -420,9 +420,9 @@ new #[Layout('layouts.app')] class extends Component
                                 <div class="flex shrink-0 flex-col items-end gap-1">
                                     <span class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro(round($number($item['quantity']) * $number($item['unit_price']) * (1 - min(100, $number($item['discount'] ?? '')) / 100), 2)) }}</span>
                                     <div class="flex">
-                                        <button type="button" wire:click="moveItem({{ $index }}, -1)" @disabled($index === 0) class="rounded p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move up') }}">↑</button>
-                                        <button type="button" wire:click="moveItem({{ $index }}, 1)" @disabled($index === count($items) - 1) class="rounded p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move down') }}">↓</button>
-                                        <button type="button" wire:click="removeItem({{ $index }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                        <button type="button" wire:click="moveItem({{ $index }}, -1)" @disabled($index === 0) class="rounded-sm p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move up') }}">↑</button>
+                                        <button type="button" wire:click="moveItem({{ $index }}, 1)" @disabled($index === count($items) - 1) class="rounded-sm p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move down') }}">↓</button>
+                                        <button type="button" wire:click="removeItem({{ $index }})" class="rounded-sm p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                     </div>
                                 </div>
                             </div>
@@ -462,7 +462,7 @@ new #[Layout('layouts.app')] class extends Component
                 </dl>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <x-input-label for="invoice-closing" :value="__('Closing text')" />
                 <textarea id="invoice-closing" wire:model="closing" rows="2" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"></textarea>
             </section>

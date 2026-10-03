@@ -89,7 +89,7 @@ new class extends Component
             <ul class="mt-1 max-h-60 overflow-y-auto">
                 @forelse ($results as $result)
                     <li wire:key="result-{{ $result['type'] }}-{{ $result['id'] }}">
-                        <button type="button" wire:click="link(@js($result['type'].':'.$result['id']))" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-sm hover:bg-white dark:hover:bg-gray-800">
+                        <button type="button" wire:click="link(@js($result['type'].':'.$result['id']))" class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start text-sm hover:bg-white dark:hover:bg-gray-800">
                             <span aria-hidden="true">{{ $result['icon'] }}</span>
                             <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $result['title'] }}</span>
                             <span class="shrink-0 text-xs text-gray-500">{{ $result['kind'] }}</span>

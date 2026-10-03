@@ -224,7 +224,7 @@ new #[Layout('layouts.app')] class extends Component
 
 @php
     $euro = fn (?float $value) => $value === null ? '–' : number_format($value, 2, ',', '.').' €';
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $rows = [
         'amount' => __('Quoted price'),
         'quoted_on' => __('Quote of'),
@@ -256,7 +256,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($showQuoteForm)
-                <form wire:submit="saveQuote" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveQuote" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Vendor') }}<input type="text" wire:model="quote.vendor" class="{{ $input }}" autofocus><x-input-error :messages="$errors->get('quote.vendor')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Price (€)') }}<input type="text" inputmode="decimal" wire:model="quote.amount" class="{{ $input }}" placeholder="12.500,00"><x-input-error :messages="$errors->get('quote.amount')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Quote of') }}<input type="date" wire:model="quote.quoted_on" class="{{ $input }}"></label>
@@ -283,9 +283,9 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($comparison->quotes->isEmpty())
-                <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">{{ __('No quotes yet. Add the first one – price, validity and the PDF.') }}</section>
+                <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">{{ __('No quotes yet. Add the first one – price, validity and the PDF.') }}</section>
             @else
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-label="{{ __('Comparison') }}">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-label="{{ __('Comparison') }}">
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead>
@@ -372,7 +372,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 @if ($documentsFor && ($documentQuote = $comparison->quotes->firstWhere('id', $documentsFor)))
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Documents for :vendor', ['vendor' => $documentQuote->vendor]) }}</p>
                         <livewire:documents-panel type="quote" :id="$documentQuote->id" :wire:key="'documents-quote-'.$documentQuote->id" />
                     </section>
@@ -380,7 +380,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             <div class="grid gap-5 lg:grid-cols-2">
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏠 {{ __('Link to a property') }}</h3>
                     @if ($realEstates->isEmpty())
                         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('No properties yet.') }}</p>
@@ -408,7 +408,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">📝 {{ __('Notes') }}</h3>
                     <textarea wire:model="notes" rows="4" class="{{ $input }}" placeholder="{{ __('Requirements, questions to the vendors …') }}"></textarea>
                     <div class="mt-3 flex flex-wrap items-center gap-3">

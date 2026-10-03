@@ -89,7 +89,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             {{-- Performance vs. benchmark --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Performance compared with :benchmark', ['benchmark' => $benchmark]) }}</h3>
@@ -97,7 +97,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900">
                         @foreach (['3m' => __('3M'), '1y' => __('1Y'), '5y' => __('5Y'), 'max' => __('Max')] as $key => $label)
-                            <button type="button" wire:click="$set('range', '{{ $key }}')" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $range === $key, 'text-gray-600 dark:text-gray-400' => $range !== $key])>{{ $label }}</button>
+                            <button type="button" wire:click="$set('range', '{{ $key }}')" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $range === $key, 'text-gray-600 dark:text-gray-400' => $range !== $key])>{{ $label }}</button>
                         @endforeach
                     </div>
                 </div>
@@ -120,7 +120,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="grid gap-5 lg:grid-cols-2">
                 {{-- Allocation --}}
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Allocation') }}</h3>
                         <select wire:model.live="allocation" aria-label="{{ __('Group by') }}" class="rounded-lg border-gray-300 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
@@ -155,7 +155,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 {{-- Today --}}
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Winners and losers today') }}</h3>
                     @if ($topMovers->isEmpty())
                         <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">{{ __('No prices yet.') }}</p>
@@ -174,7 +174,7 @@ new #[Layout('layouts.app')] class extends Component
 
             {{-- Correlation --}}
             @if (count($correlation['symbols']) >= 2)
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Correlation of daily returns (1 year)') }}</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('+1: move together, 0: independent, −1: opposite. Low correlation spreads the risk.') }}</p>
                     <div class="mt-3 overflow-x-auto">
@@ -196,7 +196,7 @@ new #[Layout('layouts.app')] class extends Component
                                                 $value = $correlation['matrix'][$a][$b] ?? null;
                                             @endphp
                                             <td class="p-0.5">
-                                                <span class="block w-16 rounded px-1 py-1.5 text-center tabular-nums text-gray-900 dark:text-gray-100" style="background: {{ $correlationColor($value) }}" title="{{ $a }} / {{ $b }}">{{ $value !== null ? number_format($value, 2, ',', '') : '—' }}</span>
+                                                <span class="block w-16 rounded-sm px-1 py-1.5 text-center tabular-nums text-gray-900 dark:text-gray-100" style="background: {{ $correlationColor($value) }}" title="{{ $a }} / {{ $b }}">{{ $value !== null ? number_format($value, 2, ',', '') : '—' }}</span>
                                             </td>
                                         @endforeach
                                     </tr>

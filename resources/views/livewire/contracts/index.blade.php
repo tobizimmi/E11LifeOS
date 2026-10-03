@@ -163,24 +163,24 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-wrap justify-end gap-2">
-                <button type="button" wire:click="startCreate" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500">+ {{ __('New contract') }}</button>
-                <a href="{{ route('letters.index') }}" wire:navigate class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">✉️ {{ __('Write a letter') }}</a>
+                <button type="button" wire:click="startCreate" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-indigo-500">+ {{ __('New contract') }}</button>
+                <a href="{{ route('letters.index') }}" wire:navigate class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-xs ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">✉️ {{ __('Write a letter') }}</a>
             </div>
 
             @if ($creating)
-                <form wire:submit="saveContract" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 dark:bg-gray-800">
+                <form wire:submit="saveContract" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-2 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-2 dark:text-gray-100">📄 {{ __('New contract') }}</h3>
-                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Contract') }}<input type="text" wire:model="contract.title" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('e.g. Gym, mobile phone, electricity') }}" autofocus><x-input-error :messages="$errors->get('contract.title')" /></label>
-                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Provider') }}<input type="text" wire:model="contract.provider" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></label>
-                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Per month') }}<input type="text" inputmode="decimal" wire:model="contract.monthly" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('from the payment') }}"><x-input-error :messages="$errors->get('contract.monthly')" /></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Contract') }}<input type="text" wire:model="contract.title" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('e.g. Gym, mobile phone, electricity') }}" autofocus><x-input-error :messages="$errors->get('contract.title')" /></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Provider') }}<input type="text" wire:model="contract.provider" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></label>
+                    <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Per month') }}<input type="text" inputmode="decimal" wire:model="contract.monthly" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('from the payment') }}"><x-input-error :messages="$errors->get('contract.monthly')" /></label>
                     <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Payment from Finances') }}
-                        <select wire:model="contract.payment" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                        <select wire:model="contract.payment" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                             <option value="">–</option>
                             @include('provision.partials.payment-options')
                         </select>
                     </label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('List') }}
-                        <select wire:model="listId" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                        <select wire:model="listId" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                             <option value="0">{{ $lists->isEmpty() ? __('New list “Contracts & documents”') : __('Default: :name', ['name' => $lists->first()->name]) }}</option>
                             @foreach ($lists as $list)
                                 <option value="{{ $list->id }}">{{ $list->icon }} {{ $list->name }}</option>
@@ -196,7 +196,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @php($changes = array_values(array_filter($matching['matched'], fn ($match) => $match['difference'] !== null)))
             @if ($matching['unmatched'] !== [] || $changes !== [] || $matching['without_payment'] !== [] || $otherPayments->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔍 {{ __('Compared with your bank bookings') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Recurring payments of the last months next to your contracts – so no subscription is forgotten.') }}</p>
 
@@ -273,29 +273,29 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($overview['contracts'] === [])
-                <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-gray-700 dark:text-gray-200">{{ __('No contracts with costs yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Create a collection from the “Contracts & documents” template and enter the monthly cost – everything is summed up here.') }}</p>
                     <a href="{{ route('collections.index') }}" wire:navigate class="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('To the collections') }} →</a>
                 </section>
             @else
                 <section class="grid gap-3 sm:grid-cols-3">
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Per month') }}</p>
                         <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['monthly']) }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Per year') }}</p>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['yearly']) }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Contracts') }}</p>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ count($overview['contracts']) }}</p>
                     </div>
                 </section>
 
                 @if ($overview['deadlines'] !== [])
-                    <section class="rounded-2xl bg-amber-50 p-5 shadow-sm ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800">
+                    <section class="rounded-2xl bg-amber-50 p-5 shadow-xs ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800">
                         <h3 class="font-semibold text-amber-900 dark:text-amber-200">⏰ {{ __('Cancellation deadlines in the next 90 days') }}</h3>
                         <ul class="mt-2 space-y-2 text-sm">
                             @foreach ($overview['deadlines'] as $deadline)
@@ -309,7 +309,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('By category') }}</h3>
                     <ul class="mt-3 space-y-2 text-sm">
                         @foreach ($overview['by_category'] as $category => $amount)
@@ -321,7 +321,7 @@ new #[Layout('layouts.app')] class extends Component
                     </ul>
                 </section>
 
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">

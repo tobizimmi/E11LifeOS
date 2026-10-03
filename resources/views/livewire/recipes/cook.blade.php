@@ -163,7 +163,7 @@ new #[Layout('layouts.app')] class extends Component
                             @else
                                 <li>
                                     <label class="flex cursor-pointer items-baseline gap-3" :class="ticked.includes({{ $index }}) && 'line-through text-gray-500'">
-                                        <input type="checkbox" class="h-5 w-5 translate-y-0.5 rounded border-gray-600 bg-gray-900 text-indigo-500" x-on:change="ticked.includes({{ $index }}) ? ticked.splice(ticked.indexOf({{ $index }}), 1) : ticked.push({{ $index }})" />
+                                        <input type="checkbox" class="h-5 w-5 translate-y-0.5 rounded-sm border-gray-600 bg-gray-900 text-indigo-500" x-on:change="ticked.includes({{ $index }}) ? ticked.splice(ticked.indexOf({{ $index }}), 1) : ticked.push({{ $index }})" />
                                         <span><span class="font-semibold">{{ trim($ingredient['amount'].' '.$ingredient['unit']) }}</span> {{ $ingredient['name'] }}</span>
                                     </label>
                                 </li>

@@ -81,7 +81,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('portfolio.partials.nav', ['active' => 'portfolio.news'])
 
             <div class="flex flex-wrap items-center gap-2">
-                <div class="inline-flex rounded-lg bg-white p-0.5 text-sm shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                <div class="inline-flex rounded-lg bg-white p-0.5 text-sm shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
                     @foreach (['mine' => __('My securities'), 'market' => __('Market'), 'all' => __('All')] as $key => $label)
                         <button type="button" wire:click="$set('filter', '{{ $key }}')" @class(['rounded-md px-3 py-1.5', 'bg-indigo-600 text-white' => $filter === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $filter !== $key])>{{ $label }}</button>
                     @endforeach
@@ -91,12 +91,12 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($articles->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-400">
+                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-400">
                     <p class="text-4xl" aria-hidden="true">📰</p>
                     <p class="mt-2">{{ __('No news yet. Headlines are fetched every hour for your securities and the market.') }}</p>
                 </div>
             @else
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                     @foreach ($articles as $article)
                         <li wire:key="news-{{ $article->id }}">
                             <a href="{{ $article->url }}" target="_blank" rel="noopener noreferrer" class="flex gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/40">
@@ -107,7 +107,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @endif
                                     <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">
                                         @if ($article->symbol)
-                                            <span class="rounded bg-indigo-50 px-1 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{{ $names[$article->symbol] ?? $article->symbol }}</span> ·
+                                            <span class="rounded-sm bg-indigo-50 px-1 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{{ $names[$article->symbol] ?? $article->symbol }}</span> ·
                                         @endif
                                         {{ $article->source }} · {{ $article->published_at?->diffForHumans() }}
                                     </span>

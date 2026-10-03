@@ -119,7 +119,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-12">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Members') }}</h3>
                 <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                     @foreach ($members as $member)
@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('Invite someone') }}</h3>
 
                 <x-primary-button wire:click="generateInvite">
@@ -196,7 +196,7 @@ new #[Layout('layouts.app')] class extends Component
 
 
             @if ($mailDomain)
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6" x-data="{ copied: false }">
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs rounded-2xl p-6" x-data="{ copied: false }">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">✉️ {{ __('Mail address of the household') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Forward booking confirmations, invoices or notes to this address – they land in the right place by themselves.') }}</p>
 
@@ -238,7 +238,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @endif
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-2xl p-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs rounded-2xl p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Addons') }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Optional modules for your household. Switching one off hides it; its data is kept.') }}</p>
                 <ul class="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
@@ -257,7 +257,7 @@ new #[Layout('layouts.app')] class extends Component
                                     wire:click="toggleAddon('{{ $key }}')"
                                     @class(['relative inline-flex h-6 w-11 shrink-0 rounded-full transition', 'bg-indigo-600' => $household->hasAddon($key), 'bg-gray-300 dark:bg-gray-600' => ! $household->hasAddon($key)])
                                 >
-                                    <span @class(['inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition', 'translate-x-5' => $household->hasAddon($key), 'translate-x-0.5' => ! $household->hasAddon($key)])></span>
+                                    <span @class(['inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-sm transition', 'translate-x-5' => $household->hasAddon($key), 'translate-x-0.5' => ! $household->hasAddon($key)])></span>
                                 </button>
                             @else
                                 <span class="text-sm text-gray-500 dark:text-gray-400">{{ $household->hasAddon($key) ? __('On') : __('Off') }}</span>
@@ -268,7 +268,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if (count($load['members']) > 1)
-                <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+                <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">⚖️ {{ __('Who does what?') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Last :days days: completed tasks and entries, what was thought of and planned (tasks, shopping entries, meals) and open tasks assigned.', ['days' => $load['days']]) }}</p>
                     <ul class="mt-4 space-y-3">

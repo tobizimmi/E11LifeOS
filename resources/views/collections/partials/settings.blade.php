@@ -1,7 +1,7 @@
 {{-- Collection settings: details, properties and form builder (variables from collections/show). --}}
             {{-- Settings: collection details + properties --}}
             @if ($showSettings)
-                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-5 space-y-5">
+                <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-5 space-y-5">
                     <form wire:submit="saveCollectionDetails" class="flex flex-wrap items-end gap-3">
                         <div class="w-20">
                             <x-input-label for="collectionIcon" :value="__('Icon')" />
@@ -13,7 +13,7 @@
                         </div>
                         <div class="w-44">
                             <x-input-label for="collectionDefaultView" :value="__('Default view')" />
-                            <select wire:model="collectionDefaultView" id="collectionDefaultView" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                            <select wire:model="collectionDefaultView" id="collectionDefaultView" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs">
                                 <option value="">{{ __('Automatic') }}</option>
                                 @foreach (['cards' => __('Cards'), 'list' => __('List'), 'table' => __('Table'), 'board' => __('Board'), 'calendar' => __('Calendar')] as $viewKey => $viewLabel)
                                     <option value="{{ $viewKey }}">{{ $viewLabel }}</option>
@@ -62,8 +62,8 @@
                                             <span class="rounded-full bg-amber-50 px-1.5 text-[11px] text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{{ __('required') }}</span>
                                         @endif
                                         <span class="ms-auto inline-flex">
-                                            <button type="button" wire:click="moveProperty({{ $property->id }}, -1)" @disabled($loop->first) class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move up') }}">↑</button>
-                                            <button type="button" wire:click="moveProperty({{ $property->id }}, 1)" @disabled($loop->last) class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move down') }}">↓</button>
+                                            <button type="button" wire:click="moveProperty({{ $property->id }}, -1)" @disabled($loop->first) class="rounded-sm px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move up') }}">↑</button>
+                                            <button type="button" wire:click="moveProperty({{ $property->id }}, 1)" @disabled($loop->last) class="rounded-sm px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-gray-700" aria-label="{{ __('Move down') }}">↓</button>
                                         </span>
                                         @if ($property->isSystem())
                                             <span class="text-xs text-gray-400">({{ __('built-in') }})</span>
@@ -74,7 +74,7 @@
                                     @if ($property->type !== \App\Models\CollectionProperty::TYPE_RELATION)
                                         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
                                             <label class="flex items-center gap-1.5">
-                                                <input type="checkbox" @checked($property->required) wire:change="setPropertyRequired({{ $property->id }}, $event.target.checked)" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
+                                                <input type="checkbox" @checked($property->required) wire:change="setPropertyRequired({{ $property->id }}, $event.target.checked)" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">
                                                 {{ __('Required field') }}
                                             </label>
                                             <label class="flex items-center gap-1.5">
@@ -138,7 +138,7 @@
                                         </label>
                                         @if ($property->remindDays() !== null)
                                             <label class="flex items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
-                                                <input type="checkbox" wire:click="togglePropertyTask({{ $property->id }})" @checked($property->createsTask()) class="rounded border-gray-300 text-indigo-600 dark:border-gray-700 dark:bg-gray-900">
+                                                <input type="checkbox" wire:click="togglePropertyTask({{ $property->id }})" @checked($property->createsTask()) class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-700 dark:bg-gray-900">
                                                 ✅ {{ __('Also create a task') }}
                                             </label>
                                         @endif
@@ -172,7 +172,7 @@
                             </div>
                             <div>
                                 <x-input-label for="newPropertyType" :value="__('Type')" />
-                                <select wire:model="newPropertyType" id="newPropertyType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-sm text-sm">
+                                <select wire:model="newPropertyType" id="newPropertyType" class="mt-1 block rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-xs text-sm">
                                     @foreach ($propertyTypes as $type => $typeLabel)
                                         <option value="{{ $type }}">{{ $typeLabel }}</option>
                                     @endforeach

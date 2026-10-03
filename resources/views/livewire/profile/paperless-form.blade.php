@@ -144,8 +144,8 @@ new class extends Component
                     </div>
                     @if ($instance->user_id === auth()->id())
                         <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="group" aria-label="{{ __('Who may use it') }}">
-                            <button type="button" wire:click="toggleShared({{ $instance->id }})" @disabled(! $instance->shared) aria-pressed="{{ $instance->shared ? 'false' : 'true' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => ! $instance->shared, 'text-gray-600 dark:text-gray-400' => $instance->shared])>🔒 {{ __('Only me') }}</button>
-                            <button type="button" wire:click="toggleShared({{ $instance->id }})" @disabled($instance->shared) aria-pressed="{{ $instance->shared ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => $instance->shared, 'text-gray-600 dark:text-gray-400' => ! $instance->shared])>👥 {{ __('Household') }}</button>
+                            <button type="button" wire:click="toggleShared({{ $instance->id }})" @disabled(! $instance->shared) aria-pressed="{{ $instance->shared ? 'false' : 'true' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => ! $instance->shared, 'text-gray-600 dark:text-gray-400' => $instance->shared])>🔒 {{ __('Only me') }}</button>
+                            <button type="button" wire:click="toggleShared({{ $instance->id }})" @disabled($instance->shared) aria-pressed="{{ $instance->shared ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => $instance->shared, 'text-gray-600 dark:text-gray-400' => ! $instance->shared])>👥 {{ __('Household') }}</button>
                         </div>
                         <button type="button" wire:click="edit({{ $instance->id }})" class="text-gray-400 hover:text-indigo-600" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                         <button type="button" wire:click="remove({{ $instance->id }})" wire:confirm="{{ __('Remove this paperless connection? Links to its documents are kept, but cannot be previewed any more.') }}" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
@@ -180,7 +180,7 @@ new class extends Component
             </div>
             <div>
                 <x-input-label for="paperless-shared" :value="__('Who may use it')" />
-                <select id="paperless-shared" wire:model="shared" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                <select id="paperless-shared" wire:model="shared" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                     <option value="0">🔒 {{ __('Only me') }}</option>
                     <option value="1">👥 {{ __('Whole household (uses my token)') }}</option>
                 </select>

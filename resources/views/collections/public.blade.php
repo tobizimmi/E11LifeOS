@@ -16,11 +16,11 @@
             </header>
 
             @if ($rows->isEmpty())
-                <p class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No entries yet.') }}</p>
+                <p class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No entries yet.') }}</p>
             @else
                 <ul class="grid gap-3 sm:grid-cols-2">
                     @foreach ($rows as $row)
-                        <li class="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <li class="rounded-lg bg-white p-4 shadow-xs dark:bg-gray-800">
                             <p @class(['font-semibold', 'line-through text-gray-400' => $row['entry']->done])>{{ $row['entry']->icon }} {{ $row['entry']->title }}</p>
                             <dl class="mt-2 space-y-1 text-sm">
                                 @foreach ($properties as $property)

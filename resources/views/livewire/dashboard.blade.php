@@ -227,7 +227,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-8 sm:py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             @if ($householdId === null)
-                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6 text-gray-700 dark:text-gray-300">
+                <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6 text-gray-700 dark:text-gray-300">
                     {{ __('You are not a member of a household yet. Ask a household member for an invite code.') }}
                 </div>
             @else
@@ -236,7 +236,7 @@ new #[Layout('layouts.app')] class extends Component
                         $onboardingDone = collect($onboarding)->where('done', true)->count();
                         $onboardingTotal = count($onboarding);
                     @endphp
-                    <section class="rounded-2xl bg-indigo-50 p-5 shadow-sm dark:bg-indigo-900/20" aria-labelledby="onboarding-heading" x-data="{ showDone: false }">
+                    <section class="rounded-2xl bg-indigo-50 p-5 shadow-xs dark:bg-indigo-900/20" aria-labelledby="onboarding-heading" x-data="{ showDone: false }">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0 flex-1">
                                 <h3 id="onboarding-heading" class="font-semibold text-gray-900 dark:text-gray-100">👋 {{ __('First steps') }}</h3>
@@ -250,7 +250,7 @@ new #[Layout('layouts.app')] class extends Component
                         <ol class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach (collect($onboarding)->sortBy('done') as $step)
                                 <li wire:key="onboarding-{{ $step['key'] }}" @if ($step['done']) x-show="showDone" x-cloak @endif>
-                                    <a href="{{ $step['url'] }}" wire:navigate @class(['flex h-full gap-3 rounded-xl bg-white p-3 text-sm shadow-sm hover:ring-1 hover:ring-indigo-300 dark:bg-gray-800', 'opacity-60' => $step['done']])>
+                                    <a href="{{ $step['url'] }}" wire:navigate @class(['flex h-full gap-3 rounded-xl bg-white p-3 text-sm shadow-xs hover:ring-1 hover:ring-indigo-300 dark:bg-gray-800', 'opacity-60' => $step['done']])>
                                         <span aria-hidden="true">{{ $step['done'] ? '✅' : '⬜' }}</span>
                                         <span>
                                             <span @class(['block font-medium text-gray-900 dark:text-gray-100', 'line-through' => $step['done']])>{{ $step['label'] }}<span class="sr-only">{{ $step['done'] ? ' – '.__('done') : '' }}</span></span>
@@ -266,7 +266,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                     <div class="flex items-center justify-between gap-3 mb-3">
                         <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ __('Quick capture') }}</h3>
                         <a href="{{ route('inbox.index') }}" wire:navigate class="text-sm text-indigo-600 dark:text-indigo-400 underline">
@@ -285,8 +285,8 @@ new #[Layout('layouts.app')] class extends Component
                         <p class="text-sm text-gray-700 dark:text-gray-200">{{ __('Choose which cards you see and in which order.') }}</p>
                         <ul class="mt-3 grid gap-2 sm:grid-cols-2">
                             @foreach ($widgets as $index => $key)
-                                <li wire:key="widget-setting-{{ $key }}" class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-sm dark:bg-gray-800">
-                                    <input type="checkbox" checked wire:click="toggleWidget('{{ $key }}')" class="rounded border-gray-300 text-indigo-600" aria-label="{{ $allWidgets[$key]['label'] }}" />
+                                <li wire:key="widget-setting-{{ $key }}" class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-xs dark:bg-gray-800">
+                                    <input type="checkbox" checked wire:click="toggleWidget('{{ $key }}')" class="rounded-sm border-gray-300 text-indigo-600" aria-label="{{ $allWidgets[$key]['label'] }}" />
                                     <span class="flex-1 text-gray-800 dark:text-gray-100">{{ $allWidgets[$key]['icon'] }} {{ $allWidgets[$key]['label'] }}</span>
                                     <button type="button" wire:click="moveWidget('{{ $key }}', -1)" @disabled($index === 0) class="px-1 text-gray-400 hover:text-gray-700 disabled:opacity-30" aria-label="{{ __('Move up') }}">↑</button>
                                     <button type="button" wire:click="moveWidget('{{ $key }}', 1)" @disabled($loop->last) class="px-1 text-gray-400 hover:text-gray-700 disabled:opacity-30" aria-label="{{ __('Move down') }}">↓</button>
@@ -295,7 +295,7 @@ new #[Layout('layouts.app')] class extends Component
                             @foreach ($allWidgets as $key => $widget)
                                 @if (! in_array($key, $widgets, true))
                                     <li wire:key="widget-setting-{{ $key }}" class="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 text-sm text-gray-500 dark:bg-gray-800/60">
-                                        <input type="checkbox" wire:click="toggleWidget('{{ $key }}')" class="rounded border-gray-300 text-indigo-600" aria-label="{{ $widget['label'] }}" />
+                                        <input type="checkbox" wire:click="toggleWidget('{{ $key }}')" class="rounded-sm border-gray-300 text-indigo-600" aria-label="{{ $widget['label'] }}" />
                                         <span class="flex-1">{{ $widget['icon'] }} {{ $widget['label'] }}</span>
                                     </li>
                                 @endif
@@ -308,17 +308,17 @@ new #[Layout('layouts.app')] class extends Component
                 <div @if (! $widgetsLoaded) wire:init="loadWidgets" @endif class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
                     @foreach ($widgets as $widget)
                         <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" class="group/widget relative">
-                            <button type="button" class="widget-handle absolute right-2 top-2 z-10 cursor-grab opacity-70 sm:opacity-0 focus:opacity-100 rounded-md bg-white/80 px-1.5 py-0.5 text-xs text-gray-400 shadow-sm ring-1 ring-gray-200 sm:group-hover/widget:opacity-100 hover:text-gray-700 dark:bg-gray-900/80 dark:ring-gray-700" title="{{ __('Drag to move the card') }}" aria-label="{{ __('Drag to move the card') }}">⋮⋮</button>
+                            <button type="button" class="widget-handle absolute right-2 top-2 z-10 cursor-grab opacity-70 sm:opacity-0 focus:opacity-100 rounded-md bg-white/80 px-1.5 py-0.5 text-xs text-gray-400 shadow-xs ring-1 ring-gray-200 sm:group-hover/widget:opacity-100 hover:text-gray-700 dark:bg-gray-900/80 dark:ring-gray-700" title="{{ __('Drag to move the card') }}" aria-label="{{ __('Drag to move the card') }}">⋮⋮</button>
                         @if (! $widgetsLoaded && in_array($widget, $this::LAZY_WIDGETS, true))
-                            <section class="animate-pulse rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800" aria-busy="true" aria-label="{{ $allWidgets[$widget]['label'] ?? __('Loading …') }}">
-                                <div class="h-4 w-1/3 rounded bg-gray-200 dark:bg-gray-700"></div>
-                                <div class="mt-4 h-8 w-1/2 rounded bg-gray-100 dark:bg-gray-700/60"></div>
-                                <div class="mt-3 h-3 w-2/3 rounded bg-gray-100 dark:bg-gray-700/60"></div>
+                            <section class="animate-pulse rounded-lg bg-white p-6 shadow-xs dark:bg-gray-800" aria-busy="true" aria-label="{{ $allWidgets[$widget]['label'] ?? __('Loading …') }}">
+                                <div class="h-4 w-1/3 rounded-sm bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="mt-4 h-8 w-1/2 rounded-sm bg-gray-100 dark:bg-gray-700/60"></div>
+                                <div class="mt-3 h-3 w-2/3 rounded-sm bg-gray-100 dark:bg-gray-700/60"></div>
                             </section>
                         @else
                         @switch($widget)
                             @case('tasks')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Open tasks')" :count="$openTodoCount" :href="route('tasks.index')" />
                         @if ($overdueCount > 0)
                             <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ trans_choice(':count task is overdue|:count tasks are overdue', $overdueCount) }}</p>
@@ -330,7 +330,7 @@ new #[Layout('layouts.app')] class extends Component
                                         type="checkbox"
                                         wire:click="toggleTodo({{ $todo->id }})"
                                         aria-label="{{ __('Mark as done') }}"
-                                        class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                                        class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600 shadow-xs focus:ring-indigo-500"
                                     />
                                     <a href="{{ route('tasks.index', ['task' => $todo->id]) }}" data-open-task="{{ $todo->id }}" class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100 hover:underline">{{ $todo->title }}</a>
                                     @if ($todo->isPrivate())
@@ -338,7 +338,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @endif
                                     @if ($dueProperty && ($due = $todo->propertyValue($dueProperty)))
                                         <span @class([
-                                            'shrink-0 rounded px-1.5 py-0.5 text-xs',
+                                            'shrink-0 rounded-sm px-1.5 py-0.5 text-xs',
                                             'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' => $due < now()->toDateString(),
                                             'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' => $due === now()->toDateString(),
                                             'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' => $due > now()->toDateString(),
@@ -354,7 +354,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('shopping')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Shopping List')" :count="$openShoppingCount" :href="route('shopping-list.index')" />
                         <ul class="mt-3 space-y-1">
                             @forelse ($openShopping as $entry)
@@ -371,7 +371,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('pages')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Recent pages')" :href="route('pages.index')" />
                         <ul class="mt-3 space-y-2">
                             @forelse ($recentNotes as $note)
@@ -390,7 +390,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('meals')
-                        <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                        <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                             <x-dashboard-card-header :title="__('Today on the meal plan')" :href="route('recipes.plan')" />
                             <ul class="mt-3 space-y-2">
                                 @forelse ($todaysMeals as $meal)
@@ -412,7 +412,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                                 @break
                             @case('inbox')
-                        <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                        <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                             <x-dashboard-card-header :title="__('Inbox')" :count="$inboxCount" :href="route('inbox.index')" />
                             <ul class="mt-3 space-y-1">
                                 @forelse ($inboxEntries as $entry)
@@ -426,7 +426,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                                 @break
                             @case('weather')
-                        <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                        <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                             <x-dashboard-card-header :title="__('Weather today')" />
                             @if ($weather)
                                 <div class="mt-3 flex items-center gap-4">
@@ -448,7 +448,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                                 @break
                             @case('deadlines')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Deadlines (next 30 days)')" :count="count($deadlines) ?: null" />
                         <ul class="mt-3 space-y-2">
                             @forelse ($deadlines as $row)
@@ -459,7 +459,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $row['property']->name }}</span>
                                     </a>
                                     <span @class([
-                                        'shrink-0 rounded px-1.5 py-0.5 text-xs text-end',
+                                        'shrink-0 rounded-sm px-1.5 py-0.5 text-xs text-end',
                                         'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' => $row['days'] < 0,
                                         'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' => $row['days'] >= 0 && $row['days'] <= 7,
                                         'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' => $row['days'] > 7,
@@ -472,7 +472,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('portfolio')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Portfolio')" :href="route('portfolio.index')" />
                         @php($tone = fn (?float $value) => $value > 0 ? 'text-emerald-700 dark:text-emerald-400' : ($value < 0 ? 'text-orange-700 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'))
                         @if ($portfolio === null)
@@ -509,7 +509,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('real_estate')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Real estate')" :href="route('real-estate.index')" />
                         @forelse ($realEstates as $row)
                             <a href="{{ route('real-estate.show', $row['model']) }}" wire:navigate wire:key="dashboard-real-estate-{{ $row['model']->id }}" class="mt-3 block rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700/40">
@@ -535,7 +535,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('tax')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Tax :year', ['year' => now()->year])" :href="route('finance.index', ['tab' => 'tax'])" />
                         @if ($taxYear)
                             <p @class(['mt-2 text-3xl font-semibold', 'text-green-700 dark:text-green-400' => $taxYear['effect'] >= 0, 'text-red-700 dark:text-red-400' => $taxYear['effect'] < 0])>≈ {{ number_format(abs($taxYear['effect']), 0, ',', '.') }} €</p>
@@ -545,7 +545,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('costs')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Fixed costs per month')" />
                         @if ($monthlyCosts['collections'] === [])
                             <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Add contracts with a monthly cost to see your fixed costs here.') }}</p>
@@ -564,7 +564,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('life')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Life & provisions: next dates')" :href="route('emergency.index')" />
                         @if ($lifeDates === [])
                             <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No dates in the next 60 days – documents, vehicles and maintenance are all fine.') }}</p>
@@ -581,7 +581,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                                 @break
                             @case('freedom')
-                    <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                         <x-dashboard-card-header :title="__('Financial freedom')" :href="route('cashflow.index')" />
                         @if ($freedom && $freedom['has_data'])
                             @php($freedomPercent = (int) round(min(1, $freedom['freedom']) * 100))

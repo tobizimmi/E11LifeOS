@@ -232,7 +232,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $kindLabels = ['allowance' => '💰 '.__('Pocket money'), 'chore' => '⭐ '.__('Chore'), 'bonus' => '🎁 '.__('Bonus'), 'gift' => '🎀 '.__('Gift'), 'spend' => '🛍️ '.__('Spent')];
 @endphp
@@ -252,7 +252,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
 
             @if ($pending->isNotEmpty())
-                <section class="rounded-2xl bg-amber-50 p-5 shadow-sm ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800">
+                <section class="rounded-2xl bg-amber-50 p-5 shadow-xs ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800">
                     <h3 class="font-semibold text-amber-900 dark:text-amber-200">🔔 {{ __('Please confirm') }}</h3>
                     <ul class="mt-2 divide-y divide-amber-200/60 dark:divide-amber-800/60">
                         @foreach ($pending as $completion)
@@ -267,7 +267,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($kids->isEmpty())
-                <section class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🧒</p>
                     <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No children added yet.') }}</p>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-gray-500 dark:text-gray-400">{{ __('Children do not need their own login: they tick off their chores on your phone or tablet, you confirm, and the reward lands on their pocket money account – together with the weekly pocket money and a savings goal.') }}</p>
@@ -277,7 +277,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid gap-5 md:grid-cols-2">
                 @foreach ($kids as $row)
                     @php($child = $row['kid'])
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" wire:key="kid-{{ $child->id }}">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" wire:key="kid-{{ $child->id }}">
                         <div class="flex items-start gap-3">
                             <span class="text-4xl" aria-hidden="true">{{ $child->emoji }}</span>
                             <div class="min-w-0 flex-1">
@@ -333,7 +333,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ $booking->label }} <span class="text-xs text-gray-500 dark:text-gray-400">{{ $kindLabels[$booking->kind] ?? '' }}</span></span>
                                         <span @class(['tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $booking->amount > 0, 'text-gray-900 dark:text-gray-100' => $booking->amount <= 0])>{{ $booking->amount > 0 ? '+' : '' }}{{ $euro($booking->amount) }}</span>
                                         @if (! $booking->kid_chore_completion_id)
-                                            <button type="button" wire:click="deleteTransaction({{ $booking->id }})" wire:confirm="{{ __('Delete this booking?') }}" class="rounded p-1 text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
+                                            <button type="button" wire:click="deleteTransaction({{ $booking->id }})" wire:confirm="{{ __('Delete this booking?') }}" class="rounded-sm p-1 text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}">✕</button>
                                         @endif
                                     </li>
                                 @empty
@@ -345,7 +345,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endforeach
             </div>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">📋 {{ __('Chores') }}</h3>
                 @if ($chores->isEmpty())
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Add chores like “Tidy your room”, “Empty the dishwasher” or “Take out the rubbish” – with a small reward.') }}</p>
@@ -383,7 +383,7 @@ new #[Layout('layouts.app')] class extends Component
                 </label>
                 <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Savings goal') }}<input type="text" wire:model="kid.goal_title" class="{{ $input }}" placeholder="{{ __('e.g. Lego set') }}"></label>
                 <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Goal amount (€)') }}<input type="text" inputmode="decimal" wire:model="kid.goal_amount" class="{{ $input }}"><x-input-error :messages="$errors->get('kid.goal_amount')" /></label>
-                <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-4 dark:text-gray-300"><input type="checkbox" wire:model="kid.auto_approve" class="rounded border-gray-300 text-indigo-600"> {{ __('Credit done chores without confirmation') }}</label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-4 dark:text-gray-300"><input type="checkbox" wire:model="kid.auto_approve" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Credit done chores without confirmation') }}</label>
             </form>
             <x-slot name="footer">
                 <div class="flex items-center gap-2">
@@ -417,7 +417,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </select>
                 </label>
-                <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-4 dark:text-gray-300"><input type="checkbox" wire:model="chore.active" class="rounded border-gray-300 text-indigo-600"> {{ __('Active') }}</label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-4 dark:text-gray-300"><input type="checkbox" wire:model="chore.active" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Active') }}</label>
             </form>
             <x-slot name="footer">
                 <div class="flex items-center gap-2">

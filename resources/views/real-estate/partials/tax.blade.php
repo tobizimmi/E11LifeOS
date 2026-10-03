@@ -18,7 +18,7 @@
 
     <div class="grid gap-5 lg:grid-cols-2">
         @if ($tax['rental'])
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="rental-tax-heading">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="rental-tax-heading">
                 <h3 id="rental-tax-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Letting (Anlage V)') }}</h3>
                 <dl class="mt-3 space-y-1 text-sm">
                     <div class="flex justify-between"><dt class="text-gray-600 dark:text-gray-300">{{ __('Rent income') }}</dt><dd>{{ $euro($tax['rental']['rent'], 2) }}</dd></div>
@@ -35,7 +35,7 @@
         @endif
 
         @if ($tax['owner'])
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="owner-tax-heading">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="owner-tax-heading">
                 <h3 id="owner-tax-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Living in it (tax reductions)') }}</h3>
                 <dl class="mt-3 space-y-1 text-sm">
                     <div class="flex justify-between"><dt class="text-gray-600 dark:text-gray-300">{{ __('Labour costs of craftsmen paid') }}</dt><dd>{{ $euro($tax['owner']['labor'], 2) }}</dd></div>

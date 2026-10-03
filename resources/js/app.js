@@ -1268,6 +1268,41 @@ const markScrollableTabs = () => {
 document.addEventListener('livewire:navigated', markScrollableTabs);
 window.addEventListener('resize', markScrollableTabs, { passive: true });
 
+// Back links keep the place in a list: a link to the page just left goes back in the history, so
+// the list comes back as it was (scroll position, loaded entries) instead of starting at the top.
+(() => {
+    let stack = [location.href];
+    let popped = false;
+
+    window.addEventListener('popstate', () => { popped = true; });
+    document.addEventListener('livewire:navigated', () => {
+        if (location.href === stack[stack.length - 1]) {
+            popped = false;
+
+            return;
+        }
+
+        if (popped) {
+            stack = stack[stack.length - 2] === location.href ? stack.slice(0, -1) : [location.href];
+        } else {
+            stack.push(location.href);
+        }
+
+        popped = false;
+    });
+    document.addEventListener('livewire:navigate', (event) => {
+        const target = event.detail?.url;
+        const previous = stack.length > 1 ? new URL(stack[stack.length - 2]) : null;
+        // A plain list link ("← All recipes") also returns to the list as it was filtered.
+        const isPrevious = previous && target && (target.href === previous.href || (target.search === '' && target.origin + target.pathname === previous.origin + previous.pathname));
+
+        if (!event.detail?.history && isPrevious) {
+            event.preventDefault();
+            history.back();
+        }
+    });
+})();
+
 // A page without a header must not keep the previous page's small title.
 document.addEventListener('livewire:navigating', () => {
     const chrome = window.Alpine?.store('chrome');

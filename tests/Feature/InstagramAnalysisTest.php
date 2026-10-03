@@ -79,7 +79,7 @@ class InstagramAnalysisTest extends TestCase
         Volt::test('portfolio.instagram')
             ->assertSee('Kaufidee Infineon.')->assertSee('im Kaufbereich')->assertSee('Ausblick auf den Markt.')
             ->set('ideasOnly', true)->assertDontSee('Ausblick auf den Markt.')
-            ->call('watch', $post->id)
+            ->call('addToWatchlist', $post->id)
             ->call('alerts', $post->id)
             ->call('togglePush');
 

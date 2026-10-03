@@ -80,6 +80,24 @@ class VpnTest extends TestCase
         fclose($taken);
     }
 
+    public function test_a_fritzbox_search_domain_is_removed_and_a_silent_crash_names_exit_code_and_config_check(): void
+    {
+        $this->assertStringContainsString("DNS = 192.168.178.1, fd00::1\n", Vpn::withoutDnsDomains("[Interface]\nDNS = 192.168.178.1, fritz.box, fd00::1\n"));
+        $this->assertStringNotContainsString('DNS', Vpn::withoutDnsDomains("[Interface]\nDNS = fritz.box\n"));
+
+        $script = storage_path('framework/testing/crashing-wireproxy');
+        @mkdir(dirname($script), 0777, true);
+        // Stands in for a wireproxy that exits without output; its config check ("-n") explains why.
+        file_put_contents($script, "#!/usr/bin/env php\n<?php if (in_array('-n', \$argv, true)) { fwrite(STDERR, 'invalid Endpoint'); exit(1); } exit(3);\n");
+        chmod($script, 0755);
+        config(['vpn.enabled' => true, 'vpn.wireguard_config' => self::CONFIG, 'vpn.socks_port' => 25998, 'vpn.binary' => $script, 'vpn.info_port' => 1]);
+
+        $this->artisan('vpn:run', ['--once' => true])->assertSuccessful();
+
+        $this->assertSame('error', Vpn::status()['state']);
+        $this->assertSame('wireproxy hat sich sofort beendet (Exit-Code 3). invalid Endpoint', Vpn::status()['message']);
+    }
+
     public function test_the_vpn_is_set_up_on_the_admin_page_and_the_runner_reports_its_state(): void
     {
         $admin = User::factory()->create();

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.28.1] – 2026-10-03
+
+### Behoben
+- VPN (WireGuard): eine FRITZ!Box-Konfiguration mit Suchdomain bei „DNS“ (z. B. „192.168.178.1, fritz.box“) bringt wireproxy nicht mehr sofort zum Abbruch; die Verbindung bekommt beim Start bis zu 10 Sekunden Zeit, und statt „wireproxy hat sich sofort beendet“ steht der Grund da (Exit-Code und Ergebnis der Konfigurationsprüfung).
+
 ## [1.28.0] – 2026-10-03
 
 ### Neu

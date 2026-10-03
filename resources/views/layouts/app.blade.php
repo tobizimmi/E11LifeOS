@@ -143,8 +143,8 @@
             </div>
         </div>
         @auth
-            @if (config('security.idle_minutes') > 0)
-                {{-- Signs this browser out after the idle time (security.idle_minutes); the timer lives in app.js. --}}
+            @if (\App\Http\Controllers\IdleLogoutController::appliesTo(request()))
+                {{-- Signs this browser out after the idle time (security.idle_minutes), unless signed in with "remember me"; the timer lives in app.js. --}}
                 <form id="idle-logout" method="POST" action="{{ route('logout.idle') }}" class="hidden" data-idle-minutes="{{ (int) config('security.idle_minutes') }}" data-navigate-once>@csrf</form>
             @endif
         @endauth

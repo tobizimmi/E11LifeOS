@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\PushSubscription;
 use App\Models\User;
+use App\Support\WebPush;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -22,8 +23,8 @@ class PushSubscriptionFactory extends Factory
         return [
             'user_id' => User::factory(),
             'endpoint' => 'https://push.example.com/send/'.Str::random(40),
-            'public_key' => Str::random(87),
-            'auth_token' => Str::random(22),
+            'public_key' => WebPush::generateKeys()['publicKey'],
+            'auth_token' => WebPush::base64Url(random_bytes(16)),
         ];
     }
 }

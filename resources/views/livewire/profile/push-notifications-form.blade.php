@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\PushSubscription;
+use App\Support\Pushover;
 use App\Support\WebPush;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
@@ -15,12 +17,16 @@ new class extends Component
 
     public bool $bundle = true;
 
+    /** Every notification additionally via Pushover. */
+    public bool $pushoverAll = false;
+
     public function mount(): void
     {
         $user = Auth::user();
         $this->quietFrom = $user->push_quiet_from === null ? '' : (string) $user->push_quiet_from;
         $this->quietUntil = $user->push_quiet_until === null ? '' : (string) $user->push_quiet_until;
         $this->bundle = (bool) $user->push_bundle;
+        $this->pushoverAll = (bool) $user->pushover_all;
     }
 
     /**
@@ -44,9 +50,34 @@ new class extends Component
         $this->status = __('Saved.');
     }
 
+    public function savePushover(): void
+    {
+        $this->validate(['pushoverAll' => ['boolean']]);
+
+        if ($this->pushoverAll && ! Pushover::isConfigured(Auth::user())) {
+            $this->pushoverAll = false;
+            $this->addError('pushoverAll', __('Save a Pushover user key in the portfolio settings first.'));
+
+            return;
+        }
+
+        Auth::user()->forceFill(['pushover_all' => $this->pushoverAll])->save();
+        $this->status = __('Saved.');
+    }
+
+    /**
+     * Removes a device from the push list (e.g. an old phone).
+     */
+    public function removeDevice(int $subscriptionId): void
+    {
+        Auth::user()->pushSubscriptions()->whereKey($subscriptionId)->delete();
+        $this->status = __('Device removed.');
+    }
+
     public function sendTest(WebPush $webPush): void
     {
-        $reached = $webPush->send(Auth::user(), __('Test notification'), __('Push notifications work on this device.'), route('profile'));
+        // Urgent: comes through the quiet hours and with high priority, like the reminders.
+        $reached = $webPush->send(Auth::user(), __('Test notification'), __('Push notifications work on this device.'), route('profile'), urgent: true, pushover: false);
 
         $this->status = $reached > 0
             ? trans_choice('Sent to :count device.|Sent to :count devices.', $reached)
@@ -58,7 +89,8 @@ new class extends Component
         return [
             'configured' => WebPush::isConfigured(),
             'publicKey' => WebPush::publicKey(),
-            'deviceCount' => Auth::user()->pushSubscriptions()->count(),
+            'devices' => Auth::user()->pushSubscriptions()->latest('updated_at')->get(),
+            'pushoverReady' => Pushover::isConfigured(Auth::user()),
         ];
     }
 }; ?>
@@ -95,11 +127,53 @@ new class extends Component
             </div>
 
             <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                <span>{{ trans_choice(':count device receives notifications.|:count devices receive notifications.', $deviceCount) }}</span>
-                @if ($deviceCount > 0)
+                <span>{{ trans_choice(':count device receives notifications.|:count devices receive notifications.', $devices->count()) }}</span>
+                @if ($devices->isNotEmpty())
                     <button type="button" wire:click="sendTest" class="underline hover:text-gray-900 dark:hover:text-gray-200">{{ __('Send test notification') }}</button>
                 @endif
             </div>
+            @if ($devices->isNotEmpty())
+                {{-- Diagnosis: which push service each device uses and when a push last arrived there. --}}
+                <ul class="divide-y divide-gray-100 rounded-md border border-gray-100 text-sm dark:divide-gray-700 dark:border-gray-700">
+                    @foreach ($devices as $device)
+                        <li class="flex items-start justify-between gap-3 p-2.5" wire:key="push-device-{{ $device->id }}">
+                            <div class="min-w-0">
+                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $device->deviceName() }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ __('via :service', ['service' => $device->service()]) }}
+                                    · {{ $device->canEncrypt() ? '🔒 '.__('text encrypted in the push') : __('text is fetched from the app') }}
+                                </p>
+                                <p class="text-xs {{ $device->last_error ? 'text-red-700 dark:text-red-300' : 'text-gray-500 dark:text-gray-400' }}">
+                                    @if ($device->last_success_at)
+                                        ✓ {{ __('Last delivered :time', ['time' => $device->last_success_at->diffForHumans()]) }}
+                                    @else
+                                        {{ __('Nothing delivered yet') }}
+                                    @endif
+                                    @if ($device->last_error)
+                                        · {{ __('Last error: :error', ['error' => $device->last_error]) }}
+                                    @endif
+                                </p>
+                            </div>
+                            <button type="button" wire:click="removeDevice({{ $device->id }})" wire:confirm="{{ __('Remove this device?') }}" class="shrink-0 text-xs text-red-600 underline dark:text-red-400">{{ __('Remove') }}</button>
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Devices the push service no longer knows are removed automatically. If a device is missing, turn notifications on there again.') }}</p>
+            @endif
+            <form wire:submit="savePushover" class="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">📲 {{ __('Pushover as second channel') }}</p>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="pushoverAll" class="rounded-sm border-gray-300 text-indigo-600" @disabled(! $pushoverReady && ! $pushoverAll)> {{ __('Send all notifications additionally via Pushover') }}</label>
+                <x-input-error :messages="$errors->get('pushoverAll')" />
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    @if ($pushoverReady)
+                        {{ __('Uses the Pushover key from the portfolio settings. Reminders come with high priority; during the quiet hours only urgent ones.') }}
+                    @else
+                        {{ __('Save a Pushover user key in the portfolio settings first.') }}
+                        <a href="{{ route('portfolio.settings') }}" wire:navigate class="underline">{{ __('Portfolio settings') }}</a>
+                    @endif
+                </p>
+                <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
+            </form>
             <form wire:submit="saveQuietHours" class="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100">🌙 {{ __('Quiet hours') }}</p>
                 <div class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">

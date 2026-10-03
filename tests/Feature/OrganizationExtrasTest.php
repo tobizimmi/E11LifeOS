@@ -7,7 +7,6 @@ use App\Models\Item;
 use App\Models\PageRevision;
 use App\Models\PaperlessInstance;
 use App\Models\PushMessage;
-use App\Models\PushSubscription;
 use App\Models\Trip;
 use App\Support\WebPush;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,11 +14,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
+use Tests\Concerns\DecryptsWebPush;
 use Tests\TestCase;
 
 class OrganizationExtrasTest extends TestCase
 {
-    use CreatesHouseholdMembers, RefreshDatabase;
+    use CreatesHouseholdMembers, DecryptsWebPush, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -92,7 +92,7 @@ class OrganizationExtrasTest extends TestCase
         Http::fake(['push.test/*' => Http::response('', 201)]);
         [$user] = $this->memberWithHousehold();
         $user->forceFill(['push_quiet_from' => 22, 'push_quiet_until' => 7])->save();
-        PushSubscription::factory()->for($user)->create(['endpoint' => 'https://push.test/device']);
+        [, $keys] = $this->deviceWithKeys($user, 'https://push.test/device');
         $push = app(WebPush::class);
 
         $this->travelTo(Carbon::parse('2026-09-28 23:30'));
@@ -107,9 +107,11 @@ class OrganizationExtrasTest extends TestCase
         $this->assertSame(1, $push->releaseQuiet());
         $this->assertSame(0, $push->releaseQuiet());
 
-        $messages = $this->actingAs($user)->getJson(route('push.pending'))->json('messages');
+        // The three waiting ones come as one summary in the push itself (the urgent one already arrived).
+        $messages = json_decode($this->decryptPush(Http::recorded()[1][0]->body(), $keys), true)['messages'];
         $this->assertCount(1, $messages);
-        $this->assertSame('4 neue Benachrichtigungen', $messages[0]['title']);
+        $this->assertSame('3 neue Benachrichtigungen', $messages[0]['title']);
         $this->assertSame(0, PushMessage::whereNull('delivered_at')->count());
+        $this->actingAs($user)->getJson(route('push.pending'))->assertJsonCount(0, 'messages');
     }
 }

@@ -3,6 +3,18 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.28.0] – 2026-10-03
+
+### Neu
+- Push-Benachrichtigungen bringen ihren Text jetzt verschlüsselt mit (Web-Push-Standard RFC 8291) – sie erscheinen auf dem iPhone auch dann vollständig, wenn die App gerade nicht angemeldet ist.
+- Erinnerungen (Aufgaben mit Uhrzeit, Medikamente, Gewohnheiten) gehen mit hoher Priorität raus und werden sofort angezeigt.
+- Profil › Push: Diagnose je Gerät – über welchen Dienst (z. B. Apple) es läuft, ob der Text verschlüsselt mitkommt, wann zuletzt zugestellt wurde und der letzte Fehler; Geräte lassen sich entfernen. Abgelaufene Anmeldungen werden automatisch gelöscht.
+- Optional: alle Benachrichtigungen zusätzlich über Pushover (Schlüssel aus den Portfolio-Einstellungen), dringende mit hoher Priorität.
+
+### Behoben
+- „Angemeldet bleiben“ funktioniert wieder: Geräte, die mit „Angemeldet bleiben“ angemeldet sind, werden nicht mehr nach 30 Minuten Inaktivität abgemeldet.
+- Nach dem Abmelden (und nach dem Löschen des Kontos) landest du wieder auf der Anmeldeseite von E11LifeOS statt auf der Plesk-Seite von zimmimail.de.
+
 ## [1.27.0] – 2026-10-03
 
 ### Neu

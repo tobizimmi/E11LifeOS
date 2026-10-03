@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelPasskeys\Models\Concerns\HasPasskeys;
 use Spatie\LaravelPasskeys\Models\Concerns\InteractsWithPasskeys;
 
-#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'cashflow_categories', 'career_profile', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options', 'push_quiet_from', 'push_quiet_until', 'push_bundle'])]
+#[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'cashflow_categories', 'career_profile', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options', 'push_quiet_from', 'push_quiet_until', 'push_bundle', 'pushover_all'])]
 #[Hidden(['calendar_token_encrypted', 'password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements HasPasskeys
 {
@@ -95,6 +95,7 @@ class User extends Authenticatable implements HasPasskeys
             'push_quiet_from' => 'integer',
             'push_quiet_until' => 'integer',
             'push_bundle' => 'boolean',
+            'pushover_all' => 'boolean',
             'dashboard_widgets' => 'array',
             'insurance_answers' => 'array',
             'dismissed_subscriptions' => 'array',
@@ -133,6 +134,9 @@ class User extends Authenticatable implements HasPasskeys
         return $this->hasMany(HouseholdMember::class);
     }
 
+    /**
+     * @return HasMany<PushSubscription, $this>
+     */
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);

@@ -69,28 +69,40 @@ self.addEventListener('fetch', (event) => {
     }
 });
 
-// Push notifications carry no payload: fetch the texts from the app and show them.
-// Every push must show a notification (Safari revokes the permission otherwise).
+// Pushes carry the text encrypted (RFC 8291; the browser decrypts it), so it is shown even
+// without a signed-in session. Empty pushes (older subscriptions, very long texts): fetch the
+// texts from the app. Every push must show a notification (Safari revokes the permission otherwise).
 self.addEventListener('push', (event) => {
     const scope = self.registration.scope;
+    let payload = null;
 
-    event.waitUntil(
-        fetch(scope + 'push/pending', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    try {
+        payload = event.data ? event.data.json() : null;
+    } catch (e) {
+        payload = null;
+    }
+
+    const messages = Array.isArray(payload?.messages) && payload.messages.length > 0
+        ? Promise.resolve(payload.messages)
+        : fetch(scope + 'push/pending', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then((response) => (response.ok ? response.json() : { messages: [] }))
             .catch(() => ({ messages: [] }))
-            .then(({ messages }) => {
-                if (!messages || messages.length === 0) {
-                    messages = [{ title: 'E11LifeOS', body: '', url: scope, tag: 'e11-generic' }];
-                }
+            .then((data) => data.messages || []);
 
-                return Promise.all(messages.map((message) => self.registration.showNotification(message.title, {
-                    body: message.body,
-                    tag: message.tag,
-                    icon: scope + 'icons/icon-192.png',
-                    badge: scope + 'icons/icon-192.png',
-                    data: { url: message.url },
-                })));
-            }),
+    event.waitUntil(
+        messages.then((list) => {
+            if (list.length === 0) {
+                list = [{ title: 'E11LifeOS', body: '', url: scope, tag: 'e11-generic' }];
+            }
+
+            return Promise.all(list.map((message) => self.registration.showNotification(message.title, {
+                body: message.body,
+                tag: message.tag,
+                icon: scope + 'icons/icon-192.png',
+                badge: scope + 'icons/icon-192.png',
+                data: { url: message.url },
+            })));
+        }),
     );
 });
 

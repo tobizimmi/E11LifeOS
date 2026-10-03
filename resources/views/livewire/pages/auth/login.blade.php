@@ -58,6 +58,7 @@ new #[Layout('layouts.guest')] class extends Component
                 <input wire:model="form.remember" id="remember" type="checkbox" class="rounded-sm dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-xs focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
                 <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
             </label>
+            <p class="mt-1 ms-6 text-xs text-gray-500 dark:text-gray-400">{{ __('Stays signed in on this device, also without activity – only on your own devices.') }}</p>
         </div>
 
         <div class="flex items-center justify-end mt-4">

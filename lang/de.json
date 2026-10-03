@@ -5713,5 +5713,21 @@
     "Mood noted": "Stimmung notiert",
     "How is your day? Write in your journal": "Wie ist dein Tag? Schreib in dein Tagebuch",
     "Habits & mood": "Gewohnheiten & Stimmung",
-    "Routines & journal": "Routinen & Tagebuch"
+    "Routines & journal": "Routinen & Tagebuch",
+    "Stays signed in on this device, also without activity – only on your own devices.": "Bleibt auf diesem Gerät angemeldet – auch ohne Aktivität. Nur auf eigenen Geräten verwenden.",
+    "Device": "Gerät",
+    "Save a Pushover user key in the portfolio settings first.": "Hinterlege zuerst einen Pushover-Benutzerschlüssel in den Portfolio-Einstellungen.",
+    "Device removed.": "Gerät entfernt.",
+    "via :service": "über :service",
+    "text encrypted in the push": "Text verschlüsselt im Push",
+    "text is fetched from the app": "Text wird aus der App geladen",
+    "Last delivered :time": "Zuletzt zugestellt :time",
+    "Nothing delivered yet": "Noch nichts zugestellt",
+    "Last error: :error": "Letzter Fehler: :error",
+    "Remove this device?": "Dieses Gerät entfernen?",
+    "Devices the push service no longer knows are removed automatically. If a device is missing, turn notifications on there again.": "Geräte, die der Push-Dienst nicht mehr kennt, werden automatisch entfernt. Fehlt ein Gerät, schalte die Mitteilungen dort wieder ein.",
+    "Pushover as second channel": "Pushover als zweiter Kanal",
+    "Send all notifications additionally via Pushover": "Alle Benachrichtigungen zusätzlich über Pushover senden",
+    "Uses the Pushover key from the portfolio settings. Reminders come with high priority; during the quiet hours only urgent ones.": "Nutzt den Pushover-Schlüssel aus den Portfolio-Einstellungen. Erinnerungen kommen mit hoher Priorität, in den Ruhezeiten nur dringende.",
+    "Portfolio settings": "Portfolio-Einstellungen"
 }

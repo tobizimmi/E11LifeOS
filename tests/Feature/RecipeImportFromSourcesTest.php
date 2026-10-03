@@ -118,28 +118,42 @@ class RecipeImportFromSourcesTest extends TestCase
         [$user] = $this->memberWithHousehold();
         $answer = ['found' => true, 'title' => 'One-Pot-Pasta', 'description' => '', 'servings' => 2, 'prepTime' => 0, 'cookTime' => 15, 'ingredients' => [['amount' => '250', 'unit' => 'g', 'name' => 'Spaghetti', 'isSection' => false]], 'steps' => ['Alles kochen.']];
         $this->mock(RecipeAi::class, function (MockInterface $ai) use ($answer) {
+            // As in RezepteApp2: the post page read as an iPhone, the shortened caption without closing quote.
+            $ai->shouldReceive('extractFromText')->once()->with('Linsen-Dal 🍛 200 g rote Linsen, 1 Dose Kokosmilch, 1 Zwiebel …')->andReturn(['title' => 'Linsen-Dal'] + $answer);
             $ai->shouldReceive('extractFromText')->once()->with("One-Pot-Pasta 🍝\nZutaten:\n250 g Spaghetti\nAlles 15 Min. kochen.")->andReturn($answer);
-            $ai->shouldReceive('extractFromText')->once()->with('Linsen-Dal: 200 g rote Linsen, 1 Dose Kokosmilch …')->andReturn(['title' => 'Linsen-Dal'] + $answer);
+            $ai->shouldReceive('extractFromText')->once()->with('Mein kompletter Text mit 250 g Spaghetti und allen Mengen')->andReturn(['title' => 'Eingefügt'] + $answer);
         });
         Http::fake([
-            'www.instagram.com/p/DAbc123/embed/captioned/' => Http::response('<div class="Caption"><a class="CaptionUsername" href="#">koch.profi</a><br/><br/>One-Pot-Pasta 🍝<br />Zutaten:<br/>250 g Spaghetti<br>Alles 15 Min. kochen.<div class="CaptionComments">12 Kommentare</div></div><img class="EmbeddedMediaImage" src="https://scontent.cdninstagram.com/pasta.jpg?a=1&amp;b=2">'),
+            'www.instagram.com/reel/CReel99/*' => Http::response('<meta property="og:image" content="https://scontent.cdninstagram.com/dal-og.jpg"><meta name="twitter:image" content="https://scontent.cdninstagram.com/dal.jpg?x=1&amp;oh=2"><meta property="og:description" content="1.204 likes, 33 comments - veggie.koch am 2. Oktober 2026: &quot;Linsen-Dal 🍛 200 g rote Linsen, 1 Dose Kokosmilch, 1 Zwiebel …">'),
             'scontent.cdninstagram.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg']),
-            // A reel whose embed page shows no caption: the link preview data has it.
-            'www.instagram.com/p/CReel99/embed/captioned/' => Http::response('<div class="EmbedIsBroken"></div>'),
-            'www.instagram.com/p/CReel99/' => Http::response('<meta property="og:image" content="https://scontent.cdninstagram.com/dal.jpg"><meta property="og:description" content="1.204 likes, 33 comments - veggie.koch am 2. Oktober 2026: &quot;Linsen-Dal: 200 g rote Linsen, 1 Dose Kokosmilch …&quot;">'),
+            // The iPhone page gives nothing here, the embed page has the caption.
+            'www.instagram.com/p/DAbc123/embed/captioned/' => Http::response('<div class="Caption"><a class="CaptionUsername" href="#">koch.profi</a><br/><br/>One-Pot-Pasta 🍝<br />Zutaten:<br/>250 g Spaghetti<br>Alles 15 Min. kochen.<div class="CaptionComments">12 Kommentare</div></div><img class="EmbeddedMediaImage" src="https://scontent.cdninstagram.com/pasta.jpg?a=1&amp;b=2">'),
+            'www.instagram.com/p/DAbc123/*' => Http::response('<html>Login</html>'),
+            'www.instagram.com/p/OnlyPic1/*' => Http::response('<meta property="og:image" content="https://scontent.cdninstagram.com/pic.jpg"><meta property="og:description" content="5 likes">'),
             'www.instagram.com/p/Nothing1/*' => Http::response('<html>Login</html>'),
         ]);
         $this->actingAs($user);
 
-        Volt::test('recipes.import')->set('url', 'https://www.instagram.com/p/DAbc123/?igsh=abc')->call('import')->assertRedirect(route('recipes.create'));
+        Volt::test('recipes.import')->set('url', 'https://www.instagram.com/reel/CReel99/?igsh=abc')->call('import')->assertRedirect(route('recipes.create'));
         $draft = session('recipe_draft');
-        $this->assertSame(['One-Pot-Pasta', 'INSTAGRAM', 'https://www.instagram.com/p/DAbc123/?igsh=abc', 'https://scontent.cdninstagram.com/pasta.jpg?a=1&b=2'], [$draft['title'], $draft['sourceType'], $draft['sourceUrl'], $draft['imageUrl']]);
+        $this->assertSame(['Linsen-Dal', 'INSTAGRAM', 'https://scontent.cdninstagram.com/dal.jpg?x=1&oh=2'], [$draft['title'], $draft['sourceType'], $draft['imageUrl']]);
         $this->assertNotNull($draft['imagePath']);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'dal.jpg') && $request->header('Referer')[0] === 'https://www.instagram.com/');
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/reel/CReel99/') && str_contains($request->header('User-Agent')[0], 'iPhone'));
 
-        Volt::test('recipes.import')->set('url', 'https://instagram.com/reel/CReel99/')->call('import')->assertRedirect(route('recipes.create'));
-        $this->assertSame(['Linsen-Dal', 'https://scontent.cdninstagram.com/dal.jpg'], [session('recipe_draft')['title'], session('recipe_draft')['imageUrl']]);
+        Volt::test('recipes.import')->set('url', 'https://instagram.com/p/DAbc123/')->call('import')->assertRedirect(route('recipes.create'));
+        $this->assertSame(['One-Pot-Pasta', 'https://scontent.cdninstagram.com/pasta.jpg?a=1&b=2'], [session('recipe_draft')['title'], session('recipe_draft')['imageUrl']]);
 
-        // Nothing readable: a clear hint instead of a confusing AI answer about a login page.
+        // A pasted post text wins over Instagram's shortened one.
+        Volt::test('recipes.import')->set('url', 'https://www.instagram.com/reel/CReel99/')->set('caption', 'Mein kompletter Text mit 250 g Spaghetti und allen Mengen')
+            ->call('import')->assertRedirect(route('recipes.create'));
+        $this->assertSame('Eingefügt', session('recipe_draft')['title']);
+
+        // Only the photo: the form opens with it and says what is missing.
+        Volt::test('recipes.import')->set('url', 'https://www.instagram.com/p/OnlyPic1/')->call('import')->assertRedirect(route('recipes.create'));
+        Volt::test('recipes.form')->assertSet('title', 'Instagram-Rezept')->assertSee('Instagram hat nur das Foto herausgegeben');
+
+        // Nothing readable at all: a clear hint.
         Volt::test('recipes.import')->set('url', 'https://www.instagram.com/p/Nothing1/')->call('import')
             ->assertSee('Instagram gibt den Text dieses Beitrags nicht heraus')->assertNoRedirect();
     }

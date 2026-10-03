@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.28.3] – 2026-10-03
+
+### Behoben
+- Rezepte › Instagram-Import wie in der RezepteApp: der Beitrag wird wie auf dem iPhone gelesen (Beschreibung und Foto, auch gekürzte Texte), das Foto wird mit passendem Referer geladen.
+- Neues Feld „Beitragstext (optional)“ beim Link-Import: eingefügter Text hat Vorrang, damit die Mengen vollständig sind.
+- Gibt Instagram nur das Foto heraus, öffnet sich das Formular trotzdem mit dem Foto und einem Hinweis.
+
 ## [1.28.2] – 2026-10-03
 
 ### Behoben

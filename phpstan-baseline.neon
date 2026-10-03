@@ -1531,7 +1531,7 @@ parameters:
 			path: app/Support/DashboardWidgets.php
 
 		-
-			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''freedom''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
+			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''freedom''\|''habits''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Support/DashboardWidgets.php

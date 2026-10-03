@@ -5729,5 +5729,7 @@
     "Pushover as second channel": "Pushover als zweiter Kanal",
     "Send all notifications additionally via Pushover": "Alle Benachrichtigungen zusätzlich über Pushover senden",
     "Uses the Pushover key from the portfolio settings. Reminders come with high priority; during the quiet hours only urgent ones.": "Nutzt den Pushover-Schlüssel aus den Portfolio-Einstellungen. Erinnerungen kommen mit hoher Priorität, in den Ruhezeiten nur dringende.",
-    "Portfolio settings": "Portfolio-Einstellungen"
+    "Portfolio settings": "Portfolio-Einstellungen",
+    "wireproxy is running but does not listen on port :port.": "wireproxy läuft, lauscht aber nicht auf Port :port.",
+    "wireproxy stopped right away (exit code :code).": "wireproxy hat sich sofort beendet (Exit-Code :code)."
 }

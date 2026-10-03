@@ -5527,5 +5527,10 @@
     ":count place|:count places": ":count Ort|:count Orte",
     ":count visited": ":count besucht",
     "Mark :title as visited": ":title als besucht markieren",
-    "Show places nearby by type": "Orte in der Nähe nach Art anzeigen"
+    "Show places nearby by type": "Orte in der Nähe nach Art anzeigen",
+    "Purchase fees": "Kaufgebühren",
+    "Purchase fees (€)": "Kaufgebühren (€)",
+    "Further purchase fees (€)": "Weitere Kaufgebühren (€)",
+    "Order fees and commissions are added to the average purchase price.": "Ordergebühren und Provisionen werden auf den durchschnittlichen Kaufkurs umgelegt.",
+    "Cancel :contract": ":contract kündigen"
 }

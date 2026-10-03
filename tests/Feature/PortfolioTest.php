@@ -148,12 +148,14 @@ class PortfolioTest extends TestCase
             ->set('positionForm.symbol', 'sap.de')
             ->set('positionForm.quantity', '3')
             ->set('positionForm.avg_buy_price', '99,50')
+            ->set('positionForm.fees', '4,50')
             ->set('positionForm.labels', 'Core, Dividende')
             ->call('savePosition')
             ->assertHasNoErrors();
 
         $position = $etf->positions()->sole();
-        $this->assertSame(['SAP.DE', 3.0, 99.5, ['Core', 'Dividende'], true], [$position->symbol, $position->quantity, $position->avg_buy_price, $position->labels, $position->manual]);
+        // The purchase fees are added to the average purchase price (99,50 € + 4,50 € / 3 shares).
+        $this->assertSame(['SAP.DE', 3.0, 101.0, ['Core', 'Dividende'], true], [$position->symbol, $position->quantity, $position->avg_buy_price, $position->labels, $position->manual]);
 
         Volt::test('portfolio.index')->call('deletePosition', $position->id);
         $this->assertModelMissing($position);

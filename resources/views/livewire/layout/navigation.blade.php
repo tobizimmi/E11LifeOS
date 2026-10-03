@@ -285,7 +285,7 @@ new class extends Component
         <div class="border-t border-gray-100 dark:border-gray-700 p-3" x-data="{ menuOpen: false }">
             {{-- Version with a dot until the changes of a new version were looked at. --}}
             <a href="{{ route('changelog') }}" wire:navigate class="mb-1 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                x-data="{ fresh: false }" x-init="try { fresh = localStorage.getItem('e11-seen-version') !== @js(\App\Support\AppVersion::version()) } catch (e) {}" x-on:version-seen.window="fresh = false">
+                x-data="{ fresh: false }" x-init="fresh = (() => { try { return localStorage.getItem('e11-seen-version') !== @js(\App\Support\AppVersion::version()) } catch (e) { return false } })()" x-on:version-seen.window="fresh = false">
                 <span x-show="fresh" x-cloak class="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true"></span>
                 <span>{{ \App\Support\AppVersion::label() }}</span>
                 <span x-show="fresh" x-cloak class="font-medium text-indigo-600 dark:text-indigo-400">{{ __('New') }}</span>

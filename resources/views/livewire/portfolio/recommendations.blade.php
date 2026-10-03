@@ -32,7 +32,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: trans_choice(':count recommendation|:count recommendations', $count));
     }
 
-    public function watch(string $symbol): void
+    public function addToWatchlist(string $symbol): void
     {
         $recommendation = PortfolioRecommendation::where('user_id', $this->currentUser()->id)->where('symbol', $symbol)->first() ?? abort(404);
         WatchlistItem::firstOrCreate(['user_id' => $this->currentUser()->id, 'symbol' => $recommendation->symbol], ['name' => $recommendation->name]);
@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($watched->has($recommendation->symbol))
                                     <span class="rounded-lg px-2 py-1 text-xs text-gray-500">★ {{ __('On the watchlist') }}</span>
                                 @else
-                                    <button type="button" wire:click="watch('{{ $recommendation->symbol }}')" class="rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">☆ {{ __('Add to watchlist') }}</button>
+                                    <button type="button" wire:click="addToWatchlist('{{ $recommendation->symbol }}')" class="rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">☆ {{ __('Add to watchlist') }}</button>
                                     <button type="button" wire:click="createTask('{{ $recommendation->symbol }}', @js(__('Buy :name?', ['name' => $recommendation->name])))" class="rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">✅ {{ __('Task') }}</button>
                                 @endif
                                 <a href="{{ route('portfolio.transactions', ['new' => 1, 'symbol' => $recommendation->symbol]) }}" wire:navigate class="rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">＋ {{ __('Transaction') }}</a>

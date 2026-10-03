@@ -761,8 +761,8 @@ new #[Layout('layouts.app')] class extends Component
             @else
                 {{-- Overview --}}
                 <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4 space-y-3">
-                    <div class="flex gap-3">
-                        <x-text-input wire:model.live.debounce.300ms="search" class="block w-full" type="search" placeholder="{{ __('Search pages...') }}" />
+                    <div class="flex flex-wrap gap-3">
+                        <x-text-input wire:model.live.debounce.300ms="search" class="block min-w-40 flex-1" type="search" placeholder="{{ __('Search pages...') }}" />
                         <x-secondary-button type="button" wire:click="$toggle('showTemplates')" class="shrink-0" aria-expanded="{{ $showTemplates ? 'true' : 'false' }}">📑 {{ __('Templates') }}</x-secondary-button>
                         <x-primary-button type="button" wire:click="create" class="shrink-0">{{ __('New page') }}</x-primary-button>
                     </div>

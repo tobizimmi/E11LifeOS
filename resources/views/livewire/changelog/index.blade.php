@@ -24,7 +24,7 @@ new #[Layout('layouts.app')] class extends Component
     $sectionIcons = ['Neu' => '✨', 'Verbessert' => '🛠️', 'Behoben' => '🐞', 'Sicherheit' => '🔒'];
 @endphp
 
-<div x-data x-init="try { localStorage.setItem('e11-seen-version', @js($version)) } catch (e) {}; $dispatch('version-seen')">
+<div x-data x-init="(() => { try { localStorage.setItem('e11-seen-version', @js($version)) } catch (e) {} })(); $dispatch('version-seen')">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('What\'s new') }}</h2>
     </x-slot>

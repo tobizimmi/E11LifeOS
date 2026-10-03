@@ -89,7 +89,7 @@ class PortfolioMarketTest extends TestCase
         $this->assertSame(3, PortfolioRecommendation::where('user_id', $user->id)->count());
 
         PortfolioSetting::for($user)->fill(['strategy' => 'moderate'])->save();
-        Volt::test('portfolio.recommendations')->call('refresh')->assertSee('DIP.DE AG')->assertDontSee('CALM.DE AG')->call('watch', 'DIP.DE');
+        Volt::test('portfolio.recommendations')->call('refresh')->assertSee('DIP.DE AG')->assertDontSee('CALM.DE AG')->call('addToWatchlist', 'DIP.DE');
         $this->assertSame('DIP.DE', WatchlistItem::where('user_id', $user->id)->sole()->symbol);
 
         $backtest = Volt::test('portfolio.recommendations')->set('backtest.threshold', '10')->set('backtest.drop_days', '60')->set('backtest.hold_days', '10')->call('runBacktest')->get('backtestResult');

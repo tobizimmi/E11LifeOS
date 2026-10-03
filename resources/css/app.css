@@ -41,6 +41,29 @@
     [role='button']:not(:disabled) {
         cursor: pointer;
     }
+
+    /*
+     * A select is as wide as its longest option; long contract or payee names would push the
+     * page wider than the phone screen (and iOS then zooms out).
+     */
+    select {
+        max-width: 100%;
+        text-overflow: ellipsis;
+    }
+
+    input[type='file'] {
+        max-width: 100%;
+    }
+
+    /*
+     * Nothing may make the page wider than the screen – not even the enlarged touch areas of
+     * icon buttons at the edge – otherwise iOS zooms the whole page out. "clip" keeps sticky
+     * headers working (unlike "hidden").
+     */
+    html,
+    body {
+        overflow-x: clip;
+    }
 }
 
 [x-cloak] {

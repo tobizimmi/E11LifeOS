@@ -14,7 +14,7 @@
             @endphp
             <li wire:key="budget-{{ $key }}" class="py-3">
                 <div class="flex flex-wrap items-center gap-3">
-                    <span class="min-w-0 flex-1 text-sm text-gray-900 dark:text-gray-100">{{ $category['icon'] }} {{ $category['label'] }}</span>
+                    <span class="min-w-40 flex-1 text-sm text-gray-900 dark:text-gray-100">{{ $category['icon'] }} {{ $category['label'] }}</span>
                     <span class="text-sm tabular-nums text-gray-600 dark:text-gray-400">{{ $amounts }}</span>
                     <label class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                         {{ __('Limit') }}

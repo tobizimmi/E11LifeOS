@@ -3,6 +3,16 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.25.1] – 2026-10-03
+
+### Behoben
+- Portfolio: „Zur Watchlist“ funktioniert wieder bei Empfehlungen, Entdecken und Instagram.
+- Positionen: beim Anlegen lassen sich Kaufgebühren angeben – sie fließen in den durchschnittlichen Kaufkurs ein.
+- Handy: Seiten werden nicht mehr breiter als der Bildschirm (iOS zoomte z. B. bei Vertragskosten heraus) – lange Auswahlfelder und Tippflächen am Rand bleiben im Bildschirm; die Vertragstabelle zeigt Anbieter und Kündigungsdatum unter dem Namen.
+- Finanzen › Budgets: der Kategoriename bleibt lesbar, wenn ein Budget gesetzt ist.
+- Listen: „Zurück“ (z. B. „← Alle Rezepte“) führt an dieselbe Stelle der Liste zurück, mit den gewählten Filtern.
+- Hinweis „Neu“ an der Versionsnummer erscheint wieder nach einem Update.
+
 ## [1.25.0] – 2026-10-03
 
 ### Neu

@@ -108,6 +108,9 @@ new #[Layout('layouts.app')] class extends Component
                             @if ($aiAvailable)
                                 {{ __('Otherwise the AI reads the page.') }}
                             @endif
+                            @if ($aiAvailable)
+                                {{ __('Instagram posts and reels work too: the AI reads the recipe from the post text.') }}
+                            @endif
                         </p>
                     </div>
                 @elseif (! $aiAvailable)

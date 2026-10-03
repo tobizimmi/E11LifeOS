@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.28.2] – 2026-10-03
+
+### Behoben
+- Rezepte: Import per Link funktioniert wieder mit Instagram-Beiträgen und Reels – der Beitragstext wird gelesen (Einbettung, Link-Vorschau oder – falls eingerichtet – Apify) und von der KI in ein Rezept mit Foto umgewandelt. Gibt Instagram den Text nicht heraus, steht ein klarer Hinweis da.
+
 ## [1.28.1] – 2026-10-03
 
 ### Behoben

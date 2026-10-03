@@ -269,7 +269,8 @@ class PortfolioTest extends TestCase
             ->call('save')
             ->assertHasNoErrors()
             ->assertSet('form.pushover_app_token', '')
-            ->assertDontSee('secret-token');
+            ->assertDontSee('secret-token')
+            ->assertSee('Automatische Abläufe')->assertSee('Markt-Scan, Kennzahlen und Empfehlungen');
 
         $settings = PortfolioSetting::where('user_id', $user->id)->sole();
         $this->assertSame([$portfolio->id, 2000.0, 'secret-token'], [$settings->default_portfolio_id, $settings->tax_allowance, $settings->pushover_app_token]);

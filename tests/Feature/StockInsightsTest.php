@@ -6,6 +6,7 @@ use App\Models\NewsArticle;
 use App\Models\Portfolio;
 use App\Models\PortfolioTransaction;
 use App\Models\Security;
+use App\Models\WatchlistItem;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\Positions;
 use App\Support\Portfolio\StockInsights;
@@ -87,7 +88,21 @@ class StockInsightsTest extends TestCase
             ->assertSee('Kaufen')
             ->assertSee('Insider verkaufen viel')
             ->assertSee('Apple plant neues Werk in Indien')
+            ->assertSee('1 ↑ 9 ↓')
             ->set('scope', 'market')
-            ->assertSee('1 ↑ 9 ↓');
+            ->assertDontSee('1 ↑ 9 ↓');
+    }
+
+    public function test_the_market_barometer_shows_other_shares_than_the_own_ones(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $insider = fn (int $buys, int $sells) => ['insider' => ['period' => '6m', 'buys' => $buys, 'sells' => $sells, 'net_shares' => null, 'transactions' => []]];
+        Security::factory()->create(['symbol' => 'MINE', 'name' => 'Eigene AG', 'fundamentals' => $insider(5, 0)]);
+        Security::factory()->create(['symbol' => 'OTHER', 'name' => 'Fremde Corp', 'scanned_at' => now(), 'fundamentals' => $insider(4, 1)]);
+        WatchlistItem::create(['user_id' => $user->id, 'symbol' => 'MINE', 'name' => 'Eigene AG']);
+
+        Volt::test('portfolio.insights')->assertSee('Eigene AG')->assertDontSee('Fremde Corp')
+            ->set('scope', 'market')->assertSee('Fremde Corp')->assertSee('Weitere Aktien im Markt');
     }
 }

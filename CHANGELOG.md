@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.24.0] – 2026-10-02
+
+### Neu
+- Portfolio-Einstellungen: Abschnitt „Automatische Abläufe“ zeigt, wann Kurse, Kursalarme, Sparpläne, Markt-Scan mit Kennzahlen, News und Instagram automatisch laufen.
+
+### Verbessert
+- Insiderbarometer: „Weitere Aktien im Markt“ zeigt jetzt Aktien aus dem Markt-Scan, die nicht in deinem Depot oder auf der Watchlist sind – mit Knopf zum Nachladen weiterer Insidergeschäfte.
+
 ## [1.23.0] – 2026-10-02
 
 ### Neu

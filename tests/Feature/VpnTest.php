@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Vpn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
@@ -80,6 +81,24 @@ class VpnTest extends TestCase
         fclose($taken);
     }
 
+    public function test_a_fritzbox_search_domain_is_removed_and_a_silent_crash_names_exit_code_and_config_check(): void
+    {
+        $this->assertStringContainsString("DNS = 192.168.178.1, fd00::1\n", Vpn::withoutDnsDomains("[Interface]\nDNS = 192.168.178.1, fritz.box, fd00::1\n"));
+        $this->assertStringNotContainsString('DNS', Vpn::withoutDnsDomains("[Interface]\nDNS = fritz.box\n"));
+
+        $script = storage_path('framework/testing/crashing-wireproxy');
+        @mkdir(dirname($script), 0777, true);
+        // Stands in for a wireproxy that exits without output; its config check ("-n") explains why.
+        file_put_contents($script, "#!/usr/bin/env php\n<?php if (in_array('-n', \$argv, true)) { fwrite(STDERR, 'invalid Endpoint'); exit(1); } exit(3);\n");
+        chmod($script, 0755);
+        config(['vpn.enabled' => true, 'vpn.wireguard_config' => self::CONFIG, 'vpn.socks_port' => 25998, 'vpn.binary' => $script, 'vpn.info_port' => 1]);
+
+        $this->artisan('vpn:run', ['--once' => true])->assertSuccessful();
+
+        $this->assertSame('error', Vpn::status()['state']);
+        $this->assertSame('wireproxy hat sich sofort beendet (Exit-Code 3). invalid Endpoint', Vpn::status()['message']);
+    }
+
     public function test_the_vpn_is_set_up_on_the_admin_page_and_the_runner_reports_its_state(): void
     {
         $admin = User::factory()->create();
@@ -120,6 +139,12 @@ class VpnTest extends TestCase
                 : $timeout($request);
         });
 
+        // Nothing listens on the SOCKS port yet: the runner's status explains it.
+        Cache::put(Vpn::STATUS_KEY, ['state' => 'error', 'message' => 'invalid Endpoint', 'port' => 25111, 'at' => now()->toIso8601String()]);
+        $this->assertSame('wireproxy läuft nicht auf Port 25111: invalid Endpoint', Vpn::test('http://192.168.10.210:2212')['message']);
+        Cache::forget(Vpn::STATUS_KEY);
+        $socks = stream_socket_server('tcp://127.0.0.1:25111');
+
         $result = Vpn::test('http://192.168.10.210:2212');
 
         $this->assertFalse($result['ok']);
@@ -136,5 +161,6 @@ class VpnTest extends TestCase
         $hints = Vpn::test('http://192.168.10.210:2212')['hints'];
         $this->assertCount(1, $hints);
         $this->assertStringContainsString('Der Tunnel steht', $hints[0]);
+        fclose($socks);
     }
 }

@@ -113,10 +113,38 @@ class RunVpn extends Command
             $this->info('wireproxy started on port '.$this->port);
             $this->report('running', $this->notice);
         } else {
-            $output = trim($this->process->getErrorOutput().' '.$this->process->getOutput()) ?: $error;
+            $this->report('error', mb_substr($this->startFailure($binary, $files['wireproxy']) ?: $error, 0, 300));
             $this->stop();
-            $this->report('error', mb_substr($output ?: __('wireproxy stopped right away.'), 0, 300));
         }
+    }
+
+    /**
+     * Why wireproxy did not come up: its own output, else its exit code and the result of its
+     * configuration check ("-n"), so the admin page names the cause.
+     */
+    private function startFailure(string $binary, string $configFile): string
+    {
+        $output = trim($this->process->getErrorOutput().' '.$this->process->getOutput());
+
+        if ($output !== '') {
+            return $output;
+        }
+
+        if ($this->process->isRunning()) {
+            return __('wireproxy is running but does not listen on port :port.', ['port' => $this->port]);
+        }
+
+        $check = new Process([$binary, '-c', $configFile, '-n']);
+        $check->setTimeout(10);
+
+        try {
+            $check->run();
+            $checkOutput = trim($check->getErrorOutput().' '.$check->getOutput());
+        } catch (\Throwable) {
+            $checkOutput = '';
+        }
+
+        return trim(__('wireproxy stopped right away (exit code :code).', ['code' => $this->process->getExitCode() ?? '?']).' '.$checkOutput);
     }
 
     /**
@@ -178,7 +206,11 @@ class RunVpn extends Command
         $this->process = new Process($command);
         $this->process->setTimeout(null);
         $this->process->start();
-        usleep(2_000_000);
+
+        // Give it up to 10 seconds to open its SOCKS port (resolving a DynDNS endpoint can take a moment).
+        for ($waited = 0; $waited < 40 && $this->process->isRunning() && ! ($this->port && Vpn::portInUse($this->port)); $waited++) {
+            usleep(250_000);
+        }
     }
 
     private function stop(): void

@@ -16,11 +16,14 @@ use App\Models\Customer;
 use App\Models\EmergencyEntry;
 use App\Models\ExternalLink;
 use App\Models\FinanceRule;
+use App\Models\Habit;
+use App\Models\HabitLog;
 use App\Models\HealthProfile;
 use App\Models\HomeTask;
 use App\Models\Household;
 use App\Models\Invoice;
 use App\Models\Item;
+use App\Models\JournalEntry;
 use App\Models\Kid;
 use App\Models\KnowledgeFavorite;
 use App\Models\MealPlan;
@@ -171,6 +174,10 @@ class DataExportController extends Controller
                     'chosen' => $comparison->chosenQuote?->vendor,
                 ]),
             ],
+            'habits' => Habit::where('user_id', $user->id)->with('logs')->orderBy('position')->get()->map(fn (Habit $habit) => $habit->only(['name', 'icon', 'type', 'target', 'unit', 'schedule', 'days', 'per_week', 'reminder_at', 'archived_at', 'created_at']) + [
+                'log' => $habit->logs->sortBy('date')->map(fn (HabitLog $log) => ['date' => $log->date->toDateString(), 'value' => $log->value])->values()->all(),
+            ]),
+            'journal' => JournalEntry::where('user_id', $user->id)->orderBy('date')->get()->map(fn (JournalEntry $entry) => ['date' => $entry->date->toDateString()] + $entry->only(['mood', 'activities', 'grateful', 'great_day', 'highlights', 'better', 'notes']) + ['photos' => count($entry->photos ?? [])]),
             'emergency_folder' => [
                 'entries' => EmergencyEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['section', 'kind', 'title', 'details', 'location', 'expires_on', 'remind_days']),
                 'trusted_people' => TrustedPerson::where('user_id', $user->id)->orderBy('name')->get()->map->only(['name', 'email', 'wait_days', 'requested_at', 'granted_at']),

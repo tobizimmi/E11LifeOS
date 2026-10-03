@@ -164,7 +164,7 @@ class PageHierarchyTest extends TestCase
 
         $shared = Item::factory()->note()->for($household)->create(['title' => 'Haushaltsordner']);
         Item::factory()->note()->for($household)->create(['title' => 'Versicherungen', 'parent_id' => $shared->id]);
-        $ownersPrivate = Item::factory()->note()->for($household)->privateTo($owner)->create(['title' => 'Tagebuch']);
+        $ownersPrivate = Item::factory()->note()->for($household)->privateTo($owner)->create(['title' => 'Geheimes Notizbuch']);
         Item::factory()->note()->for($household)->create(['title' => 'Unter fremder privater Seite', 'parent_id' => $ownersPrivate->id]);
         Item::factory()->note()->for($household)->privateTo($partner)->create(['title' => 'Meine Ideen']);
 
@@ -174,7 +174,7 @@ class PageHierarchyTest extends TestCase
             ->assertViewHas('sharedRoots', fn (array $roots) => array_column($roots, 'title') === ['Haushaltsordner', 'Unter fremder privater Seite'])
             ->assertViewHas('privateRoots', fn (array $roots) => array_column($roots, 'title') === ['Meine Ideen'])
             ->assertSee('Versicherungen')
-            ->assertDontSee('Tagebuch');
+            ->assertDontSee('Geheimes Notizbuch');
     }
 
     public function test_the_sidebar_expands_the_path_to_the_open_page(): void

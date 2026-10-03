@@ -327,20 +327,25 @@ new #[Layout('layouts.app')] class extends Component
                             <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
                                 <tr>
                                     <th class="px-4 py-2">{{ __('Contract') }}</th>
-                                    <th class="px-4 py-2">{{ __('Provider') }}</th>
+                                    <th class="hidden px-4 py-2 sm:table-cell">{{ __('Provider') }}</th>
                                     <th class="px-4 py-2 text-right">{{ __('Per month') }}</th>
-                                    <th class="px-4 py-2">{{ __('Cancel by') }}</th>
+                                    <th class="hidden px-4 py-2 sm:table-cell">{{ __('Cancel by') }}</th>
                                     <th class="px-4 py-2"><span class="sr-only">{{ __('Actions') }}</span></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach ($overview['contracts'] as $contract)
                                     <tr wire:key="contract-{{ $contract['item']->id }}">
-                                        <td class="px-4 py-2"><a href="{{ $contract['url'] }}" wire:navigate class="font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $contract['item']->title }}</a><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $contract['collection']->name }}</span></td>
-                                        <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $contract['provider'] ?? '–' }}</td>
-                                        <td class="px-4 py-2 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($contract['monthly']) }}</td>
-                                        <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $date($contract['cancel_by']) }}</td>
-                                        <td class="whitespace-nowrap px-4 py-2 text-right"><a href="{{ route('letters.index', ['template' => 'cancellation', 'entry' => $contract['item']->id]) }}" wire:navigate class="text-indigo-600 hover:underline dark:text-indigo-400">✂️ {{ __('Cancel') }}</a></td>
+                                        <td class="px-4 py-2"><a href="{{ $contract['url'] }}" wire:navigate class="font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $contract['item']->title }}</a><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $contract['collection']->name }}</span>
+                                            {{-- Phones: provider and notice date below the name instead of extra columns. --}}
+                                            @if ($contract['provider'] || $contract['cancel_by'])
+                                                <span class="block text-xs text-gray-500 sm:hidden dark:text-gray-400">{{ collect([$contract['provider'], $contract['cancel_by'] ? __('Cancel by').' '.$date($contract['cancel_by']) : null])->filter()->implode(' · ') }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="hidden px-4 py-2 text-gray-700 sm:table-cell dark:text-gray-300">{{ $contract['provider'] ?? '–' }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($contract['monthly']) }}</td>
+                                        <td class="hidden px-4 py-2 text-gray-700 sm:table-cell dark:text-gray-300">{{ $date($contract['cancel_by']) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right"><a href="{{ route('letters.index', ['template' => 'cancellation', 'entry' => $contract['item']->id]) }}" wire:navigate class="text-indigo-600 hover:underline dark:text-indigo-400" aria-label="{{ __('Cancel :contract', ['contract' => $contract['item']->title]) }}">✂️<span class="hidden sm:inline"> {{ __('Cancel') }}</span></a></td>
                                     </tr>
                                 @endforeach
                             </tbody>

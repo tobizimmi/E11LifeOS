@@ -133,6 +133,12 @@ new #[Layout('layouts.app')] class extends Component
         $this->announceReschedule($todo);
     }
 
+    public function tapHabit(int $id): void
+    {
+        $habit = \App\Models\Habit::where('user_id', $this->currentUser()->id)->whereNull('archived_at')->find($id) ?? abort(404);
+        \App\Support\Life\HabitTracker::tap($habit, today());
+    }
+
     public function with(): array
     {
         $hour = now()->hour;
@@ -193,7 +199,27 @@ new #[Layout('layouts.app')] class extends Component
             'monthlyCosts' => $shows('costs') ? DashboardWidgets::monthlyCosts($this->currentUser(), $this->householdId) : ['total' => 0, 'collections' => []],
             'lifeDates' => $shows('life') ? array_slice(\App\Support\Life\LifeDates::between($this->currentUser(), today(), today()->addDays(60)), 0, 6) : [],
             'freedom' => $shows('freedom') ? \App\Support\Finance\CashflowStatement::for($this->currentUser()) : null,
+            'todayHabits' => in_array('habits', $widgets, true) ? $this->todayHabits() : [],
+            'todayMood' => in_array('habits', $widgets, true) ? \App\Models\JournalEntry::where('user_id', $this->currentUser()->id)->whereDate('date', today()->toDateString())->value('mood') : null,
         ];
+    }
+
+    /**
+     * The habits due today with what was done and the current streak.
+     *
+     * @return list<array{habit: \App\Models\Habit, value: int, done: bool, streak: int}>
+     */
+    private function todayHabits(): array
+    {
+        $habits = \App\Support\Life\HabitTracker::active($this->currentUser())->filter(fn (\App\Models\Habit $habit) => $habit->isDueOn(today()));
+        $logs = \App\Support\Life\HabitTracker::logs($habits);
+
+        return $habits->map(fn (\App\Models\Habit $habit) => [
+            'habit' => $habit,
+            'value' => $logs[$habit->id][today()->toDateString()] ?? 0,
+            'done' => $habit->isFulfilledBy($logs[$habit->id][today()->toDateString()] ?? 0),
+            'streak' => \App\Support\Life\HabitTracker::stats($habit, $logs[$habit->id])['streak'],
+        ])->values()->all();
     }
 
     /**
@@ -351,6 +377,25 @@ new #[Layout('layouts.app')] class extends Component
                                 <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('All done!') }}</li>
                             @endforelse
                         </ul>
+                    </section>
+                                @break
+                            @case('habits')
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
+                        <x-dashboard-card-header :title="__('Habits today')" :count="count($todayHabits) ? collect($todayHabits)->where('done', true)->count().' / '.count($todayHabits) : null" :href="route('journal.index')" />
+                        @if ($todayHabits === [])
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('No habits for today yet.') }} <a href="{{ route('journal.index', ['tab' => 'habits']) }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('Add a habit') }}</a></p>
+                        @else
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($todayHabits as $row)
+                                    <li wire:key="dashboard-habit-{{ $row['habit']->id }}" class="flex items-center gap-3">
+                                        <button type="button" wire:click="tapHabit({{ $row['habit']->id }})" aria-pressed="{{ $row['done'] ? 'true' : 'false' }}" @class(['flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm', 'bg-emerald-500 text-white' => $row['done'], 'ring-2 ring-gray-300 text-transparent hover:ring-emerald-400 dark:ring-gray-600' => ! $row['done']]) aria-label="{{ $row['habit']->type === 'count' ? __('One more') : ($row['done'] ? __('Not done') : __('Done')) }}: {{ $row['habit']->name }}">{{ $row['habit']->type === 'count' && ! $row['done'] ? '＋' : '✓' }}</button>
+                                        <span @class(['min-w-0 flex-1 truncate', 'text-gray-900 dark:text-gray-100' => ! $row['done'], 'text-gray-400 line-through dark:text-gray-500' => $row['done']])>{{ $row['habit']->icon }} {{ $row['habit']->name }}@if ($row['habit']->type === 'count') <span class="text-xs text-gray-500">{{ $row['value'] }}/{{ $row['habit']->target }}</span>@endif</span>
+                                        @if ($row['streak'] > 0)<span class="shrink-0 text-xs text-orange-600 dark:text-orange-300">🔥 {{ $row['streak'] }}</span>@endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        <a href="{{ route('journal.index') }}" wire:navigate class="mt-3 block text-xs text-gray-500 hover:underline dark:text-gray-400">{{ $todayMood ? \App\Support\Life\Journal::moods()[$todayMood]['icon'].' '.__('Mood noted') : '📔 '.__('How is your day? Write in your journal') }} →</a>
                     </section>
                                 @break
                             @case('shopping')

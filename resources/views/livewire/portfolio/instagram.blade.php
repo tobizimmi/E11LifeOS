@@ -31,7 +31,7 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
-    public function watch(int $postId): void
+    public function addToWatchlist(int $postId): void
     {
         $post = InstagramPost::find($postId) ?? abort(404);
         abort_unless($post->mainTicker(), 422);
@@ -203,7 +203,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @if ($watched->has($ticker))
                                         <span class="rounded-lg px-2 py-1 text-xs text-gray-400">★ {{ __('On the watchlist') }}</span>
                                     @else
-                                        <button type="button" wire:click="watch({{ $post->id }})" class="rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">☆ {{ __('Add to watchlist') }}</button>
+                                        <button type="button" wire:click="addToWatchlist({{ $post->id }})" class="rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">☆ {{ __('Add to watchlist') }}</button>
                                     @endif
                                     @if ($post->entry_price || $post->tranches)
                                         <button type="button" wire:click="alerts({{ $post->id }})" class="rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-gray-700">🔔 {{ __('Alert at entry') }}</button>

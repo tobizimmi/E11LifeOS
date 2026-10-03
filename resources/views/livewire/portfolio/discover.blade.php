@@ -17,7 +17,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(except: 'day_losers')]
     public string $screener = 'day_losers';
 
-    public function watch(string $symbol): void
+    public function addToWatchlist(string $symbol): void
     {
         $security = Security::where('symbol', $symbol)->first() ?? abort(404);
         WatchlistItem::firstOrCreate(['user_id' => $this->currentUser()->id, 'symbol' => $security->symbol], ['name' => $security->name]);
@@ -104,7 +104,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($watched->has($security->symbol))
                                     <span class="w-6 text-center text-gray-400" title="{{ __('On the watchlist') }}">★</span>
                                 @else
-                                    <button type="button" wire:click="watch('{{ $security->symbol }}')" class="w-6 text-center text-gray-400 hover:text-indigo-600" title="{{ __('Add to watchlist') }}" aria-label="{{ __('Add to watchlist') }}">☆</button>
+                                    <button type="button" wire:click="addToWatchlist('{{ $security->symbol }}')" class="w-6 text-center text-gray-400 hover:text-indigo-600" title="{{ __('Add to watchlist') }}" aria-label="{{ __('Add to watchlist') }}">☆</button>
                                 @endif
                             </li>
                         @endforeach

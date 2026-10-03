@@ -187,9 +187,10 @@ new class extends Component
             </div>
 
             @if ($householdId !== null)
-                <x-sidebar-group :title="__('Everyday')" section="everyday" :default="true" :active="request()->routeIs('tasks.index', 'calendar.*', 'shopping-list.*', 'pantry.*', 'recipes.*') || $currentCollectionId === $tasksCollection->id">
+                <x-sidebar-group :title="__('Everyday')" section="everyday" :default="true" :active="request()->routeIs('tasks.index', 'calendar.*', 'journal.*', 'shopping-list.*', 'pantry.*', 'recipes.*') || $currentCollectionId === $tasksCollection->id">
                     <x-sidebar-link icon="check-circle" :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>{{ __('To-Do') }}</x-sidebar-link>
                     <x-sidebar-link icon="calendar-days" :href="route('calendar.index')" :active="request()->routeIs('calendar.*')" wire:navigate>{{ __('Calendar') }}</x-sidebar-link>
+                    <x-sidebar-link icon="face-smile" :href="route('journal.index')" :active="request()->routeIs('journal.*')" wire:navigate>{{ __('Routines & journal') }}</x-sidebar-link>
                     <x-sidebar-link icon="shopping-cart" :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>{{ __('Shopping List') }}</x-sidebar-link>
                     <x-sidebar-link icon="archive-box" :href="route('pantry.index')" :active="request()->routeIs('pantry.*')" wire:navigate>{{ __('Pantry') }}</x-sidebar-link>
                     @if ($hasRecipes)
@@ -285,7 +286,7 @@ new class extends Component
         <div class="border-t border-gray-100 dark:border-gray-700 p-3" x-data="{ menuOpen: false }">
             {{-- Version with a dot until the changes of a new version were looked at. --}}
             <a href="{{ route('changelog') }}" wire:navigate class="mb-1 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                x-data="{ fresh: false }" x-init="try { fresh = localStorage.getItem('e11-seen-version') !== @js(\App\Support\AppVersion::version()) } catch (e) {}" x-on:version-seen.window="fresh = false">
+                x-data="{ fresh: false }" x-init="fresh = (() => { try { return localStorage.getItem('e11-seen-version') !== @js(\App\Support\AppVersion::version()) } catch (e) { return false } })()" x-on:version-seen.window="fresh = false">
                 <span x-show="fresh" x-cloak class="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true"></span>
                 <span>{{ \App\Support\AppVersion::label() }}</span>
                 <span x-show="fresh" x-cloak class="font-medium text-indigo-600 dark:text-indigo-400">{{ __('New') }}</span>

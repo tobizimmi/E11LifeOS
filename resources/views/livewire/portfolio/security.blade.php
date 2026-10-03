@@ -6,11 +6,11 @@ use App\Models\InvestmentThesis;
 use App\Models\PortfolioPosition;
 use App\Models\PortfolioTransaction;
 use App\Models\SecurityNote;
+use App\Models\StockRating;
 use App\Models\WatchlistItem;
 use App\Support\Portfolio\KeyFigureCheck;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\PortfolioLink;
-use App\Support\Portfolio\MarketAnalysis;
 use App\Support\Portfolio\StockInsights;
 use App\Support\Portfolio\StockScore;
 use App\Support\Portfolio\TechnicalAnalysis;
@@ -118,6 +118,24 @@ new #[Layout('layouts.app')] class extends Component
         $this->reset('note');
     }
 
+    /**
+     * Own points (0–3) for a factor of the points system; null goes back to the points from the figures.
+     */
+    public function rateFactor(string $factor, ?int $points = null): void
+    {
+        abort_unless(array_key_exists($factor, StockScore::factors()) && ($points === null || in_array($points, [0, 1, 2, 3], true)), 422);
+        $rating = StockRating::firstOrNew(['user_id' => $this->currentUser()->id, 'symbol' => $this->symbol]);
+        $ratings = $rating->points ?? [];
+
+        if ($points === null) {
+            unset($ratings[$factor]);
+        } else {
+            $ratings[$factor] = $points;
+        }
+
+        $rating->fill(['points' => $ratings])->save();
+    }
+
     public function deleteNote(int $id): void
     {
         (SecurityNote::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->find($id) ?? abort(404))->delete();
@@ -157,7 +175,7 @@ new #[Layout('layouts.app')] class extends Component
             'chart' => $prices->map(fn ($price) => ['label' => $price->date->format('d.m.y'), 'value' => (float) $price->close, 'compare' => $trendByDate[$price->date->toDateString()] ?? null])->values()->all(),
             'technical' => $technical = TechnicalAnalysis::analyse($analysisPrices->map(fn ($price) => (float) $price->close)->values()->all()),
             'stockScore' => ($security?->asset_type ?? 'stock') === 'stock' && ! str_starts_with($this->symbol, '^')
-                ? StockScore::rate($security->fundamentals ?? [], $technical, MarketAnalysis::sectorStanding(($market = MarketAnalysis::cached())['sectors'], $security?->sector), $market['light'])
+                ? StockScore::rate($security->fundamentals ?? [], $technical, StockScore::context($security, StockScore::sectorShares($this->currentUser()), StockRating::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->value('points') ?? [], $this->portfolioSettings()->score_weights))
                 : null,
             'notes' => SecurityNote::where('user_id', $this->currentUser()->id)->where('symbol', $this->symbol)->latest()->get(),
             'rows' => $valuation->rows($positions),
@@ -454,7 +472,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @endif
 
-            @if ($stockScore && $stockScore['rows'] !== [])
+            @if ($stockScore)
                 @php($verdict = \App\Support\Portfolio\StockScore::verdicts()[$stockScore['verdict']])
                 <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="score-heading">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -462,22 +480,60 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ $verdict['color'] }}">{{ $verdict['label'] }}</span>
                     </div>
                     <div class="mt-2 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ $stockScore['percent'] }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full rounded-full bg-indigo-500" style="width: {{ $stockScore['percent'] }}%"></div></div>
-                    <table class="mt-3 w-full text-sm">
-                        @foreach (['company' => __('Company'), 'chart' => __('Chart'), 'market' => __('Sector & market')] as $group => $groupLabel)
-                            @php($groupRows = collect($stockScore['rows'])->where('group', $group))
-                            @if ($groupRows->isNotEmpty())
-                                <tr><th colspan="3" class="pt-2 text-start text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $groupLabel }}</th></tr>
-                                @foreach ($groupRows as $row)
-                                    <tr class="border-b border-gray-100 last:border-0 dark:border-gray-700">
-                                        <td class="py-1 text-gray-700 dark:text-gray-300">{{ $row['label'] }}</td>
-                                        <td class="py-1 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $row['value'] }}</td>
-                                        <td class="w-16 py-1 text-end" aria-label="{{ trans_choice(':count point|:count points', $row['points']) }}">{{ str_repeat('●', $row['points']) }}<span class="text-gray-300 dark:text-gray-600">{{ str_repeat('●', 2 - $row['points']) }}</span></td>
-                                    </tr>
-                                @endforeach
-                            @endif
-                        @endforeach
-                    </table>
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Top-down after the “Aktien- und Börsenführerschein”. Sector and market count once the market analysis has been opened today.') }} <a href="{{ route('portfolio.market') }}" wire:navigate class="underline">{{ __('To the market analysis') }} →</a></p>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {{ __('After the “Aktien- und Börsenführerschein”: 0–3 points per factor, the hard figures count double. Figures are rated automatically – tap a point to rate yourself or to overrule it.') }}
+                        @if ($stockScore['open'] > 0) <span class="font-medium text-amber-700 dark:text-amber-300">{{ trans_choice(':count factor still to rate|:count factors still to rate', $stockScore['open']) }}</span>@endif
+                    </p>
+
+                    <div class="mt-3">
+                        <table class="w-full table-fixed text-sm">
+                            <thead>
+                                <tr class="text-xs text-gray-500 dark:text-gray-400">
+                                    <th class="py-1 text-start font-medium">{{ __('Factor') }}</th>
+                                    <th class="w-28 py-1 text-center font-medium sm:w-40">{{ __('Points') }}</th>
+                                    <th class="w-9 py-1 text-end font-medium sm:w-20"><span class="hidden sm:inline">{{ __('Weighted points') }}</span><span class="sm:hidden" title="{{ __('Weighted points') }}">Σ</span></th>
+                                </tr>
+                            </thead>
+                            @foreach (\App\Support\Portfolio\StockScore::weightLabels() as $weight => $weightLabel)
+                                @php($groupRows = collect($stockScore['rows'])->where('weight', $weight))
+                                @if ($groupRows->isNotEmpty())
+                                    <tbody>
+                                        <tr><td colspan="3" class="rounded-md bg-orange-100/70 px-2 py-1 text-center text-xs font-semibold text-orange-900 dark:bg-orange-900/30 dark:text-orange-200">{{ $weightLabel }}</td></tr>
+                                        @foreach ($groupRows as $row)
+                                            <tr wire:key="factor-{{ $row['key'] }}" class="border-b border-gray-100 dark:border-gray-700">
+                                                <td class="py-1.5 pe-2 align-top">
+                                                    <span class="block hyphens-auto break-words text-gray-800 dark:text-gray-200" title="{{ $row['hint'] }}">{{ $row['label'] }}@if ($row['own']) <span class="text-xs text-indigo-600 dark:text-indigo-300">· {{ __('own rating') }}</span>@endif</span>
+                                                    <span class="line-clamp-2 text-xs text-gray-500 dark:text-gray-400">{{ $row['value'] !== '' ? $row['value'] : ($row['manual'] ? $row['hint'] : __('no data')) }}</span>
+                                                </td>
+                                                <td class="py-1.5 align-top">
+                                                    <div class="flex items-center justify-center gap-0.5 sm:gap-1" role="group" aria-label="{{ __('Points for :factor', ['factor' => $row['label']]) }}">
+                                                        @foreach ([0, 1, 2, 3] as $option)
+                                                            <button type="button" wire:click="rateFactor('{{ $row['key'] }}', {{ $option }})" aria-pressed="{{ $row['points'] === $option ? 'true' : 'false' }}" @class(['h-6 w-6 rounded-full text-xs font-semibold tabular-nums sm:h-7 sm:w-7', 'bg-indigo-600 text-white' => $row['points'] === $option, 'ring-2 ring-indigo-200 dark:ring-indigo-800' => $row['own'] && $row['auto'] === $option, 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' => $row['points'] !== $option])>{{ $option }}</button>
+                                                        @endforeach
+                                                        @if ($row['own'] || ($row['manual'] && $row['points'] !== null))
+                                                            <button type="button" wire:click="rateFactor('{{ $row['key'] }}')" class="ms-1 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="{{ $row['auto'] !== null ? __('Back to the points from the figures') : __('Remove rating') }}" aria-label="{{ __('Reset') }}">↺</button>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td class="py-1.5 text-end align-top tabular-nums text-gray-900 dark:text-gray-100">{{ $row['points'] !== null ? $row['score'] : '–' }}</td>
+                                            </tr>
+                                        @endforeach
+                                        <tr class="bg-lime-100/60 dark:bg-lime-900/20">
+                                            <td colspan="2" class="px-2 py-1 text-xs font-semibold text-lime-900 dark:text-lime-200">{{ __('Subtotal') }}</td>
+                                            <td class="px-0 py-1 text-end text-sm font-semibold tabular-nums text-lime-900 dark:text-lime-200">{{ $groupRows->sum('score') }}</td>
+                                        </tr>
+                                    </tbody>
+                                @endif
+                            @endforeach
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2" class="pt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('Final result') }} <span class="text-xs font-normal text-gray-500 dark:text-gray-400">({{ __(':percent % of the possible points', ['percent' => $stockScore['percent']]) }})</span></td>
+                                    <td class="pt-2 text-end text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ $stockScore['points'] }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400"><a href="{{ route('portfolio.settings') }}#score-weights" wire:navigate class="underline">{{ __('Change the weighting') }}</a> · <a href="{{ route('portfolio.market') }}" wire:navigate class="underline">{{ __('Compare your shares') }} →</a></p>
                 </section>
             @endif
 

@@ -119,7 +119,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->resetValidation();
         $this->editingPositionId = null;
-        $this->positionForm = ['portfolio_id' => (string) ($this->portfolioId ?: $this->portfolios()->value('id')), 'symbol' => '', 'name' => '', 'quantity' => '', 'avg_buy_price' => '', 'labels' => '', 'notes' => '', 'stop_loss_price' => '', 'take_profit_price' => ''];
+        $this->positionForm = ['portfolio_id' => (string) ($this->portfolioId ?: $this->portfolios()->value('id')), 'symbol' => '', 'name' => '', 'quantity' => '', 'avg_buy_price' => '', 'fees' => '', 'labels' => '', 'notes' => '', 'stop_loss_price' => '', 'take_profit_price' => ''];
         $this->showPositionForm = true;
     }
 
@@ -135,6 +135,7 @@ new #[Layout('layouts.app')] class extends Component
             'name' => $position->name,
             'quantity' => $number($position->quantity),
             'avg_buy_price' => $number($position->avg_buy_price),
+            'fees' => '',
             'labels' => implode(', ', $position->labels ?? []),
             'notes' => (string) $position->notes,
             'stop_loss_price' => $number($position->stop_loss_price),
@@ -145,8 +146,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public function savePosition(): void
     {
-        foreach (['quantity', 'avg_buy_price', 'stop_loss_price', 'take_profit_price'] as $field) {
-            $this->positionForm[$field] = $this->parseNumber($this->positionForm[$field]);
+        foreach (['quantity', 'avg_buy_price', 'fees', 'stop_loss_price', 'take_profit_price'] as $field) {
+            $this->positionForm[$field] = $this->parseNumber($this->positionForm[$field] ?? '');
         }
 
         $this->positionForm['symbol'] = strtoupper(trim((string) $this->positionForm['symbol']));
@@ -157,11 +158,12 @@ new #[Layout('layouts.app')] class extends Component
             'positionForm.name' => ['nullable', 'string', 'max:255'],
             'positionForm.quantity' => [$position?->manual === false ? 'nullable' : 'required', 'numeric', 'gt:0'],
             'positionForm.avg_buy_price' => [$position?->manual === false ? 'nullable' : 'required', 'numeric', 'min:0'],
+            'positionForm.fees' => ['nullable', 'numeric', 'min:0'],
             'positionForm.labels' => ['nullable', 'string', 'max:255'],
             'positionForm.notes' => ['nullable', 'string', 'max:2000'],
             'positionForm.stop_loss_price' => ['nullable', 'numeric', 'min:0'],
             'positionForm.take_profit_price' => ['nullable', 'numeric', 'min:0'],
-        ], attributes: ['positionForm.symbol' => __('Security'), 'positionForm.quantity' => __('Shares'), 'positionForm.avg_buy_price' => __('Average purchase price')])['positionForm'];
+        ], attributes: ['positionForm.symbol' => __('Security'), 'positionForm.quantity' => __('Shares'), 'positionForm.avg_buy_price' => __('Average purchase price'), 'positionForm.fees' => __('Purchase fees')])['positionForm'];
 
         $portfolio = $this->findPortfolio((int) $data['portfolio_id']);
         $attributes = [
@@ -186,7 +188,8 @@ new #[Layout('layouts.app')] class extends Component
                 'symbol' => $data['symbol'],
                 'name' => $data['name'] ?: $data['symbol'],
                 'quantity' => (float) $data['quantity'],
-                'avg_buy_price' => (float) $data['avg_buy_price'],
+                // Fees are part of the purchase price, as with transactions.
+                'avg_buy_price' => round((float) $data['avg_buy_price'] + (float) ($data['fees'] ?: 0) / (float) $data['quantity'], 4),
             ] + $attributes)->save();
         }
 
@@ -489,6 +492,12 @@ new #[Layout('layouts.app')] class extends Component
                         <x-input-label for="position-price" :value="__('Average purchase price (€)')" />
                         <x-text-input id="position-price" wire:model="positionForm.avg_buy_price" inputmode="decimal" class="mt-1 block w-full" />
                         <x-input-error :messages="$errors->get('positionForm.avg_buy_price')" class="mt-1" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <x-input-label for="position-fees" :value="$editingPositionId ? __('Further purchase fees (€)') : __('Purchase fees (€)')" />
+                        <x-text-input id="position-fees" wire:model="positionForm.fees" inputmode="decimal" class="mt-1 block w-full" placeholder="0" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Order fees and commissions are added to the average purchase price.') }}</p>
+                        <x-input-error :messages="$errors->get('positionForm.fees')" class="mt-1" />
                     </div>
                 @endif
                 <div class="sm:col-span-2">

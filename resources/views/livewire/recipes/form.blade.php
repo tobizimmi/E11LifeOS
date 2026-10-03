@@ -437,7 +437,7 @@ new #[Layout('layouts.app')] class extends Component
                         @if ($importedImagePath && ! $photo && ! $removePhoto)
                             <span class="rounded-md bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 text-sm text-indigo-700 dark:text-indigo-200">🖼 {{ __('The photo from the import is used.') }}</span>
                         @endif
-                        <div class="space-y-1">
+                        <div class="min-w-0 max-w-full space-y-1">
                             <input type="file" wire:model="photo" id="photo" accept="image/*" class="block text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-indigo-700" />
                             <p wire:loading wire:target="photo" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
                             @if (($recipe?->image_path || $importedImagePath) && ! $photo)

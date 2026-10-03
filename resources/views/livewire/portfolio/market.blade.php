@@ -4,6 +4,7 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
 use App\Models\PortfolioPosition;
 use App\Models\Security;
+use App\Models\StockRating;
 use App\Support\Portfolio\MarketAnalysis;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\StockScore;
@@ -40,15 +41,20 @@ new #[Layout('layouts.app')] class extends Component
             ->merge($this->watchlist()->pluck('symbol'))->unique()->take(40);
         $held = PortfolioPosition::whereIn('portfolio_id', $this->portfolios()->select('id'))->where('quantity', '>', 0)->pluck('symbol')->all();
 
+        $user = $this->currentUser();
+        $ratings = StockRating::where('user_id', $user->id)->whereIn('symbol', $symbols)->pluck('points', 'symbol');
+        $sectorShares = StockScore::sectorShares($user);
+        $weights = $this->portfolioSettings()->score_weights;
+
         $scores = Security::whereIn('symbol', $symbols)->get()
             ->reject(fn (Security $security) => str_starts_with($security->symbol, '^') || in_array($security->asset_type, ['etf', 'fund', 'crypto'], true))
-            ->map(function (Security $security) use ($market, $sectors, $global, $held) {
+            ->map(function (Security $security) use ($market, $held, $ratings, $sectorShares, $weights) {
                 $technical = TechnicalAnalysis::analyse($market->history($security->symbol, now()->subMonths(14))->map(fn ($price) => (float) $price->close)->values()->all());
 
                 return [
                     'security' => $security,
                     'held' => in_array($security->symbol, $held, true),
-                    'score' => StockScore::rate($security->fundamentals ?? [], $technical, MarketAnalysis::sectorStanding($sectors, $security->sector), $global['light']),
+                    'score' => StockScore::rate($security->fundamentals ?? [], $technical, StockScore::context($security, $sectorShares, $ratings[$security->symbol] ?? [], $weights)),
                 ];
             })
             ->sortByDesc(fn (array $row) => [$row['score']['percent'], $row['score']['max']])->values();
@@ -139,12 +145,12 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="block font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $row['security']->name }}</span>
                                         <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $row['security']->symbol }}{{ $row['held'] ? ' · '.__('in the portfolio') : ' · '.__('watchlist') }}{{ $row['security']->sector ? ' · '.$row['security']->sector : '' }}</span>
                                     </a>
-                                    <span class="w-24 text-end tabular-nums text-gray-700 dark:text-gray-300">{{ $row['score']['points'] }} / {{ $row['score']['max'] }}</span>
+                                    <span class="w-24 text-end tabular-nums text-gray-700 dark:text-gray-300">{{ $row['score']['points'] }} / {{ $row['score']['max'] }}@if ($row['score']['open'] > 0)<span class="block text-[11px] text-amber-700 dark:text-amber-300">{{ trans_choice(':count factor still to rate|:count factors still to rate', $row['score']['open']) }}</span>@endif</span>
                                     <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ $verdicts[$row['score']['verdict']]['color'] }}">{{ $verdicts[$row['score']['verdict']]['label'] }}</span>
                                 </li>
                             @endforeach
                         </ul>
-                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('0–2 points per criterion: valuation, profitability, growth, debt, dividend, chart, sector and market. Details on each share’s page. No investment advice.') }}</p>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Points system after the “Aktien- und Börsenführerschein”: 0–3 points per factor, the hard figures count double. Rate business model, reputation and more on each share’s page. No investment advice.') }}</p>
                     @endif
                 </section>
             @endif

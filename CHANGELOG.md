@@ -3,6 +3,34 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.27.0] – 2026-10-03
+
+### Neu
+- Tagebuch & Gewohnheiten (unter „Alltag“ › Routinen & Tagebuch, nur für dich sichtbar):
+  - Gewohnheiten abhaken oder zählen (z. B. 8 Gläser Wasser) – täglich, an bestimmten Wochentagen oder x-mal pro Woche, mit Push-Erinnerung zur Uhrzeit, solange sie noch offen ist.
+  - Serie, beste Serie, Erfolgsquote und Gewohnheitsstärke (ein verpasster Tag kostet nur ein wenig) sowie eine Jahresansicht.
+  - Tagebuch pro Tag: Stimmung, Aktivitäten, Fragen für morgens und abends, Notizen und Fotos – Texte verschlüsselt.
+  - „Der Tag in E11LifeOS“ mit Terminen, erledigten Aufgaben und Reisen und „An diesem Tag“ aus früheren Jahren.
+  - Auswertung: Stimmung der letzten 90 Tage, welche Aktivitäten und Gewohnheiten mit guter Stimmung zusammenhängen.
+- Übersicht: Kachel „Gewohnheiten heute“ zum Abhaken; der Wochenrückblick zeigt Gewohnheiten und Stimmung.
+
+## [1.26.0] – 2026-10-03
+
+### Neu
+- Aktien: Punktesystem wie im „Aktien- und Börsenführerschein“ – 0–3 Punkte je Bewertungsfaktor, doppelte Gewichtung für KGV, Börsensegment, 52-Wochen-Hoch/Tief, Portfoliostreuung, Eigenkapital/Schulden, KBV, Dividende, Umsatz und Ertrag, Nachhaltigkeit, Value, Growth und Technische Analyse, einfache für Geschäftsmodell, Marktstellung, Internationalität, Bekanntheitsgrad, Nachrichten, Analysten und Handelbarkeit – mit Zwischensummen und Endergebnis.
+- Kennzahlen werden automatisch bewertet; Geschäftsmodell, Ruf & Co. bewertest du selbst per Tippen und kannst jede Punktzahl überstimmen.
+- Portfolio-Einstellungen: eigene Gewichtung je Faktor (aus, ×1, ×2, ×3) – auch als „kreative Variante“ mit dreifacher Gewichtung wie im Buch.
+
+## [1.25.1] – 2026-10-03
+
+### Behoben
+- Portfolio: „Zur Watchlist“ funktioniert wieder bei Empfehlungen, Entdecken und Instagram.
+- Positionen: beim Anlegen lassen sich Kaufgebühren angeben – sie fließen in den durchschnittlichen Kaufkurs ein.
+- Handy: Seiten werden nicht mehr breiter als der Bildschirm (iOS zoomte z. B. bei Vertragskosten heraus) – lange Auswahlfelder und Tippflächen am Rand bleiben im Bildschirm; die Vertragstabelle zeigt Anbieter und Kündigungsdatum unter dem Namen.
+- Finanzen › Budgets: der Kategoriename bleibt lesbar, wenn ein Budget gesetzt ist.
+- Listen: „Zurück“ (z. B. „← Alle Rezepte“) führt an dieselbe Stelle der Liste zurück, mit den gewählten Filtern.
+- Hinweis „Neu“ an der Versionsnummer erscheint wieder nach einem Update.
+
 ## [1.25.0] – 2026-10-03
 
 ### Neu

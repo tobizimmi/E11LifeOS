@@ -5,6 +5,7 @@ use App\Livewire\Concerns\InteractsWithPortfolio;
 use App\Models\PortfolioSetting;
 use App\Models\Security;
 use App\Support\Portfolio\MarketData;
+use App\Support\Portfolio\StockScore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Layout;
@@ -36,10 +37,18 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $mappingFilter = '';
 
+    /**
+     * Weighting per factor of the points system (0 = left out, 1–3).
+     *
+     * @var array<string, string>
+     */
+    public array $scoreWeights = [];
+
     public function mount(): void
     {
         $this->resolveHousehold();
         $settings = $this->portfolioSettings();
+        $this->scoreWeights = array_map('strval', StockScore::weights($settings->score_weights));
 
         $this->form = [
             'default_portfolio_id' => (string) $settings->default_portfolio_id,
@@ -63,6 +72,26 @@ new #[Layout('layouts.app')] class extends Component
             'news_push_max_age_hours' => (string) ($settings->news_push_max_age_hours ?? 24),
             'notifications_enabled' => (bool) ($settings->notifications_enabled ?? true),
         ];
+    }
+
+    /**
+     * Weighting presets of the book: the original one (double/normal) and the "creative" one with
+     * triple weighting for valuation, index, diversification, dividend, earnings and 52-week range.
+     */
+    public function scorePreset(string $preset): void
+    {
+        $creative = ['pe' => 3, 'index' => 3, 'diversification' => 3, 'dividend' => 3, 'revenue_earnings' => 3, 'high_low' => 3, 'technical' => 2, 'debt' => 2, 'value' => 2, 'growth' => 2, 'reputation' => 2, 'tradability' => 2, 'book' => 1, 'sustainability' => 1];
+        $this->scoreWeights = array_map('strval', StockScore::weights($preset === 'creative' ? $creative : []));
+        $this->saveScoreWeights();
+    }
+
+    public function saveScoreWeights(): void
+    {
+        $weights = collect(StockScore::factors())->map(fn (array $factor, string $key) => max(0, min(3, (int) ($this->scoreWeights[$key] ?? $factor['weight']))))->all();
+        $settings = $this->portfolioSettings();
+        $settings->fill(['score_weights' => $weights === StockScore::weights() ? null : $weights])->save();
+        $this->scoreWeights = array_map('strval', $weights);
+        $this->dispatch('toast', message: __('Weighting saved.'));
     }
 
     public function save(): void
@@ -477,6 +506,33 @@ new #[Layout('layouts.app')] class extends Component
                         <p class="mt-1 text-xs text-gray-500">{{ __('Showing :shown of :total – use the filter.', ['shown' => $mappings->count(), 'total' => $mappingCount]) }}</p>
                     @endif
                 @endif
+            </section>
+
+            <section id="score-weights" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="score-weights-heading">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 id="score-weights-heading" class="font-semibold text-gray-900 dark:text-gray-100">🏅 {{ __('Weighting of the points system') }}</h3>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <button type="button" wire:click="scorePreset('book')" class="rounded-full px-3 py-1 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">{{ __('As in the book') }}</button>
+                        <button type="button" wire:click="scorePreset('creative')" class="rounded-full px-3 py-1 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">{{ __('Creative variant (triple)') }}</button>
+                    </div>
+                </div>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('How much each factor counts: every point is multiplied by the weighting. “Off” leaves a factor out.') }}</p>
+                <form wire:submit="saveScoreWeights" class="mt-3">
+                    <div class="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                        @foreach (StockScore::factors() as $factorKey => $factor)
+                            <label class="flex items-center justify-between gap-3 text-sm" wire:key="weight-{{ $factorKey }}">
+                                <span class="min-w-0 text-gray-800 dark:text-gray-200">{{ $factor['label'] }}@unless ($factor['auto']) <span class="text-xs text-gray-500 dark:text-gray-400">· {{ __('own rating') }}</span>@endunless</span>
+                                <select wire:model="scoreWeights.{{ $factorKey }}" class="rounded-lg border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                    <option value="0">{{ __('Off') }}</option>
+                                    <option value="1">× 1</option>
+                                    <option value="2">× 2</option>
+                                    <option value="3">× 3</option>
+                                </select>
+                            </label>
+                        @endforeach
+                    </div>
+                    <x-primary-button class="mt-4">{{ __('Save') }}</x-primary-button>
+                </form>
             </section>
 
             @if ($jobs !== [])

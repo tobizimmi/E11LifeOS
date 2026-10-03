@@ -202,36 +202,36 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
             <div class="flex justify-end">
-                <a href="{{ route('cashflow.index') }}" wire:navigate class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">🧭 {{ __('Cashflow analysis') }}</a>
+                <a href="{{ route('cashflow.index') }}" wire:navigate class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-xs ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">🧭 {{ __('Cashflow analysis') }}</a>
             </div>
 
             {{-- Headline figures --}}
             <section class="grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl bg-white p-5 shadow-sm sm:col-span-1 dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs sm:col-span-1 dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Net worth') }}</p>
                     <p @class(['mt-1 text-3xl font-semibold tabular-nums', 'text-gray-900 dark:text-gray-100' => $netWorth['net'] >= 0, 'text-rose-600 dark:text-rose-400' => $netWorth['net'] < 0])>{{ $euro($netWorth['net']) }}</p>
                     @if ($change !== null)
                         <p @class(['mt-1 text-sm', 'text-emerald-700 dark:text-emerald-400' => $change >= 0, 'text-rose-600 dark:text-rose-400' => $change < 0])>{{ $change >= 0 ? '▲' : '▼' }} {{ $euro(abs($change)) }} {{ __('in 30 days') }}</p>
                     @endif
                 </div>
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Assets') }}</p>
                     <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($netWorth['assets']) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Debts') }}</p>
                     <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($netWorth['liabilities']) }}</p>
                 </div>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="mb-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('History') }}</h3>
                 <x-line-chart :points="$points" :value-label="__('Net worth')" :height="200" />
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('A value is stored every evening, and whenever you change something here.') }}</p>
             </section>
 
             {{-- Savings goals --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎯 {{ __('Savings goals') }}</h3>
                 <ul class="mt-3 space-y-3">
                     @forelse ($goals as $savingsGoal)
@@ -288,7 +288,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid gap-4 md:grid-cols-2">
                 @foreach ($netWorth['groups'] as $group)
                     @continue($group['rows'] === [] && ! in_array($group['key'], ['other_assets', 'other_liabilities'], true))
-                    <section wire:key="group-{{ $group['key'] }}" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section wire:key="group-{{ $group['key'] }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <div class="flex items-baseline justify-between gap-2">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $group['icon'] }} {{ $group['label'] }}</h3>
                             <span @class(['font-semibold tabular-nums', 'text-rose-600 dark:text-rose-400' => $group['liability'] && $group['total'] > 0, 'text-gray-900 dark:text-gray-100' => ! $group['liability'] || $group['total'] <= 0])>{{ $group['liability'] && $group['total'] > 0 ? '− ' : '' }}{{ $euro($group['total']) }}</span>
@@ -307,9 +307,9 @@ new #[Layout('layouts.app')] class extends Component
                                         </div>
                                         <span class="tabular-nums text-gray-700 dark:text-gray-300">{{ $euro($row['value']) }}</span>
                                         @if ($group['key'] === 'accounts')
-                                            <button type="button" wire:click="editAccount({{ $row['id'] }})" class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Enter balance') }}" aria-label="{{ __('Enter balance') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                                            <button type="button" wire:click="editAccount({{ $row['id'] }})" class="rounded-sm px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Enter balance') }}" aria-label="{{ __('Enter balance') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                         @elseif (in_array($group['key'], ['other_assets', 'other_liabilities'], true))
-                                            <button type="button" wire:click="editItem({{ $row['id'] }})" class="rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                                            <button type="button" wire:click="editItem({{ $row['id'] }})" class="rounded-sm px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                         @endif
                                     </div>
                                     @if ($group['key'] === 'accounts' && $editingAccountId === $row['id'])
@@ -346,7 +346,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             {{-- Add an asset or debt --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">＋ {{ __('Add asset or debt') }}</h3>
                 <form wire:submit="addItem" class="mt-3 grid gap-2 sm:grid-cols-[1fr_12rem_10rem_auto]">
                     <input wire:model="item.name" placeholder="{{ __('Name, e.g. car') }}" class="{{ $input }}" aria-label="{{ __('Name') }}">

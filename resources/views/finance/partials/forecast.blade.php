@@ -2,7 +2,7 @@
 @php($date = fn (string $value) => \Illuminate\Support\Carbon::parse($value)->translatedFormat('D, j. M'))
 
 @if (! $forecast)
-    <section class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+    <section class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
         <p class="text-4xl" aria-hidden="true">🔮</p>
         <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('No account balance yet') }}</h3>
         <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('The forecast starts from the current balance of your accounts. Fetch it via the bank sync or enter it once under net worth.') }}</p>
@@ -19,7 +19,7 @@
         </div>
     @endif
 
-    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔮 {{ __('Balance forecast') }}</h3>
@@ -27,7 +27,7 @@
             </div>
             <div class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-gray-900" role="group" aria-label="{{ __('Forecast period') }}">
                 @foreach (\App\Support\Finance\BalanceForecast::HORIZONS as $horizon)
-                    <button type="button" wire:click="$set('forecastDays', {{ $horizon }})" aria-pressed="{{ $forecastDays === $horizon ? 'true' : 'false' }}" @class(['rounded-md px-3 py-1 text-sm', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $forecastDays === $horizon, 'text-gray-600 dark:text-gray-400' => $forecastDays !== $horizon])>{{ __(':days days', ['days' => $horizon]) }}</button>
+                    <button type="button" wire:click="$set('forecastDays', {{ $horizon }})" aria-pressed="{{ $forecastDays === $horizon ? 'true' : 'false' }}" @class(['rounded-md px-3 py-1 text-sm', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $forecastDays === $horizon, 'text-gray-600 dark:text-gray-400' => $forecastDays !== $horizon])>{{ __(':days days', ['days' => $horizon]) }}</button>
                 @endforeach
             </div>
         </div>
@@ -54,7 +54,7 @@
     </section>
 
     <div class="grid gap-5 lg:grid-cols-2">
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
             <h3 class="font-semibold text-gray-900 dark:text-gray-100">📅 {{ __('Expected bookings') }}</h3>
             @if ($forecast['events'] === [])
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No recurring bookings found yet. They are recognised after two to three months of bookings.') }}</p>
@@ -71,7 +71,7 @@
             @endif
         </section>
 
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
             <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏦 {{ __('Per account') }}</h3>
             <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                 @foreach ($forecast['accounts'] as $row)

@@ -202,7 +202,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $km = fn (?int $value) => $value !== null ? number_format($value, 0, ',', '.').' km' : '–';
     $tabClass = 'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition pointer-coarse:min-h-11';
@@ -218,19 +218,19 @@ new #[Layout('layouts.app')] class extends Component
             <a href="{{ route('vehicles.index') }}" wire:navigate class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">← {{ __('All vehicles') }}</a>
 
             <section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Mileage') }}</p>
                     <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $km($stats['odometer']) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Costs per month') }}</p>
                     <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($stats['monthly']) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Costs per km') }}</p>
                     <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $stats['per_km'] !== null ? $euro($stats['per_km']) : '–' }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Consumption') }}</p>
                     <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $stats['consumption'] !== null ? number_format($stats['consumption'], 1, ',', '.').' '.$stats['unit'].'/100 km' : '–' }}</p>
                 </div>
@@ -238,7 +238,7 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Last 12 months: :km driven, :costs costs including tax and insurance.', ['km' => $km($stats['km_12m']), 'costs' => $euro($stats['costs_12m'])]) }}</p>
 
             @if ($stats['next'] !== [])
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">📅 {{ __('Next dates') }}</h3>
                     <ul class="mt-2 space-y-1 text-sm">
                         @foreach ($stats['next'] as $date)
@@ -259,12 +259,12 @@ new #[Layout('layouts.app')] class extends Component
 
             <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
                 @foreach (['log' => '🧾 '.__('Log'), 'trips' => '🗺️ '.__('Logbook'), 'details' => '⚙️ '.__('Details')] as $key => $label)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
+                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </nav>
 
             @if ($tab === 'details')
-                <form wire:submit="saveDetails" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveDetails" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="details.name" class="{{ $input }}"><x-input-error :messages="$errors->get('details.name')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Make & model') }}<input type="text" wire:model="details.make_model" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Licence plate') }}<input type="text" wire:model="details.plate" class="{{ $input }}"></label>
@@ -286,9 +286,9 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Purchase price (€)') }}<input type="text" inputmode="decimal" wire:model="details.purchase_price" class="{{ $input }}"><x-input-error :messages="$errors->get('details.purchase_price')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Current value (€)') }}<input type="text" inputmode="decimal" wire:model="details.current_value" class="{{ $input }}"><x-input-error :messages="$errors->get('details.current_value')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Notes') }}<textarea wire:model="details.notes" rows="3" class="{{ $input }}"></textarea></label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-3 dark:text-gray-300"><input type="checkbox" wire:model="details.tyre_reminders" class="rounded border-gray-300 text-indigo-600"> {{ __('Remind me of tyre changes (O to O)') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-3 dark:text-gray-300"><input type="checkbox" wire:model="details.tyre_reminders" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Remind me of tyre changes (O to O)') }}</label>
                     @if ($vehicle->created_by === auth()->id())
-                        <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-3 dark:text-gray-300"><input type="checkbox" wire:model="details.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-3 dark:text-gray-300"><input type="checkbox" wire:model="details.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     @endif
                     <div class="flex items-center gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Save') }}</x-primary-button>
@@ -296,7 +296,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </form>
             @else
-                <form wire:submit="addEntry" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="addEntry" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     @if ($tab === 'log')
                         <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
                             <select wire:model.live="entry.kind" class="{{ $input }}">
@@ -331,7 +331,7 @@ new #[Layout('layouts.app')] class extends Component
                 </form>
 
                 @if ($tab === 'trips')
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('This year') }}</h3>
                         <ul class="mt-2 grid gap-2 text-sm sm:grid-cols-3">
                             @foreach ($purposes as $key => $label)
@@ -344,7 +344,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                         @forelse ($tab === 'trips' ? $trips : $logs as $log)
                             <li wire:key="log-{{ $log->id }}" class="flex items-center gap-3 px-5 py-3 text-sm">

@@ -248,7 +248,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 0, ',', '.').' €';
     $tabClass = 'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition pointer-coarse:min-h-11';
     $types = InsuranceCheck::types();
@@ -264,12 +264,12 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
                 @foreach (['insurance' => '🛡️ '.__('Insurances'), 'retirement' => '🌅 '.__('Pension & freedom')] as $key => $label)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
+                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </nav>
 
             @if ($tab === 'insurance')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-end justify-between gap-3">
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Important gaps') }}</p>
@@ -285,7 +285,7 @@ new #[Layout('layouts.app')] class extends Component
 
                 <ul class="space-y-3">
                     @foreach ($check['rows'] as $row)
-                        <li wire:key="insurance-{{ $row['key'] }}" class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <li wire:key="insurance-{{ $row['key'] }}" class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <div class="flex flex-wrap items-start justify-between gap-2">
                                 <div class="min-w-0 flex-1">
                                     <p class="font-medium text-gray-900 dark:text-gray-100">{{ $row['icon'] }} {{ $row['label'] }} <span class="ms-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $levels[$row['level']] }}</span></p>
@@ -374,7 +374,7 @@ new #[Layout('layouts.app')] class extends Component
                 </ul>
 
                 @if ($insurancePayments->isNotEmpty())
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="insurance-payments">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="insurance-payments">
                         <h3 id="insurance-payments" class="font-semibold text-gray-900 dark:text-gray-100">💳 {{ __('Insurance payments without a contract') }}</h3>
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Recurring debits from your bank bookings that look like an insurance. Add them as insurance, link them to one, or reject them.') }}</p>
                         <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
@@ -404,7 +404,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 @if ($check['candidates'] !== [])
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="insurance-candidates">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="insurance-candidates">
                         <h3 id="insurance-candidates" class="font-semibold text-gray-900 dark:text-gray-100">❔ {{ __('Insurances not recognised') }}</h3>
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('These contracts look like an insurance, but the check could not tell which one. Say what it is – or reject it.') }}</p>
                         <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
@@ -437,17 +437,17 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             @else
                 <section class="grid gap-3 sm:grid-cols-3">
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Pension gap per month') }}</p>
                         <p @class(['mt-1 text-3xl font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $result['gap'] <= 0, 'text-rose-700 dark:text-rose-400' => $result['gap'] > 0])>{{ $euro($result['gap']) }}</p>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('in today’s money') }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Gap covered at :age', ['age' => (int) $plan['retirement_age']]) }}</p>
                         <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ min(100, $result['coverage']) }} %</p>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __(':projected of :needed capital', ['projected' => $euro($result['capital_projected']), 'needed' => $euro($result['capital_needed'])]) }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Financially free at') }}</p>
                         <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $result['freedom_age'] !== null ? __(':age years', ['age' => $result['freedom_age']]) : '–' }}</p>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('without any pension, needs :capital', ['capital' => $euro($result['freedom_capital'])]) }}</p>
@@ -460,12 +460,12 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100">✅ {{ __('With your current savings rate the pension gap is closed by retirement.') }}</p>
                 @endif
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Projected capital (today’s money) and the capital for financial freedom') }}</p>
                     <x-line-chart :points="$result['points']" :value-label="__('Capital')" :compare-label="__('Needed for freedom')" height="200" />
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex items-center justify-between gap-3">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">⚙️ {{ __('Your inputs') }}</h3>
                         <button type="button" wire:click="resetPlan" class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Take values from my data') }}</button>

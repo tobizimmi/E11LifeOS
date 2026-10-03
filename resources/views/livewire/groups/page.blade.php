@@ -91,11 +91,11 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-4 px-4 sm:px-6 lg:px-8">
             <livewire:sharing.panel type="page" :id="$page->id" :wire:key="'share-page-'.$page->id" />
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 @if ($editing)
                     <form wire:submit="save" class="space-y-3">
-                        <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="title" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><x-input-error :messages="$errors->get('title')" /></label>
-                        <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Text (Markdown)') }}<textarea wire:model="body" rows="16" class="mt-1 block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"></textarea></label>
+                        <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="title" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><x-input-error :messages="$errors->get('title')" /></label>
+                        <label class="block text-sm text-gray-700 dark:text-gray-300">{{ __('Text (Markdown)') }}<textarea wire:model="body" rows="16" class="mt-1 block w-full rounded-md border-gray-300 font-mono text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"></textarea></label>
                         <div class="flex gap-2">
                             <x-primary-button>{{ __('Save') }}</x-primary-button>
                             <x-secondary-button type="button" wire:click="$set('editing', false)">{{ __('Cancel') }}</x-secondary-button>

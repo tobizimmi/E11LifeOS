@@ -104,7 +104,7 @@ new #[Layout('layouts.app')] class extends Component
 
 @php
     $euro = fn (?float $value) => $value === null ? '–' : number_format($value, 2, ',', '.').' €';
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
 @endphp
 
 <div x-on:page-primary.window="$wire.set('showForm', true)">
@@ -120,7 +120,7 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Collect several quotes for a purchase, compare them side by side and pick the best one.') }}</p>
 
             @if ($showForm)
-                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-1 dark:text-gray-300">{{ __('Icon') }}<input type="text" wire:model="form.icon" maxlength="16" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-5 dark:text-gray-300">{{ __('What should be bought?') }}<input type="text" wire:model="form.title" class="{{ $input }}" placeholder="{{ __('e.g. New kitchen, family car, roof renovation') }}" autofocus><x-input-error :messages="$errors->get('form.title')" /></label>
                     @if ($linkedItem)
@@ -136,7 +136,7 @@ new #[Layout('layouts.app')] class extends Component
                         </label>
                     @endif
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Decide by') }}<input type="date" wire:model="form.decide_by" class="{{ $input }}"></label>
-                    <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 sm:col-span-1 dark:text-gray-300"><input type="checkbox" wire:model="form.private" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900"> 🔒 {{ __('Private') }}</label>
+                    <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 sm:col-span-1 dark:text-gray-300"><input type="checkbox" wire:model="form.private" class="rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900"> 🔒 {{ __('Private') }}</label>
                     <div class="flex gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Create') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -145,7 +145,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($comparisons->isEmpty())
-                <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">{{ __('No comparisons yet. Start one for your next bigger purchase.') }}</section>
+                <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">{{ __('No comparisons yet. Start one for your next bigger purchase.') }}</section>
             @else
                 <ul class="grid gap-3 sm:grid-cols-2">
                     @foreach ($comparisons as $comparison)
@@ -153,7 +153,7 @@ new #[Layout('layouts.app')] class extends Component
                             $cheapest = $comparison->cheapestQuote();
                         @endphp
                         <li wire:key="comparison-{{ $comparison->id }}">
-                            <a href="{{ route('quotes.show', $comparison) }}" wire:navigate class="block h-full rounded-2xl bg-white p-4 shadow-sm ring-1 ring-transparent hover:ring-indigo-300 dark:bg-gray-800">
+                            <a href="{{ route('quotes.show', $comparison) }}" wire:navigate class="block h-full rounded-2xl bg-white p-4 shadow-xs ring-1 ring-transparent hover:ring-indigo-300 dark:bg-gray-800">
                                 <div class="flex items-start justify-between gap-2">
                                     <p class="font-medium text-gray-900 dark:text-gray-100">{{ $comparison->icon }} {{ $comparison->title }}</p>
                                     @if ($comparison->isDecided())

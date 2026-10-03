@@ -4,7 +4,7 @@
 @endphp
 
 <div class="grid gap-5 lg:grid-cols-3">
-    <form wire:submit="saveDetails" class="space-y-4 rounded-2xl bg-white p-5 shadow-sm lg:col-span-2 dark:bg-gray-800">
+    <form wire:submit="saveDetails" class="space-y-4 rounded-2xl bg-white p-5 shadow-xs lg:col-span-2 dark:bg-gray-800">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Object') }}</h3>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="text-sm text-gray-700 sm:col-span-2 lg:col-span-3 dark:text-gray-300">{{ __('Name') }}
@@ -68,14 +68,14 @@
         <div class="flex flex-wrap items-center gap-3">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
             @if ($model->created_by === auth()->id())
-                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"><input type="checkbox" wire:model="details.private" class="rounded border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}</label>
+                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"><input type="checkbox" wire:model="details.private" class="rounded-sm border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}</label>
             @endif
             <button type="button" wire:click="deleteRealEstate" wire:confirm="{{ __('Delete this property with all invoices, loans and subsidies?') }}" class="ms-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete property') }}</button>
         </div>
     </form>
 
     <div class="space-y-5">
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="closing-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="closing-heading">
             <h3 id="closing-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Purchase costs') }}</h3>
             <dl class="mt-2 space-y-1 text-sm">
                 @foreach ([
@@ -92,7 +92,7 @@
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Closing costs: :amount (:percent % of the price)', ['amount' => $euro($purchase['closing']), 'percent' => $purchase['price'] > 0 ? number_format($purchase['closing'] / $purchase['price'] * 100, 1, ',', '') : '0']) }}</p>
         </section>
 
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="loans-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="loans-heading">
             <h3 id="loans-heading" class="font-semibold text-gray-900 dark:text-gray-100">🏦 {{ __('Financing') }}</h3>
             <ul class="mt-2 space-y-2 text-sm">
                 @forelse ($model->loans as $loan)

@@ -31,7 +31,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-3xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Installed version') }}</p>
                 <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">v{{ $version }}</p>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -47,7 +47,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @foreach ($releases as $release)
-                <article wire:key="release-{{ $release['version'] }}" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <article wire:key="release-{{ $release['version'] }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="flex flex-wrap items-baseline gap-2 font-semibold text-gray-900 dark:text-gray-100">
                         <span>v{{ $release['version'] }}</span>
                         @if ($release['date'])<span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{ $release['date'] }}</span>@endif
@@ -60,7 +60,7 @@ new #[Layout('layouts.app')] class extends Component
                         <ul class="mt-1 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-300">
                             @foreach ($section['items'] as $item)
                                 {{-- Only `code` is rendered from the Markdown; everything else is escaped. --}}
-                                <li>{!! preg_replace('/`([^`]+)`/', '<code class="rounded bg-gray-100 px-1 text-xs dark:bg-gray-700">$1</code>', e($item)) !!}</li>
+                                <li>{!! preg_replace('/`([^`]+)`/', '<code class="rounded-sm bg-gray-100 px-1 text-xs dark:bg-gray-700">$1</code>', e($item)) !!}</li>
                             @endforeach
                         </ul>
                     @endforeach

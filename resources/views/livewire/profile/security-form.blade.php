@@ -115,7 +115,7 @@ new class extends Component
 
     <form wire:submit="logoutOtherDevices" class="mt-3 flex flex-wrap items-end gap-2">
         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Password') }}
-            <input type="password" wire:model="password" autocomplete="current-password" class="mt-1 block w-56 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <input type="password" wire:model="password" autocomplete="current-password" class="mt-1 block w-56 rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
         </label>
         <x-danger-button>{{ __('Sign out all other devices') }}</x-danger-button>
         <x-input-error :messages="$errors->get('password')" class="w-full" />

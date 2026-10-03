@@ -153,12 +153,12 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($plans->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">💶</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ $portfolioList->isEmpty() ? __('Create a portfolio first.') : __('No savings plans yet.') }}</p>
                 </div>
             @else
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                     @foreach ($plans as $plan)
                         <li wire:key="plan-{{ $plan->id }}" @class(['flex flex-wrap items-center gap-3 px-4 py-3', 'opacity-60' => ! $plan->active])>
                             <button type="button" wire:click="editPlan({{ $plan->id }})" class="min-w-0 flex-1 text-start">

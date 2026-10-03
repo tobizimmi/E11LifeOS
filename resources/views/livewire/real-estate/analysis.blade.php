@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (?float $value, int $decimals = 0) => $value === null ? '–' : number_format($value, $decimals, ',', '.').' €';
     $pct = fn (?float $value) => $value === null ? '–' : number_format($value, 1, ',', '.').' %';
     $levels = [
@@ -193,7 +193,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-6xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <section class="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+            <section class="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <label class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Name of the calculation') }}<input type="text" wire:model="title" class="{{ $input }}" placeholder="{{ __('e.g. 2-room flat Schwabing') }}"><x-input-error :messages="$errors->get('title')" /></label>
                 <x-primary-button type="button" wire:click="save">{{ __('Save') }}</x-primary-button>
                 @if ($analysisId !== '')
@@ -215,7 +215,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid gap-5 lg:grid-cols-5">
                 <div class="space-y-4 lg:col-span-2">
                     @foreach ($groups as $groupLabel => $fields)
-                        <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $groupLabel }}</h3>
                             @if ($loop->first)
                                 <label class="mt-2 block text-sm text-gray-700 dark:text-gray-300">{{ __('Federal state') }}
@@ -259,7 +259,7 @@ new #[Layout('layouts.app')] class extends Component
                             [__('Loan rate'), $euro($result['monthly_rate']).' '.__('/ month'), null],
                             [__('Break-even rent'), $euro($result['break_even_rent']).' '.__('/ month'), null],
                         ] as [$label, $value, $good])
-                            <div class="rounded-2xl bg-white p-3 shadow-sm dark:bg-gray-800">
+                            <div class="rounded-2xl bg-white p-3 shadow-xs dark:bg-gray-800">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $label }}</p>
                                 <p @class(['mt-1 font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-300' => $good === true, 'text-red-700 dark:text-red-300' => $good === false, 'text-gray-900 dark:text-gray-100' => $good === null])>{{ $value }}</p>
                             </div>
@@ -267,7 +267,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
 
                     <section class="grid gap-4 sm:grid-cols-2">
-                        <div class="rounded-2xl bg-white p-4 text-sm shadow-sm dark:bg-gray-800">
+                        <div class="rounded-2xl bg-white p-4 text-sm shadow-xs dark:bg-gray-800">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Total investment') }}</h3>
                             <dl class="mt-2 space-y-1">
                                 @foreach ([[__('Purchase price'), $result['price']], [__('Transfer tax'), $result['transfer_tax']], [__('Notary & land registry'), $result['notary']], [__('Broker'), $result['broker']], [__('Renovation / modernisation'), $result['renovation']]] as [$label, $value])
@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Remaining debt after fixed interest') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['remaining_debt']) }}</dd></div>
                             </dl>
                         </div>
-                        <div class="rounded-2xl bg-white p-4 text-sm shadow-sm dark:bg-gray-800">
+                        <div class="rounded-2xl bg-white p-4 text-sm shadow-xs dark:bg-gray-800">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('First year') }}</h3>
                             <dl class="mt-2 space-y-1">
                                 <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Rent after vacancy') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['effective_rent']) }}</dd></div>
@@ -298,7 +298,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
 
                     @if ($result['hints'] !== [])
-                        <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Points to check') }}</h3>
                             <ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-300">
                                 @foreach ($result['hints'] as $hint)
@@ -308,7 +308,7 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                     @endif
 
-                    <section class="overflow-x-auto rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <section class="overflow-x-auto rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Projection') }}</h3>
                         <table class="mt-2 w-full whitespace-nowrap text-right text-xs tabular-nums [&_td]:px-1 [&_th]:px-1">
                             <thead class="text-gray-500 dark:text-gray-400">

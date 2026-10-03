@@ -150,7 +150,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (?float $value) => $value === null ? '–' : number_format($value, 2, ',', '.').' €';
     $levels = [
         'green' => ['label' => __('Affordable'), 'class' => 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800', 'dot' => '🟢'],
@@ -173,16 +173,16 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <section class="grid gap-3 sm:grid-cols-3" aria-label="{{ __('Your budget') }}">
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Monthly surplus') }}</p>
                     <p @class(['mt-1 text-xl font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-300' => $budget['surplus'] > 0, 'text-red-700 dark:text-red-300' => $budget['surplus'] <= 0])>{{ $euro($budget['surplus']) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Free reserves') }}</p>
                     <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($budget['available']) }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':liquid available minus emergency fund of :reserve', ['liquid' => $euro($budget['liquid']), 'reserve' => $euro($budget['reserve'])]) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Open wishes') }}</p>
                     <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($openTotal) }}</p>
                     <a href="{{ route('cashflow.index') }}" wire:navigate class="text-xs text-indigo-600 underline dark:text-indigo-400">{{ __('Figures from the cashflow analysis') }}</a>
@@ -191,7 +191,7 @@ new #[Layout('layouts.app')] class extends Component
 
 
             @if ($showForm)
-                <form wire:submit="save" @if (! $editingId) data-draft="wish" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" @if (! $editingId) data-draft="wish" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('What do you want?') }}<input type="text" wire:model="wish.title" class="{{ $input }}" placeholder="{{ __('e.g. road bike, new sofa, weekend in Vienna') }}" autofocus><x-input-error :messages="$errors->get('wish.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('What does it cost?') }}<input type="text" inputmode="decimal" wire:model="wish.price" class="{{ $input }}" placeholder="0,00"><x-input-error :messages="$errors->get('wish.price')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Why do you want it?') }}<textarea wire:model="wish.reason" rows="2" class="{{ $input }}" placeholder="{{ __('e.g. old one is broken, want to ride to work') }}"></textarea></label>
@@ -211,7 +211,7 @@ new #[Layout('layouts.app')] class extends Component
                     </label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Wanted by') }}<input type="date" wire:model="wish.wanted_by" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('Link') }}<input type="url" wire:model="wish.url" class="{{ $input }}" placeholder="https://"><x-input-error :messages="$errors->get('wish.url')" /></label>
-                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-2 dark:text-gray-300"><input type="checkbox" wire:model="wish.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-2 dark:text-gray-300"><input type="checkbox" wire:model="wish.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingId ? __('Save changes') : __('Add') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -227,7 +227,7 @@ new #[Layout('layouts.app')] class extends Component
                     <h3 id="priority-{{ $priorityKey }}" class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $priorities[$priorityKey]['icon'] }} {{ $priorities[$priorityKey]['label'] }}</h3>
                     @foreach ($wishes as $item)
                         @php($check = $checks[$item->id])
-                        <article wire:key="wish-{{ $item->id }}" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                        <article wire:key="wish-{{ $item->id }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $categories[$item->category]['icon'] ?? '🛍️' }} {{ $item->title }}
@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforeach
                 </section>
             @empty
-                <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🎁</p>
                     <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No wishes yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Note what you would like to buy, why and how important it is – the app checks against your cashflow whether it fits now or when it will.') }}</p>
@@ -287,7 +287,7 @@ new #[Layout('layouts.app')] class extends Component
             @endforelse
 
             @if ($decided->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Decided') }}</h3>
                         @if ($droppedTotal > 0)

@@ -12,7 +12,7 @@
         wire:click="openEntry({{ $entry->id }})"
         title="{{ $entry->title }}"
         @class([
-            'flex w-full items-center gap-1 truncate rounded px-1.5 py-0.5 text-start text-xs',
+            'flex w-full items-center gap-1 truncate rounded-sm px-1.5 py-0.5 text-start text-xs',
             'bg-indigo-50 text-indigo-900 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-100' => ! $isDone,
             'bg-gray-100 text-gray-400 line-through dark:bg-gray-700' => $isDone,
         ])

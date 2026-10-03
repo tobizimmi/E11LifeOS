@@ -128,7 +128,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $amount = fn (?float $value) => $value === null ? '–' : rtrim(rtrim(number_format($value, 2, ',', ''), '0'), ',');
     $tabs = ['all' => __('All'), Pantry::KIND_FOOD => '🥫 '.__('Groceries'), Pantry::KIND_SUPPLIES => '🧻 '.__('Household supplies')];
 @endphp
@@ -161,7 +161,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($showForm)
-                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('What?') }}<input type="text" wire:model="entry.name" class="{{ $input }}" placeholder="{{ $entry['kind'] === Pantry::KIND_SUPPLIES ? __('e.g. toilet paper, dish soap, batteries') : __('e.g. pasta, rice, canned tomatoes') }}" autofocus><x-input-error :messages="$errors->get('entry.name')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Kind') }}
                         <select wire:model.live="entry.kind" class="{{ $input }}">
@@ -203,14 +203,14 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($rows->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-3xl" aria-hidden="true">🥫🧻</p>
                     <p class="mt-2 font-medium text-gray-900 dark:text-gray-100">{{ $search !== '' ? __('Nothing found.') : __('Nothing in stock yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Keep track of groceries and household supplies – with a minimum stock they land on the shopping list in time.') }}</p>
                     <x-primary-button type="button" wire:click="create" class="mt-4">+ {{ __('Add to stock') }}</x-primary-button>
                 </div>
             @else
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                     @foreach ($rows as $row)
                         @php($expiresSoon = $row['best_before'] && $row['best_before']->lte(today()->addDays(7)))
                         <li wire:key="stock-{{ $row['item']->id }}" class="flex items-center gap-3 px-4 py-3">

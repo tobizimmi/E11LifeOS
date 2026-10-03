@@ -30,7 +30,7 @@ new class extends Component
         </h2>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {{ __('Sign in to the portfolio app on your phone with your e-mail address and password. Server address for the app:') }}
-            <code class="rounded bg-gray-100 px-1 text-xs dark:bg-gray-900">{{ $apiUrl }}</code>
+            <code class="rounded-sm bg-gray-100 px-1 text-xs dark:bg-gray-900">{{ $apiUrl }}</code>
         </p>
     </header>
 

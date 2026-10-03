@@ -175,7 +175,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <div class="flex flex-wrap items-center gap-3">
                 <x-text-input wire:model.live.debounce.300ms="search" type="search" class="block flex-1 min-w-[14rem]" placeholder="{{ __('Search recipes or ingredients...') }}" aria-label="{{ __('Search recipes') }}" />
-                <select wire:model.live="sort" aria-label="{{ __('Sort') }}" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-sm text-sm">
+                <select wire:model.live="sort" aria-label="{{ __('Sort') }}" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-xs text-sm">
                     <option value="newest">{{ __('Newest first') }}</option>
                     <option value="title">{{ __('A–Z') }}</option>
                     <option value="time">{{ __('Quickest first') }}</option>
@@ -204,7 +204,7 @@ new #[Layout('layouts.app')] class extends Component
                 <a href="{{ route('recipes.categories') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Manage categories') }}</a>
                 <span class="flex-1"></span>
                 <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <input type="checkbox" wire:model.live="archived" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                    <input type="checkbox" wire:model.live="archived" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
                     {{ __('Archive') }}
                 </label>
             </div>
@@ -224,7 +224,7 @@ new #[Layout('layouts.app')] class extends Component
                     </h3>
                     <div class="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
                         @foreach ($forgotten as $oldFavorite)
-                            <a href="{{ route('recipes.show', $oldFavorite) }}" wire:navigate wire:key="forgotten-{{ $oldFavorite->id }}" class="w-40 shrink-0 snap-start overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200/60 hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700">
+                            <a href="{{ route('recipes.show', $oldFavorite) }}" wire:navigate wire:key="forgotten-{{ $oldFavorite->id }}" class="w-40 shrink-0 snap-start overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-gray-200/60 hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700">
                                 <span class="block h-20 bg-gray-100 dark:bg-gray-700">
                                     @if ($oldFavorite->imageUrl())
                                         <img src="{{ $oldFavorite->imageUrl() }}" alt="" loading="lazy" class="h-full w-full object-cover" />
@@ -270,17 +270,17 @@ new #[Layout('layouts.app')] class extends Component
                 </p>
                 <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-sm dark:bg-gray-800" role="group" aria-label="{{ __('View') }}">
                     @foreach (['cards' => '▦ '.__('Cards'), 'list' => '☰ '.__('List'), 'table' => '▤ '.__('Table')] as $key => $label)
-                        <button type="button" wire:click="$set('view', '{{ $key }}')" aria-pressed="{{ $view === $key ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $view === $key, 'text-gray-600 dark:text-gray-400' => $view !== $key])>{{ $label }}</button>
+                        <button type="button" wire:click="$set('view', '{{ $key }}')" aria-pressed="{{ $view === $key ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $view === $key, 'text-gray-600 dark:text-gray-400' => $view !== $key])>{{ $label }}</button>
                     @endforeach
                 </div>
             </div>
 
             @if ($view === 'list')
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-200/60 dark:divide-gray-700 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white shadow-xs ring-1 ring-gray-200/60 dark:divide-gray-700 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
                     @forelse ($recipes as $recipe)
                         <li wire:key="recipe-list-{{ $recipe->id }}" class="flex items-center gap-3 px-3 py-2">
                             <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3">
-                                <span class="h-12 w-16 shrink-0 overflow-hidden rounded bg-gray-100 dark:bg-gray-700">
+                                <span class="h-12 w-16 shrink-0 overflow-hidden rounded-sm bg-gray-100 dark:bg-gray-700">
                                     @if ($recipe->imageUrl())
                                         <img src="{{ $recipe->imageUrl() }}" alt="" loading="lazy" class="h-full w-full object-cover" />
                                     @else
@@ -306,7 +306,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </ul>
             @elseif ($view === 'table')
-                <div class="overflow-x-auto rounded-lg bg-white shadow-sm ring-1 ring-gray-200/60 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
+                <div class="overflow-x-auto rounded-lg bg-white shadow-xs ring-1 ring-gray-200/60 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
                     <table class="min-w-full text-sm">
                         <thead class="bg-gray-50 text-start text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
                             <tr>
@@ -341,7 +341,7 @@ new #[Layout('layouts.app')] class extends Component
             @else
             <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" wire:loading.class="opacity-50">
                 @forelse ($recipes as $recipe)
-                    <li wire:key="recipe-{{ $recipe->id }}" class="group relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700 hover:ring-indigo-300">
+                    <li wire:key="recipe-{{ $recipe->id }}" class="group relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xs ring-1 ring-gray-200/60 dark:ring-gray-700 hover:ring-indigo-300">
                         <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="block">
                             <div class="aspect-[4/3] bg-gray-100 dark:bg-gray-700">
                                 @if ($recipe->imageUrl())
@@ -379,7 +379,7 @@ new #[Layout('layouts.app')] class extends Component
                         <button
                             type="button"
                             wire:click="toggleFavorite({{ $recipe->id }})"
-                            class="absolute end-2 top-2 rounded-full bg-white/90 dark:bg-gray-900/80 px-2 py-1 text-lg leading-none shadow"
+                            class="absolute end-2 top-2 rounded-full bg-white/90 dark:bg-gray-900/80 px-2 py-1 text-lg leading-none shadow-sm"
                             aria-pressed="{{ $recipe->favoritedBy->isNotEmpty() ? 'true' : 'false' }}"
                             aria-label="{{ __('Favorite') }}"
                         >{{ $recipe->favoritedBy->isNotEmpty() ? '♥' : '♡' }}</button>

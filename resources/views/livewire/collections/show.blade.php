@@ -1397,7 +1397,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
             @if ($collection->system_key === null)
-                <details class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <details class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <summary class="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-100">👥 {{ __('Who sees this collection?') }}</summary>
                     <div class="mt-3"><livewire:sharing.panel type="collection" :id="$collection->id" :wire:key="'share-collection-'.$collection->id" /></div>
                 </details>
@@ -1441,8 +1441,8 @@ new #[Layout('layouts.app')] class extends Component
                             <div x-show="open" x-cloak class="absolute end-0 z-30 mt-1 w-60 rounded-lg bg-white dark:bg-gray-800 p-2 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
                                 <p class="px-2 pb-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Shown in this view') }}</p>
                                 @foreach ($properties as $property)
-                                    <label wire:key="field-toggle-{{ $property->id }}" class="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-                                        <input type="checkbox" @checked(! in_array($property->id, array_map('intval', $hiddenProperties), true)) wire:click="toggleHiddenProperty({{ $property->id }})" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                                    <label wire:key="field-toggle-{{ $property->id }}" class="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <input type="checkbox" @checked(! in_array($property->id, array_map('intval', $hiddenProperties), true)) wire:click="toggleHiddenProperty({{ $property->id }})" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
                                         <span class="text-gray-700 dark:text-gray-200">{{ $property->name }}</span>
                                     </label>
                                 @endforeach
@@ -1476,7 +1476,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($showFilters || $filterRows !== [])
-                <div class="rounded-lg bg-white dark:bg-gray-800 p-3 shadow-sm space-y-2" aria-label="{{ __('Filter') }}">
+                <div class="rounded-lg bg-white dark:bg-gray-800 p-3 shadow-xs space-y-2" aria-label="{{ __('Filter') }}">
                     @foreach ($filterRows as $index => $row)
                         <div wire:key="filter-{{ $index }}" class="flex flex-wrap items-center gap-2 text-sm">
                             <span class="w-10 text-xs text-gray-500">{{ $index === 0 ? __('Where') : __('and') }}</span>
@@ -1541,7 +1541,7 @@ new #[Layout('layouts.app')] class extends Component
                 <x-text-input wire:model.live.debounce.300ms="search" type="search" class="block w-48" placeholder="{{ __('Filter...') }}" aria-label="{{ __('Filter') }}" />
                 @if ($collection->isTasks())
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <input type="checkbox" wire:model.live="hideDone" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                        <input type="checkbox" wire:model.live="hideDone" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
                         {{ __('Hide done') }}
                     </label>
                 @endif
@@ -1597,7 +1597,7 @@ new #[Layout('layouts.app')] class extends Component
                                 ->take(5);
                             $isDone = $collection->isTasks() && $entry->done;
                         @endphp
-                        <button type="button" wire:key="card-{{ $entry->id }}" wire:click="openEntry({{ $entry->id }})" class="group flex flex-col gap-3 rounded-2xl bg-white p-4 text-start shadow-sm ring-1 ring-gray-200 transition hover:shadow-md hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700 dark:hover:ring-indigo-500">
+                        <button type="button" wire:key="card-{{ $entry->id }}" wire:click="openEntry({{ $entry->id }})" class="group flex flex-col gap-3 rounded-2xl bg-white p-4 text-start shadow-xs ring-1 ring-gray-200 transition hover:shadow-md hover:ring-indigo-300 dark:bg-gray-800 dark:ring-gray-700 dark:hover:ring-indigo-500">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p @class(['font-semibold leading-snug break-words', 'line-through text-gray-400' => $isDone, 'text-gray-900 dark:text-gray-100' => ! $isDone])>{{ $entry->title }}</p>
@@ -1655,7 +1655,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($currentView === 'list')
                 {{-- List --}}
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 dark:divide-gray-700 dark:bg-gray-800 dark:ring-gray-700">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs ring-1 ring-gray-200 dark:divide-gray-700 dark:bg-gray-800 dark:ring-gray-700">
                     @forelse ($entries as $entry)
                         @php
                             $deadline = $deadlineProperty ? \App\Support\PropertyDisplay::format($deadlineProperty, $entry) : null;
@@ -1698,7 +1698,7 @@ new #[Layout('layouts.app')] class extends Component
                 </ul>
             @elseif ($currentView === 'table')
                 {{-- Table --}}
-                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl overflow-x-auto">
+                <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="border-b border-gray-200 dark:border-gray-700 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <tr>
@@ -1725,7 +1725,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <tr wire:key="row-{{ $entry->id }}" @class(['hover:bg-gray-50 dark:hover:bg-gray-700/40', 'bg-indigo-50/60 dark:bg-gray-700/60' => $openEntry?->id === $entry->id])>
                                     @if ($collection->isTasks())
                                         <td class="px-3 py-1.5">
-                                            <input type="checkbox" wire:key="done-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}-{{ (int) $entry->done }}" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) aria-label="{{ __('Mark as done') }}" class="rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+                                            <input type="checkbox" wire:key="done-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}-{{ (int) $entry->done }}" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) aria-label="{{ __('Mark as done') }}" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
                                         </td>
                                     @endif
                                     <td class="px-3 py-1.5">
@@ -1783,7 +1783,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($currentView === 'calendar')
                 {{-- Calendar --}}
-                <section class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-3 sm:p-4">
+                <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-3 sm:p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div class="flex items-center gap-2">
                             <button type="button" wire:click="changeMonth(-1)" class="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm" aria-label="{{ $calendar['isWeek'] ? __('Previous week') : __('Previous month') }}">‹</button>
@@ -1855,7 +1855,7 @@ new #[Layout('layouts.app')] class extends Component
                                         @endforeach
                                     </ul>
                                     @foreach ($day['previews'] as $previewEntry)
-                                        <button type="button" wire:key="preview-{{ $day['date'] }}-{{ $previewEntry->id }}" wire:click="openEntry({{ $previewEntry->id }})" class="mt-0.5 flex w-full items-center gap-1 truncate rounded border border-dashed border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 text-start text-xs text-indigo-400 dark:text-indigo-300/70" title="{{ __('Repeats: :title', ['title' => $previewEntry->title]) }}">
+                                        <button type="button" wire:key="preview-{{ $day['date'] }}-{{ $previewEntry->id }}" wire:click="openEntry({{ $previewEntry->id }})" class="mt-0.5 flex w-full items-center gap-1 truncate rounded-sm border border-dashed border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 text-start text-xs text-indigo-400 dark:text-indigo-300/70" title="{{ __('Repeats: :title', ['title' => $previewEntry->title]) }}">
                                             <span aria-hidden="true">↻</span><span class="truncate">{{ $previewEntry->title }}</span>
                                         </button>
                                     @endforeach
@@ -1912,7 +1912,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <li
                                         x-sort:item="{{ $card->id }}"
                                         wire:key="card-{{ $card->id }}"
-                                        class="cursor-grab rounded-md bg-white dark:bg-gray-800 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-indigo-300"
+                                        class="cursor-grab rounded-md bg-white dark:bg-gray-800 p-3 shadow-xs ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-indigo-300"
                                     >
                                         <button type="button" wire:click="openEntry({{ $card->id }})" x-sort:ignore @class(['block w-full text-start text-sm font-medium', 'line-through text-gray-400' => $collection->isTasks() && $card->done, 'text-gray-900 dark:text-gray-100' => ! ($collection->isTasks() && $card->done)])>
                                             {{ $card->title }}
@@ -1944,17 +1944,17 @@ new #[Layout('layouts.app')] class extends Component
                                                     @case(\App\Models\CollectionProperty::TYPE_RELATION)
                                                         @foreach ((array) $value as $key)
                                                             @if ($node = $relationNodes[$key] ?? null)
-                                                                <span class="rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">{{ $node['icon'] }} {{ $node['title'] }}</span>
+                                                                <span class="rounded-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">{{ $node['icon'] }} {{ $node['title'] }}</span>
                                                             @endif
                                                         @endforeach
                                                         @break
                                                     @case(\App\Models\CollectionProperty::TYPE_DATE)
-                                                        <span @class(['rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5', 'text-red-600 dark:text-red-400 font-medium' => $property->system_key === 'due' && ! $card->done && $value < now()->toDateString()])>
+                                                        <span @class(['rounded-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5', 'text-red-600 dark:text-red-400 font-medium' => $property->system_key === 'due' && ! $card->done && $value < now()->toDateString()])>
                                                             📅 {{ \Illuminate\Support\Carbon::parse($value)->translatedFormat('j. M') }}
                                                         </span>
                                                         @break
                                                     @case(\App\Models\CollectionProperty::TYPE_PERSON)
-                                                        <span class="rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">👤 {{ $members->firstWhere('id', $value)?->name ?? '—' }}</span>
+                                                        <span class="rounded-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">👤 {{ $members->firstWhere('id', $value)?->name ?? '—' }}</span>
                                                         @break
                                                     @case(\App\Models\CollectionProperty::TYPE_CHECKBOX)
                                                         <span>☑ {{ $property->name }}</span>
@@ -2159,7 +2159,7 @@ new #[Layout('layouts.app')] class extends Component
                                     </div>
                                 </div>
                                 <p x-show="uploadStatus" x-cloak x-text="uploadStatus" class="mt-1 text-xs text-gray-500 dark:text-gray-400" role="status"></p>
-                                <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" rows="10" class="block w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm" aria-label="{{ __('Notes') }}"></textarea>
+                                <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" rows="10" class="block w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-xs" aria-label="{{ __('Notes') }}"></textarea>
                             </div>
                             <div class="flex items-center gap-3">
                                 <x-primary-button>{{ __('Save') }}</x-primary-button>
@@ -2211,7 +2211,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div>
                     <label for="form-title" class="sr-only">{{ __('Title') }}</label>
                     <div class="flex gap-2">
-                        <input id="form-title" type="text" wire:model="form.title" autofocus x-init="$nextTick(() => $el.focus())" placeholder="{{ __('Title') }}" class="block w-full rounded-lg border-gray-300 text-lg font-semibold shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+                        <input id="form-title" type="text" wire:model="form.title" autofocus x-init="$nextTick(() => $el.focus())" placeholder="{{ __('Title') }}" class="block w-full rounded-lg border-gray-300 text-lg font-semibold shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
                         <x-voice-button for="form-title" />
                     </div>
                     <x-input-error :messages="$errors->get('form.title')" class="mt-1" />
@@ -2261,12 +2261,12 @@ new #[Layout('layouts.app')] class extends Component
 
                 <div>
                     <label for="form-tags" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"># {{ __('Tags') }}</label>
-                    <input id="form-tags" type="text" wire:model="form.tags" placeholder="{{ __('e.g. garden, urgent') }}" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+                    <input id="form-tags" type="text" wire:model="form.tags" placeholder="{{ __('e.g. garden, urgent') }}" class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
                 </div>
 
                 <div>
                     <label for="form-body" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📝 {{ __('Notes') }}</label>
-                    <textarea id="form-body" rows="4" wire:model="form.body" placeholder="{{ __('Notes, details, checklists (- [ ] …) …') }}" class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"></textarea>
+                    <textarea id="form-body" rows="4" wire:model="form.body" placeholder="{{ __('Notes, details, checklists (- [ ] …) …') }}" class="block w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"></textarea>
                     <p class="mt-1 text-xs text-gray-400">{{ __('Images and files can be added in the entry afterwards (Notes → Edit).') }}</p>
                 </div>
             </form>

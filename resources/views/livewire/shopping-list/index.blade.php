@@ -479,7 +479,7 @@ new #[Layout('layouts.app')] class extends Component
                     @foreach ($lists as $tab)
                         <li wire:key="list-tab-{{ $tab->id }}" x-sort:item="{{ $tab->id }}">
                             <button type="button" wire:click="selectList({{ $tab->id }})" aria-current="{{ $tab->id === $list->id ? 'true' : 'false' }}"
-                                @class(['flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium whitespace-nowrap ring-1 transition', 'bg-indigo-600 text-white ring-indigo-600 shadow-sm' => $tab->id === $list->id, 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $tab->id !== $list->id])>
+                                @class(['flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium whitespace-nowrap ring-1 transition', 'bg-indigo-600 text-white ring-indigo-600 shadow-xs' => $tab->id === $list->id, 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $tab->id !== $list->id])>
                                 <span aria-hidden="true">{{ $tab->icon }}</span> {{ $tab->name }}
                                 @if ($tab->open_count > 0)
                                     <span @class(['rounded-full px-1.5 text-xs', 'bg-white/20' => $tab->id === $list->id, 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' => $tab->id !== $list->id])>{{ $tab->open_count }}</span>
@@ -495,7 +495,7 @@ new #[Layout('layouts.app')] class extends Component
             @endunless
 
             {{-- Current list: store, actions, add --}}
-            <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800 sm:p-5">
+            <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800 sm:p-5">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <div class="flex min-w-0 items-center gap-2">
                         <span class="text-2xl" aria-hidden="true">{{ $list->icon }}</span>
@@ -594,7 +594,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Items --}}
-            <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800 sm:p-5">
+            <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800 sm:p-5">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         @if ($byAisle && $list->store)
@@ -605,8 +605,8 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </p>
                     <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="group" aria-label="{{ __('Sorting') }}">
-                        <button type="button" wire:click="$set('byAisle', true)" aria-pressed="{{ $byAisle ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => $byAisle, 'text-gray-600 dark:text-gray-400' => ! $byAisle])>🏪 {{ __('By section') }}</button>
-                        <button type="button" wire:click="$set('byAisle', false)" aria-pressed="{{ ! $byAisle ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-sm dark:bg-gray-700 dark:text-gray-100' => ! $byAisle, 'text-gray-600 dark:text-gray-400' => $byAisle])>🕒 {{ __('Newest first') }}</button>
+                        <button type="button" wire:click="$set('byAisle', true)" aria-pressed="{{ $byAisle ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => $byAisle, 'text-gray-600 dark:text-gray-400' => ! $byAisle])>🏪 {{ __('By section') }}</button>
+                        <button type="button" wire:click="$set('byAisle', false)" aria-pressed="{{ ! $byAisle ? 'true' : 'false' }}" @class(['rounded-md px-2 py-1', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => ! $byAisle, 'text-gray-600 dark:text-gray-400' => $byAisle])>🕒 {{ __('Newest first') }}</button>
                     </div>
                 </div>
 
@@ -696,12 +696,12 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             @unless ($shoppingMode)
-                <details class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <details class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <summary class="flex cursor-pointer flex-wrap items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-100">👥 {{ __('Who sees this list?') }} <x-audience-badge :model="$list" /></summary>
                     <div class="mt-3"><livewire:sharing.panel type="shopping" :id="$list->id" :wire:key="'share-shopping-'.$list->id" /></div>
                 </details>
                 @if ($sharedWithMe->isNotEmpty())
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">↪ {{ __('Lists shared with me') }}</h3>
                         <ul class="mt-2 flex flex-wrap gap-2">
                             @foreach ($sharedWithMe as $sharedList)

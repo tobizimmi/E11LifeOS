@@ -10,79 +10,79 @@
             @if (session('two-factor-required') || (config('security.require_two_factor') && ! auth()->user()->hasSecondFactor()))
                 <p class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100" role="alert">🔐 {{ __('Please set up two-factor authentication below – it is required on this server.') }}</p>
             @endif
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.update-profile-information-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.update-password-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.two-factor-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.passkeys-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.security-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.reminder-settings-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.weekly-digest-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.morning-briefing-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.paperless-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.push-notifications-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.calendar-feed-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.app-devices-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <section class="space-y-6 max-w-xl">
                     <header>
                         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
@@ -117,7 +117,7 @@
                 </section>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.delete-user-form />
                 </div>

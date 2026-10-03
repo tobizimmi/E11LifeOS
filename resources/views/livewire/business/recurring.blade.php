@@ -121,12 +121,12 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Recurring invoices are created automatically on the given date – issued and sent by e-mail if you like. Create one from any invoice with “🔁 Repeat …”.') }}</p>
 
             @if ($templateList->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🔁</p>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('No recurring invoices yet – open an invoice and choose “Repeat …”, e.g. for maintenance contracts or subscriptions.') }}</p>
                 </div>
             @else
-                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                     @foreach ($templateList as $template)
                         <li wire:key="recurring-{{ $template->id }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                             <button type="button" wire:click="edit({{ $template->id }})" class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-start">
@@ -183,9 +183,9 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </div>
                 <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                    <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="form.auto_issue" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Issue automatically (otherwise a draft is created)') }}</label>
-                    <label @class(['flex items-center gap-2', 'opacity-50' => ! ($form['auto_issue'] ?? false)])><input type="checkbox" wire:model="form.auto_send" @disabled(! ($form['auto_issue'] ?? false)) class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Send by e-mail to the customer') }}@if (! $editing->customer?->email) <span class="text-xs text-amber-700 dark:text-amber-300">({{ __('the customer has no e-mail address') }})</span>@endif</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.active" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Active') }}</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="form.auto_issue" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Issue automatically (otherwise a draft is created)') }}</label>
+                    <label @class(['flex items-center gap-2', 'opacity-50' => ! ($form['auto_issue'] ?? false)])><input type="checkbox" wire:model="form.auto_send" @disabled(! ($form['auto_issue'] ?? false)) class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Send by e-mail to the customer') }}@if (! $editing->customer?->email) <span class="text-xs text-amber-700 dark:text-amber-300">({{ __('the customer has no e-mail address') }})</span>@endif</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" wire:model="form.active" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Active') }}</label>
                 </div>
                 <div class="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-900/40">
                     <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Items') }}</p>

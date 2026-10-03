@@ -20,17 +20,17 @@
     </div>
 
     <div class="grid gap-3 sm:grid-cols-3">
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Deductible expenses') }}</p>
             <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $euro($taxData['deductible']) }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('≈ :amount less tax', ['amount' => $euro($taxData['deduction_effect'])]) }}</p>
         </div>
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Direct tax reductions') }}</p>
             <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $euro($taxData['credits']['total']) }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('§ 35a household & craftsman, § 35c') }}</p>
         </div>
-        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Estimated effect overall') }}</p>
             <p @class(['mt-1 text-2xl font-semibold', 'text-green-700 dark:text-green-400' => $taxData['effect'] >= 0, 'text-red-700 dark:text-red-400' => $taxData['effect'] < 0])>≈ {{ $euro(abs($taxData['effect'])) }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $taxData['effect'] >= 0 ? __('less income tax') : __('more income tax') }} · {{ __('rate :rate %', ['rate' => number_format($taxData['rate'], 0)]) }}</p>
@@ -38,7 +38,7 @@
     </div>
 
     @if ($taxSuggestions !== [])
-        <section class="rounded-2xl bg-amber-50 p-5 shadow-sm dark:bg-amber-900/20" aria-labelledby="tax-suggestions-heading">
+        <section class="rounded-2xl bg-amber-50 p-5 shadow-xs dark:bg-amber-900/20" aria-labelledby="tax-suggestions-heading">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h3 id="tax-suggestions-heading" class="font-semibold text-amber-950 dark:text-amber-100">💡 {{ trans_choice(':count booking may be tax-relevant|:count bookings may be tax-relevant', count($taxSuggestions)) }}</h3>
                 <button type="button" wire:click="acceptTaxSuggestions" class="rounded-lg bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-500">{{ __('Accept all') }}</button>
@@ -57,7 +57,7 @@
     @endif
 
     <div class="grid gap-5 lg:grid-cols-2">
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="deductions-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="deductions-heading">
             <h3 id="deductions-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Deductions from your bookings') }}</h3>
             <table class="mt-3 w-full text-sm">
                 <thead class="text-xs text-gray-500 dark:text-gray-400"><tr><th class="text-start font-medium">{{ __('Category') }}</th><th class="text-end font-medium">{{ __('Paid') }}</th><th class="text-end font-medium">{{ __('Counts') }}</th></tr></thead>
@@ -74,7 +74,7 @@
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Work expenses count above the flat rate of 1,230 €; childcare 80 % up to 4,800 € per child; medical costs above the reasonable burden; insurance within the maximum amounts.') }}</p>
         </section>
 
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="credits-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="credits-heading">
             <h3 id="credits-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Direct tax reductions') }}</h3>
             <dl class="mt-3 space-y-1.5 text-sm">
                 <div class="flex justify-between gap-2"><dt class="text-gray-600 dark:text-gray-300">🧹 {{ __('Household services: 20 % of :amount', ['amount' => $euro($taxData['credits']['household_services']['spent'])]) }}</dt><dd class="whitespace-nowrap font-medium">{{ $euro($taxData['credits']['household_services']['credit']) }}</dd></div>
@@ -86,7 +86,7 @@
     </div>
 
     @if ($taxData['properties'] !== [] || $taxData['business'] || $taxData['portfolio'])
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="modules-heading">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="modules-heading">
             <h3 id="modules-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('From your other modules') }}</h3>
             <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-700">
                 @foreach ($taxData['properties'] as $row)
@@ -118,7 +118,7 @@
         </section>
     @endif
 
-    <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-labelledby="tax-bookings-heading">
+    <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-labelledby="tax-bookings-heading">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3 dark:border-gray-700">
             <h3 id="tax-bookings-heading" class="font-semibold text-gray-900 dark:text-gray-100">{{ trans_choice(':count tax-relevant booking|:count tax-relevant bookings', $taxData['bookings']->count()) }}</h3>
             <input type="search" wire:model.live.debounce.300ms="taxSearch" placeholder="{{ __('Find another booking …') }}" aria-label="{{ __('Find another booking') }}" class="w-64 max-w-full rounded-lg border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">

@@ -84,7 +84,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
 @endphp
 
@@ -100,7 +100,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
 
             @if ($showForm)
-                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="group.title" class="{{ $input }}" placeholder="{{ __('e.g. Ski trip 2027, shared flat') }}" autofocus><x-input-error :messages="$errors->get('group.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Symbol') }}
                         <select wire:model="group.icon" class="{{ $input }}">
@@ -120,7 +120,7 @@ new #[Layout('layouts.app')] class extends Component
                             </select>
                         </label>
                     @endif
-                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-3 dark:text-gray-300"><input type="checkbox" wire:model="group.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-3 dark:text-gray-300"><input type="checkbox" wire:model="group.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     <div class="flex gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Create') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -130,7 +130,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @forelse ($active as $expenseGroup)
                 @php($balance = $myBalance[$expenseGroup->id])
-                <a href="{{ route('splits.show', $expenseGroup) }}" wire:navigate wire:key="group-{{ $expenseGroup->id }}" class="block rounded-2xl bg-white p-5 shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                <a href="{{ route('splits.show', $expenseGroup) }}" wire:navigate wire:key="group-{{ $expenseGroup->id }}" class="block rounded-2xl bg-white p-5 shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $expenseGroup->icon }} {{ $expenseGroup->title }} <x-audience-badge :model="$expenseGroup" /></p>
@@ -147,7 +147,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __(':count expenses · :total in total', ['count' => $expenseGroup->expenses->reject->is_transfer->count(), 'total' => $euro($totals[$expenseGroup->id])]) }}</p>
                 </a>
             @empty
-                <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🧾</p>
                     <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No group yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Note who paid what on a holiday with friends or in a shared flat – the app works out who owes whom and the fewest transfers to settle up.') }}</p>
@@ -155,7 +155,7 @@ new #[Layout('layouts.app')] class extends Component
             @endforelse
 
             @if ($archived->isNotEmpty())
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Archived') }}</h3>
                     <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach ($archived as $expenseGroup)

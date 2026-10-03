@@ -19,6 +19,7 @@ export default (texts, center) => {
     let areaLayer = null;
     let locationMarker = null;
     let nearbyTimer = null;
+    let nearbyPlaces = [];
 
     return {
         groups: [],
@@ -29,6 +30,8 @@ export default (texts, center) => {
         searched: false,
         active: 0,
         showPois: false,
+        poiKinds: [],
+        hiddenPoiKinds: [],
         wheelHint: false,
         wheelHintTimer: null,
         locating: false,
@@ -355,15 +358,22 @@ export default (texts, center) => {
             if (this.showPois) {
                 this.loadNearby(true);
             } else {
+                nearbyPlaces = [];
+                this.poiKinds = [];
                 poiLayer.clearLayers();
             }
+        },
+
+        /** Shows or hides one type of places nearby (e.g. only restaurants). */
+        togglePoiKind(kind) {
+            this.hiddenPoiKinds = this.hiddenPoiKinds.includes(kind) ? this.hiddenPoiKinds.filter((entry) => entry !== kind) : [...this.hiddenPoiKinds, kind];
+            this.drawPois();
         },
 
         async loadNearby(announce = false) {
             this.loadingNearby = true;
             const places = await this.$wire.placesNearby(this.bounds());
             this.loadingNearby = false;
-            poiLayer.clearLayers();
 
             if (!this.showPois) {
                 return;
@@ -371,14 +381,20 @@ export default (texts, center) => {
 
             if (places.length === 0 && announce) {
                 window.dispatchEvent(new CustomEvent('toast', { detail: { message: texts.zoomIn } }));
-
-                return;
             }
 
+            nearbyPlaces = places;
+            const counts = places.reduce((carry, place) => ({ ...carry, [place.kind]: (carry[place.kind] ?? 0) + 1 }), {});
+            this.poiKinds = Object.keys(texts.kinds ?? {}).filter((kind) => counts[kind]).map((kind) => ({ key: kind, label: texts.kinds[kind], icon: texts.icons[kind] ?? '📍', count: counts[kind] }));
+            this.drawPois();
+        },
+
+        drawPois() {
+            poiLayer.clearLayers();
             // Zoomed out only the icons, names from street level on (otherwise the labels cover the map).
             const withNames = map.getZoom() >= 15;
 
-            for (const place of places) {
+            for (const place of nearbyPlaces.filter((entry) => !this.hiddenPoiKinds.includes(entry.kind))) {
                 const marker = L.marker([place.lat, place.lng], {
                     icon: L.divIcon({ className: '', iconSize: null, iconAnchor: [10, 10], html: `<span class="trip-poi" title="${escapeHtml(place.name)}">${escapeHtml(texts.icons[place.kind] ?? '📍')}${withNames ? ' ' + escapeHtml(place.name) : ''}</span>` }),
                 });

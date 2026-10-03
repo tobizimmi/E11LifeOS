@@ -502,7 +502,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-8">
         <div class="mx-auto max-w-4xl space-y-6 px-4 sm:px-6 lg:px-8">
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Status') }}</h3>
                 <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                     <li class="flex items-center gap-2">
@@ -524,7 +524,7 @@ new #[Layout('layouts.app')] class extends Component
                         <summary class="cursor-pointer text-orange-700 dark:text-orange-400">{{ trans_choice(':count recent error|:count recent errors', count($recentErrors)) }}</summary>
                         <ul class="mt-2 space-y-1.5">
                             @foreach ($recentErrors as $error)
-                                <li class="rounded bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($error['at'])->format('d.m. H:i') }}</span> <strong>{{ $error['type'] }}</strong>: {{ $error['message'] }}<br><span class="text-gray-500">{{ $error['where'] }} · {{ $error['url'] }}</span></li>
+                                <li class="rounded-sm bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($error['at'])->format('d.m. H:i') }}</span> <strong>{{ $error['type'] }}</strong>: {{ $error['message'] }}<br><span class="text-gray-500">{{ $error['where'] }} · {{ $error['url'] }}</span></li>
                             @endforeach
                         </ul>
                     </details>
@@ -534,7 +534,7 @@ new #[Layout('layouts.app')] class extends Component
                         <summary class="cursor-pointer text-orange-700 dark:text-orange-400">{{ trans_choice(':count background job failed.|:count background jobs failed.', $failedJobs) }}</summary>
                         <ul class="mt-2 space-y-1.5">
                             @foreach ($recentFailedJobs as $job)
-                                <li class="rounded bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($job['failed_at'])->format('d.m. H:i') }}</span> <strong>{{ $job['job'] }}</strong> <span class="text-gray-500">({{ $job['queue'] }})</span><br>{{ $job['error'] }}</li>
+                                <li class="rounded-sm bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($job['failed_at'])->format('d.m. H:i') }}</span> <strong>{{ $job['job'] }}</strong> <span class="text-gray-500">({{ $job['queue'] }})</span><br>{{ $job['error'] }}</li>
                             @endforeach
                         </ul>
                         <div class="mt-2 flex flex-wrap gap-2">
@@ -547,7 +547,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <form wire:submit="save" class="space-y-6">
                 @foreach ($groups as $group => $meta)
-                    <section wire:key="group-{{ $group }}" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section wire:key="group-{{ $group }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $meta['title'] }}</h3>
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ $meta['text'] }}</p>
                         <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -572,7 +572,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <div class="mt-2 grid gap-2 sm:grid-cols-2">
                                             @foreach (AiFeatures::all() as $feature => $meta)
                                                 <label wire:key="ai-feature-{{ $feature }}" class="flex items-start gap-2 rounded-lg border border-gray-200 p-2 text-sm dark:border-gray-700">
-                                                    <input type="checkbox" wire:model="aiFeatures" value="{{ $feature }}" class="mt-0.5 rounded border-gray-300 text-indigo-600" />
+                                                    <input type="checkbox" wire:model="aiFeatures" value="{{ $feature }}" class="mt-0.5 rounded-sm border-gray-300 text-indigo-600" />
                                                     <span><span class="block text-gray-900 dark:text-gray-100">{{ $meta['label'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $meta['text'] }}</span></span>
                                                 </label>
                                             @endforeach
@@ -580,12 +580,12 @@ new #[Layout('layouts.app')] class extends Component
                                     @elseif ($field['type'] === 'textarea')
                                         <textarea id="setting-{{ $key }}" rows="8" wire:model="form.{{ $key }}" spellcheck="false" autocomplete="off" class="mt-1 block w-full rounded-lg border-gray-300 font-mono text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ isset($stored[$key]) ? '•••••••• '.__('(saved – paste a new configuration to replace it)') : $labels[$key][1] }}"></textarea>
                                         @if (isset($stored[$key]))
-                                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><input type="checkbox" wire:model="clear.{{ $key }}" class="rounded border-gray-300 text-red-600" /> {{ __('remove') }}</label>
+                                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><input type="checkbox" wire:model="clear.{{ $key }}" class="rounded-sm border-gray-300 text-red-600" /> {{ __('remove') }}</label>
                                         @endif
                                     @elseif ($field['secret'])
                                         <x-text-input :id="'setting-'.$key" type="password" autocomplete="new-password" wire:model="form.{{ $key }}" class="mt-1 block w-full" :placeholder="isset($stored[$key]) ? '•••••••• '.__('(saved)') : (isset($current[$key]) ? '•••••••• '.__('(from .env)') : $labels[$key][1])" />
                                         @if (isset($stored[$key]))
-                                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><input type="checkbox" wire:model="clear.{{ $key }}" class="rounded border-gray-300 text-red-600" /> {{ __('remove') }}</label>
+                                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><input type="checkbox" wire:model="clear.{{ $key }}" class="rounded-sm border-gray-300 text-red-600" /> {{ __('remove') }}</label>
                                         @endif
                                     @else
                                         <x-text-input :id="'setting-'.$key" :type="$field['type'] === 'number' ? 'number' : ($field['type'] === 'email' ? 'email' : 'text')" wire:model="form.{{ $key }}" class="mt-1 block w-full" :placeholder="isset($current[$key]) ? __('currently: :value', ['value' => $current[$key]]) : $labels[$key][1]" />

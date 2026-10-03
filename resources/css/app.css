@@ -1,6 +1,47 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms';
+
+/* The pagination views are not part of the app's files but use utilities too. */
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@theme {
+    --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Fixed line heights as in Tailwind 3 (fields on phones get 16px text but keep their height). */
+    --text-xs--line-height: 1rem;
+    --text-sm--line-height: 1.25rem;
+    --text-base--line-height: 1.5rem;
+    --text-lg--line-height: 1.75rem;
+    --text-xl--line-height: 1.75rem;
+    --text-2xl--line-height: 2rem;
+    --text-3xl--line-height: 2.25rem;
+    --text-4xl--line-height: 2.5rem;
+}
+
+/*
+ * Defaults of Tailwind 3 that Tailwind 4 dropped: borders are light grey instead of the text
+ * color, placeholders a muted grey, and buttons show the pointer.
+ */
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentcolor);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--color-gray-400);
+    }
+
+    button:not(:disabled),
+    [role='button']:not(:disabled) {
+        cursor: pointer;
+    }
+}
 
 [x-cloak] {
     display: none !important;
@@ -76,14 +117,14 @@
  * sidebar and header.
  */
 @layer utilities {
-    main .bg-white.shadow-sm,
-    main .bg-white.shadow {
+    main .bg-white.shadow-xs,
+    main .bg-white.shadow-sm {
         box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 0 0 1px rgb(15 23 42 / 0.06);
     }
 
     @media (prefers-color-scheme: dark) {
-        main .dark\:bg-gray-800.shadow-sm,
-        main .dark\:bg-gray-800.shadow {
+        main .dark\:bg-gray-800.shadow-xs,
+        main .dark\:bg-gray-800.shadow-sm {
             box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
         }
     }
@@ -135,7 +176,7 @@
     }
 
     .note-content .checklist-to-task {
-        @apply absolute end-0 top-0 rounded px-1.5 text-sm text-gray-500 no-underline dark:text-gray-400 opacity-0 transition hover:bg-indigo-50 hover:text-indigo-600 focus:opacity-100 dark:hover:bg-gray-700 pointer-coarse:opacity-60;
+        @apply absolute end-0 top-0 rounded-sm px-1.5 text-sm text-gray-500 no-underline dark:text-gray-400 opacity-0 transition hover:bg-indigo-50 hover:text-indigo-600 focus:opacity-100 dark:hover:bg-gray-700 pointer-coarse:opacity-60;
     }
 
     .note-content li:hover > .checklist-to-task {
@@ -177,7 +218,7 @@
     }
 
     .note-content li > input[type='checkbox'] {
-        @apply me-2 rounded border-gray-300 dark:border-gray-600 text-indigo-600;
+        @apply me-2 rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600;
     }
 
     .note-content blockquote {
@@ -185,7 +226,7 @@
     }
 
     .note-content code {
-        @apply font-mono text-sm bg-gray-100 dark:bg-gray-900 rounded px-1;
+        @apply font-mono text-sm bg-gray-100 dark:bg-gray-900 rounded-sm px-1;
     }
 
     .note-content pre {
@@ -227,11 +268,11 @@
 
     /* Tiptap page editor */
     .editor-frame {
-        @apply rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500;
+        @apply rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xs focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500;
     }
 
     .note-editor {
-        @apply min-h-[16rem] px-4 py-3 focus:outline-none;
+        @apply min-h-[16rem] px-4 py-3 focus:outline-hidden;
     }
 
     .note-editor p.is-editor-empty:first-child::before {
@@ -240,7 +281,7 @@
     }
 
     .note-editor .wiki-link {
-        @apply rounded bg-indigo-50 px-0.5 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300;
+        @apply rounded-sm bg-indigo-50 px-0.5 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300;
     }
 
     .note-editor ul[data-type='taskList'] {
@@ -256,7 +297,7 @@
     }
 
     .note-editor ul[data-type='taskList'] li > label input {
-        @apply rounded border-gray-300 dark:border-gray-600 text-indigo-600;
+        @apply rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600;
     }
 
     .note-editor ul[data-type='taskList'] li > div {
@@ -280,7 +321,7 @@
     }
 
     .editor-bubble button {
-        @apply min-w-[2rem] rounded px-2 py-1 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700;
+        @apply min-w-[2rem] rounded-sm px-2 py-1 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700;
     }
 
     .editor-bubble button.is-active {
@@ -305,7 +346,7 @@
 
     /* Page blocks (callouts, toggles, embeds) – read view and editor */
     .note-content mark {
-        @apply rounded bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40;
+        @apply rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40;
     }
 
     .note-content .callout {
@@ -369,7 +410,7 @@
     }
 
     .note-content .page-embed-tasks input {
-        @apply me-1 rounded border-gray-300 text-indigo-600 dark:border-gray-600;
+        @apply me-1 rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600;
     }
 
     .note-content .page-embed-calendar > li {
@@ -390,7 +431,7 @@
     }
 
     .note-editor .callout-icon {
-        @apply cursor-pointer rounded hover:bg-black/5;
+        @apply cursor-pointer rounded-sm hover:bg-black/5;
     }
 
     .note-editor .page-toggle-title {
@@ -406,7 +447,7 @@
     }
 
     .editor-popup-hint {
-        @apply inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded border border-gray-200 dark:border-gray-600 px-1 text-xs text-gray-500 dark:text-gray-400;
+        @apply inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-sm border border-gray-200 dark:border-gray-600 px-1 text-xs text-gray-500 dark:text-gray-400;
     }
 }
 

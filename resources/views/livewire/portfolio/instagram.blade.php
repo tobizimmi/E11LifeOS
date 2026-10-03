@@ -108,7 +108,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.instagram'])
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📸 {{ __('Instagram analysis of @:profile', ['profile' => $profile]) }}</h3>
@@ -124,12 +124,12 @@ new #[Layout('layouts.app')] class extends Component
                     @foreach ($sentiments as $key => [$label, $classes])
                         <button type="button" wire:click="$set('sentiment', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $sentiment === $key, 'ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50 dark:ring-gray-700 dark:text-gray-300' => $sentiment !== $key])>{{ $label }} ({{ $counts[$key] ?? 0 }})</button>
                     @endforeach
-                    <label class="ms-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="ideasOnly" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only posts with entry price') }}</label>
+                    <label class="ms-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model.live="ideasOnly" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900">{{ __('Only posts with entry price') }}</label>
                 </div>
             </section>
 
             @if ($posts->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-400">
+                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-400">
                     <p class="text-4xl" aria-hidden="true">📸</p>
                     <p class="mt-2">{{ __('No posts yet.') }}</p>
                 </div>
@@ -142,7 +142,7 @@ new #[Layout('layouts.app')] class extends Component
                             $price = $quote?->last_price;
                             $distance = $price && $post->entry_price ? ($price / $post->entry_price - 1) * 100 : null;
                         @endphp
-                        <article class="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" wire:key="post-{{ $post->id }}">
+                        <article class="flex flex-col overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" wire:key="post-{{ $post->id }}">
                             <div class="flex gap-3 p-4">
                                 @if ($post->thumbnail_url)
                                     <a href="{{ $post->post_url }}" target="_blank" rel="noopener noreferrer" class="shrink-0"><img src="{{ $post->thumbnail_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="h-20 w-20 rounded-lg bg-gray-100 object-cover dark:bg-gray-700"></a>

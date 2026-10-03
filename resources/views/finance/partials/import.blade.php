@@ -1,6 +1,6 @@
 {{-- Finance import tab (variables from finance/index: $accounts, $importResult, $importError). --}}
 <div class="grid gap-5 lg:grid-cols-5">
-    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800 lg:col-span-3">
+    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800 lg:col-span-3">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100">⬆ {{ __('Import bank statement (CSV)') }}</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Bookings that were already imported are skipped automatically – you can import overlapping periods without duplicates.') }}</p>
         @if (\Illuminate\Support\Facades\Route::has('portfolio.banking') && auth()->user()->canUseAddon('portfolio'))
@@ -78,7 +78,7 @@
     </section>
 
     <div class="space-y-5 lg:col-span-2">
-        <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+        <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
             <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('How do I get the CSV?') }}</h3>
             <ul class="mt-2 space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
                 <li><strong class="text-gray-800 dark:text-gray-200">Sparkasse / Volksbank:</strong> {{ __('Account → Transactions → Export → CSV (CAMT)') }}</li>
@@ -92,7 +92,7 @@
         </section>
 
         @if ($accounts->isNotEmpty())
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Accounts') }}</h3>
                 <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                     @foreach ($accounts as $account)
@@ -105,8 +105,8 @@
                                 <input type="text" x-model="name" maxlength="100" aria-label="{{ __('Account name') }}" class="min-w-0 flex-1 rounded-lg border-gray-300 py-1 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
                                 <button type="submit" class="text-sm text-indigo-600 dark:text-indigo-300">{{ __('Save') }}</button>
                             </form>
-                            <button type="button" x-show="! editing" x-on:click="editing = true" class="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Rename') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
-                            <button type="button" x-show="! editing" wire:click="deleteAccount({{ $account->id }})" wire:confirm="{{ __('Delete this account with all its bookings?') }}" class="rounded p-1 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="trash" class="h-5 w-5" /></button>
+                            <button type="button" x-show="! editing" x-on:click="editing = true" class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Rename') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                            <button type="button" x-show="! editing" wire:click="deleteAccount({{ $account->id }})" wire:confirm="{{ __('Delete this account with all its bookings?') }}" class="rounded-sm p-1 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="trash" class="h-5 w-5" /></button>
                         </li>
                     @endforeach
                 </ul>

@@ -78,7 +78,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($creating || $realEstates->isEmpty())
-                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5 dark:bg-gray-800">
+                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-2 lg:grid-cols-5 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-2 lg:col-span-5 dark:text-gray-100">{{ __('Plan a property') }}</h3>
                     <label class="text-sm text-gray-700 lg:col-span-2 dark:text-gray-300">{{ __('Name') }}
                         <x-text-input wire:model="form.name" class="mt-1 block w-full" :placeholder="__('e.g. House in Lindenstraße')" />
@@ -105,14 +105,14 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-5">
                         <x-primary-button>{{ __('Create') }}</x-primary-button>
                         <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <input type="checkbox" wire:model="form.private" class="rounded border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}
+                            <input type="checkbox" wire:model="form.private" class="rounded-sm border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}
                         </label>
                     </div>
                 </form>
             @endif
 
             @if ($realEstates->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🏡</p>
                     <p class="mx-auto mt-2 max-w-xl text-sm text-gray-600 dark:text-gray-400">{{ __('Plan the purchase and renovation of a property in one place: purchase costs, financing, budget by trade, invoices, subsidies and the tax effect – for a home you live in or a property you let.') }}</p>
                 </div>
@@ -123,7 +123,7 @@ new #[Layout('layouts.app')] class extends Component
                             $model = $row['model'];
                             $summary = $row['summary'];
                         @endphp
-                        <a href="{{ route('real-estate.show', $model) }}" wire:navigate wire:key="real-estate-{{ $model->id }}" class="block rounded-2xl bg-white p-5 shadow-sm ring-1 ring-transparent hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <a href="{{ route('real-estate.show', $model) }}" wire:navigate wire:key="real-estate-{{ $model->id }}" class="block rounded-2xl bg-white p-5 shadow-xs ring-1 ring-transparent hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <h3 class="truncate text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $model->name }} @if ($model->isPrivate())<span title="{{ __('Only for me') }}">🔒</span>@endif</h3>

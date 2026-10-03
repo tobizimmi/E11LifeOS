@@ -258,7 +258,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $amount = fn (float $value, string $unit) => number_format($value, $value < 100 ? 2 : 0, ',', '.').($unit !== '' ? ' '.$unit : '');
     $tabClass = 'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition pointer-coarse:min-h-11';
@@ -274,7 +274,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
                 @foreach (['maintenance' => '🔧 '.__('Maintenance'), 'meters' => '🔢 '.__('Meters & consumption'), 'warranties' => '🧾 '.__('Warranties')] as $key => $label)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
+                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </nav>
 
@@ -284,13 +284,13 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 @if ($showLibrary)
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('What should be reminded?') }}</h3>
                         <ul class="mt-3 grid gap-2 sm:grid-cols-2">
                             @foreach ($library as $key => $preset)
                                 <li>
                                     <label @class(['flex items-start gap-3 rounded-lg p-3 ring-1', 'ring-gray-200 dark:ring-gray-700' => ! in_array($key, $existingKeys, true), 'opacity-50 ring-gray-100 dark:ring-gray-800' => in_array($key, $existingKeys, true)])>
-                                        <input type="checkbox" value="{{ $key }}" wire:model="picked" class="mt-1 rounded border-gray-300 text-indigo-600" @disabled(in_array($key, $existingKeys, true))>
+                                        <input type="checkbox" value="{{ $key }}" wire:model="picked" class="mt-1 rounded-sm border-gray-300 text-indigo-600" @disabled(in_array($key, $existingKeys, true))>
                                         <span class="text-sm">
                                             <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $preset['icon'] }} {{ $preset['title'] }}</span>
                                             <span class="block text-gray-500 dark:text-gray-400">{{ trans_choice('every month|every :count months', $preset['interval']) }}@if ($preset['hint']) · {{ $preset['hint'] }}@endif</span>
@@ -306,7 +306,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                         @forelse ($tasks as $task)
                             <li wire:key="home-task-{{ $task->id }}" class="flex items-center gap-3 px-5 py-3">
@@ -324,7 +324,7 @@ new #[Layout('layouts.app')] class extends Component
                     </ul>
                 </section>
 
-                <form wire:submit="addCustom" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="addCustom" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Own job') }}<input type="text" wire:model="custom.title" class="{{ $input }}" placeholder="{{ __('e.g. Service the garage door') }}"><x-input-error :messages="$errors->get('custom.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-1 dark:text-gray-300">{{ __('Months') }}<input type="number" min="1" max="120" wire:model="custom.interval_months" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Next time') }}<input type="date" wire:model="custom.next_due_on" class="{{ $input }}"><x-input-error :messages="$errors->get('custom.next_due_on')" /></label>
@@ -336,7 +336,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 @if ($showMeterForm)
-                    <form wire:submit="saveMeter" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                    <form wire:submit="saveMeter" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                         <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="meter.name" class="{{ $input }}" placeholder="{{ __('e.g. Electricity house') }}"><x-input-error :messages="$errors->get('meter.name')" /></label>
                         <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
                             <select wire:model="meter.kind" class="{{ $input }}">
@@ -366,7 +366,7 @@ new #[Layout('layouts.app')] class extends Component
                         $unit = $gauge->unit();
                         $chart = collect(array_reverse($stats['periods']))->map(fn (array $period) => ['label' => \Illuminate\Support\Carbon::parse($period['to'])->format('d.m.y'), 'value' => $period['per_day']])->all();
                     @endphp
-                    <section wire:key="meter-{{ $gauge->id }}" class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section wire:key="meter-{{ $gauge->id }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $kinds[$gauge->kind]['icon'] ?? '' }} {{ $gauge->name }}</h3>
@@ -438,12 +438,12 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </section>
                 @empty
-                    <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('No meters yet – add electricity, gas or water with tariff and advance payment.') }}</section>
+                    <section class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('No meters yet – add electricity, gas or water with tariff and advance payment.') }}</section>
                 @endforelse
             @endif
 
             @if ($tab === 'warranties')
-                <form wire:submit="addDevice" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="addDevice" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ __('Add an appliance') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Appliance') }}<input type="text" wire:model="device.title" class="{{ $input }}" placeholder="{{ __('e.g. washing machine') }}"><x-input-error :messages="$errors->get('device.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Purchased on') }}<input type="date" wire:model="device.purchased_on" class="{{ $input }}"><x-input-error :messages="$errors->get('device.purchased_on')" /></label>
@@ -454,7 +454,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="text-xs text-gray-500 sm:col-span-6 dark:text-gray-400">{{ __('In the EU you have 2 years of statutory warranty against the seller; many manufacturers give more. Attach the receipt to the entry – you get a reminder 30 days before the end.') }}</p>
                 </form>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     @forelse ($warranties as $row)
                         @if ($loop->first)<ul class="divide-y divide-gray-100 dark:divide-gray-700">@endif
                         <li wire:key="warranty-{{ $row['item']->id }}" class="flex flex-wrap items-center gap-3 py-3 text-sm">

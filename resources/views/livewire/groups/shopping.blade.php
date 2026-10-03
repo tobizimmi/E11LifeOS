@@ -81,7 +81,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-3xl space-y-4 px-4 sm:px-6 lg:px-8">
             <livewire:sharing.panel type="shopping" :id="$list->id" :wire:key="'share-shopping-'.$list->id" />
 
-            <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <form wire:submit="add" class="flex gap-2">
                     <x-text-input wire:model="label" class="block w-full" type="text" placeholder="{{ __('What do you need?') }}" aria-label="{{ __('Item') }}" />
                     <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>
@@ -92,7 +92,7 @@ new #[Layout('layouts.app')] class extends Component
                     @forelse ($open->concat($done) as $entry)
                         <li wire:key="entry-{{ $entry->id }}">
                             <label class="flex cursor-pointer items-center gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-gray-900">
-                                <input type="checkbox" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) class="h-5 w-5 rounded border-gray-300 text-indigo-600">
+                                <input type="checkbox" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) class="h-5 w-5 rounded-sm border-gray-300 text-indigo-600">
                                 <span @class(['flex-1', 'text-gray-400 line-through' => $entry->checked, 'text-gray-900 dark:text-gray-100' => ! $entry->checked])>{{ $entry->label }}</span>
                                 @if ($entry->quantity)
                                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $entry->quantity }}</span>

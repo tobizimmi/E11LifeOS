@@ -120,7 +120,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-5xl space-y-4 px-4 sm:px-6 lg:px-8">
             <livewire:sharing.panel type="collection" :id="$collection->id" :wire:key="'share-collection-'.$collection->id" />
 
-            <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <form wire:submit="add" class="flex gap-2">
                     <x-text-input wire:model="title" class="block w-full" type="text" placeholder="{{ __('New entry') }}" aria-label="{{ __('Title') }}" />
                     <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>
@@ -141,7 +141,7 @@ new #[Layout('layouts.app')] class extends Component
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($entries as $entry)
                                 <tr wire:key="entry-{{ $entry->id }}">
-                                    <td class="py-2"><input type="checkbox" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) class="rounded border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}"></td>
+                                    <td class="py-2"><input type="checkbox" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) class="rounded-sm border-gray-300 text-indigo-600" aria-label="{{ __('Done') }}"></td>
                                     <td @class(['py-2 pe-3', 'text-gray-400 line-through' => $entry->done, 'text-gray-900 dark:text-gray-100' => ! $entry->done])>{{ $entry->title }}</td>
                                     @foreach ($properties as $property)
                                         <td class="py-2 pe-3 text-gray-600 dark:text-gray-300">{{ $this->display($property, $entry->propertyValue($property)) }}</td>

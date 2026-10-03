@@ -146,7 +146,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.insights'])
 
-            <section class="rounded-2xl bg-white shadow-sm dark:bg-gray-800" aria-labelledby="positions-check">
+            <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800" aria-labelledby="positions-check">
                 <div class="flex flex-wrap items-center justify-between gap-2 px-5 pt-5">
                     <div>
                         <h3 id="positions-check" class="font-semibold text-gray-900 dark:text-gray-100">🩺 {{ __('My positions in check') }}</h3>
@@ -210,7 +210,7 @@ new #[Layout('layouts.app')] class extends Component
                 <p class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Analyst votes and price targets are opinions, not advice – use them as one piece of the picture.') }}</p>
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="insider-barometer">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="insider-barometer">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <h3 id="insider-barometer" class="font-semibold text-gray-900 dark:text-gray-100">🕵️ {{ __('Insider barometer') }}</h3>
@@ -218,7 +218,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900" role="tablist">
                         @foreach (['mine' => __('My positions & watchlist'), 'market' => __('Other shares in the market')] as $scopeKey => $scopeLabel)
-                            <button type="button" role="tab" wire:click="$set('scope', '{{ $scopeKey }}')" aria-selected="{{ $scope === $scopeKey ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $scope === $scopeKey, 'text-gray-600 dark:text-gray-400' => $scope !== $scopeKey])>{{ $scopeLabel }}</button>
+                            <button type="button" role="tab" wire:click="$set('scope', '{{ $scopeKey }}')" aria-selected="{{ $scope === $scopeKey ? 'true' : 'false' }}" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $scope === $scopeKey, 'text-gray-600 dark:text-gray-400' => $scope !== $scopeKey])>{{ $scopeLabel }}</button>
                         @endforeach
                     </div>
                 </div>

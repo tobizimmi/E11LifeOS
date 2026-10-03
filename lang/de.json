@@ -5513,5 +5513,19 @@
     "next: :time": "nächster Lauf: :time",
     "Other shares in the market": "Weitere Aktien im Markt",
     "Shares from the daily market scan that are not in your portfolio or on your watchlist.": "Aktien aus dem täglichen Markt-Scan, die nicht in deinem Depot oder auf deiner Watchlist sind.",
-    "Load insider trades of more shares": "Insidergeschäfte weiterer Aktien laden"
+    "Load insider trades of more shares": "Insidergeschäfte weiterer Aktien laden",
+    "Tips for :destination": "Tipps für :destination",
+    "Loading tips …": "Tipps werden geladen …",
+    "More on Wikipedia": "Mehr bei Wikipedia",
+    "Worth seeing": "Sehenswert",
+    "Restaurants & cafés": "Restaurants & Cafés",
+    "No places known yet – set the trip area on the map.": "Noch keine Orte bekannt – lege auf der Karte das Reisegebiet fest.",
+    "Add :title to the plan": ":title zum Plan hinzufügen",
+    "Discover all places": "Alle Orte entdecken",
+    "Show by category": "Nach Kategorie anzeigen",
+    "Everything": "Alles",
+    ":count place|:count places": ":count Ort|:count Orte",
+    ":count visited": ":count besucht",
+    "Mark :title as visited": ":title als besucht markieren",
+    "Show places nearby by type": "Orte in der Nähe nach Art anzeigen"
 }

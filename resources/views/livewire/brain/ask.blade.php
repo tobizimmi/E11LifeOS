@@ -129,7 +129,7 @@ new #[Layout('layouts.app')] class extends Component
             @if (! $aiAvailable)
                 <p class="rounded-md bg-amber-50 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-200">{{ filled(config('services.anthropic.key')) ? __('This AI function has been switched off by the administrator.') : __('The AI is not set up on this server (ANTHROPIC_API_KEY).') }}</p>
             @else
-                <form wire:submit="ask" class="rounded-lg bg-white dark:bg-gray-800 p-4 shadow-sm space-y-3">
+                <form wire:submit="ask" class="rounded-lg bg-white dark:bg-gray-800 p-4 shadow-xs space-y-3">
                     <label for="brain-question" class="sr-only">{{ __('Your question') }}</label>
                     <div class="flex flex-wrap sm:flex-nowrap gap-2">
                         <x-text-input wire:model="question" id="brain-question" class="block w-full sm:flex-1" autofocus
@@ -147,7 +147,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 @foreach ($answers as $index => $turn)
-                    <article wire:key="brain-answer-{{ count($answers) - $index }}" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-sm space-y-3">
+                    <article wire:key="brain-answer-{{ count($answers) - $index }}" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-3">
                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">„{{ $turn['question'] }}“</p>
                         <div class="note-content">{!! $turn['html'] !!}</div>
                         @if ($turn['actions'] !== [])

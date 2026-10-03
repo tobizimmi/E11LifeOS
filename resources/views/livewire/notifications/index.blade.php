@@ -93,7 +93,7 @@ new #[Layout('layouts.app')] class extends Component
             @forelse ($groups as $label => $notifications)
                 <section wire:key="notification-group-{{ $loop->index }}">
                     <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }}</h3>
-                    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                         @foreach ($notifications as $notification)
                             <li wire:key="notification-{{ $notification->id }}" @class(['flex items-start gap-3 px-4 py-3', 'bg-indigo-50/60 dark:bg-indigo-900/20' => $notification->unread()])>
                                 <span @class(['mt-2 h-2 w-2 shrink-0 rounded-full', 'bg-indigo-500' => $notification->unread(), 'bg-transparent' => $notification->read()]) aria-hidden="true"></span>
@@ -110,7 +110,7 @@ new #[Layout('layouts.app')] class extends Component
                     </ul>
                 </section>
             @empty
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-3xl" aria-hidden="true">🔕</p>
                     <p class="mt-2 font-medium text-gray-900 dark:text-gray-100">{{ $unreadOnly ? __('Nothing unread.') : __('No notifications yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Reminders, new tasks for you, budget warnings and price alerts appear here – also without push or e-mail.') }}</p>

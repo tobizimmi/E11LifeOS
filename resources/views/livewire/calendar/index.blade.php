@@ -285,7 +285,7 @@ new #[Layout('layouts.app')] class extends Component
                                 $agendaDays = $days->filter(fn ($day) => $byDay->has($day->toDateString()));
                             @endphp
                             @forelse ($agendaDays as $day)
-                                <section wire:key="agenda-{{ $day->toDateString() }}" class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                                <section wire:key="agenda-{{ $day->toDateString() }}" class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                                     <h4 @class(['mb-2 text-sm font-semibold', 'text-indigo-600 dark:text-indigo-400' => $day->isToday(), 'text-gray-900 dark:text-gray-100' => ! $day->isToday()])>
                                         {{ $day->isToday() ? __('Today') : ($day->isTomorrow() ? __('Tomorrow') : $day->translatedFormat('l')) }} · {{ $day->translatedFormat('j. F') }}
                                     </h4>
@@ -302,12 +302,12 @@ new #[Layout('layouts.app')] class extends Component
                                     </ul>
                                 </section>
                             @empty
-                                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('Nothing planned in the next 30 days.') }}</div>
+                                <div class="rounded-2xl bg-white p-8 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('Nothing planned in the next 30 days.') }}</div>
                             @endforelse
                         </div>
                     @else
                         {{-- Swipe left/right to page (touch); the next period slides in from the other side --}}
-                        <div class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="e11Swipe({ onRight: () => $wire.previous(), onLeft: () => $wire.next(), enterFromOpposite: true })">
+                        <div class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" x-data="e11Swipe({ onRight: () => $wire.previous(), onLeft: () => $wire.next(), enterFromOpposite: true })">
                           <div x-ref="content" style="touch-action: pan-y" x-on:pointerdown="start($event)" x-on:pointermove="move($event)" x-on:pointerup="end()" x-on:pointercancel="end()">
                             <div class="grid grid-cols-7 border-b border-gray-100 text-center text-xs font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
                                 @foreach ($days->take(7) as $day)
@@ -332,7 +332,7 @@ new #[Layout('layouts.app')] class extends Component
                                         <ul class="mt-0.5 hidden min-h-6 space-y-0.5 sm:block" x-sort="$wire.moveTask($item, '{{ $date }}')" x-sort:config="{{ $sortConfig }}" x-on:click.stop>
                                             @foreach ($dayEvents->take($view === 'month' ? 4 : 20) as $event)
                                                 <li wire:key="event-{{ $date }}-{{ $event['task_id'] ?? 'x'.$loop->index }}" @if ($event['task_id']) x-sort:item="{{ $event['task_id'] }}" @endif @class(['static-event' => ! $event['task_id'], 'cursor-grab' => $event['task_id']])>
-                                                    <a href="{{ $event['url'] }}" wire:navigate title="{{ $event['title'] }}" @class(['block truncate rounded px-1.5 py-0.5 text-[11px] ring-1', $chip($event), 'ring-rose-300 dark:ring-rose-700' => $event['overdue']])>
+                                                    <a href="{{ $event['url'] }}" wire:navigate title="{{ $event['title'] }}" @class(['block truncate rounded-sm px-1.5 py-0.5 text-[11px] ring-1', $chip($event), 'ring-rose-300 dark:ring-rose-700' => $event['overdue']])>
                                                         @if ($event['time'])<span class="opacity-70">{{ $event['time'] }}</span>@endif {{ $event['title'] }}
                                                     </a>
                                                 </li>
@@ -359,7 +359,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 {{-- Selected day --}}
-                <aside x-data x-on:calendar-day-selected.window="if (window.innerWidth < 1024) { $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' })) }" class="scroll-mt-20 space-y-3 rounded-2xl bg-white p-4 shadow-sm lg:sticky lg:top-4 lg:self-start dark:bg-gray-800" aria-label="{{ __('Selected day') }}">
+                <aside x-data x-on:calendar-day-selected.window="if (window.innerWidth < 1024) { $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' })) }" class="scroll-mt-20 space-y-3 rounded-2xl bg-white p-4 shadow-xs lg:sticky lg:top-4 lg:self-start dark:bg-gray-800" aria-label="{{ __('Selected day') }}">
                     <h4 class="font-semibold text-gray-900 dark:text-gray-100">
                         {{ $selected->isToday() ? __('Today') : $selected->translatedFormat('l') }}, {{ $selected->translatedFormat('j. F Y') }}
                     </h4>
@@ -410,7 +410,7 @@ new #[Layout('layouts.app')] class extends Component
                             <x-input-error :messages="$errors->get('subscriptionName')" />
                             <x-text-input wire:model="subscriptionUrl" class="block w-full text-sm" placeholder="https://calendar.google.com/…/basic.ics" aria-label="{{ __('Calendar address') }}" />
                             <x-input-error :messages="$errors->get('subscriptionUrl')" />
-                            <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="subscriptionShared" class="rounded border-gray-300 text-indigo-600"> {{ __('Share with the household (otherwise only you see it)') }}</label>
+                            <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="subscriptionShared" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Share with the household (otherwise only you see it)') }}</label>
                             <x-secondary-button type="submit">＋ {{ __('Add calendar') }}</x-secondary-button>
                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Google: calendar settings → “Secret address in iCal format”. iCloud: share calendar → public calendar. Outlook: settings → shared calendars → publish (ICS). Proton: share calendar → “Share with anyone” → copy link. Updated hourly.') }}</p>
                         </form>

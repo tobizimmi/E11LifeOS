@@ -119,7 +119,7 @@ new class extends Component
                     </select>
                 </div>
                 <x-input-error :messages="$errors->get('quietUntil')" />
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="bundle" class="rounded border-gray-300 text-indigo-600"> {{ __('Bundle several notifications into one') }}</label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="bundle" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Bundle several notifications into one') }}</label>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('During the quiet hours nothing buzzes; what arrives meanwhile comes as one notification afterwards. Medication and reminders at a chosen time still come right away.') }}</p>
                 <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
             </form>

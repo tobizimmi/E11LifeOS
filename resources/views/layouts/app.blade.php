@@ -51,7 +51,7 @@
                 <!-- Page Heading -->
                 @if (isset($header))
                     {{-- Large title on phones; once it scrolls away, the top bar shows it small (e11Chrome) --}}
-                    <header data-page-header class="border-b border-gray-200/70 bg-white/60 backdrop-blur dark:border-gray-800 dark:bg-gray-900/60"
+                    <header data-page-header class="border-b border-gray-200/70 bg-white/60 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/60"
                         x-data
                         x-init="$store.chrome.watch($el)">
                         <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
@@ -61,7 +61,7 @@
                 @endif
 
                 <!-- Page Content (room for the tab bar on phones) -->
-                <main id="main-content" tabindex="-1" class="pb-20 focus:outline-none lg:pb-0">
+                <main id="main-content" tabindex="-1" class="pb-20 focus:outline-hidden lg:pb-0">
                     {{ $slot }}
                 </main>
 
@@ -83,7 +83,7 @@
             </div>
 
             {{-- Tab bar on phones: the most used places and "create" in thumb reach --}}
-            <nav class="e11-material fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/70 bg-white/90 backdrop-blur lg:hidden dark:border-gray-800 dark:bg-gray-900/90" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="{{ __('Quick navigation') }}">
+            <nav class="e11-material fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/70 bg-white/90 backdrop-blur-sm lg:hidden dark:border-gray-800 dark:bg-gray-900/90" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="{{ __('Quick navigation') }}">
                 <ul class="mx-auto grid max-w-md grid-cols-5 text-[11px]">
                     @foreach ([['dashboard', 'home', __('Start')], ['tasks.index', 'check-circle', __('Tasks')], [null, 'plus', __('Create')], ['shopping-list.index', 'shopping-cart', __('Shopping trip')]] as [$tabRoute, $tabIcon, $tabLabel])
                         <li>
@@ -93,7 +93,7 @@
                                 </a>
                             @else
                                 <button type="button" x-data x-on:click="$dispatch('open-search')" class="flex w-full flex-col items-center gap-0.5 py-1.5 text-gray-600 dark:text-gray-400">
-                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow" aria-hidden="true"><x-icon :name="$tabIcon" class="h-5 w-5" stroke-width="2" /></span>{{ $tabLabel }}
+                                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm" aria-hidden="true"><x-icon :name="$tabIcon" class="h-5 w-5" stroke-width="2" /></span>{{ $tabLabel }}
                                 </button>
                             @endif
                         </li>
@@ -134,7 +134,7 @@
                         </div>
                         <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                             @foreach ([['Ctrl K · /', __('Search, jump to or create')], ['N', __('Create something new')], ['G H', __('Dashboard')], ['G T', __('To-Do')], ['G K', __('Calendar')], ['G E', __('Shopping List')], ['G I', __('Inbox')], ['G P', __('Pages')], ['G C', __('Collections')], ['G R', __('Recipes')], ['G F', __('Finances')], ['?', __('This overview')], ['Esc', __('Close')]] as [$shortcut, $meaning])
-                                <dt><kbd class="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">{{ $shortcut }}</kbd></dt>
+                                <dt><kbd class="rounded-sm border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">{{ $shortcut }}</kbd></dt>
                                 <dd class="text-gray-700 dark:text-gray-300">{{ $meaning }}</dd>
                             @endforeach
                         </dl>

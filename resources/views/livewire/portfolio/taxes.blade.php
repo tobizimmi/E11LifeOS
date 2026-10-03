@@ -77,23 +77,23 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Capital income') }}</p>
                     <p class="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums sm:text-2xl {{ $tone($report['net']) }}">{{ $euro($report['net']) }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('gains, losses and dividends') }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Tax-free allowance used') }}</p>
                     <p class="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:text-2xl">{{ $euro($report['allowance_used']) }}</p>
                     <div class="mt-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700"><div class="h-1.5 rounded-full bg-indigo-500" style="width: {{ $allowanceShare }}%"></div></div>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('of :amount', ['amount' => $euro($report['allowance'])]) }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Taxable') }}</p>
                     <p class="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:text-2xl">{{ $euro($report['taxable']) }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('above the allowance') }}</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Estimated tax') }}</p>
                     <p class="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:text-2xl">{{ $euro($report['tax']) }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $report['church_tax_rate'] > 0 ? __('incl. Soli and church tax') : __('25 % + Soli') }}</p>
@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             <div class="grid gap-5 lg:grid-cols-3">
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800 lg:col-span-1">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800 lg:col-span-1">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Offsetting pots') }}</h3>
                     <dl class="mt-3 space-y-1.5 text-sm">
                         @foreach ([
@@ -124,7 +124,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('FIFO method as used by German banks. Partial exemptions for funds (Teilfreistellung) and the advance lump sum (Vorabpauschale) are not included. No tax advice – the bank\'s annual tax certificate is binding.') }}</p>
                 </section>
 
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800 lg:col-span-2">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800 lg:col-span-2">
                     <h3 class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{{ __('Taxable events') }}</h3>
                     @if ($report['events'] === [])
                         <p class="border-t border-gray-100 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">{{ __('No sales or dividends in :year.', ['year' => $year]) }}</p>

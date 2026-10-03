@@ -40,7 +40,7 @@
     @else
         @if ($hasCompare)
             <div class="mb-2 flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-300">
-                <span class="flex items-center gap-1.5"><span class="h-0.5 w-4 rounded" style="background: {{ $rising ? 'var(--chart-up)' : 'var(--chart-down)' }}"></span>{{ $valueLabel }}</span>
+                <span class="flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-sm" style="background: {{ $rising ? 'var(--chart-up)' : 'var(--chart-down)' }}"></span>{{ $valueLabel }}</span>
                 <span class="flex items-center gap-1.5"><span class="h-0 w-4 border-t-2 border-dashed" style="border-color: var(--chart-compare)"></span>{{ $compareLabel }}</span>
             </div>
         @endif
@@ -58,7 +58,7 @@
                 <template x-if="index !== null">
                     <div class="pointer-events-none absolute inset-y-0" :style="`left: ${points.length > 1 ? index / (points.length - 1) * 100 : 50}%`">
                         <div class="h-full border-l border-gray-400 dark:border-gray-500"></div>
-                        <div class="absolute top-0 z-10 whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow" :class="index > points.length / 2 ? 'right-2' : 'left-2'">
+                        <div class="absolute top-0 z-10 whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow-sm" :class="index > points.length / 2 ? 'right-2' : 'left-2'">
                             <div class="text-gray-300" x-text="points[index].label"></div>
                             <div><span>{{ $valueLabel }}:</span> <strong x-text="points[index].value"></strong></div>
                             @if ($hasCompare)

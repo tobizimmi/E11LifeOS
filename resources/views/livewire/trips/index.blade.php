@@ -78,7 +78,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
 @endphp
 
@@ -95,7 +95,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
 
             @if ($showForm)
-                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="trip.title" class="{{ $input }}" placeholder="{{ __('e.g. Summer holiday') }}" autofocus><x-input-error :messages="$errors->get('trip.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Destination') }}<input type="text" wire:model="trip.destination" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('From') }}<input type="date" wire:model="trip.starts_on" class="{{ $input }}"><x-input-error :messages="$errors->get('trip.starts_on')" /></label>
@@ -110,7 +110,7 @@ new #[Layout('layouts.app')] class extends Component
                             @endforeach
                         </select>
                     </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="trip.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="trip.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     <div class="flex gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Create') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -122,14 +122,14 @@ new #[Layout('layouts.app')] class extends Component
                 @php($days = (int) today()->diffInDays($plannedTrip->starts_on, false))
                 @php($scheme = $plannedTrip->colorScheme())
                 @php($travellers = $plannedTrip->travellerNames())
-                <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="trip-{{ $plannedTrip->id }}" class="group relative isolate block overflow-hidden rounded-3xl shadow-sm transition hover:shadow-md" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+                <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="trip-{{ $plannedTrip->id }}" class="group relative isolate block overflow-hidden rounded-3xl shadow-xs transition hover:shadow-md" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
                     @if ($plannedTrip->coverUrl())
                         <img src="{{ $plannedTrip->coverUrl() }}" alt="" loading="lazy" class="absolute inset-0 -z-10 h-full w-full object-cover transition duration-500 group-hover:scale-105">
                     @endif
                     <div class="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
                     <div class="flex min-h-44 flex-col justify-between gap-4 p-5 text-white sm:min-h-52">
                         <div class="flex items-start justify-between gap-3">
-                            <span class="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur">{{ $plannedTrip->isOngoing() ? __('On the road') : trans_choice('in :count day|in :count days', $days) }}</span>
+                            <span class="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur-sm">{{ $plannedTrip->isOngoing() ? __('On the road') : trans_choice('in :count day|in :count days', $days) }}</span>
                             <x-audience-badge :model="$plannedTrip" />
                         </div>
                         <div class="flex flex-wrap items-end justify-between gap-3">
@@ -137,7 +137,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($plannedTrip->destination)
                                     <p class="text-xs font-medium uppercase tracking-wide text-white/80">📍 {{ $plannedTrip->destination }}</p>
                                 @endif
-                                <p class="text-2xl font-bold leading-tight drop-shadow">{{ $plannedTrip->title }}</p>
+                                <p class="text-2xl font-bold leading-tight drop-shadow-sm">{{ $plannedTrip->title }}</p>
                                 <p class="mt-0.5 text-sm text-white/90">{{ $plannedTrip->starts_on->translatedFormat('j. M') }} – {{ $plannedTrip->ends_on->translatedFormat('j. M Y') }}@if ($plannedTrip->bookings_sum_cost || $plannedTrip->budget) · 💶 {{ $euro((float) $plannedTrip->bookings_sum_cost) }}{{ $plannedTrip->budget ? ' / '.$euro($plannedTrip->budget) : '' }}@endif @if ($plannedTrip->packing_items_count) · 🧳 {{ $plannedTrip->packed_count }}/{{ $plannedTrip->packing_items_count }}@endif</p>
                             </div>
                             @if ($travellers !== [])
@@ -154,7 +154,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </a>
             @empty
-                <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🧳</p>
                     <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No trip planned yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Plan each day with sights, restaurants and activities, collect flights and accommodation with their booking codes, keep an eye on the budget and tick off the packing list.') }}</p>
@@ -167,7 +167,7 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         @foreach ($past as $plannedTrip)
                             @php($scheme = $plannedTrip->colorScheme())
-                            <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="past-{{ $plannedTrip->id }}" class="relative isolate block overflow-hidden rounded-2xl shadow-sm" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+                            <a href="{{ route('trips.show', $plannedTrip) }}" wire:navigate wire:key="past-{{ $plannedTrip->id }}" class="relative isolate block overflow-hidden rounded-2xl shadow-xs" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
                                 @if ($plannedTrip->coverUrl())
                                     <img src="{{ $plannedTrip->coverUrl() }}" alt="" loading="lazy" class="absolute inset-0 -z-10 h-full w-full object-cover">
                                 @endif

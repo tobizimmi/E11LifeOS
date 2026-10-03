@@ -376,7 +376,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if (! $profile)
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">💼</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Invoices and bookkeeping for your small business') }}</h3>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Write invoices with consecutive numbers as PDF, collect receipts and get the annual profit calculation (EÜR) for your tax return at the end of the year.') }}</p>
@@ -391,7 +391,7 @@ new #[Layout('layouts.app')] class extends Component
                         [__('Expenses :year', ['year' => $kpiYear]), $euro($report['expenseTotal'], 0), __('deductible business expenses')],
                         [__('Profit :year', ['year' => $kpiYear]), $euro($report['profit'], 0), __('income minus expenses (EÜR)')],
                     ] as [$label, $value, $hint])
-                        <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $label }}</p>
                             <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $value }}</p>
                             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $hint }}</p>
@@ -437,7 +437,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 @if ($documents->isEmpty())
-                    <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                         <p class="text-4xl" aria-hidden="true">{{ match ($type) { 'quote' => '📝', 'credit_note' => '↩', default => '🧾' } }}</p>
                         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                             @if ($search !== '' || $status !== '')
@@ -452,7 +452,7 @@ new #[Layout('layouts.app')] class extends Component
                         </p>
                     </div>
                 @else
-                    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-gray-700 dark:bg-gray-800">
+                    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-xs dark:divide-gray-700 dark:bg-gray-800">
                         @foreach ($documents as $document)
                             @php
                                 $displayStatus = $document->displayStatus();
@@ -625,7 +625,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <x-input-error :messages="$errors->get('mail.body')" />
                                 <div class="flex flex-wrap items-center gap-3">
                                     <x-primary-button wire:loading.attr="disabled" wire:target="sendMail">✉ {{ __('Send') }}</x-primary-button>
-                                    <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="mail.copy" class="rounded border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Copy to me') }}</label>
+                                    <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model="mail.copy" class="rounded-sm border-gray-300 text-indigo-600 dark:border-gray-600 dark:bg-gray-900"> {{ __('Copy to me') }}</label>
                                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('The PDF and a link to view it online are included.') }}</span>
                                     <button type="button" wire:click="$set('composing', false)" class="ms-auto text-xs text-gray-500 hover:underline">{{ __('Cancel') }}</button>
                                 </div>

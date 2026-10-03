@@ -99,6 +99,12 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $showVisited = false;
 
+    /** The plan shows only the entries of this type (e.g. all restaurants), or everything. */
+    public ?string $planKind = null;
+
+    /** The tips for the destination are loaded once the section is opened. */
+    public bool $showTips = false;
+
     /**
      * @var array<string, mixed>
      */
@@ -439,6 +445,21 @@ new #[Layout('layouts.app')] class extends Component
     {
         $stop = $this->findStop($id);
         $stop->update(['done' => ! $stop->done]);
+    }
+
+    public function filterPlan(?string $kind = null): void
+    {
+        $this->planKind = $kind !== null && array_key_exists($kind, TripStop::kinds()) ? $kind : null;
+    }
+
+    public function openTips(): void
+    {
+        $this->showTips = true;
+        $trip = $this->findTrip();
+
+        if ($trip->places_loaded_at === null && $trip->destination) {
+            LoadTripPlaces::start($trip);
+        }
     }
 
     public function deleteStop(int $id): void
@@ -1108,13 +1129,19 @@ new #[Layout('layouts.app')] class extends Component
             'currencies' => ExchangeRates::COMMON,
             'inboundDrafts' => $this->tab === 'bookings' ? MailIntake::pendingFor($trip) : collect(),
             'tripRate' => $trip->currency && $this->tab === 'overview' ? ExchangeRates::rate($trip->currency) : null,
+            'tips' => $this->showTips && $this->tab === 'overview' ? [
+                'summary' => $trip->destination ? TripDiscover::destinationSummary((string) $trip->destination, app()->getLocale()) : null,
+                'sights' => TripDiscover::highlights($trip, ['sights', 'museums', 'nature', 'activities']),
+                'food' => TripDiscover::highlights($trip, ['restaurants', 'cafes', 'bars']),
+                'loading' => Cache::has(LoadTripPlaces::lockKey($trip->id)),
+            ] : null,
             'places' => Place::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->orderBy('visited')->orderBy('name')->get(),
         ];
     }
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $travelMode = $trip->travel_mode ?: 'foot';
     $legs = collect($routes['days'])->reduce(fn (array $carry, array $route) => $carry + $route['legs'], []);
@@ -1136,14 +1163,14 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8" @unless ($trip->isPast() || $trip->starts_on->gt(today()->addDays(15))) wire:init="loadWeather" @endunless>
             {{-- Cover: photo or colour, countdown, dates and travellers (like Lambus) --}}
-            <section class="relative isolate overflow-hidden rounded-3xl shadow-sm" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
+            <section class="relative isolate overflow-hidden rounded-3xl shadow-xs" style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
                 @if ($trip->coverUrl())
                     <img src="{{ $trip->coverUrl() }}" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover">
                 @endif
                 <div class="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
                 <div class="flex min-h-52 flex-col justify-between gap-6 p-5 text-white sm:min-h-64 sm:p-6">
                     <div class="flex items-start justify-between gap-3">
-                        <span class="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur">
+                        <span class="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur-sm">
                             @if ($trip->isPast())
                                 {{ __('Travelled') }}
                             @elseif ($trip->isOngoing())
@@ -1153,13 +1180,13 @@ new #[Layout('layouts.app')] class extends Component
                             @endif
                         </span>
                         <div class="flex items-center gap-1" x-data="{ open: false }">
-                            <label class="cursor-pointer rounded-full bg-white/20 p-2 backdrop-blur hover:bg-white/30" title="{{ __('Change cover photo') }}">
+                            <label class="cursor-pointer rounded-full bg-white/20 p-2 backdrop-blur-sm hover:bg-white/30" title="{{ __('Change cover photo') }}">
                                 <span class="sr-only">{{ __('Change cover photo') }}</span>
                                 <span aria-hidden="true" wire:loading.remove wire:target="cover">📷</span>
                                 <span aria-hidden="true" wire:loading wire:target="cover">⏳</span>
                                 <input type="file" accept="image/*" class="sr-only" x-on:change="const file = $event.target.files[0]; if (file) { $wire.upload('cover', await window.e11ShrinkImage(file), () => {}, () => $dispatch('toast', { message: @js(__('The cover photo could not be uploaded. Please try a smaller photo.')) })); } $event.target.value = ''">
                             </label>
-                            <button type="button" x-on:click="open = ! open" class="rounded-full bg-white/20 p-2 backdrop-blur hover:bg-white/30" title="{{ __('Colour') }}" aria-label="{{ __('Colour') }}">🎨</button>
+                            <button type="button" x-on:click="open = ! open" class="rounded-full bg-white/20 p-2 backdrop-blur-sm hover:bg-white/30" title="{{ __('Colour') }}" aria-label="{{ __('Colour') }}">🎨</button>
                             <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-5 top-16 z-10 flex gap-2 rounded-2xl bg-white p-2 shadow-lg dark:bg-gray-800">
                                 @foreach ($colors as $key => $color)
                                     <button type="button" wire:click="setColor('{{ $key }}')" x-on:click="open = false" class="h-8 w-8 rounded-full ring-2 ring-offset-2 {{ $trip->color === $key ? 'ring-gray-900 dark:ring-white' : 'ring-transparent' }}" style="background-image: linear-gradient(135deg, {{ $color['from'] }}, {{ $color['to'] }})" aria-label="{{ $key }}"></button>
@@ -1175,7 +1202,7 @@ new #[Layout('layouts.app')] class extends Component
                             @if ($trip->destination)
                                 <p class="text-sm font-medium uppercase tracking-wide text-white/80">📍 {{ $trip->destination }}</p>
                             @endif
-                            <p class="text-3xl font-bold leading-tight drop-shadow sm:text-4xl">{{ $trip->title }}</p>
+                            <p class="text-3xl font-bold leading-tight drop-shadow-sm sm:text-4xl">{{ $trip->title }}</p>
                             <p class="mt-1 text-sm text-white/90">{{ $trip->starts_on->translatedFormat('j. M') }} – {{ $trip->ends_on->translatedFormat('j. M Y') }} · {{ trans_choice(':count night|:count nights', $overview['nights']) }}</p>
                         </div>
                         @if ($travellers !== [])
@@ -1193,7 +1220,7 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('cover')" class="px-5 pb-3 text-white" />
             </section>
 
-            <div class="sticky top-14 z-10 -mx-1 flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/90 p-1 shadow-sm ring-1 ring-gray-200 backdrop-blur lg:top-2 dark:bg-gray-800/90 dark:ring-gray-700" role="tablist">
+            <div class="sticky top-14 z-10 -mx-1 flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/90 p-1 shadow-xs ring-1 ring-gray-200 backdrop-blur-sm lg:top-2 dark:bg-gray-800/90 dark:ring-gray-700" role="tablist">
                 @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'discover' => ['🔎', __('Discover')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])><span class="text-base" aria-hidden="true">{{ $icon }}</span>{{ $label }}</button>
                 @endforeach
@@ -1203,7 +1230,7 @@ new #[Layout('layouts.app')] class extends Component
             @if ($tab === 'overview')
                 @if ($itinerary['next'])
                     @php($next = $itinerary['next'])
-                    <button type="button" wire:click="$set('tab', 'plan')" class="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                    <button type="button" wire:click="$set('tab', 'plan')" class="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                         <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-2xl dark:bg-indigo-900/40" aria-hidden="true">{{ $next['icon'] }}</span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">{{ __('Up next') }}</span>
@@ -1215,24 +1242,24 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 <section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <button type="button" wire:click="$set('tab', 'plan')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                    <button type="button" wire:click="$set('tab', 'plan')" class="rounded-2xl bg-white p-4 text-left shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                         <p class="text-xs text-gray-500 dark:text-gray-400">🗓️ {{ __('Itinerary') }}</p>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $itinerary['planned_days'] }} / {{ count($itinerary['days']) }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('days planned') }}@if ($itinerary['ideas']->isNotEmpty()) · {{ trans_choice(':count idea|:count ideas', $itinerary['ideas']->count()) }}@endif</p>
                     </button>
-                    <button type="button" wire:click="$set('tab', 'costs')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                    <button type="button" wire:click="$set('tab', 'costs')" class="rounded-2xl bg-white p-4 text-left shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                         <p class="text-xs text-gray-500 dark:text-gray-400">💶 {{ __('Costs') }}</p>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['costs']) }}</p>
                         @if ($overview['budget_percent'] !== null)
                             <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuenow="{{ (int) $overview['budget_percent'] }}" aria-valuemin="0" aria-valuemax="100"><div @class(['h-full rounded-full', 'bg-emerald-500' => $overview['budget_percent'] < 90, 'bg-amber-500' => $overview['budget_percent'] >= 90 && $overview['budget_percent'] <= 100, 'bg-red-500' => $overview['budget_percent'] > 100]) style="width: {{ min(100, $overview['budget_percent']) }}%"></div></div>
                         @endif
                     </button>
-                    <button type="button" wire:click="$set('tab', 'bookings')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                    <button type="button" wire:click="$set('tab', 'bookings')" class="rounded-2xl bg-white p-4 text-left shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                         <p class="text-xs text-gray-500 dark:text-gray-400">🎫 {{ __('Bookings') }}</p>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $trip->bookings->count() }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">@if ($overview['open'] > 0){{ __(':amount still to pay', ['amount' => $euro($overview['open'])]) }}@else{{ __('Tickets & documents') }}@endif</p>
                     </button>
-                    <button type="button" wire:click="$set('tab', 'packing')" class="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                    <button type="button" wire:click="$set('tab', 'packing')" class="rounded-2xl bg-white p-4 text-left shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                         <p class="text-xs text-gray-500 dark:text-gray-400">🧳 {{ __('Packing list') }}</p>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $overview['packed'] }} / {{ $overview['packing_total'] }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('packed') }}</p>
@@ -1252,7 +1279,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 @if ($weather !== [])
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" aria-labelledby="trip-weather">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" aria-labelledby="trip-weather">
                         <h3 id="trip-weather" class="text-sm font-semibold text-gray-900 dark:text-gray-100">🌤️ {{ __('Weather forecast') }}@if ($trip->destination) · {{ $trip->destination }}@endif</h3>
                         <div class="mt-2 flex gap-2 overflow-x-auto pb-1">
                             @foreach ($weather as $date => $dayWeather)
@@ -1266,8 +1293,57 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
+                @if ($trip->destination)
+                    <details class="group rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" @if ($showTips) open @endif x-data x-on:toggle="$el.open && ! $wire.showTips && $wire.openTips()">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Tips for :destination', ['destination' => $trip->destination]) }}</span>
+                            <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                        </summary>
+                        @if ($tips === null)
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">⏳ {{ __('Loading tips …') }}</p>
+                        @else
+                            @if ($tips['summary'])
+                                <div class="mt-3 flex gap-3">
+                                    @if ($tips['summary']['image'])
+                                        <img src="{{ $tips['summary']['image'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="h-20 w-20 shrink-0 rounded-xl object-cover" x-on:error="$el.remove()">
+                                    @endif
+                                    <div class="min-w-0 text-sm text-gray-700 dark:text-gray-300">
+                                        <p class="line-clamp-5">{{ $tips['summary']['extract'] }}</p>
+                                        <a href="{{ $tips['summary']['url'] }}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">{{ __('More on Wikipedia') }} ↗</a>
+                                    </div>
+                                </div>
+                            @endif
+                            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                @foreach (['sights' => '🏛️ '.__('Worth seeing'), 'food' => '🍽️ '.__('Restaurants & cafés')] as $tipKey => $tipLabel)
+                                    <div>
+                                        <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $tipLabel }}</h4>
+                                        @if ($tips[$tipKey]->isEmpty())
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $tips['loading'] ? __('The places of the trip area are loading …') : __('No places known yet – set the trip area on the map.') }}</p>
+                                        @else
+                                            <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700">
+                                                @foreach ($tips[$tipKey] as $tipPlace)
+                                                    <li wire:key="tip-{{ $tipPlace->id }}" class="flex items-center gap-2 py-1.5 text-sm">
+                                                        <span class="min-w-0 flex-1">
+                                                            <span class="block truncate text-gray-900 dark:text-gray-100">{{ $tipPlace->name }}</span>
+                                                            @if (($tipPlace->info['cuisine'] ?? null) || ($tipPlace->info['opening_hours'] ?? null))
+                                                                <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ collect([($tipPlace->info['cuisine'] ?? null) ? ucfirst($tipPlace->info['cuisine']) : null, $tipPlace->info['opening_hours'] ?? null])->filter()->implode(' · ') }}</span>
+                                                            @endif
+                                                        </span>
+                                                        <button type="button" wire:click="planDiscovered({{ $tipPlace->id }})" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700" aria-label="{{ __('Add :title to the plan', ['title' => $tipPlace->name]) }}">＋ {{ __('Idea') }}</button>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                            <button type="button" wire:click="$set('tab', 'discover')" class="mt-3 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Discover all places') }} ›</button>
+                        @endif
+                    </details>
+                @endif
+
                 @if ($trip->currency)
-                    <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <span class="text-2xl" aria-hidden="true">💱</span>
                         @if ($tripRate)
                             <p class="text-sm text-gray-700 dark:text-gray-300">1 € = {{ number_format($tripRate, $tripRate >= 100 ? 0 : 2, ',', '.') }} {{ $trip->currency }}</p>
@@ -1282,7 +1358,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <section class="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <span class="me-auto text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Take the trip with you') }}</span>
                     <a href="{{ route('trips.itinerary', $trip) }}" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700" title="{{ __('Opens the travel plan as a page that also works without internet once it has been opened.') }}">📴 {{ __('Offline plan') }}</a>
                     <a href="{{ route('trips.itinerary', ['trip' => $trip, 'format' => 'pdf']) }}" class="rounded-lg px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700">📄 PDF</a>
@@ -1290,14 +1366,14 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 @if ($trip->notes)
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📝 {{ __('Notes') }}</h3>
                         <p class="mt-2 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ $trip->notes }}</p>
                     </section>
                 @endif
 
                 <livewire:sharing.panel type="trip" :id="$trip->id" :wire:key="'share-trip-'.$trip->id" />
-                <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <span class="text-2xl" aria-hidden="true">🧾</span>
                     <p class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Share costs on the trip: who paid what and who owes whom.') }}</p>
                     @forelse ($expenseGroups as $expenseGroup)
@@ -1307,7 +1383,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </section>
                 @if ($places->isNotEmpty())
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" aria-labelledby="trip-places">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" aria-labelledby="trip-places">
                         <div class="flex items-center justify-between gap-3">
                             <h3 id="trip-places" class="font-semibold text-gray-900 dark:text-gray-100">📍 {{ __('Places for this trip') }}</h3>
                             <a href="{{ route('places.index') }}" wire:navigate class="text-sm text-indigo-600 underline dark:text-indigo-400">{{ __('All places') }}</a>
@@ -1325,10 +1401,10 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
                 @endif
-                <details class="group rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <details class="group rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <summary class="flex cursor-pointer list-none items-center justify-between p-5 font-semibold text-gray-900 dark:text-gray-100">✏️ {{ __('Edit trip') }} <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span></summary>
                     <div class="px-0 pb-0">
-                <form wire:submit="saveDetails" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveDetails" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">✏️ {{ __('Details') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Title') }}<input type="text" wire:model="details.title" class="{{ $input }}"><x-input-error :messages="$errors->get('details.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Destination') }}<input type="text" wire:model="details.destination" class="{{ $input }}"></label>
@@ -1347,7 +1423,7 @@ new #[Layout('layouts.app')] class extends Component
                     </label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Notes') }}<textarea wire:model="details.notes" rows="3" class="{{ $input }}" placeholder="{{ __('Address of the accommodation, emergency numbers, ideas …') }}"></textarea></label>
                     @if ($trip->created_by === auth()->id())
-                        <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="details.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="details.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     @endif
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Save') }}</x-primary-button>
@@ -1360,7 +1436,7 @@ new #[Layout('layouts.app')] class extends Component
                 </details>
             @elseif ($tab === 'plan')
                 <form wire:submit="addIdea" class="flex flex-wrap gap-2">
-                    <input type="text" wire:model="idea" class="block min-w-0 flex-1 basis-full rounded-xl sm:basis-0 border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" placeholder="💡 {{ __('Add an idea – plan it on a day later …') }}" aria-label="{{ __('Add an idea') }}">
+                    <input type="text" wire:model="idea" class="block min-w-0 flex-1 basis-full rounded-xl sm:basis-0 border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" placeholder="💡 {{ __('Add an idea – plan it on a day later …') }}" aria-label="{{ __('Add an idea') }}">
                     <x-secondary-button type="submit" class="flex-1 justify-center sm:flex-none">💡 {{ __('Add idea') }}</x-secondary-button>
                     <x-primary-button type="button" wire:click="openStop" class="flex-1 justify-center sm:flex-none">+ {{ __('Entry') }}</x-primary-button>
                 </form>
@@ -1368,7 +1444,7 @@ new #[Layout('layouts.app')] class extends Component
                     <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
                     <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">
                         @foreach ($travelModes as $modeKey => $mode)
-                            <button type="button" wire:click="setTravelMode('{{ $modeKey }}')" @class(['rounded-full px-3 py-1 text-xs font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $travelMode === $modeKey, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $travelMode !== $modeKey]) aria-pressed="{{ $travelMode === $modeKey ? 'true' : 'false' }}">{{ $mode['icon'] }} {{ $mode['label'] }}</button>
+                            <button type="button" wire:click="setTravelMode('{{ $modeKey }}')" @class(['rounded-full px-3 py-1 text-xs font-medium transition', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-white' => $travelMode === $modeKey, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $travelMode !== $modeKey]) aria-pressed="{{ $travelMode === $modeKey ? 'true' : 'false' }}">{{ $mode['icon'] }} {{ $mode['label'] }}</button>
                         @endforeach
                     </div>
                     @if ($routes['pending'] !== [])
@@ -1378,7 +1454,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
 
-                <details class="group rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" @if ($pendingSuggestions->isNotEmpty()) open @endif>
+                <details class="group rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" @if ($pendingSuggestions->isNotEmpty()) open @endif>
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
                         <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">💬 {{ __('Feedback & suggestions') }}
                             @if ($pendingSuggestions->isNotEmpty())
@@ -1443,6 +1519,44 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Participants comment and suggest via the trip folder or their personal link.') }}</p>
                 </details>
 
+                @php($kindCounts = $trip->stops->countBy('kind'))
+                @if ($kindCounts->count() > 1 || $planKind)
+                    <div class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="{{ __('Show by category') }}">
+                        <button type="button" role="tab" wire:click="filterPlan" aria-selected="{{ $planKind === null ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $planKind === null, 'bg-white text-gray-700 shadow-xs hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' => $planKind !== null])>{{ __('Everything') }}</button>
+                        @foreach ($stopKinds as $kindKey => $kind)
+                            @if ($kindCounts->has($kindKey))
+                                <button type="button" role="tab" wire:click="filterPlan('{{ $kindKey }}')" aria-selected="{{ $planKind === $kindKey ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $planKind === $kindKey, 'bg-white text-gray-700 shadow-xs hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' => $planKind !== $kindKey])>{{ $kind['icon'] }} {{ $kind['label'] }} <span class="opacity-70">{{ $kindCounts[$kindKey] }}</span></button>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($planKind)
+                    @php($kindStops = $trip->stops->where('kind', $planKind)->sortBy(fn ($entry) => [$entry->done ? 1 : 0, $entry->day?->toDateString() ?? '9999', $entry->time ?? '', $entry->position])->values())
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $stopKinds[$planKind]['icon'] }} {{ $stopKinds[$planKind]['label'] }}</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count place|:count places', $kindStops->count()) }} · {{ __(':count visited', ['count' => $kindStops->where('done', true)->count()]) }}</p>
+                        <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                            @forelse ($kindStops as $entry)
+                                <li wire:key="kind-stop-{{ $entry->id }}" class="flex items-center gap-3 py-2">
+                                    <label class="flex items-center" title="{{ __('Visited') }}"><input type="checkbox" @checked($entry->done) wire:click="toggleStopDone({{ $entry->id }})" class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Mark :title as visited', ['title' => $entry->title]) }}"></label>
+                                    <button type="button" wire:click="editStop({{ $entry->id }})" class="min-w-0 flex-1 text-left">
+                                        <span @class(['block truncate text-sm font-medium', 'text-gray-400 line-through dark:text-gray-500' => $entry->done, 'text-gray-900 dark:text-gray-100' => ! $entry->done])>{{ $entry->title }}</span>
+                                        @if ($entry->location)
+                                            <span class="block truncate text-xs text-gray-500 dark:text-gray-400">📍 {{ $entry->location }}</span>
+                                        @endif
+                                    </button>
+                                    <span @class(['shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' => $entry->day, 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' => ! $entry->day])>{{ $entry->day ? $entry->day->translatedFormat('D, j. M') : '💡 '.__('Idea') }}</span>
+                                    @if ($entry->mapsUrl())
+                                        <a href="{{ $entry->mapsUrl() }}" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-indigo-600" aria-label="{{ __('Show :title on map', ['title' => $entry->title]) }}">🗺️</a>
+                                    @endif
+                                </li>
+                            @empty
+                                <li class="py-3 text-center text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing here – try another category.') }}</li>
+                            @endforelse
+                        </ul>
+                    </section>
+                @else
                 <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
                     <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>
                     <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Drag onto a day to plan') }} (⠿)</p>
@@ -1456,7 +1570,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 @foreach ($itinerary['days'] as $day)
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="day-{{ $day['date']->toDateString() }}">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" wire:key="day-{{ $day['date']->toDateString() }}">
                         <div class="flex items-center gap-3">
                             <span @class(['flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl text-white', 'ring-2 ring-offset-2 ring-indigo-400 dark:ring-offset-gray-800' => $day['date']->isToday()]) style="background-image: linear-gradient(135deg, {{ $scheme['from'] }}, {{ $scheme['to'] }})">
                                 <span class="text-[10px] uppercase leading-none opacity-90">{{ __('Day') }}</span>
@@ -1509,10 +1623,11 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
                 @endforeach
+                @endif
             @elseif ($tab === 'discover')
                 @php($discoverCategories = \App\Support\Life\TripDiscover::categories())
                 <section class="space-y-4">
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <div class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="{{ __('Categories') }}">
                             @foreach ($discoverCategories as $categoryKey => $category)
                                 <button type="button" role="tab" wire:click="$set('discoverCategory', '{{ $categoryKey }}')" aria-selected="{{ $discoverCategory === $categoryKey ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $discoverCategory === $categoryKey, 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' => $discoverCategory !== $categoryKey])>
@@ -1523,22 +1638,22 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="mt-3 flex flex-wrap items-center gap-3">
                             <input type="search" wire:model.live.debounce.300ms="discoverSearch" placeholder="🔎 {{ __('Search by name') }}" aria-label="{{ __('Search by name') }}" class="min-w-0 flex-1 rounded-full border-gray-300 px-4 py-1.5 text-sm dark:border-gray-700">
                             @if ($discover['visitedCount'] > 0)
-                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showVisited" class="rounded border-gray-300 text-indigo-600"> {{ trans_choice('Show :count visited|Show :count visited', $discover['visitedCount']) }}</label>
+                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showVisited" class="rounded-sm border-gray-300 text-indigo-600"> {{ trans_choice('Show :count visited|Show :count visited', $discover['visitedCount']) }}</label>
                             @endif
                         </div>
                     </div>
 
                     @if ($placesCount === 0)
-                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ $placesLoading ? __('The places of the trip area are loading …') : __('Open the map once – the places of the trip area are loaded from there.') }}</p>
+                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ $placesLoading ? __('The places of the trip area are loading …') : __('Open the map once – the places of the trip area are loaded from there.') }}</p>
                     @elseif ($discover['places']->isEmpty())
-                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('Nothing here – try another category.') }}</p>
+                        <p class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('Nothing here – try another category.') }}</p>
                     @else
                         <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach ($discover['places'] as $place)
                                 @php($image = \App\Support\Life\TripDiscover::imageUrl($place))
                                 @php($links = \App\Support\Life\TripDiscover::links($place, $trip->destination))
                                 @php($visited = \App\Support\Life\TripDiscover::isVisited($trip, $place))
-                                <li wire:key="discover-{{ $place->id }}" @class(['flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800', 'opacity-60' => $visited])>
+                                <li wire:key="discover-{{ $place->id }}" @class(['flex flex-col overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800', 'opacity-60' => $visited])>
                                     <div class="relative aspect-[16/9] bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40">
                                         <span class="absolute inset-0 flex items-center justify-center text-4xl" aria-hidden="true">{{ $discoverCategories[\App\Support\Life\TripDiscover::categoryOf($place)]['icon'] }}</span>
                                         @if ($image)
@@ -1578,12 +1693,12 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
             @elseif ($tab === 'map')
-                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all(), 'kinds' => collect($stopKinds)->except(['note', 'transport'])->map(fn ($kind) => $kind['label'])->all()])
                 <div class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
                     <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">
                         @foreach ($travelModes as $modeKey => $mode)
-                            <button type="button" wire:click="setTravelMode('{{ $modeKey }}')" @class(['rounded-full px-3 py-1 text-xs font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $travelMode === $modeKey, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $travelMode !== $modeKey]) aria-pressed="{{ $travelMode === $modeKey ? 'true' : 'false' }}">{{ $mode['icon'] }} {{ $mode['label'] }}</button>
+                            <button type="button" wire:click="setTravelMode('{{ $modeKey }}')" @class(['rounded-full px-3 py-1 text-xs font-medium transition', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-white' => $travelMode === $modeKey, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $travelMode !== $modeKey]) aria-pressed="{{ $travelMode === $modeKey ? 'true' : 'false' }}">{{ $mode['icon'] }} {{ $mode['label'] }}</button>
                         @endforeach
                     </div>
                     @if ($routes['pending'] !== [])
@@ -1592,11 +1707,11 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="text-xs text-amber-700 dark:text-amber-300">{{ __('Travel times are not available for every day right now.') }}</span>
                     @endif
                 </div>
-                <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800" x-data="tripMap(@js($mapTexts), @js($mapCenter))" wire:key="trip-map-{{ $trip->id }}">
+                <section class="relative overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800" x-data="tripMap(@js($mapTexts), @js($mapCenter))" wire:key="trip-map-{{ $trip->id }}">
                     <div x-ref="data" class="hidden" data-groups="{{ json_encode($mapGroups) }}" data-area="{{ json_encode($trip->map_area) }}"></div>
                     <div class="relative z-[500] flex flex-wrap gap-2 p-3">
                         <div class="relative min-w-0 flex-1 basis-full sm:basis-0" x-on:click.outside="closeResults()">
-                            <input type="search" x-model="query" x-on:input.debounce.250ms="search()" x-on:keydown.escape="closeResults()" x-on:keydown.arrow-down.prevent="move(1)" x-on:keydown.arrow-up.prevent="move(-1)" x-on:keydown.enter.prevent="chooseActive()" x-on:focus="query.trim().length > 1 && results.length === 0 && search()" placeholder="🔎 {{ __('Search a place, sight or restaurant …') }}" aria-label="{{ __('Search a place') }}" autocomplete="off" enterkeyhint="search" class="block w-full rounded-xl border-gray-300 pe-9 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                            <input type="search" x-model="query" x-on:input.debounce.250ms="search()" x-on:keydown.escape="closeResults()" x-on:keydown.arrow-down.prevent="move(1)" x-on:keydown.arrow-up.prevent="move(-1)" x-on:keydown.enter.prevent="chooseActive()" x-on:focus="query.trim().length > 1 && results.length === 0 && search()" placeholder="🔎 {{ __('Search a place, sight or restaurant …') }}" aria-label="{{ __('Search a place') }}" autocomplete="off" enterkeyhint="search" class="block w-full rounded-xl border-gray-300 pe-9 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                             <span x-show="searching" x-cloak class="absolute end-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" aria-hidden="true"></span>
                             <div x-show="results.length > 0 || (searched && query.trim().length > 1)" x-cloak x-transition.opacity.duration.150ms class="absolute inset-x-0 top-full z-[1000] mt-1 max-h-80 overflow-y-auto rounded-xl bg-white py-1 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
                                 <ul role="listbox">
@@ -1619,6 +1734,13 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="button" x-on:click="nearby()" x-bind:aria-pressed="showPois" class="flex-1 rounded-xl px-3 py-2 text-sm font-medium sm:flex-none" x-bind:class="showPois ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100'"><span x-show="! loadingNearby">📍 {{ __('Places nearby') }}</span><span x-show="loadingNearby" x-cloak>⏳ {{ __('Searching …') }}</span></button>
                         <button type="button" x-on:click="locate()" x-bind:disabled="locating" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('My location') }}" aria-label="{{ __('My location') }}"><span x-show="! locating">◎</span><span x-show="locating" x-cloak>⏳</span></button>
                         <button type="button" x-on:click="fitAll()" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('Show all') }}" aria-label="{{ __('Show all') }}">⤢</button>
+                    </div>
+                    <div x-show="showPois && poiKinds.length > 0" x-cloak class="relative z-[500] -mt-1 flex gap-1 overflow-x-auto px-3 pb-2" role="group" aria-label="{{ __('Show places nearby by type') }}">
+                        <template x-for="kind in poiKinds" :key="kind.key">
+                            <button type="button" x-on:click="togglePoiKind(kind.key)" x-bind:aria-pressed="! hiddenPoiKinds.includes(kind.key)" class="shrink-0 rounded-full px-3 py-1 text-xs font-medium" x-bind:class="hiddenPoiKinds.includes(kind.key) ? 'bg-gray-100 text-gray-400 line-through dark:bg-gray-700 dark:text-gray-500' : 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800'">
+                                <span x-text="kind.icon + ' ' + kind.label + ' ' + kind.count"></span>
+                            </button>
+                        </template>
                     </div>
                     <div wire:ignore class="relative z-0">
                         <div x-ref="map" class="h-[58vh] min-h-80 w-full bg-gray-100 dark:bg-gray-900"></div>
@@ -1668,7 +1790,7 @@ new #[Layout('layouts.app')] class extends Component
                 @php($mappedDays = collect($itinerary['days'])->filter(fn ($day) => $day['route'] !== null))
                 @php($mappedIdeas = $itinerary['ideas']->filter(fn ($entry) => $entry->mapsUrl() !== null))
                 @foreach ($mappedDays as $day)
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="map-day-{{ $day['number'] }}">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" wire:key="map-day-{{ $day['number'] }}">
                         <div class="flex items-center justify-between gap-3">
                             <div class="min-w-0"><h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $dayLabel($day['date'], $day['number']) }}</h3>@if ($dayRoute = $routes['days'][$day['date']->toDateString()] ?? null)<p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Whole route') }}: {{ $legText($dayRoute) }}</p>@endif</div>
                             <a href="{{ $day['route'] }}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500">🧭 {{ __('Open route') }}</a>
@@ -1688,7 +1810,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endforeach
                 @if ($mappedIdeas->isNotEmpty())
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Ideas') }}</h3>
                         <ul class="mt-2 grid gap-2 sm:grid-cols-2">
                             @foreach ($mappedIdeas as $entry)
@@ -1698,7 +1820,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
                 @if ($places->isNotEmpty())
-                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📍 {{ __('Places for this trip') }}</h3>
                         <ul class="mt-2 grid gap-2 sm:grid-cols-2">
                             @foreach ($places as $place)
@@ -1708,7 +1830,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
             @elseif ($tab === 'bookings')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" x-data="{ paste: false }">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" x-data="{ paste: false }">
                     <div class="flex flex-wrap items-center gap-3">
                         <span class="text-2xl" aria-hidden="true">✉️</span>
                         <div class="min-w-0 flex-1">
@@ -1759,7 +1881,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
-                <form wire:submit="saveBooking" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveBooking" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 sm:col-span-6 dark:text-gray-100">{{ $editingBookingId ? __('Edit booking') : __('New booking') }}</h3>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Type') }}
                         <select wire:model="booking.kind" class="{{ $input }}">
@@ -1776,8 +1898,8 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">
                         <label for="booking-cost">{{ __('Cost') }}</label>
                         <div class="flex gap-1">
-                            <input id="booking-cost" type="text" inputmode="decimal" wire:model="booking.cost" class="mt-1 block min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                            <select wire:model="booking.currency" class="mt-1 block w-[5.5rem] shrink-0 rounded-md border-gray-300 ps-2 pe-7 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Currency') }}">
+                            <input id="booking-cost" type="text" inputmode="decimal" wire:model="booking.cost" class="mt-1 block min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                            <select wire:model="booking.currency" class="mt-1 block w-[5.5rem] shrink-0 rounded-md border-gray-300 ps-2 pe-7 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Currency') }}">
                                 @foreach ($currencies as $currency)
                                     <option value="{{ $currency }}">{{ $currency }}</option>
                                 @endforeach
@@ -1786,7 +1908,7 @@ new #[Layout('layouts.app')] class extends Component
                         <x-input-error :messages="$errors->get('booking.cost')" />
                     </div>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Notes') }}<input type="text" wire:model="booking.notes" class="{{ $input }}"></label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="booking.paid" class="rounded border-gray-300 text-indigo-600"> {{ __('Already paid') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="booking.paid" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Already paid') }}</label>
                     <div class="flex gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingBookingId ? __('Save') : __('Add') }}</x-primary-button>
                         @if ($editingBookingId)
@@ -1796,7 +1918,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </form>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     @if ($trip->bookings->isEmpty())
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('No bookings yet. Flights, trains and check-ins with a time appear in the calendar and are reminded the day before.') }}</p>
                     @else
@@ -1824,13 +1946,13 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     @endif
                 </section>
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">📎 {{ __('Tickets & documents') }}</h3>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Booking confirmations, boarding passes and visas – stored encrypted.') }}</p>
                     <div class="mt-3"><livewire:documents-panel type="trip" :id="$trip->id" :wire:key="'documents-trip-'.$trip->id" /></div>
                 </section>
             @elseif ($tab === 'costs')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Costs of the trip') }}</p>
                     <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($overview['costs']) }}</p>
                     @if ($overview['budget_percent'] !== null)
@@ -1845,7 +1967,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 @if ($overview['by_kind'] !== [])
-                    <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Costs by type') }}</h3>
                         <ul class="mt-3 space-y-2 text-sm">
                             @foreach ($overview['by_kind'] as $kind => $amount)
@@ -1858,7 +1980,7 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <section class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <span class="text-2xl" aria-hidden="true">🧾</span>
                     <p class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Share costs on the trip: who paid what and who owes whom.') }}</p>
                     @forelse ($expenseGroups as $expenseGroup)
@@ -1870,12 +1992,12 @@ new #[Layout('layouts.app')] class extends Component
             @else
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Packing list') }}">
-                        <button type="button" wire:click="$set('packingList', 'shared')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $packingList === 'shared', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'shared']) aria-pressed="{{ $packingList === 'shared' ? 'true' : 'false' }}">👥 {{ __('Together') }}</button>
-                        <button type="button" wire:click="$set('packingList', 'mine')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' => $packingList === 'mine', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'mine']) aria-pressed="{{ $packingList === 'mine' ? 'true' : 'false' }}">🔒 {{ __('My list') }}@if ($myPackingCount) <span class="text-xs text-gray-500">{{ $myPackingCount }}</span>@endif</button>
+                        <button type="button" wire:click="$set('packingList', 'shared')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-white' => $packingList === 'shared', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'shared']) aria-pressed="{{ $packingList === 'shared' ? 'true' : 'false' }}">👥 {{ __('Together') }}</button>
+                        <button type="button" wire:click="$set('packingList', 'mine')" @class(['rounded-full px-3 py-1 text-sm font-medium transition', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-white' => $packingList === 'mine', 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $packingList !== 'mine']) aria-pressed="{{ $packingList === 'mine' ? 'true' : 'false' }}">🔒 {{ __('My list') }}@if ($myPackingCount) <span class="text-xs text-gray-500">{{ $myPackingCount }}</span>@endif</button>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $packingList === 'mine' ? __('Only you can see your personal list.') : __('Everyone on the trip sees and ticks off this list.') }}</p>
                 </div>
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <form wire:submit="addItem" class="flex flex-wrap items-end gap-2">
                         <label class="min-w-0 flex-1 basis-full text-sm text-gray-700 sm:basis-0 dark:text-gray-300">{{ __('Item') }}<input type="text" wire:model="item.label" class="{{ $input }}" placeholder="{{ __('e.g. Snorkel') }}"><x-input-error :messages="$errors->get('item.label')" /></label>
                         <label class="text-sm text-gray-700 dark:text-gray-300">{{ __('Category') }}
@@ -1919,7 +2041,7 @@ new #[Layout('layouts.app')] class extends Component
                             <summary class="cursor-pointer text-sm text-indigo-600 dark:text-indigo-400">💾 {{ __('Save this list as a template') }}</summary>
                             <form wire:submit="saveTemplate" class="mt-2 flex flex-wrap items-end gap-2">
                                 <label class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="templateName" class="{{ $input }}" placeholder="{{ __('e.g. Camping weekend') }}"><x-input-error :messages="$errors->get('templateName')" /></label>
-                                <label class="flex items-center gap-2 py-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="templatePrivate" class="rounded border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}</label>
+                                <label class="flex items-center gap-2 py-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" wire:model="templatePrivate" class="rounded-sm border-gray-300 text-indigo-600"> 🔒 {{ __('Only for me') }}</label>
                                 <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
                             </form>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Your templates also appear for tasks (checklists) and for new pages.') }}</p>
@@ -1928,21 +2050,21 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
 
                 @if ($packingItems->isEmpty())
-                    <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">{{ __('The packing list is empty – add a template to start.') }}</p>
+                    <p class="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">{{ __('The packing list is empty – add a template to start.') }}</p>
                 @else
                     <div class="grid gap-4 sm:grid-cols-2">
                         @foreach ($packingItems->groupBy('category')->sortBy(fn ($items, $key) => array_search($key, array_keys($categories))) as $key => $items)
-                            <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" wire:key="category-{{ $key }}">
+                            <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" wire:key="category-{{ $key }}">
                                 <h3 class="flex items-center justify-between text-sm font-semibold text-gray-900 dark:text-gray-100"><span>{{ $categories[$key]['icon'] ?? '' }} {{ $categories[$key]['label'] ?? $key }}</span><span class="text-xs font-normal text-gray-500">{{ $items->where('packed', true)->count() }}/{{ $items->count() }}</span></h3>
                                 <ul class="mt-2 space-y-1">
                                     @foreach ($items as $entry)
                                         <li wire:key="pack-{{ $entry->id }}" class="group flex items-center gap-2 text-sm">
                                             <label class="flex min-w-0 flex-1 items-center gap-2 py-1 pointer-coarse:py-2">
-                                                <input type="checkbox" @checked($entry->packed) wire:click="togglePacked({{ $entry->id }})" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900">
+                                                <input type="checkbox" @checked($entry->packed) wire:click="togglePacked({{ $entry->id }})" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900">
                                                 <span @class(['min-w-0 truncate', 'text-gray-400 line-through dark:text-gray-500' => $entry->packed, 'text-gray-900 dark:text-gray-100' => ! $entry->packed])>{{ $entry->label }}</span>
                                                 @if ($entry->person)<span class="shrink-0 rounded-full bg-indigo-50 px-2 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{{ $entry->person }}</span>@endif
                                             </label>
-                                            <button type="button" wire:click="deleteItem({{ $entry->id }})" class="rounded p-1 text-gray-400 opacity-0 hover:text-red-600 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-100" aria-label="{{ __('Remove :item', ['item' => $entry->label]) }}">✕</button>
+                                            <button type="button" wire:click="deleteItem({{ $entry->id }})" class="rounded-sm p-1 text-gray-400 opacity-0 hover:text-red-600 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-100" aria-label="{{ __('Remove :item', ['item' => $entry->label]) }}">✕</button>
                                         </li>
                                     @endforeach
                                 </ul>

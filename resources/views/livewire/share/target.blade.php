@@ -94,7 +94,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6 sm:py-8">
         <div class="mx-auto max-w-lg space-y-4 px-4">
-            <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200/60 dark:bg-gray-800 dark:ring-gray-700">
+            <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-gray-200/60 dark:bg-gray-800 dark:ring-gray-700">
                 @if ($sharedTitle !== '' || $sharedText !== '' || $sharedUrl !== '')
                     @if ($sharedTitle !== '')
                         <p class="font-medium text-gray-900 dark:text-gray-100">{{ $sharedTitle }}</p>

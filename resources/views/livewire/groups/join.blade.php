@@ -84,7 +84,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-lg px-4 sm:px-6 lg:px-8">
-            <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                 <p class="text-4xl" aria-hidden="true">{{ $group->icon ?: '👥' }}</p>
                 <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $group->name }}</h3>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ __('Members: :names', ['names' => $group->members->map(fn ($member) => $member->user->name)->implode(', ')]) }}</p>

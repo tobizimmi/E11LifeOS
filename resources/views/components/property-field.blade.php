@@ -6,14 +6,14 @@
 @php
     $id = 'field-'.$property->id;
     $model = 'form.values.'.$property->id;
-    $input = 'block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+    $input = 'block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 shadow-xs focus:border-indigo-500 focus:ring-indigo-500';
     $wide = in_array($property->type, [CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION], true);
 @endphp
 
 <div @class(['sm:col-span-2' => $wide])>
     @if ($property->type === CollectionProperty::TYPE_CHECKBOX)
         <label for="{{ $id }}" class="flex h-full items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200">
-            <input id="{{ $id }}" type="checkbox" wire:model="{{ $model }}" class="h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-indigo-600" />
+            <input id="{{ $id }}" type="checkbox" wire:model="{{ $model }}" class="h-5 w-5 rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
             {{ $property->name }}@if ($property->required)<span class="text-red-600" aria-hidden="true"> *</span>@endif
         </label>
     @else
@@ -99,7 +99,7 @@
                         <input x-ref="search" type="search" x-model="query" x-on:input.debounce.250ms="search()" placeholder="{{ __('Search …') }}" class="{{ $input }} text-sm" />
                         <ul class="mt-1 max-h-56 overflow-y-auto">
                             <template x-for="node in results" :key="node.type + node.id">
-                                <li><button type="button" x-on:click="add(node)" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-sm hover:bg-indigo-50 dark:hover:bg-gray-700"><span x-text="node.icon"></span><span class="flex-1 truncate" x-text="node.title"></span><span class="text-xs text-gray-400" x-text="node.kind"></span></button></li>
+                                <li><button type="button" x-on:click="add(node)" class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start text-sm hover:bg-indigo-50 dark:hover:bg-gray-700"><span x-text="node.icon"></span><span class="flex-1 truncate" x-text="node.title"></span><span class="text-xs text-gray-400" x-text="node.kind"></span></button></li>
                             </template>
                         </ul>
                     </div>

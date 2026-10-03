@@ -633,7 +633,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
-                <div class="inline-flex rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
+                <div class="inline-flex rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
                     @foreach (['report' => '📊 '.__('Report'), 'forecast' => '🔮 '.__('Forecast'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'tax' => '🏛 '.__('Tax'), 'import' => '⬆ '.__('Import')] as $key => $label)
                         <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                     @endforeach
@@ -656,7 +656,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($accounts->isEmpty() && ! in_array($tab, ['import', 'tax'], true) && ! $manualOpen)
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🏦</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Import your first bank statement') }}</h3>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Export the transactions of your account as CSV in online banking (Sparkasse, ING, DKB, comdirect, N26, Volksbank …) or in Outbank and import the file here. The analysis then shows where your money goes and where you can save.') }}</p>

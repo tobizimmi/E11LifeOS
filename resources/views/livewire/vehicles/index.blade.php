@@ -63,7 +63,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
 @endphp
 
@@ -79,7 +79,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
 
             @if ($showForm)
-                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="create" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="vehicle.name" class="{{ $input }}" placeholder="{{ __('e.g. Family car') }}" autofocus><x-input-error :messages="$errors->get('vehicle.name')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Make & model') }}<input type="text" wire:model="vehicle.make_model" class="{{ $input }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Licence plate') }}<input type="text" wire:model="vehicle.plate" class="{{ $input }}"></label>
@@ -91,7 +91,7 @@ new #[Layout('layouts.app')] class extends Component
                         </select>
                     </label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Mileage today (km)') }}<input type="number" min="0" wire:model="vehicle.odometer_start" class="{{ $input }}"><x-input-error :messages="$errors->get('vehicle.odometer_start')" /></label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="vehicle.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="vehicle.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     <div class="flex gap-2 sm:col-span-6">
                         <x-primary-button>{{ __('Create') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -104,7 +104,7 @@ new #[Layout('layouts.app')] class extends Component
                     $car = $row['vehicle'];
                     $stats = $row['stats'];
                 @endphp
-                <a href="{{ route('vehicles.show', $car) }}" wire:navigate wire:key="vehicle-{{ $car->id }}" class="block rounded-2xl bg-white p-5 shadow-sm transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                <a href="{{ route('vehicles.show', $car) }}" wire:navigate wire:key="vehicle-{{ $car->id }}" class="block rounded-2xl bg-white p-5 shadow-xs transition hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $car->isElectric() ? '🔌' : '🚗' }} {{ $car->name }}</p>
@@ -124,7 +124,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </a>
             @empty
-                <section class="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-gray-700 dark:text-gray-200">{{ __('No vehicles yet.') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Add your car: inspection and service are reminded, fuel and workshop costs add up to the costs per kilometre, and a logbook collects business trips.') }}</p>
                 </section>

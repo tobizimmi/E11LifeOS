@@ -17,7 +17,7 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ __(':total spent · :amount per person on average', ['total' => $euro($stats['total']), 'amount' => $euro($stats['per_person'])]) }}</p>
             </header>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h2 class="font-semibold">{{ __('How to settle up') }}</h2>
                 @forelse ($settlements as $transfer)
                     <p class="mt-2 flex justify-between gap-3 text-sm"><span><strong>{{ $names[$transfer['from']] }}</strong> → <strong>{{ $names[$transfer['to']] }}</strong></span><span class="font-semibold tabular-nums">{{ $euro($transfer['amount']) }}</span></p>
@@ -26,14 +26,14 @@
                 @endforelse
             </section>
 
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h2 class="font-semibold">{{ __('Balances') }}</h2>
                 @foreach ($balances as $row)
                     <p class="mt-2 flex justify-between gap-3 text-sm"><span>{{ $row['member']->name }} <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('paid :paid · share :share', ['paid' => $euro($row['paid']), 'share' => $euro($row['owed'])]) }}</span></span><span @class(['font-semibold tabular-nums', 'text-emerald-600' => $row['balance'] > 0.004, 'text-red-600' => $row['balance'] < -0.004])>{{ ($row['balance'] > 0 ? '+' : '').$euro($row['balance']) }}</span></p>
                 @endforeach
             </section>
 
-            <section class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <h2 class="px-5 pt-5 font-semibold">{{ __('Expenses') }}</h2>
                 <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse ($group->expenses as $item)

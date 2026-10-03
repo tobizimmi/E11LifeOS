@@ -129,17 +129,17 @@ new #[Layout('layouts.app')] class extends Component
                 <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Filled in from :contract.', ['contract' => $contract['item']->title]) }} <a href="{{ $contract['url'] }}" wire:navigate class="text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Open entry') }}</a></p>
             @endif
 
-            <form wire:submit="download" class="space-y-4 rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+            <form wire:submit="download" class="space-y-4 rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <x-input-label for="letter-sender" :value="__('Your name and address')" />
-                        <textarea id="letter-sender" wire:model="sender" rows="4" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" placeholder="{{ __('Name, street, postcode and town – one per line') }}"></textarea>
+                        <textarea id="letter-sender" wire:model="sender" rows="4" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" placeholder="{{ __('Name, street, postcode and town – one per line') }}"></textarea>
                         <x-input-error :messages="$errors->get('sender')" class="mt-1" />
-                        <label class="mt-1 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400"><input type="checkbox" wire:model="rememberAddress" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900"> {{ __('Remember for the next letter') }}</label>
+                        <label class="mt-1 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400"><input type="checkbox" wire:model="rememberAddress" class="rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900"> {{ __('Remember for the next letter') }}</label>
                     </div>
                     <div>
                         <x-input-label for="letter-recipient" :value="__('Recipient')" />
-                        <textarea id="letter-recipient" wire:model="recipient" rows="4" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"></textarea>
+                        <textarea id="letter-recipient" wire:model="recipient" rows="4" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"></textarea>
                         <x-input-error :messages="$errors->get('recipient')" class="mt-1" />
                     </div>
                 </div>
@@ -156,7 +156,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <div>
                     <x-input-label for="letter-body" :value="__('Text')" />
-                    <textarea id="letter-body" wire:model="body" rows="12" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"></textarea>
+                    <textarea id="letter-body" wire:model="body" rows="12" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"></textarea>
                     <x-input-error :messages="$errors->get('body')" class="mt-1" />
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Replace the parts in [brackets]. Send cancellations by registered mail or with proof of delivery.') }}</p>
                 </div>

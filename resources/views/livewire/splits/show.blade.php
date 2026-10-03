@@ -235,7 +235,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
     $names = $group->members->pluck('name', 'id');
     $maxCategory = max([0.01, ...array_values($stats['by_category'])]);
@@ -255,20 +255,20 @@ new #[Layout('layouts.app')] class extends Component
             <livewire:sharing.panel type="split" :id="$group->id" :wire:key="'share-split-'.$group->id" />
 
             <section class="grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Spent in total') }}</p>
                     <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($stats['total']) }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':amount per person on average', ['amount' => $euro($stats['per_person'])]) }}</p>
                 </div>
                 @if ($me)
                     @php($mine = $balances[$me->id] ?? ['paid' => 0, 'owed' => 0, 'balance' => 0])
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Your balance') }}</p>
                         <p @class(['mt-1 text-2xl font-semibold tabular-nums', 'text-emerald-600 dark:text-emerald-400' => $mine['balance'] > 0.004, 'text-red-600 dark:text-red-400' => $mine['balance'] < -0.004, 'text-gray-900 dark:text-gray-100' => abs($mine['balance']) <= 0.004])>{{ ($mine['balance'] > 0 ? '+' : '').$euro($mine['balance']) }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('paid :paid · your share :share', ['paid' => $euro($mine['paid']), 'share' => $euro($mine['owed'])]) }}</p>
                     </div>
                 @endif
-                <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('To settle up') }}</p>
                     <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ trans_choice(':count transfer|:count transfers', count($settlements)) }}</p>
                     @if ($group->trip)
@@ -278,7 +278,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
+                <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
                     @foreach (['expenses' => '🧾 '.__('Expenses'), 'balances' => '⚖️ '.__('Balances'), 'stats' => '📊 '.__('Evaluation'), 'people' => '👥 '.__('Participants')] as $key => $label)
                         <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
                     @endforeach
@@ -287,7 +287,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if ($showForm)
-                <form wire:submit="saveExpense" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="saveExpense" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('What for?') }}<input type="text" wire:model="expense.title" class="{{ $input }}" placeholder="{{ __('e.g. Supermarket, dinner, fuel') }}" autofocus><x-input-error :messages="$errors->get('expense.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-1 dark:text-gray-300">{{ __('Amount') }} (€)<input type="text" inputmode="decimal" wire:model="expense.amount" class="{{ $input }}"><x-input-error :messages="$errors->get('expense.amount')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Paid by') }}
@@ -317,7 +317,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="mt-1 grid gap-2 sm:grid-cols-2">
                             @foreach ($group->members as $member)
                                 <div wire:key="participant-{{ $member->id }}" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
-                                    <label class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-800 dark:text-gray-200"><input type="checkbox" wire:model.live="participants.{{ $member->id }}" class="rounded border-gray-300 text-indigo-600"> <span class="truncate">{{ $member->name }}</span></label>
+                                    <label class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-800 dark:text-gray-200"><input type="checkbox" wire:model.live="participants.{{ $member->id }}" class="rounded-sm border-gray-300 text-indigo-600"> <span class="truncate">{{ $member->name }}</span></label>
                                     @if ($expense['split_mode'] !== 'equal' && ($participants[$member->id] ?? false))
                                         <input type="text" inputmode="decimal" wire:model="values.{{ $member->id }}" aria-label="{{ $expense['split_mode'] === 'amounts' ? __('Amount for :name', ['name' => $member->name]) : __('Shares for :name', ['name' => $member->name]) }}" class="w-24 rounded-md border-gray-300 py-1 text-right text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" placeholder="{{ $expense['split_mode'] === 'amounts' ? '0,00' : '1' }}">
                                     @endif
@@ -338,7 +338,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($tab === 'expenses')
-                <section class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     @forelse ($group->expenses as $item)
                         <button type="button" wire:key="expense-{{ $item->id }}" wire:click="editExpense({{ $item->id }})" class="flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3 text-left last:border-b-0 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/40">
                             <span class="text-xl" aria-hidden="true">{{ $item->is_transfer ? '💸' : ($categories[$item->category]['icon'] ?? '🧾') }}</span>
@@ -353,7 +353,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endforelse
                 </section>
             @elseif ($tab === 'balances')
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Balances') }}</h3>
                     <ul class="mt-3 space-y-2">
                         @foreach ($balances as $row)
@@ -365,7 +365,7 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </ul>
                 </section>
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('How to settle up') }}</h3>
                     @forelse ($settlements as $transfer)
                         <div wire:key="settle-{{ $transfer['from'] }}-{{ $transfer['to'] }}" class="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm dark:bg-gray-900/40">
@@ -379,7 +379,7 @@ new #[Layout('layouts.app')] class extends Component
                 </section>
             @elseif ($tab === 'stats')
                 <section class="grid gap-5 sm:grid-cols-2">
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('By category') }}</h3>
                         <ul class="mt-3 space-y-2">
                             @forelse ($stats['by_category'] as $key => $sum)
@@ -392,9 +392,9 @@ new #[Layout('layouts.app')] class extends Component
                             @endforelse
                         </ul>
                     </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('By person') }}</h3>
-                        <p class="mt-1 flex gap-3 text-xs text-gray-500 dark:text-gray-400"><span><span class="inline-block h-2 w-3 rounded-sm bg-indigo-500 align-middle"></span> {{ __('paid') }}</span><span><span class="inline-block h-2 w-3 rounded-sm bg-amber-500 align-middle"></span> {{ __('share') }}</span></p>
+                        <p class="mt-1 flex gap-3 text-xs text-gray-500 dark:text-gray-400"><span><span class="inline-block h-2 w-3 rounded-xs bg-indigo-500 align-middle"></span> {{ __('paid') }}</span><span><span class="inline-block h-2 w-3 rounded-xs bg-amber-500 align-middle"></span> {{ __('share') }}</span></p>
                         <ul class="mt-3 space-y-3">
                             @foreach ($stats['by_member'] as $row)
                                 <li class="text-sm">
@@ -407,7 +407,7 @@ new #[Layout('layouts.app')] class extends Component
                             @endforeach
                         </ul>
                     </div>
-                    <div class="rounded-2xl bg-white p-5 shadow-sm sm:col-span-2 dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-5 shadow-xs sm:col-span-2 dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('By day') }}</h3>
                         <table class="mt-3 w-full text-sm">
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -422,7 +422,7 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </section>
             @else
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Participants') }}</h3>
                     <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach ($group->members as $member)
@@ -442,7 +442,7 @@ new #[Layout('layouts.app')] class extends Component
                     <x-input-error :messages="$errors->get('newMember')" class="mt-1" />
                 </section>
 
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔗 {{ __('Share with the group') }}</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Everyone with the link sees the expenses, balances and transfers – read-only, without signing in. Handy for WhatsApp groups.') }}</p>
                     @if ($group->share_token)
@@ -459,7 +459,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
 
-                <section class="flex flex-wrap gap-2 rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="flex flex-wrap gap-2 rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <a href="{{ route('splits.export', [$group, 'csv']) }}" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">⬇️ {{ __('Export CSV') }}</a>
                     <a href="{{ route('splits.export', [$group, 'pdf']) }}" target="_blank" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">📄 {{ __('Summary as PDF') }}</a>
                     <button type="button" wire:click="toggleArchive" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">{{ $group->archived_at ? __('Restore') : __('Archive') }}</button>

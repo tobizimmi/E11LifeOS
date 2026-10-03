@@ -9,13 +9,13 @@
     </head>
     <body class="font-sans antialiased bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <main class="mx-auto max-w-sm px-4 py-16">
-            <form method="POST" action="{{ route('trips.folder.unlock', $token) }}" class="space-y-4 rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
+            <form method="POST" action="{{ route('trips.folder.unlock', $token) }}" class="space-y-4 rounded-2xl bg-white p-6 shadow-xs dark:bg-gray-800">
                 @csrf
                 <p class="text-4xl" aria-hidden="true">🔒</p>
                 <h1 class="text-xl font-semibold">{{ $trip->title }}</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('This trip folder is protected. Please enter the password you received from the organiser.') }}</p>
                 <label class="block text-sm">{{ __('Password') }}
-                    <input type="password" name="password" required autofocus autocomplete="current-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <input type="password" name="password" required autofocus autocomplete="current-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs dark:border-gray-700 dark:bg-gray-900">
                 </label>
                 @error('password')
                     <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>

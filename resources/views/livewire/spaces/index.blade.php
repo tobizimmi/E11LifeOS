@@ -103,7 +103,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
 @endphp
 
 <div x-on:page-primary.window="$wire.create()">
@@ -119,7 +119,7 @@ new #[Layout('layouts.app')] class extends Component
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('A space groups pages and tasks that belong together, e.g. Work, Home or Club.') }}</p>
 
             @if ($showForm)
-                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-6 dark:bg-gray-800">
+                <form wire:submit="save" class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('Name') }}<input type="text" wire:model="form.name" class="{{ $input }}" placeholder="{{ __('e.g. Work, Home, Club') }}" maxlength="60" autofocus><x-input-error :messages="$errors->get('form.name')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Symbol') }}
                         <select wire:model="form.icon" class="{{ $input }}">
@@ -128,7 +128,7 @@ new #[Layout('layouts.app')] class extends Component
                             @endforeach
                         </select>
                     </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="form.private" class="rounded border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="form.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingId ? __('Save changes') : __('Create') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -141,7 +141,7 @@ new #[Layout('layouts.app')] class extends Component
 
             <div class="grid gap-3 sm:grid-cols-2">
                 @forelse ($spaces as $space)
-                    <div wire:key="space-{{ $space->id }}" class="flex items-start gap-3 rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                    <div wire:key="space-{{ $space->id }}" class="flex items-start gap-3 rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                         <a href="{{ route('spaces.show', $space) }}" wire:navigate class="min-w-0 flex-1">
                             <p class="text-lg font-semibold text-gray-900 hover:underline dark:text-gray-100">{{ $space->icon }} {{ $space->name }}
                                 @if ($space->isPrivate())
@@ -153,7 +153,7 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="button" wire:click="edit({{ $space->id }})" class="text-sm text-gray-500 underline dark:text-gray-400">{{ __('Edit') }}</button>
                     </div>
                 @empty
-                    <section class="rounded-2xl bg-white p-6 text-center shadow-sm sm:col-span-2 dark:bg-gray-800">
+                    <section class="rounded-2xl bg-white p-6 text-center shadow-xs sm:col-span-2 dark:bg-gray-800">
                         <p class="text-4xl" aria-hidden="true">🗂️</p>
                         <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No space yet.') }}</p>
                     </section>

@@ -88,7 +88,7 @@ new #[Layout('layouts.guest')] class extends Component
                     @foreach ($group['entries'] as $entry)
                         <li wire:key="shared-entry-{{ $entry->id }}">
                             <label class="flex cursor-pointer items-center gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-gray-900">
-                                <input type="checkbox" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) class="h-5 w-5 rounded border-gray-300 text-indigo-600">
+                                <input type="checkbox" wire:click="toggle({{ $entry->id }})" @checked($entry->checked) class="h-5 w-5 rounded-sm border-gray-300 text-indigo-600">
                                 <span @class(['flex-1', 'text-gray-400 line-through' => $entry->checked, 'text-gray-900 dark:text-gray-100' => ! $entry->checked])>{{ $entry->label }}</span>
                                 @if ($entry->quantity)
                                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $entry->quantity }}</span>

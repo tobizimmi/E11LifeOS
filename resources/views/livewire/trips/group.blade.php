@@ -268,7 +268,7 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 @php
-    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    $input = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
     $statuses = \App\Models\TripParticipant::statuses();
     $euro = fn (float $value) => number_format($value, 2, ',', '.').' €';
 @endphp
@@ -284,7 +284,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             {{-- Participants --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="participants">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="participants">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                     <h3 id="participants" class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Participants') }}</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -356,7 +356,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Group message --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="summary">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="summary">
                 <h3 id="summary" class="font-semibold text-gray-900 dark:text-gray-100">📣 {{ __('Summary for everybody') }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Built from the trip, the bookings with a time (programme) and the information below.') }}</p>
                 <textarea readonly rows="8" class="{{ $input }} font-mono text-xs" aria-label="{{ __('Summary for everybody') }}">{{ $summary }}</textarea>
@@ -367,16 +367,16 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Trip folder --}}
-            <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800" aria-labelledby="folder">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="folder">
                 <h3 id="folder" class="font-semibold text-gray-900 dark:text-gray-100">🔒 {{ __('Trip folder for external people') }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Shows information, programme, documents (:count files) and the participant list – protected by a link and a password.', ['count' => $files->count()]) }}</p>
 
                 <fieldset class="mt-3">
                     <legend class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Also show in the folder') }}</legend>
                     <div class="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-700 dark:text-gray-300">
-                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.plan" class="rounded border-gray-300 text-indigo-600"> 🗓️ {{ __('Day plan') }}</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.ideas" class="rounded border-gray-300 text-indigo-600"> 💡 {{ __('Ideas') }}</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.notes" class="rounded border-gray-300 text-indigo-600"> 📝 {{ __('Notes of the entries') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.plan" class="rounded-sm border-gray-300 text-indigo-600"> 🗓️ {{ __('Day plan') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.ideas" class="rounded-sm border-gray-300 text-indigo-600"> 💡 {{ __('Ideas') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" wire:model.live="folderShows.notes" class="rounded-sm border-gray-300 text-indigo-600"> 📝 {{ __('Notes of the entries') }}</label>
                     </div>
                 </fieldset>
 
@@ -428,7 +428,7 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Meeting point') }}<input type="text" wire:model="folder.meeting_point" class="{{ $input }}" placeholder="{{ __('e.g. Saturday 7:30 at the club house') }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-3 dark:text-gray-300">{{ __('Contact for questions') }}<input type="text" wire:model="folder.organizer_contact" class="{{ $input }}" placeholder="{{ __('e.g. Tobi, 0171 1234567') }}"></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Information for participants') }}<textarea wire:model="folder.group_info" rows="4" class="{{ $input }}" placeholder="{{ __('e.g. what to bring, costs per person, bank details for the deposit') }}"></textarea></label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="folder.share_references" class="rounded border-gray-300 text-indigo-600"> {{ __('Show booking codes in the folder') }}</label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="folder.share_references" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Show booking codes in the folder') }}</label>
                     <div class="sm:col-span-6"><x-primary-button>{{ __('Save') }}</x-primary-button></div>
                 </form>
 

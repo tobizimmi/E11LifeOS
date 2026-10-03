@@ -263,7 +263,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('portfolio.partials.nav', ['active' => 'portfolio.index'])
 
             @if ($portfolioList->isEmpty())
-                <div class="rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-gray-800">
+                <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">📈</p>
                     <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100">{{ __('Your portfolio manager') }}</h3>
                     <p class="mx-auto mt-1 max-w-lg text-sm text-gray-600 dark:text-gray-400">{{ __('Create a portfolio for each securities account, then import the transactions from your broker or enter them by hand. Prices update automatically.') }}</p>
@@ -291,22 +291,22 @@ new #[Layout('layouts.app')] class extends Component
 
                 {{-- KPIs --}}
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Portfolio value') }}</p>
                         <p class="mt-1 text-xl font-semibold tabular-nums whitespace-nowrap sm:text-2xl text-gray-900 dark:text-gray-100">{{ $euro($summary['value']) }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count position|:count positions', $summary['count']) }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Today') }}</p>
                         <p class="mt-1 text-xl font-semibold tabular-nums whitespace-nowrap sm:text-2xl {{ $tone($summary['day_change']) }}">{{ $signed($summary['day_change']) }}</p>
                         <p class="text-xs tabular-nums {{ $tone($summary['day_change']) }}">{{ $summary['day_change_percent'] !== null ? $signed($summary['day_change_percent'], ' %') : '—' }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Gain / loss') }}</p>
                         <p class="mt-1 text-xl font-semibold tabular-nums whitespace-nowrap sm:text-2xl {{ $tone($summary['gain']) }}">{{ $signed($summary['gain']) }}</p>
                         <p class="text-xs tabular-nums {{ $tone($summary['gain']) }}">{{ $summary['gain_percent'] !== null ? $signed($summary['gain_percent'], ' %') : '—' }}</p>
                     </div>
-                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                    <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('Invested') }}</p>
                         <p class="mt-1 text-xl font-semibold tabular-nums whitespace-nowrap sm:text-2xl text-gray-900 dark:text-gray-100">{{ $euro($summary['cost']) }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Purchase value incl. fees') }}</p>
@@ -314,12 +314,12 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 {{-- Value chart --}}
-                <section class="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Value over time') }}</h3>
                         <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-900">
                             @foreach (['1w' => __('1W'), '1m' => __('1M'), '3m' => __('3M'), '1y' => __('1Y'), 'max' => __('Max')] as $key => $label)
-                                <button type="button" wire:click="$set('range', '{{ $key }}')" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' => $range === $key, 'text-gray-600 dark:text-gray-400' => $range !== $key])>{{ $label }}</button>
+                                <button type="button" wire:click="$set('range', '{{ $key }}')" @class(['rounded-md px-2.5 py-1', 'bg-white font-medium text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $range === $key, 'text-gray-600 dark:text-gray-400' => $range !== $key])>{{ $label }}</button>
                             @endforeach
                         </div>
                     </div>
@@ -335,7 +335,7 @@ new #[Layout('layouts.app')] class extends Component
                             @php
                                 $depot = $perPortfolio[$portfolio->id] ?? null;
                             @endphp
-                            <button type="button" wire:click="$set('portfolioId', {{ $portfolio->id }})" wire:key="depot-card-{{ $portfolio->id }}" class="rounded-2xl bg-white p-4 text-start shadow-sm hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                            <button type="button" wire:click="$set('portfolioId', {{ $portfolio->id }})" wire:key="depot-card-{{ $portfolio->id }}" class="rounded-2xl bg-white p-4 text-start shadow-xs hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                                 <p class="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100"><span class="h-2.5 w-2.5 rounded-full" style="background: {{ $portfolio->color }}" aria-hidden="true"></span>{{ $portfolio->name }}</p>
                                 <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($depot['value'] ?? 0) }}</p>
                                 <p class="text-xs tabular-nums {{ $tone($depot['gain'] ?? 0) }}">{{ $signed($depot['gain'] ?? 0) }}{{ isset($depot['gain_percent']) ? ' ('.$signed($depot['gain_percent'], ' %').')' : '' }}</p>
@@ -345,7 +345,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 {{-- Positions --}}
-                <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Positions') }}</h3>
                         <div class="flex gap-2">
@@ -385,12 +385,12 @@ new #[Layout('layouts.app')] class extends Component
                                                             · <span class="inline-block h-1.5 w-1.5 rounded-full" style="background: {{ $position->portfolio->color }}" aria-hidden="true"></span>{{ $position->portfolio->name }}
                                                         @endif
                                                         @foreach ($position->labels ?? [] as $label)
-                                                            <span class="rounded bg-gray-100 px-1 dark:bg-gray-700">{{ $label }}</span>
+                                                            <span class="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">{{ $label }}</span>
                                                         @endforeach
                                                         @if ($row['price'] !== null && $position->stop_loss_price && $row['price'] <= $position->stop_loss_price)
-                                                            <span class="rounded bg-orange-100 px-1 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">⚠ {{ __('Stop loss') }}</span>
+                                                            <span class="rounded-sm bg-orange-100 px-1 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">⚠ {{ __('Stop loss') }}</span>
                                                         @elseif ($row['price'] !== null && $position->take_profit_price && $row['price'] >= $position->take_profit_price)
-                                                            <span class="rounded bg-emerald-100 px-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">🎯 {{ __('Target reached') }}</span>
+                                                            <span class="rounded-sm bg-emerald-100 px-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">🎯 {{ __('Target reached') }}</span>
                                                         @endif
                                                     </span>
                                                 </a>
@@ -405,7 +405,7 @@ new #[Layout('layouts.app')] class extends Component
                                             </td>
                                             <td class="px-3 py-2.5 text-end tabular-nums text-gray-500 dark:text-gray-400">{{ number_format($row['weight'], 1, ',', '.') }} %</td>
                                             <td class="pe-2">
-                                                <button type="button" wire:click="editPosition({{ $position->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
+                                                <button type="button" wire:click="editPosition({{ $position->id }})" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700" aria-label="{{ __('Edit') }}"><x-icon name="pencil" class="h-5 w-5" /></button>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -438,7 +438,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <div>
                     <x-input-label for="portfolio-color" :value="__('Colour')" />
-                    <input id="portfolio-color" type="color" wire:model="portfolioForm.color" class="mt-1 h-10 w-20 rounded border-gray-300 dark:border-gray-600">
+                    <input id="portfolio-color" type="color" wire:model="portfolioForm.color" class="mt-1 h-10 w-20 rounded-sm border-gray-300 dark:border-gray-600">
                 </div>
             </form>
 

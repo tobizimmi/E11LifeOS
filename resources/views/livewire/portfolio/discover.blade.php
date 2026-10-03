@@ -73,7 +73,7 @@ new #[Layout('layouts.app')] class extends Component
                             $quote = $indices[$symbol] ?? null;
                             $change = $quote?->changePercent();
                         @endphp
-                        <a href="{{ route('portfolio.security', ['symbol' => $symbol]) }}" wire:navigate class="rounded-2xl bg-white p-3 shadow-sm hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
+                        <a href="{{ route('portfolio.security', ['symbol' => $symbol]) }}" wire:navigate class="rounded-2xl bg-white p-3 shadow-xs hover:ring-1 hover:ring-indigo-200 dark:bg-gray-800 dark:hover:ring-indigo-800">
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $label }}</p>
                             <p class="mt-0.5 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $quote?->last_price ? number_format($quote->last_price, $quote->last_price < 10 ? 4 : 2, ',', '.') : '—' }}</p>
                             <p class="text-xs tabular-nums {{ $tone($change ?? 0) }}">{{ $signed($change) }}</p>
@@ -82,7 +82,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-            <section class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+            <section class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap items-center gap-2 px-4 py-3">
                     <h3 class="me-2 font-semibold text-gray-900 dark:text-gray-100">{{ __('Market scan') }}</h3>
                     @foreach ($screeners as $key => $label)

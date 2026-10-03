@@ -66,7 +66,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-8 sm:py-12">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+            <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     {{ __('Capture first, sort later: turn each entry into a task, a note or a shopping list item.') }}
                 </p>
@@ -77,7 +77,7 @@ new #[Layout('layouts.app')] class extends Component
                 <livewire:paperless-inbox lazy />
             @endif
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-6">
+            <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                 <ul class="space-y-3">
                     @forelse ($entries as $entry)
                         <li wire:key="inbox-{{ $entry->id }}" class="border border-gray-200 dark:border-gray-700 rounded-md p-3">

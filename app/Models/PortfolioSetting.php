@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Personal portfolio settings: recommendation strategy, benchmark, tax allowance, Pushover.
  */
-#[Fillable(['user_id', 'default_portfolio_id', 'strategy', 'drop_threshold', 'drop_period_days', 'min_stability_score', 'min_market_cap_bn', 'rsi_threshold', 'max_pe_ratio', 'max_debt_equity', 'check_200ma', 'prefer_dividends', 'benchmark_symbol', 'tax_allowance', 'church_tax_rate', 'pushover_user_key', 'pushover_app_token', 'notifications_enabled', 'news_push_enabled', 'news_push_portfolio_only', 'news_push_max_age_hours', 'instagram_push'])]
+#[Fillable(['user_id', 'default_portfolio_id', 'strategy', 'drop_threshold', 'drop_period_days', 'min_stability_score', 'min_market_cap_bn', 'rsi_threshold', 'max_pe_ratio', 'max_debt_equity', 'check_200ma', 'prefer_dividends', 'benchmark_symbol', 'tax_allowance', 'church_tax_rate', 'pushover_user_key', 'pushover_app_token', 'notifications_enabled', 'news_push_enabled', 'news_push_portfolio_only', 'news_push_max_age_hours', 'instagram_push', 'score_weights'])]
 class PortfolioSetting extends Model
 {
     public const STRATEGIES = ['conservative', 'moderate', 'aggressive', 'custom', 'thieme'];
@@ -34,6 +34,7 @@ class PortfolioSetting extends Model
             'news_push_max_age_hours' => 'integer',
             'news_push_portfolio_only' => 'boolean',
             'instagram_push' => 'boolean',
+            'score_weights' => 'array',
         ];
     }
 

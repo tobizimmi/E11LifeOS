@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.26.0] – 2026-10-03
+
+### Neu
+- Aktien: Punktesystem wie im „Aktien- und Börsenführerschein“ – 0–3 Punkte je Bewertungsfaktor, doppelte Gewichtung für KGV, Börsensegment, 52-Wochen-Hoch/Tief, Portfoliostreuung, Eigenkapital/Schulden, KBV, Dividende, Umsatz und Ertrag, Nachhaltigkeit, Value, Growth und Technische Analyse, einfache für Geschäftsmodell, Marktstellung, Internationalität, Bekanntheitsgrad, Nachrichten, Analysten und Handelbarkeit – mit Zwischensummen und Endergebnis.
+- Kennzahlen werden automatisch bewertet; Geschäftsmodell, Ruf & Co. bewertest du selbst per Tippen und kannst jede Punktzahl überstimmen.
+- Portfolio-Einstellungen: eigene Gewichtung je Faktor (aus, ×1, ×2, ×3) – auch als „kreative Variante“ mit dreifacher Gewichtung wie im Buch.
+
 ## [1.25.1] – 2026-10-03
 
 ### Behoben

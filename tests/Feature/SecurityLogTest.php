@@ -8,6 +8,7 @@ use App\Notifications\SecurityAlert;
 use App\Support\Security\SecurityLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Volt\Volt;
@@ -81,5 +82,17 @@ class SecurityLogTest extends TestCase
         $this->post(route('logout.idle'))->assertRedirect(route('login'));
         $this->assertGuest();
         $this->assertTrue(SecurityEvent::where('event', 'idle_logout')->exists());
+    }
+
+    public function test_browsers_signed_in_with_remember_me_are_not_signed_out_for_inactivity(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $recaller = Auth::guard('web')->getRecallerName();
+
+        $this->actingAs($user)->get(route('dashboard'))->assertSee('id="idle-logout"', false);
+        $this->withCookie($recaller, 'remembered')->get(route('dashboard'))->assertDontSee('id="idle-logout"', false);
+
+        $this->withCookie($recaller, 'remembered')->post(route('logout.idle'))->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($user);
     }
 }

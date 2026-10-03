@@ -31,6 +31,7 @@ class SendHabitReminders extends Command
                     $habit->icon.' '.__('Time for: :habit', ['habit' => $habit->name]),
                     $habit->type === Habit::COUNT ? __(':done of :target :unit so far', ['done' => $value, 'target' => $habit->target, 'unit' => (string) $habit->unit]) : __('Tick it off in your journal.'),
                     route('journal.index'),
+                    urgent: true,
                 );
                 $sent++;
             });

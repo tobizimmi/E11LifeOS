@@ -7,6 +7,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
 ### Behoben
 - VPN (WireGuard): eine FRITZ!Box-Konfiguration mit Suchdomain bei „DNS“ (z. B. „192.168.178.1, fritz.box“) bringt wireproxy nicht mehr sofort zum Abbruch; die Verbindung bekommt beim Start bis zu 10 Sekunden Zeit, und statt „wireproxy hat sich sofort beendet“ steht der Grund da (Exit-Code und Ergebnis der Konfigurationsprüfung).
+- VPN-Verbindungstest: läuft wireproxy nicht, nennt der Test den Grund aus dem VPN-Status statt nur „Failed to connect to 127.0.0.1“.
 
 ## [1.28.0] – 2026-10-03
 

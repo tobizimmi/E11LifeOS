@@ -266,6 +266,16 @@ class Vpn
 
         $proxy = 'socks5h://127.0.0.1:'.self::socksPort();
 
+        if (! self::portInUse(self::socksPort())) {
+            // Nothing listens: the request would only say "connection refused" – show why wireproxy is not up.
+            $status = self::status();
+            $reason = $status === null
+                ? __('The VPN process sends no status – it is probably not running (PM2 process e11lifeos-vpn, restarted with every deploy).')
+                : (string) ($status['message'] ?? $status['state']);
+
+            return ['ok' => false, 'message' => __('wireproxy is not running on port :port: :reason', ['port' => self::socksPort(), 'reason' => $reason])];
+        }
+
         try {
             $response = Http::withOptions(['proxy' => $proxy])->timeout(10)->withoutRedirecting()->get($url);
 

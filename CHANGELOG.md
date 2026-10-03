@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.25.0] – 2026-10-03
+
+### Neu
+- Reisen: aufklappbare „Tipps für …“ in der Übersicht – kurze Einführung aus Wikipedia, sehenswerte Orte und Restaurants & Cafés, mit einem Tipp direkt als Idee in den Plan.
+- Reisen: Plan nach Kategorie anzeigen (z. B. alle geplanten und möglichen Restaurants) und Orte als besucht abhaken – auch Ideen ohne Tag.
+- Reisekarte: „Orte in der Nähe“ lassen sich nach Art (Sehenswürdigkeiten, Essen & Trinken, Aktivitäten, Einkaufen …) ein- und ausblenden und direkt auf der Karte auswählen.
+
 ## [1.24.0] – 2026-10-02
 
 ### Neu

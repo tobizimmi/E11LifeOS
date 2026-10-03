@@ -99,6 +99,12 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $showVisited = false;
 
+    /** The plan shows only the entries of this type (e.g. all restaurants), or everything. */
+    public ?string $planKind = null;
+
+    /** The tips for the destination are loaded once the section is opened. */
+    public bool $showTips = false;
+
     /**
      * @var array<string, mixed>
      */
@@ -439,6 +445,21 @@ new #[Layout('layouts.app')] class extends Component
     {
         $stop = $this->findStop($id);
         $stop->update(['done' => ! $stop->done]);
+    }
+
+    public function filterPlan(?string $kind = null): void
+    {
+        $this->planKind = $kind !== null && array_key_exists($kind, TripStop::kinds()) ? $kind : null;
+    }
+
+    public function openTips(): void
+    {
+        $this->showTips = true;
+        $trip = $this->findTrip();
+
+        if ($trip->places_loaded_at === null && $trip->destination) {
+            LoadTripPlaces::start($trip);
+        }
     }
 
     public function deleteStop(int $id): void
@@ -1108,6 +1129,12 @@ new #[Layout('layouts.app')] class extends Component
             'currencies' => ExchangeRates::COMMON,
             'inboundDrafts' => $this->tab === 'bookings' ? MailIntake::pendingFor($trip) : collect(),
             'tripRate' => $trip->currency && $this->tab === 'overview' ? ExchangeRates::rate($trip->currency) : null,
+            'tips' => $this->showTips && $this->tab === 'overview' ? [
+                'summary' => $trip->destination ? TripDiscover::destinationSummary((string) $trip->destination, app()->getLocale()) : null,
+                'sights' => TripDiscover::highlights($trip, ['sights', 'museums', 'nature', 'activities']),
+                'food' => TripDiscover::highlights($trip, ['restaurants', 'cafes', 'bars']),
+                'loading' => Cache::has(LoadTripPlaces::lockKey($trip->id)),
+            ] : null,
             'places' => Place::query()->visibleTo($this->currentUser(), (int) $this->householdId)->where('trip_id', $trip->id)->orderBy('visited')->orderBy('name')->get(),
         ];
     }
@@ -1264,6 +1291,55 @@ new #[Layout('layouts.app')] class extends Component
                             @endforeach
                         </div>
                     </section>
+                @endif
+
+                @if ($trip->destination)
+                    <details class="group rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800" @if ($showTips) open @endif x-data x-on:toggle="$el.open && ! $wire.showTips && $wire.openTips()">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Tips for :destination', ['destination' => $trip->destination]) }}</span>
+                            <span class="text-gray-400 transition group-open:rotate-90" aria-hidden="true">›</span>
+                        </summary>
+                        @if ($tips === null)
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">⏳ {{ __('Loading tips …') }}</p>
+                        @else
+                            @if ($tips['summary'])
+                                <div class="mt-3 flex gap-3">
+                                    @if ($tips['summary']['image'])
+                                        <img src="{{ $tips['summary']['image'] }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="h-20 w-20 shrink-0 rounded-xl object-cover" x-on:error="$el.remove()">
+                                    @endif
+                                    <div class="min-w-0 text-sm text-gray-700 dark:text-gray-300">
+                                        <p class="line-clamp-5">{{ $tips['summary']['extract'] }}</p>
+                                        <a href="{{ $tips['summary']['url'] }}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">{{ __('More on Wikipedia') }} ↗</a>
+                                    </div>
+                                </div>
+                            @endif
+                            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                @foreach (['sights' => '🏛️ '.__('Worth seeing'), 'food' => '🍽️ '.__('Restaurants & cafés')] as $tipKey => $tipLabel)
+                                    <div>
+                                        <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $tipLabel }}</h4>
+                                        @if ($tips[$tipKey]->isEmpty())
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $tips['loading'] ? __('The places of the trip area are loading …') : __('No places known yet – set the trip area on the map.') }}</p>
+                                        @else
+                                            <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700">
+                                                @foreach ($tips[$tipKey] as $tipPlace)
+                                                    <li wire:key="tip-{{ $tipPlace->id }}" class="flex items-center gap-2 py-1.5 text-sm">
+                                                        <span class="min-w-0 flex-1">
+                                                            <span class="block truncate text-gray-900 dark:text-gray-100">{{ $tipPlace->name }}</span>
+                                                            @if (($tipPlace->info['cuisine'] ?? null) || ($tipPlace->info['opening_hours'] ?? null))
+                                                                <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ collect([($tipPlace->info['cuisine'] ?? null) ? ucfirst($tipPlace->info['cuisine']) : null, $tipPlace->info['opening_hours'] ?? null])->filter()->implode(' · ') }}</span>
+                                                            @endif
+                                                        </span>
+                                                        <button type="button" wire:click="planDiscovered({{ $tipPlace->id }})" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700" aria-label="{{ __('Add :title to the plan', ['title' => $tipPlace->name]) }}">＋ {{ __('Idea') }}</button>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                            <button type="button" wire:click="$set('tab', 'discover')" class="mt-3 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Discover all places') }} ›</button>
+                        @endif
+                    </details>
                 @endif
 
                 @if ($trip->currency)
@@ -1443,6 +1519,44 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Participants comment and suggest via the trip folder or their personal link.') }}</p>
                 </details>
 
+                @php($kindCounts = $trip->stops->countBy('kind'))
+                @if ($kindCounts->count() > 1 || $planKind)
+                    <div class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="{{ __('Show by category') }}">
+                        <button type="button" role="tab" wire:click="filterPlan" aria-selected="{{ $planKind === null ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $planKind === null, 'bg-white text-gray-700 shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' => $planKind !== null])>{{ __('Everything') }}</button>
+                        @foreach ($stopKinds as $kindKey => $kind)
+                            @if ($kindCounts->has($kindKey))
+                                <button type="button" role="tab" wire:click="filterPlan('{{ $kindKey }}')" aria-selected="{{ $planKind === $kindKey ? 'true' : 'false' }}" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $planKind === $kindKey, 'bg-white text-gray-700 shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' => $planKind !== $kindKey])>{{ $kind['icon'] }} {{ $kind['label'] }} <span class="opacity-70">{{ $kindCounts[$kindKey] }}</span></button>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($planKind)
+                    @php($kindStops = $trip->stops->where('kind', $planKind)->sortBy(fn ($entry) => [$entry->done ? 1 : 0, $entry->day?->toDateString() ?? '9999', $entry->time ?? '', $entry->position])->values())
+                    <section class="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $stopKinds[$planKind]['icon'] }} {{ $stopKinds[$planKind]['label'] }}</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count place|:count places', $kindStops->count()) }} · {{ __(':count visited', ['count' => $kindStops->where('done', true)->count()]) }}</p>
+                        <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                            @forelse ($kindStops as $entry)
+                                <li wire:key="kind-stop-{{ $entry->id }}" class="flex items-center gap-3 py-2">
+                                    <label class="flex items-center" title="{{ __('Visited') }}"><input type="checkbox" @checked($entry->done) wire:click="toggleStopDone({{ $entry->id }})" class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Mark :title as visited', ['title' => $entry->title]) }}"></label>
+                                    <button type="button" wire:click="editStop({{ $entry->id }})" class="min-w-0 flex-1 text-left">
+                                        <span @class(['block truncate text-sm font-medium', 'text-gray-400 line-through dark:text-gray-500' => $entry->done, 'text-gray-900 dark:text-gray-100' => ! $entry->done])>{{ $entry->title }}</span>
+                                        @if ($entry->location)
+                                            <span class="block truncate text-xs text-gray-500 dark:text-gray-400">📍 {{ $entry->location }}</span>
+                                        @endif
+                                    </button>
+                                    <span @class(['shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' => $entry->day, 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' => ! $entry->day])>{{ $entry->day ? $entry->day->translatedFormat('D, j. M') : '💡 '.__('Idea') }}</span>
+                                    @if ($entry->mapsUrl())
+                                        <a href="{{ $entry->mapsUrl() }}" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-indigo-600" aria-label="{{ __('Show :title on map', ['title' => $entry->title]) }}">🗺️</a>
+                                    @endif
+                                </li>
+                            @empty
+                                <li class="py-3 text-center text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing here – try another category.') }}</li>
+                            @endforelse
+                        </ul>
+                    </section>
+                @else
                 <section class="rounded-2xl bg-amber-50/70 p-4 ring-1 ring-amber-100 dark:bg-amber-900/10 dark:ring-amber-900/40">
                     <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">💡 {{ __('Ideas & wishlist') }}</h3>
                     <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Drag onto a day to plan') }} (⠿)</p>
@@ -1509,6 +1623,7 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                     </section>
                 @endforeach
+                @endif
             @elseif ($tab === 'discover')
                 @php($discoverCategories = \App\Support\Life\TripDiscover::categories())
                 <section class="space-y-4">
@@ -1578,7 +1693,7 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </section>
             @elseif ($tab === 'map')
-                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all()])
+                @php($mapTexts = ['edit' => __('Edit'), 'add' => __('Add to plan'), 'idea' => __('Idea – no day yet'), 'searching' => __('Looking up the place …'), 'pinned' => __('Pinned place'), 'zoomIn' => __('Nothing found here – zoom in to a town or district.'), 'fromPrevious' => __('from the place before'), 'website' => __('Website'), 'noLocation' => __('Your location is not available – allow location access for this site in the browser settings.'), 'tiles' => config('services.maps.tile_url') ?: (app()->getLocale() === 'de' ? 'https://tile.openstreetmap.de/{z}/{x}/{y}.png' : null), 'icons' => collect($stopKinds)->map(fn ($kind) => $kind['icon'])->all(), 'kinds' => collect($stopKinds)->except(['note', 'transport'])->map(fn ($kind) => $kind['label'])->all()])
                 <div class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="text-gray-500 dark:text-gray-400">{{ __('Getting around') }}</span>
                     <div class="inline-flex rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="group" aria-label="{{ __('Getting around') }}">
@@ -1619,6 +1734,13 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="button" x-on:click="nearby()" x-bind:aria-pressed="showPois" class="flex-1 rounded-xl px-3 py-2 text-sm font-medium sm:flex-none" x-bind:class="showPois ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100'"><span x-show="! loadingNearby">📍 {{ __('Places nearby') }}</span><span x-show="loadingNearby" x-cloak>⏳ {{ __('Searching …') }}</span></button>
                         <button type="button" x-on:click="locate()" x-bind:disabled="locating" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('My location') }}" aria-label="{{ __('My location') }}"><span x-show="! locating">◎</span><span x-show="locating" x-cloak>⏳</span></button>
                         <button type="button" x-on:click="fitAll()" class="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100" title="{{ __('Show all') }}" aria-label="{{ __('Show all') }}">⤢</button>
+                    </div>
+                    <div x-show="showPois && poiKinds.length > 0" x-cloak class="relative z-[500] -mt-1 flex gap-1 overflow-x-auto px-3 pb-2" role="group" aria-label="{{ __('Show places nearby by type') }}">
+                        <template x-for="kind in poiKinds" :key="kind.key">
+                            <button type="button" x-on:click="togglePoiKind(kind.key)" x-bind:aria-pressed="! hiddenPoiKinds.includes(kind.key)" class="shrink-0 rounded-full px-3 py-1 text-xs font-medium" x-bind:class="hiddenPoiKinds.includes(kind.key) ? 'bg-gray-100 text-gray-400 line-through dark:bg-gray-700 dark:text-gray-500' : 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800'">
+                                <span x-text="kind.icon + ' ' + kind.label + ' ' + kind.count"></span>
+                            </button>
+                        </template>
                     </div>
                     <div wire:ignore class="relative z-0">
                         <div x-ref="map" class="h-[58vh] min-h-80 w-full bg-gray-100 dark:bg-gray-900"></div>

@@ -21,7 +21,5 @@
     @if ($entry->mapsUrl())
         <a href="{{ $entry->mapsUrl() }}" target="_blank" rel="noopener noreferrer" class="flex items-center rounded-lg px-1.5 text-gray-400 hover:bg-gray-100 hover:text-indigo-600 dark:hover:bg-gray-700" title="{{ __('Show on map') }}" aria-label="{{ __('Show :title on map', ['title' => $entry->title]) }}">🗺️</a>
     @endif
-    @if ($entry->day)
-        <label class="flex items-center px-1" title="{{ __('Done') }}"><input type="checkbox" @checked($entry->done) wire:click="toggleStopDone({{ $entry->id }})" class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Mark :title as done', ['title' => $entry->title]) }}"></label>
-    @endif
+    <label class="flex items-center px-1" title="{{ $entry->day ? __('Done') : __('Visited') }}"><input type="checkbox" @checked($entry->done) wire:click="toggleStopDone({{ $entry->id }})" class="h-5 w-5 rounded-full border-gray-300 text-emerald-600 dark:border-gray-600" aria-label="{{ __('Mark :title as done', ['title' => $entry->title]) }}"></label>
 </li>

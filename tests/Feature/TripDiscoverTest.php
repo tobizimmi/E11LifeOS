@@ -62,4 +62,34 @@ class TripDiscoverTest extends TestCase
         $this->actingAs($stranger)->get(route('trips.place-image', [$trip->id, $parliament->id]))->assertNotFound();
         $this->assertSame($gerbeaud->trip_id, $trip->id);
     }
+
+    public function test_destination_tips_and_the_plan_by_category_with_visited_places(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'destination' => 'Budapest, Ungarn', 'starts_on' => '2026-07-22', 'ends_on' => '2026-07-24', 'places_loaded_at' => now()]);
+        TripPlace::factory()->create(['trip_id' => $trip->id, 'name' => 'Fischerbastei', 'kind' => 'sight', 'category' => 'attraction']);
+        TripPlace::factory()->create(['trip_id' => $trip->id, 'name' => 'Costes', 'kind' => 'food', 'category' => 'restaurant', 'info' => ['cuisine' => 'french']]);
+        $stop = fn (string $title, string $kind, ?string $day) => TripStop::create(['trip_id' => $trip->id, 'title' => $title, 'kind' => $kind, 'day' => $day, 'position' => 0, 'created_by' => $user->id]);
+        $goulash = $stop('Gulaschhaus', 'food', '2026-07-22');
+        $stop('Ruinenbar', 'food', null);
+        $castle = $stop('Burgpalast', 'sight', '2026-07-23');
+        Http::fake(['de.wikipedia.org/*' => Http::response(['type' => 'standard', 'title' => 'Budapest', 'extract' => 'Budapest ist die Hauptstadt Ungarns.', 'content_urls' => ['desktop' => ['page' => 'https://de.wikipedia.org/wiki/Budapest']]])]);
+
+        $this->actingAs($user);
+        Volt::test('trips.show', ['trip' => $trip])
+            ->assertSee('Tipps für Budapest, Ungarn')->assertDontSee('Budapest ist die Hauptstadt Ungarns.')
+            ->call('openTips')
+            ->assertSee('Budapest ist die Hauptstadt Ungarns.')
+            ->assertSee('Sehenswert')->assertSee('Fischerbastei')->assertSee('Restaurants &amp; Cafés', false)->assertSee('Costes')
+            ->set('tab', 'plan')
+            ->call('filterPlan', 'food')
+            ->assertSeeHtml('kind-stop-'.$goulash->id)->assertSee('Ruinenbar')->assertDontSeeHtml('kind-stop-'.$castle->id)
+            ->assertSee('0 besucht')
+            ->call('toggleStopDone', $goulash->id)
+            ->assertSee('1 besucht')
+            ->call('filterPlan', 'unknown')->assertSet('planKind', null)->assertDontSeeHtml('kind-stop-');
+
+        $this->assertTrue($goulash->fresh()->done);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/page/summary/Budapest'));
+    }
 }

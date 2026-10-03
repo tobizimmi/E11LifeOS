@@ -79,7 +79,7 @@ class AuthenticationTest extends TestCase
 
         $component
             ->assertHasNoErrors()
-            ->assertRedirect('/');
+            ->assertRedirect(route('login'));
 
         $this->assertGuest();
     }

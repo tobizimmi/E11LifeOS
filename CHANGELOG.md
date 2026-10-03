@@ -13,6 +13,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
 ### Behoben
 - „Angemeldet bleiben“ funktioniert wieder: Geräte, die mit „Angemeldet bleiben“ angemeldet sind, werden nicht mehr nach 30 Minuten Inaktivität abgemeldet.
+- Nach dem Abmelden (und nach dem Löschen des Kontos) landest du wieder auf der Anmeldeseite von E11LifeOS statt auf der Plesk-Seite von zimmimail.de.
 
 ## [1.27.0] – 2026-10-03
 

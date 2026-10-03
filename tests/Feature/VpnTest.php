@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Vpn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
@@ -138,6 +139,12 @@ class VpnTest extends TestCase
                 : $timeout($request);
         });
 
+        // Nothing listens on the SOCKS port yet: the runner's status explains it.
+        Cache::put(Vpn::STATUS_KEY, ['state' => 'error', 'message' => 'invalid Endpoint', 'port' => 25111, 'at' => now()->toIso8601String()]);
+        $this->assertSame('wireproxy läuft nicht auf Port 25111: invalid Endpoint', Vpn::test('http://192.168.10.210:2212')['message']);
+        Cache::forget(Vpn::STATUS_KEY);
+        $socks = stream_socket_server('tcp://127.0.0.1:25111');
+
         $result = Vpn::test('http://192.168.10.210:2212');
 
         $this->assertFalse($result['ok']);
@@ -154,5 +161,6 @@ class VpnTest extends TestCase
         $hints = Vpn::test('http://192.168.10.210:2212')['hints'];
         $this->assertCount(1, $hints);
         $this->assertStringContainsString('Der Tunnel steht', $hints[0]);
+        fclose($socks);
     }
 }

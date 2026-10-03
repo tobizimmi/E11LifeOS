@@ -5731,5 +5731,7 @@
     "Uses the Pushover key from the portfolio settings. Reminders come with high priority; during the quiet hours only urgent ones.": "Nutzt den Pushover-Schlüssel aus den Portfolio-Einstellungen. Erinnerungen kommen mit hoher Priorität, in den Ruhezeiten nur dringende.",
     "Portfolio settings": "Portfolio-Einstellungen",
     "wireproxy is running but does not listen on port :port.": "wireproxy läuft, lauscht aber nicht auf Port :port.",
-    "wireproxy stopped right away (exit code :code).": "wireproxy hat sich sofort beendet (Exit-Code :code)."
+    "wireproxy stopped right away (exit code :code).": "wireproxy hat sich sofort beendet (Exit-Code :code).",
+    "The VPN process sends no status – it is probably not running (PM2 process e11lifeos-vpn, restarted with every deploy).": "Der VPN-Prozess meldet keinen Status – er läuft vermutlich nicht (PM2-Prozess e11lifeos-vpn, wird bei jedem Deploy neu gestartet).",
+    "wireproxy is not running on port :port: :reason": "wireproxy läuft nicht auf Port :port: :reason"
 }

@@ -50,13 +50,16 @@ class OperationsWatchTest extends TestCase
         $this->artisan('backup:verify')->assertSuccessful();
         $last = Cache::get(SystemHealth::VERIFY_KEY);
         $this->assertTrue($last['ok']);
-        $this->assertStringContainsString(__('loaded into a test database'), $last['summary']);
+        // SQLite dumps are loaded into a test database; MySQL needs the scratch connection for that.
+        if (config('database.default') === 'sqlite') {
+            $this->assertStringContainsString(__('loaded into a test database'), $last['summary']);
+        }
 
         // A backup whose dump lost the rows of a table is caught.
         $latest = SystemHealth::latestBackup();
         $zip = new ZipArchive;
         $zip->open($latest);
-        $sql = preg_replace('/^INSERT INTO "items" .*$/m', '', (string) $zip->getFromName('database.sql'));
+        $sql = preg_replace('/^INSERT INTO [`"]items[`"] .*$/m', '', (string) $zip->getFromName('database.sql'));
         $zip->addFromString('database.sql', $sql);
         $zip->close();
 

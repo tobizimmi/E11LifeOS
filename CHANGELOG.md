@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.32.0] – 2026-10-04
+
+### Neu
+- Admin › Systemzustand: Zeitplaner, Hintergrundaufgaben, Warteschlange, Speicherplatz, tägliche Sicherung, Kopie außerhalb des Servers und Wiederherstellungstest auf einen Blick.
+- Wächter: alle zehn Minuten geprüft – Admins bekommen eine Push-Nachricht (und E-Mail), wenn etwas rot wird, und eine Entwarnung, wenn es wieder passt.
+- Serverfehler kommen zusätzlich als Push aufs Handy (derselbe Fehler höchstens einmal pro Stunde).
+- Wiederherstellungstest jede Nacht auf Sonntag: Die neueste Sicherung wird geprüft (Archiv, alle Tabellen mit allen Zeilen, alle Dateien) und in eine Testdatenbank eingespielt; jede Sicherung enthält dafür jetzt ein Inhaltsverzeichnis.
+- Langsame Seiten: jeder Aufruf wird gemessen; die langsamsten Seiten der Woche und Aufrufe über einer Sekunde (mit Anzahl der Datenbankabfragen) stehen im Systemzustand.
+
 ## [1.31.0] – 2026-10-04
 
 ### Neu

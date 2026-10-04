@@ -14,8 +14,14 @@ class DatabaseDump
 {
     private const CHUNK = 500;
 
-    public static function toFile(string $path, ?string $connectionName = null): void
+    /**
+     * Writes the dump and returns how many rows of each table it contains (for the backup manifest).
+     *
+     * @return array<string, int>
+     */
+    public static function toFile(string $path, ?string $connectionName = null): array
     {
+        $counts = [];
         $connection = DB::connection($connectionName);
         $driver = $connection->getDriverName();
         $handle = fopen($path, 'w');
@@ -31,9 +37,11 @@ class DatabaseDump
             foreach (self::tables($connection) as $table => $createStatement) {
                 $quoted = self::quoteIdentifier($table, $driver);
                 fwrite($handle, "\nDROP TABLE IF EXISTS {$quoted};\n{$createStatement};\n");
+                $counts[$table] = 0;
 
-                $connection->table($table)->orderByRaw('1')->chunk(self::CHUNK, function ($rows) use ($handle, $connection, $quoted, $driver) {
+                $connection->table($table)->orderByRaw('1')->chunk(self::CHUNK, function ($rows) use ($handle, $connection, $quoted, $driver, $table, &$counts) {
                     foreach ($rows as $row) {
+                        $counts[$table]++;
                         $row = (array) $row;
                         $columns = implode(', ', array_map(fn ($column) => self::quoteIdentifier($column, $driver), array_keys($row)));
                         $values = implode(', ', array_map(fn ($value) => $value === null ? 'NULL' : (is_int($value) || is_float($value) ? $value : $connection->getPdo()->quote((string) $value)), $row));
@@ -46,6 +54,8 @@ class DatabaseDump
         } finally {
             fclose($handle);
         }
+
+        return $counts;
     }
 
     /**

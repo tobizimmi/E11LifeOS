@@ -279,6 +279,16 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: __('Failed jobs were queued again.'));
     }
 
+    /**
+     * Runs the restore test of the latest backup right away.
+     */
+    public function verifyBackup(): void
+    {
+        $this->authorize('admin');
+        $passed = Artisan::call('backup:verify') === 0;
+        $this->dispatch('toast', message: $passed ? __('Restore test passed.') : __('Restore test failed – see the details below.'));
+    }
+
     public function deleteFailedJobs(): void
     {
         $this->authorize('admin');
@@ -376,6 +386,10 @@ new #[Layout('layouts.app')] class extends Component
             'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
             'recentFailedJobs' => $this->recentFailedJobs(),
             'recentErrors' => Cache::get(\App\Support\ErrorReporter::CACHE_KEY, []),
+            'health' => \App\Support\Operations\SystemHealth::checks(),
+            'restoreTest' => Cache::get(\App\Support\Operations\SystemHealth::VERIFY_KEY),
+            'slowRequests' => array_slice(Cache::get(\App\Http\Middleware\RecordSlowRequests::SLOW_KEY, []), 0, 10),
+            'slowRoutes' => \App\Http\Middleware\RecordSlowRequests::slowestRoutes(),
             'remoteBackup' => Cache::get('backup:remote-last'),
             'vpnStatus' => Vpn::status(),
             'vpnTunnel' => Vpn::isRunning() ? Vpn::tunnelState() : null,
@@ -502,6 +516,52 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-8">
         <div class="mx-auto max-w-4xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('System health') }}</h3>
+                    <button type="button" wire:click="verifyBackup" wire:loading.attr="disabled" class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Run restore test now') }}</button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Checked every ten minutes – admins get a push when something turns red and when it is fine again.') }}</p>
+                <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    @foreach ($health as $key => $check)
+                        <li class="flex items-start gap-2" wire:key="health-{{ $key }}">
+                            <span @class(['text-emerald-600' => $check['ok'], 'text-red-600' => ! $check['ok']]) aria-hidden="true">{{ $check['ok'] ? '✓' : '✗' }}</span>
+                            <span><span class="text-gray-900 dark:text-gray-100">{{ $check['label'] }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $check['detail'] }}</span></span>
+                        </li>
+                    @endforeach
+                </ul>
+                @if (is_array($restoreTest) && ($restoreTest['problems'] ?? []) !== [])
+                    <ul class="mt-3 space-y-1 rounded-lg bg-red-50 p-3 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                        @foreach ($restoreTest['problems'] as $problem)
+                            <li>{{ $problem }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+                @if ($slowRoutes !== [] || $slowRequests !== [])
+                    <details class="mt-3 text-xs">
+                        <summary class="cursor-pointer text-gray-700 dark:text-gray-300">{{ __('Slow pages (this week)') }}</summary>
+                        @if ($slowRoutes !== [])
+                            <table class="mt-2 w-full text-start">
+                                <thead class="text-gray-500"><tr><th class="py-1 text-start font-normal">{{ __('Page') }}</th><th class="text-end font-normal">{{ __('Requests') }}</th><th class="text-end font-normal">⌀ ms</th><th class="text-end font-normal">max ms</th></tr></thead>
+                                <tbody>
+                                    @foreach ($slowRoutes as $row)
+                                        <tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-1 font-mono">{{ $row['route'] }}</td><td class="text-end tabular-nums">{{ $row['count'] }}</td><td @class(['text-end tabular-nums', 'text-orange-600' => $row['average'] >= 300])>{{ $row['average'] }}</td><td class="text-end tabular-nums">{{ $row['max'] }}</td></tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                        @if ($slowRequests !== [])
+                            <p class="mt-3 font-medium text-gray-700 dark:text-gray-300">{{ __('Requests over one second') }}</p>
+                            <ul class="mt-1 space-y-1">
+                                @foreach ($slowRequests as $request)
+                                    <li class="rounded-sm bg-gray-50 p-1.5 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($request['at'])->format('d.m. H:i') }}</span> <span class="font-mono">{{ $request['route'] }}</span> · {{ $request['ms'] }} ms · {{ trans_choice(':count query|:count queries', $request['queries']) }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </details>
+                @endif
+            </section>
+
             <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Status') }}</h3>
                 <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">

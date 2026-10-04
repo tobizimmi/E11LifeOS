@@ -9,6 +9,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -31,7 +32,7 @@ class RunBackup extends Command
         $dumpPath = tempnam(sys_get_temp_dir(), 'e11-db-');
 
         try {
-            DatabaseDump::toFile($dumpPath);
+            $tables = DatabaseDump::toFile($dumpPath);
 
             $zip = new ZipArchive;
 
@@ -41,6 +42,14 @@ class RunBackup extends Command
 
             $zip->addFile($dumpPath, 'database.sql');
             $files = $this->addDirectory($zip, storage_path('app'), 'files', realpath($directory) ?: $directory);
+            // What the backup must contain – the weekly restore test (backup:verify) checks against it.
+            $zip->addFromString('manifest.json', (string) json_encode([
+                'app' => config('app.name'),
+                'created_at' => now()->toIso8601String(),
+                'driver' => DB::connection()->getDriverName(),
+                'tables' => $tables,
+                'files' => $files,
+            ], JSON_PRETTY_PRINT));
             $zip->close();
         } catch (Throwable $exception) {
             File::delete($zipPath);

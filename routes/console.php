@@ -26,6 +26,8 @@ Schedule::command('health:medication-reminders')->everyMinute()->withoutOverlapp
 Schedule::command('reminders:timed')->everyMinute()->withoutOverlapping();
 Schedule::command('habits:remind')->everyMinute()->withoutOverlapping();
 Schedule::command('automations:run')->everyMinute()->withoutOverlapping(5);
+Schedule::command('smart-home:energy')->everyFiveMinutes()->withoutOverlapping(5);
+Schedule::command('smart-home:energy --close')->dailyAt('00:10')->withoutOverlapping();
 Schedule::command('digest:weekly')->hourlyAt(2)->withoutOverlapping();
 Schedule::command('briefing:morning')->hourlyAt(0)->withoutOverlapping();
 Schedule::command('finance:check-budgets')->dailyAt('19:05');

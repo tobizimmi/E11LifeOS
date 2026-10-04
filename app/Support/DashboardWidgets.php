@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  */
 class DashboardWidgets
 {
-    public const DEFAULT = ['weather', 'deadlines', 'life', 'tasks', 'habits', 'shopping', 'meals', 'portfolio', 'real_estate', 'tax', 'freedom', 'costs', 'pages', 'inbox'];
+    public const DEFAULT = ['weather', 'deadlines', 'life', 'tasks', 'habits', 'shopping', 'meals', 'portfolio', 'real_estate', 'tax', 'freedom', 'costs', 'pages', 'inbox', 'energy', 'smart_home'];
 
     private const DEADLINE_DAYS = 30;
 
@@ -38,6 +38,8 @@ class DashboardWidgets
             'freedom' => ['label' => __('Financial freedom'), 'icon' => '🧭'],
             'pages' => ['label' => __('Recent pages'), 'icon' => '📄'],
             'inbox' => ['label' => __('Inbox'), 'icon' => '📥'],
+            'energy' => ['label' => __('Energy today'), 'icon' => '⚡'],
+            'smart_home' => ['label' => __('Favourite devices'), 'icon' => '💡'],
         ];
     }
 

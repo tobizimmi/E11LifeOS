@@ -248,7 +248,12 @@ new class extends Component
             ['📍 '.__('Places'), route('places.index'), 'orte restaurants cafés bars merkliste ausflug lokal essen gehen empfehlung'],
             ['🧾 '.__('Split costs'), route('splits.index'), 'kosten teilen splid tricount abrechnung gruppe wg urlaub schulden ausgleich'],
             ['⭐ '.__('Kids & pocket money'), route('kids.index'), 'kinder kind taschengeld aufgaben ämtchen belohnung sparziel familie'],
+            ['⚙️ '.__('Automations'), route('automations.index'), 'automation automationen wenn dann regeln urlaubsmodus modus anwesenheit'],
         ];
+
+        if ($user->canUseAddon(Addons::SMART_HOME)) {
+            $places[] = ['🔌 '.__('Smart home'), route('smart-home.index'), 'smart home homeassistant home assistant evcc licht schalter heizung pv wallbox laden energie strom'];
+        }
 
         if ($user->canUseAddon(Addons::RECIPES)) {
             $places[] = ['🍳 '.__('Recipes'), route('recipes.index'), 'rezepte kochen recipes'];
@@ -286,9 +291,75 @@ new class extends Component
             ->values()->all();
     }
 
+    /**
+     * Commands for automations, modes and favourite devices matching the typed text.
+     *
+     * @return list<array{label: string, method: string}>
+     */
+    private function commands(): array
+    {
+        $term = mb_strtolower(trim($this->query));
+
+        if ($this->householdId === null || mb_strlen($term) < 2) {
+            return [];
+        }
+
+        $commands = [];
+
+        foreach (\App\Models\Automation::where('household_id', $this->householdId)->where('active', true)->orderBy('name')->get() as $automation) {
+            if (str_contains(mb_strtolower($automation->name), $term)) {
+                $commands[] = ['label' => '▶ '.__('Run automation “:name”', ['name' => $automation->name]), 'method' => 'runAutomation('.$automation->id.')'];
+            }
+        }
+
+        foreach (\App\Models\HouseholdMode::forHousehold($this->householdId) as $mode) {
+            if (str_contains(mb_strtolower($mode->name), $term)) {
+                $commands[] = ['label' => $mode->icon.' '.($mode->active ? __('Switch off “:mode”', ['mode' => $mode->name]) : __('Switch on “:mode”', ['mode' => $mode->name])), 'method' => "toggleMode('".$mode->key."')"];
+            }
+        }
+
+        if (Auth::user()->canUseAddon(Addons::SMART_HOME)) {
+            foreach (\App\Models\SmartHomeEntity::where('household_id', $this->householdId)->get() as $entity) {
+                if (($entity->isSwitchable() || $entity->isRunnable()) && str_contains(mb_strtolower($entity->name.' '.$entity->area), $term)) {
+                    $commands[] = ['label' => $entity->icon().' '.($entity->isRunnable() ? __('Start :name', ['name' => $entity->name]) : ($entity->isOn() ? __('Switch off :name', ['name' => $entity->name]) : __('Switch on :name', ['name' => $entity->name]))), 'method' => 'switchDevice('.$entity->id.')'];
+                }
+            }
+        }
+
+        return array_slice($commands, 0, 6);
+    }
+
+    public function runAutomation(int $id, \App\Support\Automation\AutomationEngine $engine): void
+    {
+        $automation = \App\Models\Automation::where('household_id', $this->householdId)->find($id) ?? abort(404);
+        $run = $engine->run($automation, __('Started by hand by :name', ['name' => Auth::user()->name]), manual: true);
+        $this->finish($run->status === 'done' ? __('Done.') : __('Finished with errors – see the log.'));
+    }
+
+    public function toggleMode(string $key, \App\Support\Automation\AutomationEngine $engine): void
+    {
+        $mode = \App\Models\HouseholdMode::forHousehold($this->householdId)->firstWhere('key', $key) ?? abort(404);
+        $engine->setMode($this->householdId, $key, ! $mode->active);
+        $this->finish($mode->name.': '.($mode->active ? __('Off') : __('On')));
+    }
+
+    public function switchDevice(int $id): void
+    {
+        abort_unless(Auth::user()->canUseAddon(Addons::SMART_HOME), 403);
+        $entity = \App\Models\SmartHomeEntity::where('household_id', $this->householdId)->with('connection')->find($id) ?? abort(404);
+
+        try {
+            \App\Support\SmartHome\EntityControl::press(Auth::user(), $entity);
+            $this->finish($entity->name);
+        } catch (\App\Support\SmartHome\SmartHomeException|\Illuminate\Http\Client\RequestException $exception) {
+            $this->finish($exception->getMessage());
+        }
+    }
+
     public function with(): array
     {
         return [
+            'commands' => $this->commands(),
             'destinations' => $this->householdId !== null ? $this->destinations() : [],
             'typed' => trim($this->query),
             'groups' => $this->results(),
@@ -362,6 +433,14 @@ new class extends Component
                             <button type="button" wire:click="{{ $method }}" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                                 <span aria-hidden="true">{{ $icon }}</span> <span class="truncate">{{ $label }}</span>
                             </button>
+                        @endforeach
+                    </div>
+                @endif
+                @if ($commands !== [])
+                    <div class="py-2">
+                        <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Commands') }}</h4>
+                        @foreach ($commands as $command)
+                            <button type="button" wire:click="{{ $command['method'] }}" wire:key="command-{{ $loop->index }}" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700"><span class="truncate">{{ $command['label'] }}</span></button>
                         @endforeach
                     </div>
                 @endif

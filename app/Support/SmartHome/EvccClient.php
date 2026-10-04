@@ -24,7 +24,7 @@ class EvccClient
     /**
      * The energy flow and charging points, reduced to what the tool shows and automates.
      *
-     * @return array{pv: ?float, home: ?float, grid: ?float, battery: ?float, batterySoc: ?float, tariff: ?float, loadpoints: list<array{id: int, title: string, mode: string, charging: bool, connected: bool, power: float, vehicle: ?string, vehicleSoc: ?float, limitSoc: ?float, chargedEnergy: ?float}>}
+     * @return array{pv: ?float, home: ?float, grid: ?float, battery: ?float, batterySoc: ?float, tariff: ?float, vehicles: list<array{name: string, title: string}>, loadpoints: list<array{id: int, title: string, mode: string, charging: bool, connected: bool, power: float, vehicle: ?string, vehicleSoc: ?float, limitSoc: ?float, chargedEnergy: ?float}>}
      */
     public function state(): array
     {
@@ -39,6 +39,7 @@ class EvccClient
             'battery' => self::number($state['batteryPower'] ?? null),
             'batterySoc' => self::number($state['batterySoc'] ?? null),
             'tariff' => self::number($state['tariffGrid'] ?? null),
+            'vehicles' => collect($state['vehicles'] ?? [])->map(fn ($vehicle, $name) => ['name' => (string) $name, 'title' => (string) (is_array($vehicle) ? ($vehicle['title'] ?? $name) : $name)])->values()->all(),
             'loadpoints' => collect($state['loadpoints'] ?? [])->values()->map(fn (array $point, int $index) => [
                 'id' => $index + 1,
                 'title' => (string) ($point['title'] ?? __('Charging point :number', ['number' => $index + 1])),
@@ -61,6 +62,19 @@ class EvccClient
         }
 
         $this->post('/api/loadpoints/'.$loadpoint.'/mode/'.$mode);
+    }
+
+    /**
+     * Charging plan of a vehicle: reach the charge level by the given time (evcc picks the
+     * cheapest or sunniest hours when a dynamic tariff or forecast is set up).
+     */
+    public function setPlan(string $vehicle, int $soc, \DateTimeInterface $at): void
+    {
+        if (! preg_match('/^[A-Za-z0-9_-]+$/', $vehicle)) {
+            throw new SmartHomeException(__('Choose the vehicle as named in evcc.'));
+        }
+
+        $this->post('/api/vehicles/'.$vehicle.'/plan/soc/'.max(20, min(100, $soc)).'/'.rawurlencode($at->format(\DateTimeInterface::RFC3339)));
     }
 
     public function setLimitSoc(int $loadpoint, int $soc): void

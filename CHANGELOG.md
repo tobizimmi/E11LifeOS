@@ -3,6 +3,21 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.30.0] – 2026-10-04
+
+### Neu
+- Smart Home › Energie: PV-Ertrag, Verbrauch, Netzbezug, Einspeisung und Laden heute mit Tageskurve, letzte 30 Tage mit Autarkie – aufgezeichnet alle fünf Minuten aus evcc.
+- Übersicht: Kacheln „Energie heute“ und „Lieblingsgeräte“ (mit ★ markierte Geräte direkt schalten); Energie auch im Morgen-Briefing und im Wochenrückblick.
+- Zählerstände aus Home-Assistant-Sensoren landen jede Nacht automatisch unter „Zuhause › Verbrauch“; das tägliche Laden in evcc wird mit kWh und Kosten (Strompreis des Stromzählers) im Fahrtenbuch des zugeordneten Autos eingetragen.
+- Regler auf den Gerätekacheln: Helligkeit, Solltemperatur der Heizung, Position der Rollläden.
+- Automationen – neue Auslöser: Sonnenaufgang/-untergang (mit Versatz), Termin beginnt bald, Aufgabe wird fällig, Budget erreicht, Kommen und Gehen (Personen aus Home Assistant); neue Bedingungen: draußen dunkel/hell, wer zu Hause ist; neue Aktionen: Warten (Minuten), evcc-Ladeplan „bis Uhrzeit auf X %“; evcc-Werte je Ladepunkt; weitere Vorlagen.
+- Befehlsleiste: Automationen ausführen, Modi umschalten und Geräte schalten.
+
+### Sicherheit
+- Schlösser, Tore, Ventile und Alarmanlagen werden nur nach einer Rückfrage geschaltet und im Sicherheitsprotokoll vermerkt.
+- Haushalt: pro Mitglied einstellbar, ob es Smart-Home-Geräte schalten oder nur ansehen darf.
+- Geänderte Werte aktualisieren offene Smart-Home-Seiten und die Übersicht live.
+
 ## [1.29.0] – 2026-10-04
 
 ### Neu

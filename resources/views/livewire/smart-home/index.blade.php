@@ -3,7 +3,12 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\HouseholdMember;
 use App\Models\SmartHomeConnection;
+use App\Models\Meter;
+use App\Models\SmartHomeDay;
 use App\Models\SmartHomeEntity;
+use App\Models\Vehicle;
+use App\Support\SmartHome\EnergyRecorder;
+use App\Support\SmartHome\EntityControl;
 use App\Support\Drives\WebDavClient;
 use App\Support\SmartHome\EntityStates;
 use App\Support\SmartHome\EvccClient;
@@ -165,6 +170,35 @@ new #[Layout('layouts.app')] class extends Component
         (SmartHomeEntity::where('household_id', $this->householdId)->find($id) ?? abort(404))->update([$field => mb_substr(trim($value), 0, $field === 'name' ? 150 : 100) ?: null]);
     }
 
+    public function toggleFavorite(int $id): void
+    {
+        abort_unless($this->isOwner(), 403);
+        $entity = SmartHomeEntity::where('household_id', $this->householdId)->find($id) ?? abort(404);
+        $entity->update(['favorite' => ! $entity->favorite]);
+    }
+
+    /**
+     * A sensor that counts a meter (e.g. total kWh) writes the meter reading every night.
+     */
+    public function setEntityMeter(int $id, string $meterId): void
+    {
+        abort_unless($this->isOwner(), 403);
+        $entity = SmartHomeEntity::where('household_id', $this->householdId)->find($id) ?? abort(404);
+        $meter = $meterId === '' ? null : (Meter::where('household_id', $this->householdId)->find((int) $meterId) ?? abort(404));
+        $entity->update(['meter_id' => $meter?->id]);
+    }
+
+    /**
+     * The car charged at evcc's first charging point: the daily charged energy goes to its log.
+     */
+    public function setVehicle(int $connectionId, string $vehicleId): void
+    {
+        abort_unless($this->isOwner(), 403);
+        $connection = $this->findConnection($connectionId);
+        $vehicle = $vehicleId === '' ? null : (Vehicle::where('household_id', $this->householdId)->find((int) $vehicleId) ?? abort(404));
+        $connection->update(['vehicle_map' => $vehicle ? [1 => $vehicle->id] : null]);
+    }
+
     public function removeEntity(int $id): void
     {
         abort_unless($this->isOwner(), 403);
@@ -172,22 +206,37 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Tap on a tile: switch on/off or start a scene/script.
+     * Tap on a tile: switch on/off, open/close or start a scene/script (critical devices confirmed).
      */
-    public function pressEntity(int $id): void
+    public function pressEntity(int $id, bool $confirmed = false): void
     {
         $entity = SmartHomeEntity::where('household_id', $this->householdId)->with('connection')->find($id) ?? abort(404);
-        abort_unless($entity->isSwitchable() || $entity->isRunnable(), 422);
 
         try {
-            $client = $entity->connection->homeAssistant();
-            $client->toggle($entity->entity_id, $entity->isSwitchable() ? ! $entity->isOn() : null);
-
-            if ($entity->isSwitchable()) {
-                $state = $client->state($entity->entity_id);
-                EntityStates::remember($entity->connection, $entity->entity_id, $state['state'], $state['attributes']);
-            }
+            EntityControl::press(Auth::user(), $entity, $confirmed);
         } catch (Throwable $exception) {
+            if ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                throw $exception;
+            }
+
+            $this->dispatch('toast', message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Slider of a tile: brightness, target temperature or cover position.
+     */
+    public function setEntityValue(int $id, float $value): void
+    {
+        $entity = SmartHomeEntity::where('household_id', $this->householdId)->with('connection')->find($id) ?? abort(404);
+
+        try {
+            EntityControl::setValue(Auth::user(), $entity, $value);
+        } catch (Throwable $exception) {
+            if ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                throw $exception;
+            }
+
             $this->dispatch('toast', message: $exception->getMessage());
         }
     }
@@ -248,17 +297,24 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $entities = SmartHomeEntity::where('household_id', $this->householdId)->orderBy('position')->orderBy('name')->get();
+        $energyTab = $this->tab === 'energy';
         $search = mb_strtolower(trim($this->entitySearch));
 
         return [
             'connections' => $connections,
             'isOwner' => $this->isOwner(),
+            'mayControl' => EntityControl::mayControl(Auth::user(), $this->householdId),
             'entities' => $entities,
             'groups' => $entities->groupBy(fn (SmartHomeEntity $entity) => $entity->area ?: __('Other')),
             'evcc' => $evcc,
             'evccError' => $evccError,
             'evccModes' => \App\Support\Automation\AutomationCatalog::evccModes(),
             'vpnReady' => Vpn::isConfigured(),
+            'curve' => $energyTab ? EnergyRecorder::dayCurve($this->householdId, today()) : [],
+            'today' => $energyTab ? EnergyRecorder::energy($this->householdId, today()) : null,
+            'days' => $energyTab ? SmartHomeDay::where('household_id', $this->householdId)->whereDate('date', '>=', today()->subDays(30)->toDateString())->orderBy('date')->get() : collect(),
+            'meters' => $this->tab === 'settings' ? Meter::where('household_id', $this->householdId)->orderBy('name')->get() : collect(),
+            'vehicles' => $this->tab === 'settings' ? Vehicle::where('household_id', $this->householdId)->orderBy('name')->get() : collect(),
             'offered' => collect($this->available)
                 ->reject(fn (array $state) => $entities->contains('entity_id', $state['entity_id']))
                 ->filter(fn (array $state) => $search === '' || str_contains(mb_strtolower($state['name'].' '.$state['entity_id']), $search))
@@ -283,7 +339,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-wrap gap-2" role="tablist">
-                @foreach (['overview' => '🏠 '.__('Overview'), 'settings' => '🔧 '.__('Connections & devices')] as $key => $label)
+                @foreach (array_filter(['overview' => '🏠 '.__('Overview'), 'energy' => $connections->contains('type', 'evcc') ? '⚡ '.__('Energy flow') : null, 'settings' => '🔧 '.__('Connections & devices')]) as $key => $label)
                     <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => $tab !== $key])>{{ $label }}</button>
                 @endforeach
             </div>
@@ -349,19 +405,60 @@ new #[Layout('layouts.app')] class extends Component
                             <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $area }}</h3>
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                                 @foreach ($items as $entity)
-                                    @php($tappable = $entity->isSwitchable() || $entity->isRunnable())
-                                    <button type="button" wire:key="entity-{{ $entity->id }}" @if ($tappable) wire:click="pressEntity({{ $entity->id }})" @else disabled @endif
-                                        @class(['flex min-h-20 flex-col items-start justify-between rounded-2xl p-3 text-start shadow-xs transition', 'bg-amber-100 dark:bg-amber-900/40' => $entity->isSwitchable() && $entity->isOn(), 'bg-white dark:bg-gray-800' => ! ($entity->isSwitchable() && $entity->isOn()), 'active:scale-[0.97]' => $tappable, 'cursor-default' => ! $tappable])>
-                                        <span class="text-xl">{{ $entity->icon() }}</span>
-                                        <span class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $entity->name }}</span>
-                                        <span class="text-xs text-gray-600 dark:text-gray-400">{{ $entity->isRunnable() ? __('Start') : $entity->displayState() }}</span>
-                                    </button>
+                                    @php($critical = \App\Support\SmartHome\EntityControl::isCritical($entity))
+                                    @php($tappable = $mayControl && ($entity->isSwitchable() || $entity->isRunnable() || $critical))
+                                    @php($slider = $mayControl ? match ($entity->domain()) { 'light' => ['min' => 1, 'max' => 100, 'step' => 1, 'value' => round(((int) ($entity->ha_attributes['brightness'] ?? 0)) / 2.55), 'unit' => ' %'], 'climate' => ['min' => 5, 'max' => 30, 'step' => 0.5, 'value' => (float) ($entity->ha_attributes['temperature'] ?? 20), 'unit' => ' °C'], 'cover' => isset($entity->ha_attributes['current_position']) ? ['min' => 0, 'max' => 100, 'step' => 5, 'value' => (int) $entity->ha_attributes['current_position'], 'unit' => ' %'] : null, default => null } : null)
+                                    <div wire:key="entity-{{ $entity->id }}" @class(['flex min-h-20 flex-col justify-between rounded-2xl p-3 shadow-xs transition', 'bg-amber-100 dark:bg-amber-900/40' => $entity->isOn() && ! $entity->isRunnable(), 'bg-white dark:bg-gray-800' => ! $entity->isOn() || $entity->isRunnable()])>
+                                        <button type="button" @if ($tappable) wire:click="pressEntity({{ $entity->id }}, {{ $critical ? 'true' : 'false' }})" @if ($critical) wire:confirm="{{ __('Really switch :name?', ['name' => $entity->name]) }}" @endif @else disabled @endif
+                                            @class(['flex flex-col items-start text-start', 'active:scale-[0.97]' => $tappable, 'cursor-default' => ! $tappable])>
+                                            <span class="text-xl">{{ $entity->icon() }}</span>
+                                            <span class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $entity->name }}</span>
+                                            <span class="text-xs text-gray-600 dark:text-gray-400">
+                                                {{ $entity->isRunnable() ? __('Start') : $entity->displayState() }}
+                                                @if ($entity->domain() === 'climate' && isset($entity->ha_attributes['current_temperature'])) · {{ number_format((float) $entity->ha_attributes['current_temperature'], 1, ',', '.') }} °C @endif
+                                            </span>
+                                        </button>
+                                        @if ($slider)
+                                            <label class="mt-2 block text-xs text-gray-600 dark:text-gray-400" x-data="{ value: {{ $slider['value'] }} }">
+                                                <span x-text="value + '{{ $slider['unit'] }}'"></span>
+                                                <input type="range" min="{{ $slider['min'] }}" max="{{ $slider['max'] }}" step="{{ $slider['step'] }}" x-model="value" x-on:change="$wire.setEntityValue({{ $entity->id }}, Number(value))" class="w-full accent-indigo-600" aria-label="{{ $entity->name }}">
+                                            </label>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
                         </section>
                     @endforeach
                 @elseif ($connections->contains('type', 'homeassistant'))
                     <p class="rounded-xl bg-white px-4 py-3 text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">{{ __('Pick the devices to show under “Connections & devices”.') }}</p>
+                @endif
+            @elseif ($tab === 'energy')
+                @php($kwh = fn (?float $value) => $value === null ? '–' : number_format($value, 1, ',', '.').' kWh')
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Today') }}</h3>
+                    <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        @foreach ([['☀️', __('PV yield'), $today['pv_kwh']], ['🏠', __('Consumption'), $today['home_kwh']], ['⬇️', __('Grid import'), $today['import_kwh']], ['⬆️', __('Feed-in'), $today['export_kwh']], ['🚗', __('Charged'), $today['charged_kwh']]] as [$icon, $label, $value])
+                            <div class="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/40"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ $icon }} {{ $label }}</dt><dd class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $kwh($value) }}</dd></div>
+                        @endforeach
+                    </dl>
+                    @if (count($curve) > 1)
+                        <x-line-chart class="mt-4" :points="$curve" :value-label="__('PV (kW)')" :compare-label="__('Consumption (kW)')" :currency="false" suffix=" kW" :height="200" />
+                    @else
+                        <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">{{ __('The curve of the day appears after the first values (recorded every five minutes).') }}</p>
+                    @endif
+                </section>
+                @if ($days->isNotEmpty())
+                    <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Last 30 days') }}</h3>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            {{ __('PV :pv · consumption :home · feed-in :export · charged :charged', ['pv' => $kwh($days->sum('pv_kwh')), 'home' => $kwh($days->sum('home_kwh')), 'export' => $kwh($days->sum('export_kwh')), 'charged' => $kwh($days->sum('charged_kwh'))]) }}
+                            @php($self = $days->sum('home_kwh') + $days->sum('charged_kwh'))
+                            @if ($self > 0) · {{ __('Self-sufficiency :percent %', ['percent' => (int) round(max(0, 1 - $days->sum('import_kwh') / $self) * 100)]) }} @endif
+                        </p>
+                        @if ($days->count() > 1)
+                            <x-line-chart class="mt-4" :points="$days->map(fn ($day) => ['label' => $day->date->format('d.m.'), 'value' => (float) $day->pv_kwh, 'compare' => $day->home_kwh])->values()->all()" :value-label="__('PV (kWh)')" :compare-label="__('Consumption (kWh)')" :currency="false" suffix=" kWh" :height="200" />
+                        @endif
+                    </section>
                 @endif
             @else
                 @unless ($isOwner)
@@ -396,6 +493,16 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($connection->last_contact_at) ✓ {{ __('Last contact :time via :route', ['time' => $connection->last_contact_at->diffForHumans(), 'route' => ['vpn' => __('VPN'), 'external' => __('external address'), 'webhook' => __('webhook')][$connection->last_route] ?? $connection->last_route]) }} @endif
                                 @if ($connection->last_error) · {{ $connection->last_error }} @endif
                             </p>
+                            @if ($isOwner && ! $connection->isHomeAssistant() && $vehicles->isNotEmpty())
+                                <label class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-300">🚗 {{ __('Car at charging point 1 (daily charging goes to its log)') }}
+                                    <select x-on:change="$wire.setVehicle({{ $connection->id }}, $event.target.value)" class="rounded-md border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                        <option value="">–</option>
+                                        @foreach ($vehicles as $vehicle)
+                                            <option value="{{ $vehicle->id }}" @selected((int) (($connection->vehicle_map ?? [])[1] ?? 0) === $vehicle->id)>{{ $vehicle->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            @endif
                             @if ($isOwner && $connection->isHomeAssistant())
                                 <details class="mt-2 text-xs text-gray-600 dark:text-gray-300">
                                     <summary class="cursor-pointer">{{ __('Send values to E11LifeOS at once (webhook)') }}</summary>
@@ -446,6 +553,15 @@ new #[Layout('layouts.app')] class extends Component
                                 <input type="text" value="{{ $entity->name }}" x-on:change="$wire.updateEntity({{ $entity->id }}, 'name', $event.target.value)" class="min-w-0 flex-1 rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Name') }}">
                                 <input type="text" value="{{ $entity->area }}" x-on:change="$wire.updateEntity({{ $entity->id }}, 'area', $event.target.value)" placeholder="{{ __('Room') }}" class="w-32 rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Room') }}">
                                 <span class="text-xs text-gray-500">{{ $entity->entity_id }}</span>
+                                <button type="button" wire:click="toggleFavorite({{ $entity->id }})" aria-pressed="{{ $entity->favorite ? 'true' : 'false' }}" title="{{ __('On the dashboard') }}" class="{{ $entity->favorite ? 'text-amber-500' : 'text-gray-300 dark:text-gray-600' }}">★</button>
+                                @if (is_numeric($entity->state) && $meters->isNotEmpty())
+                                    <select x-on:change="$wire.setEntityMeter({{ $entity->id }}, $event.target.value)" class="rounded-md border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Meter') }}">
+                                        <option value="">{{ __('No meter') }}</option>
+                                        @foreach ($meters as $meter)
+                                            <option value="{{ $meter->id }}" @selected($entity->meter_id === $meter->id)>📟 {{ $meter->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
                                 <button type="button" wire:click="removeEntity({{ $entity->id }})" class="text-red-600 dark:text-red-400" aria-label="{{ __('Remove') }}">✕</button>
                             </div>
                         @endforeach

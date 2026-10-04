@@ -57,8 +57,34 @@
     <input type="text" list="{{ $entityList }}" wire:model="{{ $path }}.entity_id" class="w-56 {{ $small }}" placeholder="binary_sensor.fenster" aria-label="{{ __('Entity') }}">
     <select wire:model="{{ $path }}.operator" class="{{ $small }}">@foreach ($operators as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
     <input type="text" wire:model="{{ $path }}.value" class="w-24 {{ $small }}" placeholder="on" aria-label="{{ __('Value') }}">
+@elseif ($type === 'sun')
+    @if ($kind === 'trigger')
+        <select wire:model="{{ $path }}.event" class="{{ $small }}"><option value="sunset">{{ __('Sunset') }}</option><option value="sunrise">{{ __('Sunrise') }}</option></select>
+        <input type="number" min="-180" max="180" step="5" wire:model="{{ $path }}.offset" class="w-20 {{ $small }}" aria-label="{{ __('Offset in minutes') }}"> {{ __('min (e.g. -30 = half an hour before)') }}
+        <span class="w-full text-xs text-gray-500">{{ __('Uses the weather place from your profile.') }}</span>
+    @else
+        <select wire:model="{{ $path }}.state" class="{{ $small }}"><option value="dark">{{ __('dark outside') }}</option><option value="light">{{ __('light outside') }}</option></select>
+    @endif
+@elseif ($type === 'appointment')
+    <input type="number" min="0" max="1440" step="5" wire:model="{{ $path }}.minutes" class="w-20 {{ $small }}"> {{ __('minutes before appointments with') }}
+    <input type="text" wire:model="{{ $path }}.keyword" class="w-36 {{ $small }}" placeholder="{{ __('any title') }}" aria-label="{{ __('Word in the title') }}">
+@elseif ($type === 'task_due')
+    {{ __('Tasks with a time, title contains') }} <input type="text" wire:model="{{ $path }}.keyword" class="w-36 {{ $small }}" placeholder="{{ __('any title') }}" aria-label="{{ __('Word in the title') }}">
+@elseif ($type === 'budget')
+    {{ __('A budget of this month reaches') }} <input type="number" min="10" max="300" step="5" wire:model="{{ $path }}.percent" class="w-20 {{ $small }}"> %
+@elseif ($type === 'presence')
+    <select wire:model="{{ $path }}.state" class="{{ $small }}">@foreach (\App\Support\Automation\AutomationCatalog::presenceStates() as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
+    <span class="w-full text-xs text-gray-500">{{ __('Uses the people (person.…) picked under Smart home.') }}</span>
+@elseif ($type === 'delay')
+    <input type="number" min="1" max="1440" wire:model="{{ $path }}.minutes" class="w-20 {{ $small }}"> {{ __('minutes, then the next actions') }}
+@elseif ($type === 'evcc_plan')
+    <input type="text" wire:model="{{ $path }}.vehicle" class="w-32 {{ $small }}" placeholder="{{ __('vehicle name in evcc') }}" aria-label="{{ __('Vehicle') }}">
+    {{ __('to') }} <input type="number" min="20" max="100" step="5" wire:model="{{ $path }}.soc" class="w-20 {{ $small }}"> % {{ __('by') }} <input type="time" wire:model="{{ $path }}.time" class="{{ $small }}">
 @elseif ($type === 'evcc')
-    <select wire:model="{{ $path }}.metric" class="{{ $small }}">@foreach (\App\Support\Automation\AutomationCatalog::evccMetrics() as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
+    @if (in_array($block['metric'] ?? '', ['vehicleSoc', 'connected', 'charging'], true))
+        {{ __('Charging point') }} <input type="number" min="1" max="9" wire:model="{{ $path }}.loadpoint" class="w-16 {{ $small }}">
+    @endif
+    <select wire:model.live="{{ $path }}.metric" class="{{ $small }}">@foreach (\App\Support\Automation\AutomationCatalog::evccMetrics() as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
     <select wire:model="{{ $path }}.operator" class="{{ $small }}">@foreach ($operators as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
     <input type="text" wire:model="{{ $path }}.value" class="w-24 {{ $small }}" aria-label="{{ __('Value') }}">
 @elseif ($type === 'ha_service')

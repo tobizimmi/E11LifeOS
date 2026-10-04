@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * A Home Assistant or evcc installation of a household: reached in the home network through the
  * VPN, or through an external address (Nabu Casa) when the VPN is down.
  */
-#[Fillable(['household_id', 'type', 'name', 'url', 'external_url', 'token', 'webhook_secret', 'last_contact_at', 'last_route', 'last_error'])]
+#[Fillable(['household_id', 'type', 'name', 'url', 'external_url', 'token', 'webhook_secret', 'last_contact_at', 'last_route', 'last_error', 'vehicle_map'])]
 #[Hidden(['token', 'webhook_secret'])]
 class SmartHomeConnection extends Model
 {
@@ -31,6 +31,7 @@ class SmartHomeConnection extends Model
         return [
             'token' => 'encrypted',
             'last_contact_at' => 'datetime',
+            'vehicle_map' => 'array',
         ];
     }
 

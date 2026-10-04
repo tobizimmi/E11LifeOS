@@ -142,6 +142,8 @@ class TaskInput
             '(?:nächste|kommende) woche' => fn () => self::nextWeekday($today, 1, false),
             '(?:am |dieses |nächstes )?wochenende' => fn () => self::nextWeekday($today, 6, true),
             '(?:am |nächsten |kommenden |diesen )?'.self::WEEKDAY_PATTERN => fn (array $m) => self::nextWeekday($today, self::WEEKDAYS[$m[1]], ! str_contains($m[0], 'nächsten') && ! str_contains($m[0], 'kommenden')),
+            // Short weekdays ("Zahnarzt Do 10 Uhr"); "So" only with a dot – it is also a common word.
+            '(?:am )?(mo|di|mi|do|fr|sa|so(?=\.))\.?' => fn (array $m) => self::nextWeekday($today, ['mo' => 1, 'di' => 2, 'mi' => 3, 'do' => 4, 'fr' => 5, 'sa' => 6, 'so' => 0][mb_strtolower($m[1])], true),
         ];
 
         if ($result['due'] === null) {

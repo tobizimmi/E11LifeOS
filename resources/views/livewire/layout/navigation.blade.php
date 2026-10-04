@@ -6,8 +6,8 @@ use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
 use App\Models\Space;
-use App\Support\Addons;
 use App\Support\InAppNotifications;
+use App\Support\Navigation;
 use App\Support\PageMover;
 use App\Support\PageTree;
 use App\Support\TaskLists;
@@ -51,6 +51,8 @@ new class extends Component
         if (request()->routeIs('collections.show') && is_numeric($collection)) {
             $this->currentCollectionId = (int) $collection;
         }
+
+        Navigation::recordVisit(Auth::user(), request()->route()?->getName());
     }
 
     /**
@@ -75,10 +77,31 @@ new class extends Component
         $this->redirect(route('login'), navigate: true);
     }
 
+    /**
+     * The modules of the menu with the member's pinned, hidden and often used ones.
+     *
+     * @return array<string, mixed>
+     */
+    private function navigation(?int $todayTaskCount = null, int $inboxCount = 0, int $shoppingCount = 0, ?int $tasksCollectionId = null): array
+    {
+        $user = Auth::user();
+        $modules = Navigation::modules($user);
+        $preferences = Navigation::preferences($user);
+
+        return [
+            'navModules' => $modules,
+            'navHidden' => $preferences['hidden'],
+            'navPinned' => array_values(array_filter($preferences['pinned'], fn (string $key) => isset($modules[$key]))),
+            'navFrequent' => Navigation::frequent($user),
+            'navBadges' => ['inbox' => $inboxCount, 'tasks' => $todayTaskCount, 'shopping' => $shoppingCount],
+            'navActive' => fn (string $key) => isset($modules[$key]) && (request()->routeIs(...$modules[$key]['active']) || ($key === 'tasks' && $tasksCollectionId !== null && $this->currentCollectionId === $tasksCollectionId)),
+        ];
+    }
+
     public function with(): array
     {
         if ($this->householdId === null) {
-            return ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'hasRecipes' => false, 'hasPortfolio' => false, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect(), 'spaces' => collect(), 'unreadNotifications' => InAppNotifications::unreadCount(Auth::user())];
+            return $this->navigation() + ['tree' => null, 'sharedRoots' => [], 'privateRoots' => [], 'openIds' => [], 'inboxCount' => 0, 'shoppingCount' => 0, 'tasksCollection' => null, 'todayTaskCount' => 0, 'collections' => collect(), 'spaces' => collect(), 'unreadNotifications' => InAppNotifications::unreadCount(Auth::user())];
         }
 
         $tree = new PageTree(
@@ -86,25 +109,22 @@ new class extends Component
         );
         $roots = collect($tree->roots());
         $tasksCollection = Collection::tasksFor($this->householdId)->load('properties');
+        $inboxCount = $this->visibleItems(Item::TYPE_INBOX)->count();
+        $shoppingCount = \App\Models\ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false)->count();
+        $todayTaskCount = (new TaskLists($tasksCollection, Auth::user()))->counts()[TaskLists::TODAY];
 
-        return [
+        return $this->navigation($todayTaskCount, $inboxCount, $shoppingCount, $tasksCollection->id) + [
             'tree' => $tree,
             'sharedRoots' => $roots->reject(fn (Item $page) => $page->isPrivate())->values()->all(),
             'privateRoots' => $roots->filter(fn (Item $page) => $page->isPrivate())->values()->all(),
             'openIds' => $this->currentPageId
                 ? collect($tree->ancestors($this->currentPageId))->pluck('id')->push($this->currentPageId)->all()
                 : [],
-            'inboxCount' => $this->visibleItems(Item::TYPE_INBOX)->count(),
-            'shoppingCount' => \App\Models\ShoppingListEntry::where('household_id', $this->householdId)->where('checked', false)->count(),
-            'hasRecipes' => Auth::user()->canUseAddon(Addons::RECIPES),
-            'hasPortfolio' => Auth::user()->canUseAddon(Addons::PORTFOLIO),
-            'hasFinance' => Auth::user()->canUseAddon(Addons::FINANCE),
-            'hasBusiness' => Auth::user()->canUseAddon(Addons::BUSINESS),
-            'hasRealEstate' => Auth::user()->canUseAddon(Addons::REAL_ESTATE),
+            'inboxCount' => $inboxCount,
+            'shoppingCount' => $shoppingCount,
             'tasksCollection' => $tasksCollection,
             'unreadNotifications' => InAppNotifications::unreadCount(Auth::user()),
-            'hasNetWorth' => Auth::user()->canUseAddon(Addons::FINANCE) || Auth::user()->canUseAddon(Addons::PORTFOLIO) || Auth::user()->canUseAddon(Addons::REAL_ESTATE),
-            'todayTaskCount' => (new TaskLists($tasksCollection, Auth::user()))->counts()[TaskLists::TODAY],
+            'todayTaskCount' => $todayTaskCount,
             'collections' => Collection::query()
                 ->visibleTo(Auth::user(), $this->householdId)
                 ->whereNull('system_key')
@@ -180,74 +200,38 @@ new class extends Component
                     <span class="flex items-center gap-2"><x-search-icon /> {{ __('Search') }}</span>
                     <kbd class="hidden lg:inline text-xs text-gray-400">Ctrl K</kbd>
                 </button>
-                <x-sidebar-link icon="home" :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</x-sidebar-link>
-                <x-sidebar-link icon="inbox" :href="route('inbox.index')" :active="request()->routeIs('inbox.index')" :badge="$inboxCount ?: null" wire:navigate>{{ __('Inbox') }}</x-sidebar-link>
-                <x-sidebar-link icon="sparkles" :href="route('brain.ask')" :active="request()->routeIs('brain.ask')" wire:navigate>{{ __('Ask your Second Brain') }}</x-sidebar-link>
-                <x-sidebar-link icon="academic-cap" :href="route('learnings.index')" :active="request()->routeIs('learnings.*')" wire:navigate>{{ __('Lessons learned') }}</x-sidebar-link>
+                @foreach ($navModules as $key => $module)
+                    @if ($module['group'] === 'start' && ! in_array($key, $navHidden, true))
+                        <x-sidebar-module :key="$key" :module="$module" :badge="$navBadges[$key] ?? null" :active="$navActive($key)" />
+                    @endif
+                @endforeach
             </div>
 
             @if ($householdId !== null)
-                <x-sidebar-group :title="__('Everyday')" section="everyday" :default="true" :active="request()->routeIs('tasks.index', 'calendar.*', 'journal.*', 'shopping-list.*', 'pantry.*', 'recipes.*') || $currentCollectionId === $tasksCollection->id">
-                    <x-sidebar-link icon="check-circle" :href="route('tasks.index')" :active="request()->routeIs('tasks.index') || $currentCollectionId === $tasksCollection->id" :badge="$todayTaskCount ?: null" wire:navigate>{{ __('To-Do') }}</x-sidebar-link>
-                    <x-sidebar-link icon="calendar-days" :href="route('calendar.index')" :active="request()->routeIs('calendar.*')" wire:navigate>{{ __('Calendar') }}</x-sidebar-link>
-                    <x-sidebar-link icon="face-smile" :href="route('journal.index')" :active="request()->routeIs('journal.*')" wire:navigate>{{ __('Routines & journal') }}</x-sidebar-link>
-                    <x-sidebar-link icon="shopping-cart" :href="route('shopping-list.index')" :active="request()->routeIs('shopping-list.*')" :badge="$shoppingCount ?: null" wire:navigate>{{ __('Shopping List') }}</x-sidebar-link>
-                    <x-sidebar-link icon="archive-box" :href="route('pantry.index')" :active="request()->routeIs('pantry.*')" wire:navigate>{{ __('Pantry') }}</x-sidebar-link>
-                    @if ($hasRecipes)
-                        <x-sidebar-link icon="book-open" :href="route('recipes.index')" :active="request()->routeIs('recipes.*')" wire:navigate>{{ __('Recipes') }}</x-sidebar-link>
+                @if ($navPinned !== [] || $navFrequent !== [])
+                    <div class="space-y-0.5">
+                        <p class="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ $navPinned !== [] ? __('Pinned') : __('Often used') }}</p>
+                        @foreach ([...$navPinned, ...$navFrequent] as $key)
+                            @isset($navModules[$key])
+                                <x-sidebar-module :key="$key" :module="$navModules[$key]" :badge="$navBadges[$key] ?? null" :active="$navActive($key)" :pinned="in_array($key, $navPinned, true)" wire:key="nav-top-{{ $key }}" />
+                            @endisset
+                        @endforeach
+                    </div>
+                @endif
+
+                @foreach (\App\Support\Navigation::groups() as $group => $title)
+                    @continue($group === 'start')
+                    @php($groupModules = collect($navModules)->filter(fn ($module, $key) => $module['group'] === $group && ! in_array($key, $navHidden, true) && ! in_array($key, $navPinned, true)))
+                    @if ($groupModules->isNotEmpty())
+                        <x-sidebar-group :title="$title" :section="$group" :default="$group === 'everyday'" :active="$groupModules->keys()->contains(fn ($key) => $navActive($key))">
+                            @foreach ($groupModules as $key => $module)
+                                <x-sidebar-module :key="$key" :module="$module" :badge="$navBadges[$key] ?? null" :active="$navActive($key)" wire:key="nav-{{ $key }}" />
+                            @endforeach
+                        </x-sidebar-group>
                     @endif
-                </x-sidebar-group>
-                <x-sidebar-group :title="__('Money')" section="money" :active="request()->routeIs('finance.*', 'portfolio.*', 'business.*', 'net-worth.*', 'cashflow.*', 'wishlist.*', 'knowledge.*', 'quotes.*', 'contracts.*', 'letters.*')">
-                    @if ($hasFinance)
-                        <x-sidebar-link icon="banknotes" :href="route('finance.index')" :active="request()->routeIs('finance.*')" wire:navigate>{{ __('Finances') }}</x-sidebar-link>
-                    @endif
-                    @if ($hasPortfolio)
-                        <x-sidebar-link icon="arrow-trending-up" :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*')" wire:navigate>{{ __('Portfolio') }}</x-sidebar-link>
-                    @endif
-                    @if ($hasBusiness)
-                        <x-sidebar-link icon="briefcase" :href="route('business.index')" :active="request()->routeIs('business.*')" wire:navigate>{{ __('Small business') }}</x-sidebar-link>
-                    @endif
-                    @if ($hasNetWorth)
-                        <x-sidebar-link icon="chart-pie" :href="route('net-worth.index')" :active="request()->routeIs('net-worth.*')" wire:navigate>{{ __('Net worth') }}</x-sidebar-link>
-                        <x-sidebar-link icon="arrows-right-left" :href="route('cashflow.index')" :active="request()->routeIs('cashflow.*')" wire:navigate>{{ __('Cashflow analysis') }}</x-sidebar-link>
-                    @endif
-                    <x-sidebar-link icon="document-text" :href="route('contracts.index')" :active="request()->routeIs('contracts.*') || request()->routeIs('letters.*')" wire:navigate>{{ __('Contract costs') }}</x-sidebar-link>
-                    <x-sidebar-link icon="scale" :href="route('quotes.index')" :active="request()->routeIs('quotes.*')" wire:navigate>{{ __('Quote comparisons') }}</x-sidebar-link>
-                    <x-sidebar-link icon="gift" :href="route('wishlist.index')" :active="request()->routeIs('wishlist.*')" wire:navigate>{{ __('Wishlist') }}</x-sidebar-link>
-                    <x-sidebar-link icon="light-bulb" :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')" wire:navigate>{{ __('Money knowledge') }}</x-sidebar-link>
-                </x-sidebar-group>
-                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'smart-home.*', 'automations.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*', 'career.*')">
-                    <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>
-                    @if (auth()->user()->canUseAddon(\App\Support\Addons::SMART_HOME))
-                        <x-sidebar-link icon="bolt" :href="route('smart-home.index')" :active="request()->routeIs('smart-home.*')" wire:navigate>{{ __('Smart home') }}</x-sidebar-link>
-                    @endif
-                    <x-sidebar-link icon="arrow-path" :href="route('automations.index')" :active="request()->routeIs('automations.*')" wire:navigate>{{ __('Automations') }}</x-sidebar-link>
-                    @if ($hasRealEstate)
-                        <x-sidebar-link icon="building-office-2" :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>{{ __('Real estate') }}</x-sidebar-link>
-                    @endif
-                    <x-sidebar-link icon="truck" :href="route('vehicles.index')" :active="request()->routeIs('vehicles.*')" wire:navigate>{{ __('Vehicles') }}</x-sidebar-link>
-                    <x-sidebar-link icon="heart" :href="route('health.index')" :active="request()->routeIs('health.*')" wire:navigate>{{ __('Health') }}</x-sidebar-link>
-                    <x-sidebar-link icon="cake" :href="route('people.index')" :active="request()->routeIs('people.*')" wire:navigate>{{ __('People & occasions') }}</x-sidebar-link>
-                    <x-sidebar-link icon="star" :href="route('kids.index')" :active="request()->routeIs('kids.*')" wire:navigate>{{ __('Kids & pocket money') }}</x-sidebar-link>
-                    <x-sidebar-link icon="clock" :href="route('work.index')" :active="request()->routeIs('work.*')" wire:navigate>{{ __('Working time & leave') }}</x-sidebar-link>
-                    <x-sidebar-link icon="briefcase" :href="route('career.index')" :active="request()->routeIs('career.*')" wire:navigate>{{ __('Career') }}</x-sidebar-link>
-                </x-sidebar-group>
-                <x-sidebar-group :title="__('Travel & leisure')" section="travel" :active="request()->routeIs('trips.*', 'places.*', 'splits.*', 'review.*')">
-                    <x-sidebar-link icon="paper-airplane" :href="route('trips.index')" :active="request()->routeIs('trips.*')" wire:navigate>{{ __('Trips') }}</x-sidebar-link>
-                    <x-sidebar-link icon="map-pin" :href="route('places.index')" :active="request()->routeIs('places.*')" wire:navigate>{{ __('Places') }}</x-sidebar-link>
-                    <x-sidebar-link icon="calculator" :href="route('splits.index')" :active="request()->routeIs('splits.*')" wire:navigate>{{ __('Split costs') }}</x-sidebar-link>
-                    <x-sidebar-link icon="sparkles" :href="route('review.index')" :active="request()->routeIs('review.*')" wire:navigate>{{ __('Year in review') }}</x-sidebar-link>
-                </x-sidebar-group>
-                <x-sidebar-group :title="__('Provisions & documents')" section="provisions" :active="request()->routeIs('emergency.*', 'provision.*', 'drives.*')">
-                    <x-sidebar-link icon="shield-check" :href="route('emergency.index')" :active="request()->routeIs('emergency.*')" wire:navigate>{{ __('Emergency folder') }}</x-sidebar-link>
-                    <x-sidebar-link icon="scale" :href="route('provision.index')" :active="request()->routeIs('provision.*')" wire:navigate>{{ __('Provision check') }}</x-sidebar-link>
-                    <x-sidebar-link icon="server-stack" :href="route('drives.index')" :active="request()->routeIs('drives.*')" wire:navigate>{{ __('Network drives') }}</x-sidebar-link>
-                </x-sidebar-group>
-                <x-sidebar-group :title="__('Household')" section="household" :active="request()->routeIs('household.show', 'groups.*', 'pdf.editor')">
-                    <x-sidebar-link icon="user-group" :href="route('household.show')" :active="request()->routeIs('household.show')" wire:navigate>{{ __('Members') }}</x-sidebar-link>
-                    <x-sidebar-link icon="share" :href="route('groups.index')" :active="request()->routeIs('groups.*')" wire:navigate>{{ __('Groups & sharing') }}</x-sidebar-link>
-                    <x-sidebar-link icon="document-text" :href="route('pdf.editor')" :active="request()->routeIs('pdf.editor')" wire:navigate>{{ __('PDF design') }}</x-sidebar-link>
-                </x-sidebar-group>
+                @endforeach
+
+                <a href="{{ route('navigation.settings') }}" wire:navigate class="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700/60 dark:hover:text-gray-300">⚙ {{ __('Customize menu') }}</a>
 
                 <x-sidebar-section :title="__('Spaces')" :add-href="route('spaces.index', ['create' => 1])" :all-href="route('spaces.index')" :add-label="__('New space')">
                     @forelse ($spaces as $sidebarSpace)

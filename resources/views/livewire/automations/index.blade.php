@@ -119,6 +119,8 @@ new #[Layout('layouts.app')] class extends Component
             'form.actions.*.type' => ['required', 'in:'.implode(',', array_keys(AutomationCatalog::actions()))],
             'form.actions.*.from' => ['nullable', ...$time],
             'form.actions.*.until' => ['nullable', ...$time],
+            'form.actions.*.time' => ['nullable', ...$time],
+            'form.actions.*.minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
             'form.actions.*.data' => ['nullable', 'string', 'max:2000', fn ($attribute, $value, $fail) => blank($value) || is_array(json_decode((string) $value, true)) ? null : $fail(__('Enter valid JSON, e.g. {"brightness_pct": 40}.'))],
             'form.cooldown_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
         ], attributes: ['form.actions' => __('Actions')]);
@@ -132,7 +134,7 @@ new #[Layout('layouts.app')] class extends Component
                 }
             }
 
-            foreach (['loadpoint', 'soc'] as $number) {
+            foreach (['loadpoint', 'soc', 'offset', 'minutes', 'percent'] as $number) {
                 if (array_key_exists($number, $block)) {
                     $block[$number] = (int) $block[$number];
                 }
@@ -195,7 +197,7 @@ new #[Layout('layouts.app')] class extends Component
             'templates' => AutomationCatalog::templates(),
             'triggers' => AutomationCatalog::triggers(),
             'conditions' => AutomationCatalog::conditions(),
-            'actions' => collect(AutomationCatalog::actions())->reject(fn ($action, string $type) => ! $smartHome && in_array($type, ['ha_service', 'presence_start', 'presence_stop', 'evcc_mode', 'evcc_limit'], true))->all(),
+            'actions' => collect(AutomationCatalog::actions())->reject(fn ($action, string $type) => ! $smartHome && in_array($type, ['ha_service', 'presence_start', 'presence_stop', 'evcc_mode', 'evcc_limit', 'evcc_plan'], true))->all(),
             'entities' => $smartHome ? SmartHomeEntity::where('household_id', $this->householdId)->orderBy('name')->get() : collect(),
             'log' => $this->logFor ? $this->findAutomation($this->logFor)->runs()->latest()->limit(15)->get() : collect(),
             'smartHome' => $smartHome,
@@ -240,7 +242,7 @@ new #[Layout('layouts.app')] class extends Component
                         <legend class="px-1 text-sm font-semibold text-indigo-900 dark:text-indigo-200">{{ __('When') }}</legend>
                         <select x-on:change="$wire.setTrigger($event.target.value)" class="{{ $small }}" aria-label="{{ __('Trigger') }}">
                             @foreach ($triggers as $type => $trigger)
-                                @if ($smartHome || ! in_array($type, ['entity', 'evcc'], true))
+                                @if ($smartHome || ! in_array($type, ['entity', 'evcc', 'presence'], true))
                                     <option value="{{ $type }}" @selected($form['trigger']['type'] === $type)>{{ $trigger['icon'] }} {{ $trigger['label'] }}</option>
                                 @endif
                             @endforeach
@@ -263,7 +265,7 @@ new #[Layout('layouts.app')] class extends Component
                         <select x-on:change="$wire.addCondition($event.target.value); $event.target.value = ''" class="{{ $small }}" aria-label="{{ __('Add condition') }}">
                             <option value="">+ {{ __('Add condition') }}</option>
                             @foreach ($conditions as $type => $condition)
-                                @if ($smartHome || $type !== 'entity')
+                                @if ($smartHome || ! in_array($type, ['entity', 'presence'], true))
                                     <option value="{{ $type }}">{{ $condition['icon'] }} {{ $condition['label'] }}</option>
                                 @endif
                             @endforeach

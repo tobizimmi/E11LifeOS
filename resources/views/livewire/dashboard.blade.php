@@ -110,7 +110,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function widgetAvailable(string $key): bool
     {
-        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE];
+        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE, 'energy' => Addons::SMART_HOME, 'smart_home' => Addons::SMART_HOME];
 
         return ! isset($modules[$key]) || $this->currentUser()->canUseAddon($modules[$key]);
     }
@@ -131,6 +131,20 @@ new #[Layout('layouts.app')] class extends Component
 
         $todo->update(['done' => ! $todo->done]);
         $this->announceReschedule($todo);
+    }
+
+    /**
+     * A favourite device on the dashboard: switch it like on the Smart home page.
+     */
+    public function pressFavorite(int $id, bool $confirmed = false): void
+    {
+        $entity = \App\Models\SmartHomeEntity::where('household_id', $this->householdId)->where('favorite', true)->with('connection')->find($id) ?? abort(404);
+
+        try {
+            \App\Support\SmartHome\EntityControl::press($this->currentUser(), $entity, $confirmed);
+        } catch (\App\Support\SmartHome\SmartHomeException|\Illuminate\Http\Client\RequestException $exception) {
+            $this->dispatch('toast', message: $exception->getMessage());
+        }
     }
 
     public function tapHabit(int $id): void
@@ -200,6 +214,9 @@ new #[Layout('layouts.app')] class extends Component
             'lifeDates' => $shows('life') ? array_slice(\App\Support\Life\LifeDates::between($this->currentUser(), today(), today()->addDays(60)), 0, 6) : [],
             'freedom' => $shows('freedom') ? \App\Support\Finance\CashflowStatement::for($this->currentUser()) : null,
             'todayHabits' => in_array('habits', $widgets, true) ? $this->todayHabits() : [],
+            'energyToday' => $shows('energy') && $this->householdId ? \App\Support\SmartHome\EnergyRecorder::energy($this->householdId, today()) : null,
+            'energyNow' => $shows('energy') && $this->householdId ? \App\Support\SmartHome\EnergyRecorder::latest($this->householdId) : [],
+            'favoriteDevices' => $shows('smart_home') && $this->householdId ? \App\Models\SmartHomeEntity::where('household_id', $this->householdId)->where('favorite', true)->orderBy('position')->get() : collect(),
             'todayMood' => in_array('habits', $widgets, true) ? \App\Models\JournalEntry::where('user_id', $this->currentUser()->id)->whereDate('date', today()->toDateString())->value('mood') : null,
         ];
     }
@@ -377,6 +394,40 @@ new #[Layout('layouts.app')] class extends Component
                                 <li class="text-sm text-gray-500 dark:text-gray-400">{{ __('All done!') }}</li>
                             @endforelse
                         </ul>
+                    </section>
+                                @break
+                            @case('energy')
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
+                        <x-dashboard-card-header :title="__('Energy today')" :href="route('smart-home.index', ['tab' => 'energy'])" />
+                        @if (! $energyToday || array_filter($energyToday, fn ($value) => $value !== null) === [])
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Connect evcc under Smart home to see PV, consumption and charging here.') }}</p>
+                        @else
+                            @php($kwh = fn (?float $value) => $value === null ? '–' : number_format($value, 1, ',', '.').' kWh')
+                            <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                                <div><dt class="text-xs text-gray-500 dark:text-gray-400">☀️ {{ __('PV yield') }}</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $kwh($energyToday['pv_kwh']) }}@if (isset($energyNow['pv'])) <span class="text-xs font-normal text-gray-500">· {{ __('now :power', ['power' => number_format($energyNow['pv'] / 1000, 1, ',', '.').' kW']) }}</span>@endif</dd></div>
+                                <div><dt class="text-xs text-gray-500 dark:text-gray-400">🏠 {{ __('Consumption') }}</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $kwh($energyToday['home_kwh']) }}</dd></div>
+                                <div><dt class="text-xs text-gray-500 dark:text-gray-400">⬆️ {{ __('Feed-in') }}</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $kwh($energyToday['export_kwh']) }}</dd></div>
+                                <div><dt class="text-xs text-gray-500 dark:text-gray-400">🚗 {{ __('Car') }}</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ isset($energyNow['vehicleSoc']) ? number_format($energyNow['vehicleSoc'], 0).' %' : '–' }} · {{ $kwh($energyToday['charged_kwh']) }}</dd></div>
+                            </dl>
+                        @endif
+                    </section>
+                                @break
+                            @case('smart_home')
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
+                        <x-dashboard-card-header :title="__('Favourite devices')" :href="route('smart-home.index')" />
+                        @if ($favoriteDevices->isEmpty())
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Mark devices with ★ under Smart home › Connections & devices.') }}</p>
+                        @else
+                            <div class="mt-3 grid grid-cols-2 gap-2">
+                                @foreach ($favoriteDevices as $device)
+                                    @php($critical = \App\Support\SmartHome\EntityControl::isCritical($device))
+                                    <button type="button" wire:key="favorite-{{ $device->id }}" wire:click="pressFavorite({{ $device->id }}, {{ $critical ? 'true' : 'false' }})" @if ($critical) wire:confirm="{{ __('Really switch :name?', ['name' => $device->name]) }}" @endif
+                                        @class(['flex items-center gap-2 rounded-xl px-3 py-2 text-start text-sm active:scale-[0.97]', 'bg-amber-100 dark:bg-amber-900/40' => $device->isOn() && ! $device->isRunnable(), 'bg-gray-50 dark:bg-gray-900/40' => ! $device->isOn() || $device->isRunnable()])>
+                                        <span>{{ $device->icon() }}</span><span class="min-w-0"><span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $device->name }}</span><span class="block text-xs text-gray-500 dark:text-gray-400">{{ $device->isRunnable() ? __('Start') : $device->displayState() }}</span></span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
                     </section>
                                 @break
                             @case('habits')

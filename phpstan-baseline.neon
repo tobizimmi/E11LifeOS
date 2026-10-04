@@ -709,24 +709,6 @@ parameters:
 			path: app/Models/HouseholdInvite.php
 
 		-
-			message: '#^Offset string on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Models/HouseholdMember.php
-
-		-
-			message: '#^Result of \|\| is always true\.$#'
-			identifier: booleanOr.alwaysTrue
-			count: 1
-			path: app/Models/HouseholdMember.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between true and false will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Models/HouseholdMember.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$paid_on\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1531,7 +1513,7 @@ parameters:
 			path: app/Support/DashboardWidgets.php
 
 		-
-			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''freedom''\|''habits''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
+			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''energy''\|''freedom''\|''habits''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''smart_home''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Support/DashboardWidgets.php

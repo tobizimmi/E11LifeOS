@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\MealPlan;
 use App\Models\ShoppingListEntry;
 use App\Models\User;
+use App\Support\SmartHome\EnergySummary;
 
 /**
  * The daily morning briefing of a member: weather, today's tasks, today's dates from the
@@ -40,6 +41,10 @@ class MorningBriefing
 
         if ($user->canUseAddon(Addons::RECIPES)) {
             $sections[] = self::meals($user, $household->id);
+        }
+
+        if ($user->canUseAddon(Addons::SMART_HOME)) {
+            $sections[] = ['icon' => '⚡', 'title' => __('Energy yesterday'), 'lines' => EnergySummary::lines($household->id, today()->subDay(), today()->subDay()), 'url' => route('smart-home.index', ['tab' => 'energy'])];
         }
 
         $openShopping = ShoppingListEntry::where('household_id', $household->id)->where('checked', false)->count();

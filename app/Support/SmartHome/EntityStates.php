@@ -2,6 +2,7 @@
 
 namespace App\Support\SmartHome;
 
+use App\Events\HouseholdItemsChanged;
 use App\Models\SmartHomeConnection;
 use App\Models\SmartHomeEntity;
 use Illuminate\Support\Facades\Cache;
@@ -21,12 +22,20 @@ class EntityStates
 
         $entity = SmartHomeEntity::where('smart_home_connection_id', $connection->id)->where('entity_id', $entityId)->first();
 
-        if ($entity && ($entity->state !== $state || $attributes !== null)) {
-            $entity->forceFill(array_filter([
-                'state' => $state,
-                'attributes' => $attributes,
-                'state_changed_at' => $entity->state !== $state ? now() : $entity->state_changed_at,
-            ], fn ($value) => $value !== null))->save();
+        if (! $entity || ($entity->state === $state && $attributes === null)) {
+            return;
+        }
+
+        $changed = $entity->state !== $state;
+        $entity->forceFill(array_filter([
+            'state' => $state,
+            'ha_attributes' => $attributes,
+            'state_changed_at' => $changed ? now() : $entity->state_changed_at,
+        ], fn ($value) => $value !== null))->save();
+
+        if ($changed) {
+            // Open Smart home pages and dashboards of the household update live (Reverb).
+            HouseholdItemsChanged::dispatch($connection->household_id, 'smart_home');
         }
     }
 

@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
+ * @property-read SmartHomeConnection $connection
+ * @property array<string, mixed>|null $ha_attributes
+ *
  * A Home Assistant entity the household picked for the Smart Home page and automations, with its
  * last known state (from polling or the webhook).
  */
-#[Fillable(['household_id', 'smart_home_connection_id', 'entity_id', 'name', 'area', 'unit', 'state', 'attributes', 'state_changed_at', 'position'])]
+#[Fillable(['household_id', 'smart_home_connection_id', 'entity_id', 'name', 'area', 'unit', 'state', 'ha_attributes', 'state_changed_at', 'position', 'meter_id', 'favorite'])]
 class SmartHomeEntity extends Model
 {
     /** Domains that can be switched on and off with a tap. */
@@ -22,11 +25,15 @@ class SmartHomeEntity extends Model
     protected function casts(): array
     {
         return [
-            'attributes' => 'array',
+            'ha_attributes' => 'array',
             'state_changed_at' => 'datetime',
+            'favorite' => 'boolean',
         ];
     }
 
+    /**
+     * @return BelongsTo<SmartHomeConnection, $this>
+     */
     public function connection(): BelongsTo
     {
         return $this->belongsTo(SmartHomeConnection::class, 'smart_home_connection_id');
@@ -49,7 +56,7 @@ class SmartHomeEntity extends Model
 
     public function isOn(): bool
     {
-        return in_array($this->state, ['on', 'open', 'home', 'playing'], true);
+        return in_array($this->state, ['on', 'open', 'home', 'playing', 'heat', 'cool', 'heat_cool', 'auto', 'unlocked'], true);
     }
 
     public function icon(): string

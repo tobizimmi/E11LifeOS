@@ -47,6 +47,29 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * The owner switches a module off (or on again) for a single member.
      */
+    /**
+     * Whether a member may switch smart home devices or only see them.
+     */
+    public function toggleMemberControl(int $memberId): void
+    {
+        $household = Auth::user()->currentHousehold();
+        abort_if(! $household, 404);
+        abort_unless($household->members()->where('user_id', Auth::id())->first()?->isOwner(), 403);
+
+        $member = $household->members()->whereKey($memberId)->firstOrFail();
+        abort_if($member->isOwner(), 422);
+
+        $permissions = $member->permissions ?? [];
+
+        if (($permissions['smart_home_control'] ?? true) !== false) {
+            $permissions['smart_home_control'] = false;
+        } else {
+            unset($permissions['smart_home_control']);
+        }
+
+        $member->update(['permissions' => $permissions ?: null]);
+    }
+
     public function toggleMemberAddon(int $memberId, string $addon): void
     {
         $household = Auth::user()->currentHousehold();
@@ -138,6 +161,16 @@ new #[Layout('layouts.app')] class extends Component
                                             <span class="rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-400 line-through ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-700">{{ $addon['icon'] }} {{ $addon['label'] }}</span>
                                         @endif
                                     @endforeach
+                                    @if ($household->hasAddon(\App\Support\Addons::SMART_HOME) && $member->mayUse(\App\Support\Addons::SMART_HOME))
+                                        @php
+                                            $controls = ($member->permissions['smart_home_control'] ?? true) !== false;
+                                        @endphp
+                                        @if ($isOwner)
+                                            <button type="button" wire:click="toggleMemberControl({{ $member->id }})" aria-pressed="{{ $controls ? 'true' : 'false' }}" @class(['rounded-full px-2.5 py-1 text-xs ring-1', 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:ring-indigo-800' => $controls, 'bg-gray-50 text-gray-400 line-through ring-gray-200 dark:bg-gray-900 dark:ring-gray-700' => ! $controls])>🎛️ {{ __('Switch smart home devices') }}</button>
+                                        @elseif (! $controls)
+                                            <span class="rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-400 line-through ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-700">🎛️ {{ __('Switch smart home devices') }}</span>
+                                        @endif
+                                    @endif
                                 </div>
                             @endif
                         </li>

@@ -39,8 +39,8 @@ class VpnTest extends TestCase
         $this->assertNull(Vpn::proxyFor('http://192.168.178.20:8000'));
 
         config(['vpn.enabled' => true]);
-        // AllowedIPs without the default route.
-        $this->assertSame(['192.168.178.0/24'], Vpn::networks());
+        // A default route itself is dropped; with a full tunnel the private home network ranges count.
+        $this->assertSame(['192.168.178.0/24', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'], Vpn::networks());
         $this->assertSame('socks5h://127.0.0.1:25111', Vpn::proxyFor('http://192.168.178.20:8000'));
         $this->assertSame(['proxy' => 'socks5h://127.0.0.1:25111'], Vpn::httpOptions('http://192.168.178.20:8000/api/'));
         $this->assertSame([], Vpn::httpOptions('https://paperless.example.com'));

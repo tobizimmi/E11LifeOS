@@ -72,7 +72,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:100'],
-            'form.url' => ['required', 'url:http,https', 'max:500', fn ($attribute, $value, $fail) => WebDavClient::isAllowedUrl((string) $value) ? null : $fail(__('This address is not allowed. Use an address in the home network that goes through the VPN, or a public address.'))],
+            'form.url' => ['required', 'url:http,https', 'max:500', fn ($attribute, $value, $fail) => WebDavClient::isAllowedUrl((string) $value) ? null : $fail(__('This address is not allowed: it is neither in a VPN network nor public. Enter your home network (e.g. 192.168.1.0/24) under Admin › Server settings › VPN › Networks through the VPN, or use a public address.'))],
             'form.username' => ['nullable', 'string', 'max:150'],
             'form.password' => ['nullable', 'string', 'max:255'],
         ], attributes: ['form.url' => __('WebDAV address')])['form'];

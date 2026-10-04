@@ -147,7 +147,8 @@ class AutomationTest extends TestCase
             ->assertSee('Urlaub & Gäste');
 
         $automation = Automation::sole();
-        $this->assertSame([['type' => 'mode', 'key' => 'vacation', 'active' => true], ['type' => 'push', 'to' => 'me', 'title' => 'Gute Reise', 'body' => '', 'urgent' => false]], $automation->actions);
+        // MySQL sorts the keys inside JSON columns, so only the content counts.
+        $this->assertEquals([['type' => 'mode', 'key' => 'vacation', 'active' => true], ['type' => 'push', 'to' => 'me', 'title' => 'Gute Reise', 'body' => '', 'urgent' => false]], $automation->actions);
 
         Volt::test('automations.index')->call('runNow', $automation->id)->assertSet('logFor', $automation->id)->assertSee('Gestartet von Hand');
         $this->assertTrue(HouseholdMode::where('household_id', $household->id)->where('key', 'vacation')->sole()->active);

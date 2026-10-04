@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.30.1] – 2026-10-04
+
+### Behoben
+- VPN mit vollem Tunnel (AllowedIPs = 0.0.0.0/0, z. B. UniFi): Adressen im privaten Heimnetz (192.168.x.x, 10.x.x.x, 172.16–31.x.x) gelten jetzt als über das VPN erreichbar – Home Assistant, evcc und NAS lassen sich damit eintragen.
+- Die Meldung „Diese Adresse ist nicht erlaubt“ sagt jetzt, wo das Heimnetz eingetragen wird.
+
 ## [1.30.0] – 2026-10-04
 
 ### Neu

@@ -91,7 +91,7 @@ new #[Layout('layouts.app')] class extends Component
     public function save(): void
     {
         abort_unless($this->isOwner(), 403);
-        $allowed = fn ($attribute, $value, $fail) => $value === '' || $value === null || WebDavClient::isAllowedUrl((string) $value) ? null : $fail(__('This address is not allowed. Use an address in the home network that goes through the VPN, or a public address.'));
+        $allowed = fn ($attribute, $value, $fail) => $value === '' || $value === null || WebDavClient::isAllowedUrl((string) $value) ? null : $fail(__('This address is not allowed: it is neither in a VPN network nor public. Enter your home network (e.g. 192.168.1.0/24) under Admin › Server settings › VPN › Networks through the VPN, or use a public address.'));
 
         $data = $this->validate([
             'form.type' => ['required', 'in:'.implode(',', array_keys(SmartHomeConnection::types()))],

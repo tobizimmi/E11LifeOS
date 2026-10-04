@@ -88,10 +88,13 @@ class Vpn
 
         $parsed = self::parse((string) config('vpn.wireguard_config'));
 
-        return collect($parsed['peers'] ?? [])
-            ->flatMap(fn (array $peer) => self::split($peer['allowedips'] ?? ''))
-            // A default route would send everything through the home network – only private ranges count.
+        $allowed = collect($parsed['peers'] ?? [])->flatMap(fn (array $peer) => self::split($peer['allowedips'] ?? ''));
+        // A default route would send everything through the home network – only private ranges count.
+        $fullTunnel = $allowed->contains(fn (string $network) => in_array($network, ['0.0.0.0/0', '::/0'], true));
+
+        return $allowed
             ->reject(fn (string $network) => in_array($network, ['0.0.0.0/0', '::/0'], true))
+            ->merge($fullTunnel ? ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'] : [])
             ->unique()->values()->all();
     }
 

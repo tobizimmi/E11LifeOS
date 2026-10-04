@@ -76,6 +76,20 @@ class SmartHomeTest extends TestCase
         Volt::test('smart-home.index')->call('pressEntity', $light->id)->assertNotFound();
     }
 
+    public function test_a_full_tunnel_vpn_allows_addresses_in_the_private_home_network(): void
+    {
+        [$owner] = $this->memberWithHousehold();
+        config(['vpn.wireguard_config' => str_replace('AllowedIPs = 192.168.1.0/24', 'AllowedIPs = 0.0.0.0/0', self::WIREGUARD)]);
+        Http::fake(['192.168.2.10:8123/api/states' => Http::response($this->states())]);
+
+        $this->actingAs($owner);
+        Volt::test('smart-home.index', ['tab' => 'settings'])->set('tab', 'settings')
+            ->call('create', 'homeassistant')
+            ->set('form.url', 'http://192.168.2.10:8123')->set('form.token', 'geheim')->call('save')->assertHasNoErrors();
+
+        $this->assertSame('vpn', SmartHomeConnection::sole()->last_route);
+    }
+
     public function test_the_external_address_is_used_when_the_vpn_is_down_and_evcc_switches_the_charge_mode(): void
     {
         [$owner, $household] = $this->memberWithHousehold();

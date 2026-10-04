@@ -5992,5 +5992,6 @@
     "Switch off :name": ":name ausschalten",
     "Switch on :name": ":name einschalten",
     "Commands": "Befehle",
-    "When all people tracked in Home Assistant have left, the mode “Nobody at home” is switched on.": "Sind alle in Home Assistant erfassten Personen weg, wird der Modus „Niemand zu Hause“ eingeschaltet."
+    "When all people tracked in Home Assistant have left, the mode “Nobody at home” is switched on.": "Sind alle in Home Assistant erfassten Personen weg, wird der Modus „Niemand zu Hause“ eingeschaltet.",
+    "This address is not allowed: it is neither in a VPN network nor public. Enter your home network (e.g. 192.168.1.0/24) under Admin › Server settings › VPN › Networks through the VPN, or use a public address.": "Diese Adresse ist nicht erlaubt: Sie liegt weder in einem VPN-Netz noch ist sie öffentlich. Trage dein Heimnetz (z. B. 192.168.1.0/24) unter Admin › Servereinstellungen › VPN › Netze über das VPN ein oder nutze eine öffentliche Adresse."
 }

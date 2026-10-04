@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\WatchlistController;
+use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Route;
  */
 Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
+    // Home Assistant reports state changes here (secret in the address, see Smart home › Settings).
+    Route::post('smart-home/webhook/{secret}', SmartHomeWebhookController::class)->middleware('throttle:240,1')->where('secret', '[A-Za-z0-9]{32,64}')->name('smart-home.webhook');
 
     Route::middleware(['auth.token', 'throttle:120,1'])->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('me');

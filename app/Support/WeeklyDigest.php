@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\Finance\Budgets;
 use App\Support\Life\HabitTracker;
 use App\Support\Portfolio\PortfolioLink;
+use App\Support\SmartHome\EnergySummary;
 use Illuminate\Support\Carbon;
 
 /**
@@ -39,6 +40,10 @@ class WeeklyDigest
         $sections[] = self::tasks($user, $household->id);
         $sections[] = self::deadlines($user, $household->id);
         $sections[] = ['icon' => '🔥', 'title' => __('Habits & mood'), 'lines' => HabitTracker::weekLines($user), 'url' => route('journal.index', ['tab' => 'insights'])];
+
+        if ($user->canUseAddon(Addons::SMART_HOME)) {
+            $sections[] = ['icon' => '⚡', 'title' => __('Energy this week'), 'lines' => EnergySummary::lines($household->id, today()->subDays(7), today()->subDay()), 'url' => route('smart-home.index', ['tab' => 'energy'])];
+        }
 
         if ($user->canUseAddon(Addons::RECIPES)) {
             $sections[] = self::meals($user, $household->id);

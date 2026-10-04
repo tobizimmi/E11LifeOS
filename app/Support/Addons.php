@@ -22,6 +22,8 @@ class Addons
 
     public const REAL_ESTATE = 'real_estate';
 
+    public const SMART_HOME = 'smart_home';
+
     /**
      * @return array<string, array{label: string, icon: string, description: string, default: bool}>
      */
@@ -50,6 +52,12 @@ class Addons
                 'label' => __('Business'),
                 'icon' => '💼',
                 'description' => __('Quotes, invoices, customers, receipts, time tracking and tax reports for a small business.'),
+                'default' => true,
+            ],
+            self::SMART_HOME => [
+                'label' => __('Smart home'),
+                'icon' => '🔌',
+                'description' => __('Home Assistant and evcc: values, switches, charging the car and automations with the whole tool.'),
                 'default' => true,
             ],
             self::PORTFOLIO => [

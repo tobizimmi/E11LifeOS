@@ -3,6 +3,61 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.31.0] – 2026-10-04
+
+### Neu
+- Smart Home › eigene Dashboards: beliebig viele Dashboards (gemeinsam oder „Nur für mich“) mit Name und Symbol, als eigene Reiter neben dem Überblick.
+- Karten für Geräte, Überschriften und den Energiefluss; ein ganzer Bereich (z. B. Wohnzimmer) lässt sich mit einem Klick samt Überschrift hinzufügen.
+- Pro Karte wählbar: Anzeigeart (Kachel, große Taste, großer Wert, Ring-Anzeige mit Min/Max, Regler, Verlaufsdiagramm über 6 Std. bis 7 Tage, kompakte Zeile mit Schalter), Größe (klein, breit, groß, ganze Breite) und ein eigener Titel.
+- Karten per Drag & Drop anordnen; angeboten werden nur Anzeigearten, die zum Gerät passen.
+
+## [1.30.1] – 2026-10-04
+
+### Behoben
+- VPN mit vollem Tunnel (AllowedIPs = 0.0.0.0/0, z. B. UniFi): Adressen im privaten Heimnetz (192.168.x.x, 10.x.x.x, 172.16–31.x.x) gelten jetzt als über das VPN erreichbar – Home Assistant, evcc und NAS lassen sich damit eintragen.
+- Die Meldung „Diese Adresse ist nicht erlaubt“ sagt jetzt, wo das Heimnetz eingetragen wird.
+
+## [1.30.0] – 2026-10-04
+
+### Neu
+- Smart Home › Energie: PV-Ertrag, Verbrauch, Netzbezug, Einspeisung und Laden heute mit Tageskurve, letzte 30 Tage mit Autarkie – aufgezeichnet alle fünf Minuten aus evcc.
+- Übersicht: Kacheln „Energie heute“ und „Lieblingsgeräte“ (mit ★ markierte Geräte direkt schalten); Energie auch im Morgen-Briefing und im Wochenrückblick.
+- Zählerstände aus Home-Assistant-Sensoren landen jede Nacht automatisch unter „Zuhause › Verbrauch“; das tägliche Laden in evcc wird mit kWh und Kosten (Strompreis des Stromzählers) im Fahrtenbuch des zugeordneten Autos eingetragen.
+- Regler auf den Gerätekacheln: Helligkeit, Solltemperatur der Heizung, Position der Rollläden.
+- Automationen – neue Auslöser: Sonnenaufgang/-untergang (mit Versatz), Termin beginnt bald, Aufgabe wird fällig, Budget erreicht, Kommen und Gehen (Personen aus Home Assistant); neue Bedingungen: draußen dunkel/hell, wer zu Hause ist; neue Aktionen: Warten (Minuten), evcc-Ladeplan „bis Uhrzeit auf X %“; evcc-Werte je Ladepunkt; weitere Vorlagen.
+- Befehlsleiste: Automationen ausführen, Modi umschalten und Geräte schalten.
+
+### Sicherheit
+- Schlösser, Tore, Ventile und Alarmanlagen werden nur nach einer Rückfrage geschaltet und im Sicherheitsprotokoll vermerkt.
+- Haushalt: pro Mitglied einstellbar, ob es Smart-Home-Geräte schalten oder nur ansehen darf.
+- Geänderte Werte aktualisieren offene Smart-Home-Seiten und die Übersicht live.
+
+## [1.29.0] – 2026-10-04
+
+### Neu
+- Smart Home (neues Modul unter „Zuhause & Familie“): Home Assistant und evcc verbinden – im Heimnetz über das VPN, mit Nabu Casa bzw. externer Adresse als Rückfall, wenn das VPN nicht steht.
+  - Geräte aus Home Assistant auswählen, nach Räumen ordnen, Werte sehen und Licht, Schalter, Szenen und Skripte per Tippen schalten.
+  - evcc: Energiefluss (PV, Verbrauch, Netz/Einspeisung, Akku), Ladepunkte mit Fahrzeug und Ladestand, Lademodus (Aus/Schnell/Min+PV/Nur PV) und Ladelimit umschalten.
+  - Home Assistant kann Änderungen sofort per Webhook melden; sonst werden die Werte jede Minute abgefragt.
+- Automationen für das ganze Tool: „Wenn … nur wenn … dann …“.
+  - Auslöser: Kalendereintrag mit Stichwort (z. B. „Urlaub“), Reisen, Urlaub aus der Arbeitszeit, Modi, Uhrzeit, Werte aus Home Assistant und evcc oder nur von Hand.
+  - Bedingungen: Modus an/aus, Zeitfenster, Wochentage, Kalendereintrag heute, Werte aus Home Assistant.
+  - Aktionen: Home-Assistant-Dienste, Anwesenheitssimulation mit Lichtern, Lademodus und Ladelimit in evcc, Modus schalten, Benachrichtigung, Aufgabe anlegen.
+  - Modi für den Haushalt (Urlaubsmodus, Niemand zu Hause, Gäste, Nacht) – von Hand oder per Automation geschaltet.
+  - Vorlagen, z. B. „Urlaub im Kalender → Urlaubsmodus → abends Anwesenheit simulieren“, Protokoll jeder Ausführung und „Jetzt ausführen“.
+
+## [1.28.3] – 2026-10-03
+
+### Behoben
+- Rezepte › Instagram-Import wie in der RezepteApp: der Beitrag wird wie auf dem iPhone gelesen (Beschreibung und Foto, auch gekürzte Texte), das Foto wird mit passendem Referer geladen.
+- Neues Feld „Beitragstext (optional)“ beim Link-Import: eingefügter Text hat Vorrang, damit die Mengen vollständig sind.
+- Gibt Instagram nur das Foto heraus, öffnet sich das Formular trotzdem mit dem Foto und einem Hinweis.
+
+## [1.28.2] – 2026-10-03
+
+### Behoben
+- Rezepte: Import per Link funktioniert wieder mit Instagram-Beiträgen und Reels – der Beitragstext wird gelesen (Einbettung, Link-Vorschau oder – falls eingerichtet – Apify) und von der KI in ein Rezept mit Foto umgewandelt. Gibt Instagram den Text nicht heraus, steht ein klarer Hinweis da.
+
 ## [1.28.1] – 2026-10-03
 
 ### Behoben

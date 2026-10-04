@@ -93,6 +93,9 @@ new #[Layout('layouts.app')] class extends Component
     #[Locked]
     public ?string $sourceType = null;
 
+    /** Hint from the import, e.g. that only the photo of an Instagram post could be read. */
+    public ?string $importNotice = null;
+
     public function mount(?int $recipe = null): void
     {
         $this->resolveHousehold();
@@ -140,6 +143,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->cookTime = $draft['cookTime'] ?? null;
         $this->sourceUrl = (string) ($draft['sourceUrl'] ?? '');
         $this->sourceType = $draft['sourceType'] ?? null;
+        $this->importNotice = $draft['notice'] ?? null;
         $this->ingredients = collect($draft['ingredients'] ?? [])->map(fn (array $ingredient) => $ingredient + $this->emptyIngredient())->all() ?: [$this->emptyIngredient()];
         $this->steps = $draft['steps'] ?: [''];
 
@@ -378,6 +382,9 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6 sm:py-8">
         <form wire:submit="save" @if (! $recipeId) data-draft="recipe" data-draft-restored="{{ __('Draft restored') }}" @endif class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            @if ($importNotice)
+                <p class="rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200" role="status">{{ $importNotice }}</p>
+            @endif
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $recipeId ? __('Edit recipe') : __('New recipe') }}</h1>
                 <a href="{{ $recipeId ? route('recipes.show', $recipeId) : route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 underline">{{ __('Cancel') }}</a>

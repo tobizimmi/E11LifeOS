@@ -74,6 +74,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('emergency', 'emergency.index')->middleware([Security::SENSITIVE, 'sensitive.log:emergency'])->name('emergency.index');
     Volt::route('vehicles', 'vehicles.index')->name('vehicles.index');
     Volt::route('house', 'house.index')->name('house.index');
+    Volt::route('smart-home', 'smart-home.index')->name('smart-home.index')->middleware('addon:smart_home');
+    Volt::route('automations', 'automations.index')->name('automations.index');
     Volt::route('review', 'review.index')->name('review.index');
     Volt::route('provision', 'provision.index')->name('provision.index');
     Volt::route('health', 'health.index')->middleware([Security::SENSITIVE, 'sensitive.log:health'])->name('health.index');

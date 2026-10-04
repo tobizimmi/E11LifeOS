@@ -44,6 +44,8 @@ class SecurityLog
             'two_factor_disabled' => ['label' => __('Two-factor authentication switched off'), 'icon' => '⚠️', 'level' => 'critical'],
             'export' => ['label' => __('Data exported'), 'icon' => '📦', 'level' => 'warning'],
             'sensitive_area' => ['label' => __('Sensitive area opened'), 'icon' => '👁️', 'level' => 'info'],
+            'smart_home_critical' => ['label' => __('Lock, door or alarm switched in Smart home'), 'icon' => '🔐', 'level' => 'warning'],
+            'smart_home_connection' => ['label' => __('Smart home connection changed'), 'icon' => '🔌', 'level' => 'warning'],
             'trusted_access' => ['label' => __('Trusted person opened the emergency folder'), 'icon' => '🆘', 'level' => 'critical'],
             'virus_found' => ['label' => __('Upload with a virus blocked'), 'icon' => '🦠', 'level' => 'critical'],
         ];

@@ -216,8 +216,12 @@ new class extends Component
                     <x-sidebar-link icon="gift" :href="route('wishlist.index')" :active="request()->routeIs('wishlist.*')" wire:navigate>{{ __('Wishlist') }}</x-sidebar-link>
                     <x-sidebar-link icon="light-bulb" :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')" wire:navigate>{{ __('Money knowledge') }}</x-sidebar-link>
                 </x-sidebar-group>
-                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*', 'career.*')">
+                <x-sidebar-group :title="__('Home & family')" section="home" :active="request()->routeIs('house.*', 'smart-home.*', 'automations.*', 'real-estate.*', 'vehicles.*', 'health.*', 'people.*', 'kids.*', 'work.*', 'career.*')">
                     <x-sidebar-link icon="wrench-screwdriver" :href="route('house.index')" :active="request()->routeIs('house.*')" wire:navigate>{{ __('At home') }}</x-sidebar-link>
+                    @if (auth()->user()->canUseAddon(\App\Support\Addons::SMART_HOME))
+                        <x-sidebar-link icon="bolt" :href="route('smart-home.index')" :active="request()->routeIs('smart-home.*')" wire:navigate>{{ __('Smart home') }}</x-sidebar-link>
+                    @endif
+                    <x-sidebar-link icon="arrow-path" :href="route('automations.index')" :active="request()->routeIs('automations.*')" wire:navigate>{{ __('Automations') }}</x-sidebar-link>
                     @if ($hasRealEstate)
                         <x-sidebar-link icon="building-office-2" :href="route('real-estate.index')" :active="request()->routeIs('real-estate.*')" wire:navigate>{{ __('Real estate') }}</x-sidebar-link>
                     @endif

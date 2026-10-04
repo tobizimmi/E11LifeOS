@@ -181,6 +181,15 @@ new class extends Component
         $this->finish($task ? __('Task “:title” created.', ['title' => $task->title]) : __('Nothing to create.'));
     }
 
+    /**
+     * Files the typed text where it belongs (shopping list, expense, device, task or inbox).
+     */
+    public function smartCapture(): void
+    {
+        abort_if($this->householdId === null || trim($this->query) === '', 422);
+        $this->finish(\App\Support\SmartCapture::capture(Auth::user(), $this->householdId, trim($this->query)) ?? __('Nothing to create.'));
+    }
+
     public function addToShopping(): void
     {
         abort_if($this->householdId === null || trim($this->query) === '', 422);
@@ -429,6 +438,12 @@ new class extends Component
                 @if ($typed !== '')
                     <div class="py-2">
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Create') }}</h4>
+                        @php($smart = $householdId ? \App\Support\SmartCapture::preview(auth()->user(), $householdId, $typed) : null)
+                        @if ($smart && in_array($smart['kind'], ['expense', 'device', 'mode'], true))
+                            <button type="button" wire:click="smartCapture" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start font-medium text-indigo-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-indigo-300 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                                <span aria-hidden="true">✨</span> <span class="truncate">{{ $smart['label'] }}: “{{ $typed }}”</span>
+                            </button>
+                        @endif
                         @foreach ([['createTask', '✅', __('Task: “:text”', ['text' => $typed])], ['addToShopping', '🛒', __('Shopping list: “:text”', ['text' => $typed])], ['addToInbox', '📥', __('Inbox: “:text”', ['text' => $typed])]] as [$method, $icon, $label])
                             <button type="button" wire:click="{{ $method }}" data-search-result class="flex w-full items-center gap-2 px-4 py-2 text-start text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                                 <span aria-hidden="true">{{ $icon }}</span> <span class="truncate">{{ $label }}</span>

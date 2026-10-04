@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.33.0] – 2026-10-05
+
+### Neu
+- Übersicht › „Mein Tag“: alles mit Datum von heute aus allen Bereichen in einer Zeitleiste (Aufgaben, Termine, Fristen, Essen, Kalender-Abos), dazu „Als Nächstes in 20 Min.“, Wetter, überfällige und heute erledigte Aufgaben. Morgens „Dein Morgen“, abends „Dein Abend“ mit Vorschau auf morgen; Aufgaben direkt abhaken (mit Rückgängig).
+- Ein Eingabefeld für alles („✨ Automatisch“ in der Schnellerfassung und in der Befehlsleiste): „Einkauf: Milch, Brot“ → Einkaufsliste, „50 € Tanken“ → Ausgabe in Finanzen, „Zahnarzt Do 10 Uhr“ → Termin, „Licht Wohnzimmer an“ → Gerät, „Urlaubsmodus an“ → Modus, alles andere → Inbox. Unter dem Feld steht vorab, was daraus wird; mit Rückgängig.
+- Menü anpassen: Module anpinnen (oben im Menü), ausblenden (bleiben über die Suche erreichbar), „Oft genutzt“ lernt mit, Schnellstart-Vorlagen (Alles, Familie & Haushalt, Schwerpunkt Geld, Minimal) – auch als erster Schritt für neue Mitglieder.
+- App-Schnittstelle: „Mein Tag“, Widgets (nächster Termin, offene Einkäufe, Energie, Wetter), das Eingabefeld für alles sowie Smart Home (Geräte, Modi, Dashboards, Energie; schalten mit Bestätigung für Schlösser).
+
+### Verbessert
+- Aufgaben verstehen kurze Wochentage („Do 10 Uhr“, „Fr.“).
+
 ## [1.32.0] – 2026-10-04
 
 ### Neu

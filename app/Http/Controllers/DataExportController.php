@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attachment;
+use App\Models\Automation;
 use App\Models\BankAccount;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
@@ -177,6 +178,7 @@ class DataExportController extends Controller
             'habits' => Habit::where('user_id', $user->id)->with('logs')->orderBy('position')->get()->map(fn (Habit $habit) => $habit->only(['name', 'icon', 'type', 'target', 'unit', 'schedule', 'days', 'per_week', 'reminder_at', 'archived_at', 'created_at']) + [
                 'log' => $habit->logs->sortBy('date')->map(fn (HabitLog $log) => ['date' => $log->date->toDateString(), 'value' => $log->value])->values()->all(),
             ]),
+            'automations' => Automation::where('user_id', $user->id)->orderBy('name')->get()->map(fn (Automation $automation) => $automation->only(['name', 'active', 'trigger', 'conditions', 'actions', 'cooldown_minutes', 'last_run_at', 'created_at'])),
             'journal' => JournalEntry::where('user_id', $user->id)->orderBy('date')->get()->map(fn (JournalEntry $entry) => ['date' => $entry->date->toDateString()] + $entry->only(['mood', 'activities', 'grateful', 'great_day', 'highlights', 'better', 'notes']) + ['photos' => count($entry->photos ?? [])]),
             'emergency_folder' => [
                 'entries' => EmergencyEntry::where('user_id', $user->id)->orderBy('position')->get()->map->only(['section', 'kind', 'title', 'details', 'location', 'expires_on', 'remind_days']),

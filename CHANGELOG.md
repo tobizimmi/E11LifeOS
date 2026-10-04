@@ -3,6 +3,20 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.29.0] – 2026-10-04
+
+### Neu
+- Smart Home (neues Modul unter „Zuhause & Familie“): Home Assistant und evcc verbinden – im Heimnetz über das VPN, mit Nabu Casa bzw. externer Adresse als Rückfall, wenn das VPN nicht steht.
+  - Geräte aus Home Assistant auswählen, nach Räumen ordnen, Werte sehen und Licht, Schalter, Szenen und Skripte per Tippen schalten.
+  - evcc: Energiefluss (PV, Verbrauch, Netz/Einspeisung, Akku), Ladepunkte mit Fahrzeug und Ladestand, Lademodus (Aus/Schnell/Min+PV/Nur PV) und Ladelimit umschalten.
+  - Home Assistant kann Änderungen sofort per Webhook melden; sonst werden die Werte jede Minute abgefragt.
+- Automationen für das ganze Tool: „Wenn … nur wenn … dann …“.
+  - Auslöser: Kalendereintrag mit Stichwort (z. B. „Urlaub“), Reisen, Urlaub aus der Arbeitszeit, Modi, Uhrzeit, Werte aus Home Assistant und evcc oder nur von Hand.
+  - Bedingungen: Modus an/aus, Zeitfenster, Wochentage, Kalendereintrag heute, Werte aus Home Assistant.
+  - Aktionen: Home-Assistant-Dienste, Anwesenheitssimulation mit Lichtern, Lademodus und Ladelimit in evcc, Modus schalten, Benachrichtigung, Aufgabe anlegen.
+  - Modi für den Haushalt (Urlaubsmodus, Niemand zu Hause, Gäste, Nacht) – von Hand oder per Automation geschaltet.
+  - Vorlagen, z. B. „Urlaub im Kalender → Urlaubsmodus → abends Anwesenheit simulieren“, Protokoll jeder Ausführung und „Jetzt ausführen“.
+
 ## [1.28.3] – 2026-10-03
 
 ### Behoben

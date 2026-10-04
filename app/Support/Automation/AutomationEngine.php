@@ -8,6 +8,7 @@ use App\Models\AutomationRun;
 use App\Models\HouseholdMember;
 use App\Models\HouseholdMode;
 use App\Models\Item;
+use App\Models\PushAction;
 use App\Models\SmartHomeConnection;
 use App\Models\SmartHomeEntity;
 use App\Models\User;
@@ -127,6 +128,12 @@ class AutomationEngine
         $log = [];
 
         foreach ($actions as $index => $action) {
+            if (($action['type'] ?? '') === 'ask') {
+                $log[] = ['ok' => true, 'message' => AutomationCatalog::describe($action).' – '.$this->ask($automation, $action, array_slice($actions, $index + 1), $depth)];
+
+                break;
+            }
+
             if (($action['type'] ?? '') === 'delay') {
                 $minutes = max(1, min(1440, (int) ($action['minutes'] ?? 5)));
                 AutomationPendingAction::create(['automation_id' => $automation->id, 'actions' => array_slice($actions, $index + 1), 'depth' => $depth, 'run_at' => $now->copy()->addMinutes($minutes)]);
@@ -154,10 +161,63 @@ class AutomationEngine
     }
 
     /**
-     * Continues automations whose "wait" is over.
+     * "Ask by push": the remaining actions wait for an answer; each recipient gets a notification
+     * with the two buttons (and a link to a page with them, for phones without buttons).
+     *
+     * @param  array<string, mixed>  $action
+     * @param  list<array<string, mixed>>  $rest
+     */
+    private function ask(Automation $automation, array $action, array $rest, int $depth): string
+    {
+        $expires = now()->addHours(max(1, min(48, (int) ($action['hours'] ?? 2))));
+        $pending = AutomationPendingAction::create(['automation_id' => $automation->id, 'actions' => $rest, 'depth' => $depth, 'run_at' => null, 'expires_at' => $expires]);
+        $recipients = ($action['to'] ?? 'me') === 'household' ? $this->members($automation->household_id) : collect([$automation->user])->filter();
+
+        foreach ($recipients as $user) {
+            $yes = PushAction::issue($user, (string) ($action['yes'] ?? __('Yes')) ?: __('Yes'), ['kind' => 'automation', 'pending_id' => $pending->id, 'choice' => 'yes'], $expires);
+            $no = PushAction::issue($user, (string) ($action['no'] ?? __('No')) ?: __('No'), ['kind' => 'automation', 'pending_id' => $pending->id, 'choice' => 'no'], $expires);
+            $this->webPush->send($user, (string) ($action['title'] ?? $automation->name) ?: $automation->name, (string) ($action['body'] ?? ''), $yes['url'], urgent: true, actions: [
+                ['label' => $yes['action']->label, 'url' => $yes['url']],
+                ['label' => $no['action']->label, 'url' => $no['url']],
+            ]);
+        }
+
+        return trans_choice(':count recipient|:count recipients', $recipients->count());
+    }
+
+    /**
+     * The answer to an "ask by push": "yes" runs the waiting actions, "no" drops them. The first
+     * answer counts; later ones (other members, second tap) change nothing.
+     */
+    public function answer(PushAction $pushAction, string $choice): string
+    {
+        $pending = AutomationPendingAction::whereNull('run_at')->with('automation.user')->find($pushAction->payload['pending_id'] ?? 0);
+        PushAction::where('payload->pending_id', $pushAction->payload['pending_id'] ?? 0)->whereNull('answered_at')->update(['answered_at' => now()]);
+
+        if (! $pending || ($pending->expires_at && $pending->expires_at->isPast())) {
+            $pending?->delete();
+
+            return __('This question has already been answered or has expired.');
+        }
+
+        $pending->delete();
+
+        if ($choice !== 'yes' || ! $pending->automation?->active) {
+            return __('OK, nothing happens.');
+        }
+
+        $run = $this->performAll($pending->automation, $pending->actions, __('Answered “:answer” by :name', ['answer' => $pushAction->label, 'name' => $pushAction->user->name]), $pending->depth);
+
+        return $run->status === 'done' ? __('Done.') : __('Done with errors – see the automation.');
+    }
+
+    /**
+     * Continues automations whose "wait" is over; drops questions nobody answered in time.
      */
     private function runPending(Carbon $now): void
     {
+        AutomationPendingAction::whereNull('run_at')->where('expires_at', '<', $now)->delete();
+
         AutomationPendingAction::where('run_at', '<=', $now)->with('automation.user')->get()->each(function (AutomationPendingAction $pending) {
             $pending->delete();
 
@@ -410,13 +470,20 @@ class AutomationEngine
      */
     public static function presence(int $householdId, string $state): ?bool
     {
-        $people = SmartHomeEntity::where('household_id', $householdId)->get()->filter(fn (SmartHomeEntity $entity) => in_array($entity->domain(), ['person', 'device_tracker'], true));
+        // People from Home Assistant (person/device_tracker) and members whose app reports at home / away.
+        $people = SmartHomeEntity::where('household_id', $householdId)->get()
+            ->filter(fn (SmartHomeEntity $entity) => in_array($entity->domain(), ['person', 'device_tracker'], true))
+            ->map(fn (SmartHomeEntity $entity) => (EntityStates::get($householdId, $entity->entity_id) ?? $entity->state) === 'home')
+            ->values()
+            ->concat(User::whereIn('id', HouseholdMember::where('household_id', $householdId)->select('user_id'))
+                ->whereNotNull('presence')->where('presence_at', '>=', now()->subDays(7))->pluck('presence')
+                ->map(fn (string $presence) => $presence === 'home'));
 
         if ($people->isEmpty()) {
             return null;
         }
 
-        $home = $people->filter(fn (SmartHomeEntity $entity) => (EntityStates::get($householdId, $entity->entity_id) ?? $entity->state) === 'home')->count();
+        $home = $people->filter()->count();
 
         return match ($state) {
             'anyone_home' => $home > 0,

@@ -506,7 +506,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($connection->external_url) · 🌍 {{ __('External') }}: {{ $connection->external_url }} @endif
                             </p>
                             <p class="text-xs {{ $connection->last_error ? 'text-red-700 dark:text-red-300' : 'text-gray-500 dark:text-gray-400' }}">
-                                @if ($connection->last_contact_at) ✓ {{ __('Last contact :time via :route', ['time' => $connection->last_contact_at->diffForHumans(), 'route' => ['vpn' => __('VPN'), 'external' => __('external address'), 'webhook' => __('webhook')][$connection->last_route] ?? $connection->last_route]) }} @endif
+                                @if ($connection->last_contact_at) ✓ {{ __('Last contact :time via :route', ['time' => $connection->last_contact_at->diffForHumans(), 'route' => ['vpn' => __('VPN'), 'external' => __('external address'), 'webhook' => __('webhook'), 'websocket' => __('live connection')][$connection->last_route] ?? $connection->last_route]) }} @endif
                                 @if ($connection->last_error) · {{ $connection->last_error }} @endif
                             </p>
                             @if ($isOwner && ! $connection->isHomeAssistant() && $vehicles->isNotEmpty())

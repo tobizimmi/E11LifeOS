@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.34.0] – 2026-10-05
+
+### Neu
+- Smart Home live: Eine dauerhafte Verbindung zu Home Assistant (über das VPN oder die öffentliche Adresse) liefert jede Zustandsänderung sofort – Automationen reagieren in Sekunden statt Minuten; Bereiche aus Home Assistant werden automatisch übernommen.
+- Verbindungswächter: Ist Home Assistant zweimal hintereinander nicht erreichbar, bekommen die Haushaltsbesitzer eine Push-Nachricht – und eine Entwarnung, sobald es wieder geht. Der Systemzustand zeigt zusätzlich, ob das VPN läuft.
+- Automationen fragen per Push nach: Aktion „Per Push fragen“ mit zwei Knöpfen direkt in der Benachrichtigung (z. B. „Ausschalten“ / „Anlassen“); die folgenden Aktionen laufen erst nach „Ja“. Ohne Knöpfe auf dem Handy öffnet sich eine Seite zum Antworten. Neue Vorlage: „Alle sind weg → fragen, ob das Licht ausgehen soll“.
+- Dashboards: neue Karten für Kamera (Live-Bild), Wetter, „Heute“ und Szenen; Karten lassen sich an Bedingungen knüpfen („nur zeigen, wenn …“).
+- Wandtablet-Ansicht: Dashboard im Vollbild mit Uhr, bleibt wach und dimmt nachts.
+- Ein Dashboard lässt sich auf der Übersicht anzeigen („☆ Auf Übersicht zeigen“).
+- App-Schnittstelle: Die App kann melden, ob man zu Hause oder unterwegs ist – zählt für Anwesenheits-Automationen mit.
+
 ## [1.33.0] – 2026-10-05
 
 ### Neu

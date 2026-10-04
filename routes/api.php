@@ -37,6 +37,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('today', [TodayController::class, 'today'])->name('today');
         Route::get('widgets', [TodayController::class, 'widgets'])->name('widgets');
         Route::post('capture', [TodayController::class, 'capture'])->name('capture');
+        Route::post('presence', [SmartHomeController::class, 'presence'])->name('presence');
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');

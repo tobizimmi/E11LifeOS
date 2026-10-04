@@ -18,7 +18,8 @@ use Spatie\LaravelPasskeys\Models\Concerns\HasPasskeys;
 use Spatie\LaravelPasskeys\Models\Concerns\InteractsWithPasskeys;
 
 /**
- * @property array{pinned?: list<string>, hidden?: list<string>}|null $nav_preferences
+ * @property array{pinned?: list<string>, hidden?: list<string>, board?: int|null}|null $nav_preferences
+ * @property array<int, mixed>|null $dashboard_widgets
  */
 #[Fillable(['name', 'email', 'password', 'reminder_emails', 'weekly_digest', 'weekly_digest_day', 'weekly_digest_hour', 'morning_briefing', 'morning_briefing_hour', 'weather_place', 'weather_latitude', 'weather_longitude', 'tax_rate', 'tax_children', 'postal_address', 'insurance_answers', 'retirement_plan', 'cashflow_manual_only', 'cashflow_categories', 'career_profile', 'dismissed_subscriptions', 'bank_alerts', 'calendar_feed_options', 'push_quiet_from', 'push_quiet_until', 'push_bundle', 'pushover_all'])]
 #[Hidden(['calendar_token_encrypted', 'password', 'remember_token', 'calendar_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
@@ -101,6 +102,7 @@ class User extends Authenticatable implements HasPasskeys
             'pushover_all' => 'boolean',
             'dashboard_widgets' => 'array',
             'nav_preferences' => 'array',
+            'presence_at' => 'datetime',
             'insurance_answers' => 'array',
             'dismissed_subscriptions' => 'array',
             'bank_alerts' => 'array',

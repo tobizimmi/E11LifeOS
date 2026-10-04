@@ -63,6 +63,7 @@ class AutomationCatalog
             'delay' => ['label' => __('Wait'), 'icon' => '⏳', 'defaults' => ['minutes' => 15]],
             'mode' => ['label' => __('Switch mode'), 'icon' => '🏷️', 'defaults' => ['key' => 'vacation', 'active' => true]],
             'push' => ['label' => __('Send notification'), 'icon' => '🔔', 'defaults' => ['to' => 'me', 'title' => '', 'body' => '', 'urgent' => false]],
+            'ask' => ['label' => __('Ask by push (continue only on “Yes”)'), 'icon' => '❓', 'defaults' => ['to' => 'me', 'title' => '', 'body' => '', 'yes' => __('Yes'), 'no' => __('No'), 'hours' => 2]],
             'task' => ['label' => __('Create task'), 'icon' => '✅', 'defaults' => ['title' => '', 'due' => 'today']],
         ];
     }
@@ -149,6 +150,7 @@ class AutomationCatalog
             'evcc_mode' => __('Charge mode: :mode', ['mode' => self::evccModes()[$block['mode'] ?? ''] ?? '']),
             'evcc_limit' => __('Charge limit: :soc %', ['soc' => $block['soc'] ?? '']),
             'push' => __('Notification: :title', ['title' => $block['title'] ?? '']),
+            'ask' => __('Ask: :title', ['title' => $block['title'] ?? '']),
             'task' => __('Task: :title', ['title' => $block['title'] ?? '']),
             default => (string) ($block['type'] ?? ''),
         };
@@ -210,6 +212,16 @@ class AutomationCatalog
                 'trigger' => ['type' => 'presence', 'state' => 'all_away'],
                 'conditions' => [],
                 'actions' => [['type' => 'mode', 'key' => 'away', 'active' => true]],
+            ],
+            'away_ask_lights' => [
+                'name' => __('Everybody has left → ask whether to switch off the lights'), 'icon' => '❓',
+                'description' => __('When the last person leaves, you get a push with “Switch off” / “Leave on” – the lights go off only after “Switch off”.'),
+                'trigger' => ['type' => 'presence', 'state' => 'all_away'],
+                'conditions' => [],
+                'actions' => [
+                    ['type' => 'ask', 'to' => 'me', 'title' => __('Everybody is out – switch off all lights?'), 'body' => '', 'yes' => __('Switch off'), 'no' => __('Leave on'), 'hours' => 2],
+                    ['type' => 'ha_service', 'service' => 'light.turn_off', 'entity_id' => 'all', 'data' => ''],
+                ],
             ],
             'sunset_lights' => [
                 'name' => __('Sunset while somebody is at home → lights on'), 'icon' => '🌅',

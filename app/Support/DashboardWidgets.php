@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  */
 class DashboardWidgets
 {
-    public const DEFAULT = ['weather', 'deadlines', 'life', 'tasks', 'habits', 'shopping', 'meals', 'portfolio', 'real_estate', 'tax', 'freedom', 'costs', 'pages', 'inbox', 'energy', 'smart_home'];
+    public const DEFAULT = ['weather', 'deadlines', 'life', 'tasks', 'habits', 'shopping', 'meals', 'portfolio', 'real_estate', 'tax', 'freedom', 'costs', 'pages', 'inbox', 'energy', 'smart_home', 'smart_home_board'];
 
     private const DEADLINE_DAYS = 30;
 
@@ -40,6 +40,7 @@ class DashboardWidgets
             'inbox' => ['label' => __('Inbox'), 'icon' => '📥'],
             'energy' => ['label' => __('Energy today'), 'icon' => '⚡'],
             'smart_home' => ['label' => __('Favourite devices'), 'icon' => '💡'],
+            'smart_home_board' => ['label' => __('Smart home dashboard'), 'icon' => '🧩'],
         ];
     }
 
@@ -50,9 +51,11 @@ class DashboardWidgets
      */
     public static function forUser(User $user): array
     {
-        $chosen = is_array($user->dashboard_widgets) ? $user->dashboard_widgets : self::DEFAULT;
+        if (! is_array($user->dashboard_widgets)) {
+            return self::DEFAULT;
+        }
 
-        return array_values(array_unique(array_filter($chosen, fn ($key) => is_string($key) && array_key_exists($key, self::all()))));
+        return array_values(array_unique(array_filter($user->dashboard_widgets, fn ($key) => is_string($key) && array_key_exists($key, self::all()))));
     }
 
     /**

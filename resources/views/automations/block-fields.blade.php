@@ -102,6 +102,14 @@
     <input type="text" wire:model="{{ $path }}.title" class="w-48 {{ $small }}" placeholder="{{ __('Title') }}">
     <input type="text" wire:model="{{ $path }}.body" class="w-56 {{ $small }}" placeholder="{{ __('Text') }}">
     <label class="flex items-center gap-1"><input type="checkbox" wire:model="{{ $path }}.urgent" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('urgent') }}</label>
+@elseif ($type === 'ask')
+    <select wire:model="{{ $path }}.to" class="{{ $small }}"><option value="me">{{ __('to me') }}</option><option value="household">{{ __('to the whole household') }}</option></select>
+    <input type="text" wire:model="{{ $path }}.title" class="w-48 {{ $small }}" placeholder="{{ __('e.g. Everybody is out – switch off the lights?') }}" aria-label="{{ __('Question') }}">
+    <input type="text" wire:model="{{ $path }}.body" class="w-48 {{ $small }}" placeholder="{{ __('Text') }}">
+    <input type="text" wire:model="{{ $path }}.yes" class="w-28 {{ $small }}" aria-label="{{ __('Button “yes”') }}">
+    <input type="text" wire:model="{{ $path }}.no" class="w-28 {{ $small }}" aria-label="{{ __('Button “no”') }}">
+    {{ __('answer within') }} <input type="number" min="1" max="48" wire:model="{{ $path }}.hours" class="w-16 {{ $small }}"> {{ __('h') }}
+    <span class="w-full text-xs text-gray-500">{{ __('The following actions run only after “yes”.') }}</span>
 @elseif ($type === 'task')
     <input type="text" wire:model="{{ $path }}.title" class="w-56 {{ $small }}" placeholder="{{ __('e.g. Water the plants') }}">
     <select wire:model="{{ $path }}.due" class="{{ $small }}"><option value="today">{{ __('due today') }}</option><option value="tomorrow">{{ __('due tomorrow') }}</option><option value="">{{ __('no date') }}</option></select>

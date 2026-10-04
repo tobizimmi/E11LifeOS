@@ -100,7 +100,9 @@ self.addEventListener('push', (event) => {
                 tag: message.tag,
                 icon: scope + 'icons/icon-192.png',
                 badge: scope + 'icons/icon-192.png',
-                data: { url: message.url },
+                data: { url: message.url, actions: message.actions || [] },
+                // Buttons (e.g. "Yes, switch off"); phones without buttons open the page with them.
+                actions: (message.actions || []).slice(0, 2).map((action, index) => ({ action: 'a' + index, title: action.label })),
             })));
         }),
     );
@@ -109,6 +111,23 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const url = event.notification.data?.url || self.registration.scope;
+    const chosen = event.action ? (event.notification.data?.actions || [])[Number(event.action.slice(1))] : null;
+
+    // A button: answer right away and confirm with a short notification.
+    if (chosen) {
+        event.waitUntil(
+            fetch(chosen.url, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                .then((response) => (response.ok ? response.json() : Promise.reject(response)))
+                .then((data) => self.registration.showNotification(chosen.label, {
+                    body: data.message || '',
+                    tag: 'e11-answer',
+                    icon: self.registration.scope + 'icons/icon-192.png',
+                }))
+                .catch(() => self.clients.openWindow(url)),
+        );
+
+        return;
+    }
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {

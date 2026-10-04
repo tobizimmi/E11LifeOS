@@ -27,7 +27,15 @@
     $surface = $on ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-white dark:bg-gray-800';
 @endphp
 
-@if ($display === 'button')
+@if ($display === 'camera')
+    {{-- Picture through the server (token stays there), refreshed every ten seconds. --}}
+    <div {{ $attributes->merge(['class' => 'relative flex h-full flex-col overflow-hidden rounded-2xl bg-gray-900 shadow-xs']) }}
+         data-src="{{ route('smart-home.camera', $entity) }}" x-data="{ src: $el.dataset.src, stamp: Date.now(), failed: false }" x-init="setInterval(() => stamp = Date.now(), 10000)">
+        <img :src="src + '?t=' + stamp" x-on:error="failed = true" x-on:load="failed = false" alt="{{ $name }}" class="h-full min-h-32 w-full flex-1 object-cover" loading="lazy">
+        <p x-show="failed" x-cloak class="absolute inset-0 flex items-center justify-center text-sm text-gray-300">{{ __('Camera not reachable') }}</p>
+        <span class="absolute bottom-2 start-2 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">📷 {{ $name }}</span>
+    </div>
+@elseif ($display === 'button')
     <div {{ $attributes->merge(['class' => "flex h-full flex-col items-center justify-center gap-2 rounded-2xl p-4 shadow-xs $surface"]) }}>
         <button type="button" {!! $press !!} aria-pressed="{{ $on ? 'true' : 'false' }}"
             @class(['flex size-20 items-center justify-center rounded-full text-4xl shadow-sm transition', 'bg-amber-400 text-white dark:bg-amber-500' => $on, 'bg-gray-100 dark:bg-gray-700' => ! $on, 'active:scale-95' => $tappable, 'cursor-default opacity-70' => ! $tappable])>{{ $entity->icon() }}</button>

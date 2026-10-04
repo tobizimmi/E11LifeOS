@@ -9,6 +9,9 @@ use App\Models\SmartHomeEntity;
 use App\Models\SmartHomeReading;
 use App\Support\SmartHome\EnergyRecorder;
 use App\Support\SmartHome\EntityControl;
+use App\Support\SmartHome\EntityStates;
+use App\Support\TodayView;
+use App\Support\Weather;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
@@ -27,6 +30,10 @@ new class extends Component
 
     public bool $editing = false;
 
+    /** Wall tablet: no editing, larger and refreshed regularly. */
+    #[Locked]
+    public bool $wall = false;
+
     /**
      * @var array{name: string, icon: string, personal: bool}
      */
@@ -38,12 +45,13 @@ new class extends Component
 
     public string $newHeading = '';
 
-    public function mount(int $dashboardId, bool $editing = false): void
+    public function mount(int $dashboardId, bool $editing = false, bool $wall = false): void
     {
         $this->resolveHousehold();
         $this->dashboardId = $dashboardId;
+        $this->wall = $wall;
         $dashboard = $this->dashboard();
-        $this->editing = $editing && $this->mayEdit($dashboard);
+        $this->editing = $editing && ! $wall && $this->mayEdit($dashboard);
         $this->settings = ['name' => $dashboard->name, 'icon' => (string) $dashboard->icon, 'personal' => $dashboard->personal];
     }
 
@@ -184,6 +192,33 @@ new class extends Component
     }
 
     /**
+     * Weather, today's appointments or the scene bar.
+     */
+    public function addWidget(string $kind): void
+    {
+        abort_unless(in_array($kind, ['weather', 'agenda', 'scenes'], true), 422);
+        $this->appendCard($this->editable(), ['kind' => $kind, 'display' => 'value', 'size' => $kind === 'scenes' ? 'full' : 'medium']);
+    }
+
+    /**
+     * Shows this dashboard on the member's overview (or removes it there).
+     */
+    public function toggleOverview(): void
+    {
+        $user = Auth::user();
+        $current = (int) ($user->nav_preferences['board'] ?? 0);
+        $user->forceFill(['nav_preferences' => array_merge($user->nav_preferences ?? [], ['board' => $current === $this->dashboardId ? null : $this->dashboardId])]);
+
+        // A member with an own card order gets the card added.
+        if ($current !== $this->dashboardId && is_array($user->dashboard_widgets) && ! in_array('smart_home_board', $user->dashboard_widgets, true)) {
+            $user->dashboard_widgets = [...$user->dashboard_widgets, 'smart_home_board'];
+        }
+
+        $user->save();
+        $this->dispatch('toast', message: $current === $this->dashboardId ? __('Removed from the overview.') : __('Shown on the overview.'));
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     private function appendCard(SmartHomeDashboard $dashboard, array $attributes): void
@@ -213,6 +248,8 @@ new class extends Component
             $card->update(['title' => mb_substr(trim($value), 0, 80) ?: null]);
         } elseif (in_array($field, ['min', 'max'], true)) {
             $card->update(['options' => array_merge($card->options ?? [], [$field => is_numeric($value) ? (float) $value : null])]);
+        } elseif (in_array($field, ['when_entity', 'when_state'], true)) {
+            $card->update(['options' => array_merge($card->options ?? [], [$field => mb_substr(trim($value), 0, 120) ?: null])]);
         } elseif ($field === 'hours') {
             abort_unless(in_array((int) $value, SmartHomeDashboardCard::HISTORY_HOURS, true), 422);
             $card->update(['options' => array_merge($card->options ?? [], ['hours' => (int) $value])]);
@@ -257,6 +294,11 @@ new class extends Component
             'hasEvcc' => SmartHomeConnection::where('household_id', $this->householdId)->where('type', SmartHomeConnection::EVCC)->exists(),
             'energy' => $dashboard->cards->contains('kind', 'energy') ? EnergyRecorder::latest($this->householdId) : [],
             'histories' => $historyCards->mapWithKeys(fn (SmartHomeDashboardCard $card) => [$card->id => $this->history($card)])->all(),
+            'weather' => $dashboard->cards->contains('kind', 'weather') && Auth::user()->weather_latitude !== null ? Weather::today(Auth::user()->weather_latitude, Auth::user()->weather_longitude) : null,
+            'agenda' => $dashboard->cards->contains('kind', 'agenda') ? TodayView::for(Auth::user(), $this->householdId) : null,
+            'scenes' => $dashboard->cards->contains('kind', 'scenes') ? SmartHomeEntity::where('household_id', $this->householdId)->where(fn ($query) => $query->where('entity_id', 'like', 'scene.%')->orWhere('entity_id', 'like', 'script.%'))->orderBy('name')->get() : collect(),
+            'visible' => fn (SmartHomeDashboardCard $card) => $this->editing || $card->isVisible(fn (string $entityId) => EntityStates::get($this->householdId, $entityId)),
+            'onOverview' => (int) (Auth::user()->nav_preferences['board'] ?? 0) === $this->dashboardId,
         ];
     }
 
@@ -286,12 +328,18 @@ new class extends Component
     $watts = fn (?float $value) => $value === null ? '–' : (abs($value) >= 1000 ? number_format($value / 1000, 1, ',', '.').' kW' : number_format($value, 0, ',', '.').' W');
 @endphp
 
-<div class="space-y-4">
+<div class="space-y-4" @if ($wall) wire:poll.30s @endif>
     <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $dashboard->icon }} {{ $dashboard->name }}@if ($dashboard->personal) <span class="ms-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ __('Only for me') }}</span>@endif</h3>
-        @if ($mayEdit)
-            <button type="button" wire:click="toggleEditing" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $editing, 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => ! $editing])>{{ $editing ? '✓ '.__('Finish editing') : '✏️ '.__('Edit') }}</button>
-        @endif
+        @unless ($wall)
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="toggleOverview" aria-pressed="{{ $onOverview ? 'true' : 'false' }}" class="rounded-full bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">{{ $onOverview ? '★ '.__('On the overview') : '☆ '.__('Show on overview') }}</button>
+                <a href="{{ route('smart-home.wall', $dashboard) }}" target="_blank" class="rounded-full bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">🖥️ {{ __('Wall tablet') }}</a>
+                @if ($mayEdit)
+                    <button type="button" wire:click="toggleEditing" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $editing, 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => ! $editing])>{{ $editing ? '✓ '.__('Finish editing') : '✏️ '.__('Edit') }}</button>
+                @endif
+            </div>
+        @endunless
     </div>
 
     @if ($editing)
@@ -337,10 +385,13 @@ new class extends Component
                     <label class="min-w-0 flex-1 text-sm text-gray-700 dark:text-gray-300">{{ __('Add heading') }}<input type="text" wire:model="newHeading" maxlength="80" class="mt-1 {{ $input }}" placeholder="{{ __('e.g. Ground floor') }}"></label>
                     <x-secondary-button type="submit">+</x-secondary-button>
                 </form>
-                <div class="flex items-end gap-2">
+                <div class="flex flex-wrap items-end gap-2 sm:col-span-2">
                     @if ($hasEvcc)
-                        <x-secondary-button type="button" wire:click="addEnergy">⚡ {{ __('Add energy flow') }}</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="addEnergy">⚡ {{ __('Energy flow') }}</x-secondary-button>
                     @endif
+                    <x-secondary-button type="button" wire:click="addWidget('weather')">🌤️ {{ __('Weather') }}</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="addWidget('agenda')">📅 {{ __('Today') }}</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="addWidget('scenes')">🎬 {{ __('Scenes') }}</x-secondary-button>
                     <button type="button" wire:click="deleteDashboard" wire:confirm="{{ __('Delete this dashboard?') }}" class="ms-auto text-sm text-red-600 hover:underline dark:text-red-400">{{ __('Delete dashboard') }}</button>
                 </div>
             </div>
@@ -348,6 +399,14 @@ new class extends Component
                 <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Pick the devices to show under “Connections & devices”.') }}</p>
             @endif
         </section>
+    @endif
+
+    @if ($editing)
+        <datalist id="dashboard-entities">
+            @foreach ($entities as $entity)
+                <option value="{{ $entity->entity_id }}">{{ $entity->name }}</option>
+            @endforeach
+        </datalist>
     @endif
 
     @if ($dashboard->cards->isEmpty())
@@ -359,9 +418,9 @@ new class extends Component
             @endif
         </div>
     @else
-        <div class="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-4" @if ($editing) x-sort="$wire.moveCard($item, $position)" @endif>
+        <div @class(['grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-4', 'xl:grid-cols-6' => $wall]) @if ($editing) x-sort="$wire.moveCard($item, $position)" @endif>
             @foreach ($dashboard->cards as $card)
-                @if ($card->kind === 'entity' && ! $card->entity)
+                @if (($card->kind === 'entity' && ! $card->entity) || ! $visible($card))
                     @continue
                 @endif
                 <div wire:key="card-{{ $card->id }}" @if ($editing) x-sort:item="{{ $card->id }}" @endif @class([$card->kind === 'heading' ? 'col-span-full' : $card->sizeClasses().' min-h-28', 'relative flex flex-col', 'rounded-2xl outline-2 outline-offset-2 outline-dashed outline-indigo-300 dark:outline-indigo-700' => $editing])>
@@ -375,6 +434,37 @@ new class extends Component
                                     <div><dt class="text-xs text-gray-500 dark:text-gray-400">{{ $icon }} {{ $label }}</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $value }}</dd></div>
                                 @endforeach
                             </dl>
+                        </div>
+                    @elseif ($card->kind === 'weather')
+                        <div class="flex h-full items-center gap-4 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                            @if ($weather)
+                                <span class="text-5xl" aria-hidden="true">{{ $weather['icon'] }}</span>
+                                <div>
+                                    <p class="text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $weather['min'] }}–{{ $weather['max'] }} °C</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ $weather['label'] }} · {{ __('rain :percent %', ['percent' => $weather['rain']]) }}</p>
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Set your place in the profile to see the weather here.') }}</p>
+                            @endif
+                        </div>
+                    @elseif ($card->kind === 'agenda')
+                        <div class="h-full rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">📅 {{ $card->title ?: __('Today') }}</p>
+                            <ul class="mt-2 space-y-1 text-sm">
+                                @forelse (array_slice($agenda['events'] ?? [], 0, 6) as $event)
+                                    <li @class(['flex gap-2', 'opacity-50' => $event['past']])><span class="w-12 shrink-0 tabular-nums text-gray-500">{{ $event['time'] ?? '–' }}</span><span class="truncate text-gray-900 dark:text-gray-100">{{ $event['title'] }}</span></li>
+                                @empty
+                                    <li class="text-gray-500 dark:text-gray-400">{{ __('Nothing planned for today – enjoy it.') }}</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                    @elseif ($card->kind === 'scenes')
+                        <div class="flex h-full flex-wrap content-center gap-2 rounded-2xl bg-white p-3 shadow-xs dark:bg-gray-800">
+                            @forelse ($scenes as $scene)
+                                <button type="button" wire:click="pressEntity({{ $scene->id }})" @disabled(! $mayControl || $editing) class="rounded-full bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-800 active:scale-95 disabled:opacity-60 dark:bg-indigo-900/40 dark:text-indigo-200">{{ $scene->icon() }} {{ $scene->name }}</button>
+                            @empty
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Pick scenes or scripts under “Connections & devices”.') }}</p>
+                            @endforelse
                         </div>
                     @else
                         <x-smart-home.entity class="flex-1" :entity="$card->entity" :display="$card->display" :title="$card->title" :options="$card->options ?? []" :history="$histories[$card->id] ?? []" :may-control="$mayControl" @class(['pointer-events-none select-none' => $editing]) />
@@ -403,6 +493,10 @@ new class extends Component
                                 <button type="button" wire:click="removeCard({{ $card->id }})" class="rounded px-1.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30" aria-label="{{ __('Remove') }}">✕</button>
                             </div>
                             <div class="flex items-center gap-1">
+                                @if ($card->kind !== 'heading')
+                                    <input type="text" list="dashboard-entities" value="{{ $card->options['when_entity'] ?? '' }}" placeholder="{{ __('only when …') }}" aria-label="{{ __('Show only when this device …') }}" title="{{ __('Show only when this device has the state on the right') }}" wire:change="updateCard({{ $card->id }}, 'when_entity', $event.target.value)" class="{{ $small }} w-28">
+                                    <input type="text" value="{{ $card->options['when_state'] ?? '' }}" placeholder="on" aria-label="{{ __('State') }}" wire:change="updateCard({{ $card->id }}, 'when_state', $event.target.value)" class="{{ $small }} w-14">
+                                @endif
                                 <input type="text" value="{{ $card->title }}" placeholder="{{ $card->kind === 'entity' ? $card->entity->name : __('Title') }}" aria-label="{{ __('Title') }}" wire:change="updateCard({{ $card->id }}, 'title', $event.target.value)" class="{{ $small }} min-w-0 flex-1">
                                 @if ($card->display === 'gauge')
                                     <input type="number" step="any" value="{{ $card->options['min'] ?? '' }}" placeholder="{{ __('Min') }}" aria-label="{{ __('Min') }}" wire:change="updateCard({{ $card->id }}, 'min', $event.target.value)" class="{{ $small }} w-20">

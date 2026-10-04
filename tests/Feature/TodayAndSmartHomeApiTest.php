@@ -10,6 +10,7 @@ use App\Models\SmartHomeConnection;
 use App\Models\SmartHomeEntity;
 use App\Models\User;
 use App\Support\Addons;
+use App\Support\Automation\AutomationEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
@@ -74,5 +75,22 @@ class TodayAndSmartHomeApiTest extends TestCase
 
         [$stranger] = $this->memberWithHousehold();
         $this->postJson("/api/v1/smart-home/devices/{$light->id}/press", [], $this->headersFor($stranger))->assertNotFound();
+    }
+
+    public function test_the_app_reports_presence_for_automations_without_home_assistant(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $partner = $this->addMemberTo($household);
+        $headers = $this->headersFor($user);
+        $this->assertNull(AutomationEngine::presence($household->id, 'all_away'));
+
+        $this->postJson('/api/v1/presence', ['state' => 'away'], $headers)->assertOk();
+        $this->postJson('/api/v1/presence', ['state' => 'away'], $this->headersFor($partner))->assertOk();
+        $this->assertTrue(AutomationEngine::presence($household->id, 'all_away'));
+
+        $this->postJson('/api/v1/presence', ['state' => 'home'], $headers)->assertOk();
+        $this->assertTrue(AutomationEngine::presence($household->id, 'anyone_home'));
+        $this->assertFalse(AutomationEngine::presence($household->id, 'all_home'));
+        $this->postJson('/api/v1/presence', ['state' => 'maybe'], $headers)->assertStatus(422);
     }
 }

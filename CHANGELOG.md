@@ -3,6 +3,18 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.35.0] – 2026-10-05
+
+### Neu
+- Automationen per KI-Entwurf: einfach beschreiben („Wenn der Letzte geht, frag, ob alle Lichter ausgehen sollen“) – die KI füllt den Editor aus, du prüfst, testest und speicherst. Lässt sich unter Admin › KI abschalten.
+- Neue Auslöser: Wetter heute (Regen, Höchst-/Tiefsttemperatur), Müllabfuhr morgen, Mail an die Haushaltsadresse (z. B. Paketankündigung), Fristen aus Sammlungen (z. B. Kündigungsfrist), Geburtstage, Mindesthaltbarkeit im Vorrat, Kontostand und „Gerät bleibt in einem Zustand“ (z. B. Tür 10 Minuten offen).
+- Neue Aktionen: Einkaufsliste, Kalendereintrag, E-Mail an dich oder den Haushalt, Sprachausgabe auf einem Lautsprecher (TTS), Szenen-Schnappschuss (Lichter merken und wiederherstellen) und Webhook.
+- ODER-Bedingungen: „Eines davon“ fasst mehrere Bedingungen zusammen.
+- Platzhalter in Texten: {reason}, {automation}, {time}, {date}, {weekday}, {weather} und {state:sensor.…}.
+- Probelauf im Editor: zeigt, was jetzt passieren würde – ohne etwas zu schalten oder zu senden.
+- Verlauf aller Ausführungen mit Grund und geprüften Bedingungen.
+- Pakete mit einem Klick: Urlaub, Morgen, Gute Nacht, Gäste, Energie sparen und Sicherheit; Automationen, die noch ein Gerät brauchen, starten pausiert.
+
 ## [1.34.0] – 2026-10-05
 
 ### Neu

@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property-read SmartHomeConnection $connection
  * @property array<string, mixed>|null $ha_attributes
+ * @property Carbon|null $state_changed_at
  *
  * A Home Assistant entity the household picked for the Smart Home page and automations, with its
  * last known state (from polling or the webhook).

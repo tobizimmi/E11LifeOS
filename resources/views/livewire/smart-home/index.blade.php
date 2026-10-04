@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\HouseholdMember;
 use App\Models\SmartHomeConnection;
+use App\Models\SmartHomeDashboard;
 use App\Models\Meter;
 use App\Models\SmartHomeDay;
 use App\Models\SmartHomeEntity;
@@ -28,6 +29,17 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Url(except: 'overview')]
     public string $tab = 'overview';
+
+    #[Url]
+    public ?int $board = null;
+
+    /** A just created dashboard opens in editing mode. */
+    public bool $newBoard = false;
+
+    /**
+     * @var array<string, string>
+     */
+    protected $listeners = ['smart-home-dashboards-changed' => '$refresh', 'smart-home-dashboard-deleted' => 'dashboardDeleted'];
 
     public bool $showForm = false;
 
@@ -212,14 +224,8 @@ new #[Layout('layouts.app')] class extends Component
     {
         $entity = SmartHomeEntity::where('household_id', $this->householdId)->with('connection')->find($id) ?? abort(404);
 
-        try {
-            EntityControl::press(Auth::user(), $entity, $confirmed);
-        } catch (Throwable $exception) {
-            if ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
-                throw $exception;
-            }
-
-            $this->dispatch('toast', message: $exception->getMessage());
+        if ($error = EntityControl::attempt(fn () => EntityControl::press(Auth::user(), $entity, $confirmed))) {
+            $this->dispatch('toast', message: $error);
         }
     }
 
@@ -230,15 +236,33 @@ new #[Layout('layouts.app')] class extends Component
     {
         $entity = SmartHomeEntity::where('household_id', $this->householdId)->with('connection')->find($id) ?? abort(404);
 
-        try {
-            EntityControl::setValue(Auth::user(), $entity, $value);
-        } catch (Throwable $exception) {
-            if ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
-                throw $exception;
-            }
-
-            $this->dispatch('toast', message: $exception->getMessage());
+        if ($error = EntityControl::attempt(fn () => EntityControl::setValue(Auth::user(), $entity, $value))) {
+            $this->dispatch('toast', message: $error);
         }
+    }
+
+    public function openBoard(int $id): void
+    {
+        SmartHomeDashboard::query()->visibleTo(Auth::user(), $this->householdId)->find($id) ?? abort(404);
+        [$this->tab, $this->board, $this->newBoard] = ['board', $id, false];
+    }
+
+    public function addDashboard(): void
+    {
+        $dashboard = SmartHomeDashboard::create([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+            'name' => __('New dashboard'),
+            'icon' => '🧩',
+            'position' => (int) SmartHomeDashboard::where('household_id', $this->householdId)->max('position') + 1,
+        ]);
+
+        [$this->tab, $this->board, $this->newBoard] = ['board', $dashboard->id, true];
+    }
+
+    public function dashboardDeleted(): void
+    {
+        [$this->tab, $this->board, $this->newBoard] = ['overview', null, false];
     }
 
     public function reloadStates(): void
@@ -302,6 +326,7 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'connections' => $connections,
+            'dashboards' => SmartHomeDashboard::query()->visibleTo(Auth::user(), $this->householdId)->orderBy('position')->orderBy('id')->get(['id', 'name', 'icon']),
             'isOwner' => $this->isOwner(),
             'mayControl' => EntityControl::mayControl(Auth::user(), $this->householdId),
             'entities' => $entities,
@@ -339,8 +364,16 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-wrap gap-2" role="tablist">
-                @foreach (array_filter(['overview' => '🏠 '.__('Overview'), 'energy' => $connections->contains('type', 'evcc') ? '⚡ '.__('Energy flow') : null, 'settings' => '🔧 '.__('Connections & devices')]) as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700' => $tab !== $key])>{{ $label }}</button>
+                @php($pill = 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700')
+                <button type="button" role="tab" aria-selected="{{ $tab === 'overview' ? 'true' : 'false' }}" wire:click="$set('tab', 'overview')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === 'overview', $pill => $tab !== 'overview'])>🏠 {{ __('Overview') }}</button>
+                @foreach ($dashboards as $item)
+                    <button type="button" role="tab" wire:key="board-tab-{{ $item->id }}" aria-selected="{{ $tab === 'board' && $board === $item->id ? 'true' : 'false' }}" wire:click="openBoard({{ $item->id }})" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === 'board' && $board === $item->id, $pill => ! ($tab === 'board' && $board === $item->id)])>{{ $item->icon }} {{ $item->name }}</button>
+                @endforeach
+                @if ($entities->isNotEmpty())
+                    <button type="button" wire:click="addDashboard" class="rounded-full px-3 py-1.5 text-sm text-indigo-600 border border-dashed border-indigo-300 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-700 dark:hover:bg-indigo-950/40" title="{{ __('New dashboard') }}">+ {{ __('Add dashboard') }}</button>
+                @endif
+                @foreach (array_filter(['energy' => $connections->contains('type', 'evcc') ? '⚡ '.__('Energy flow') : null, 'settings' => '🔧 '.__('Connections & devices')]) as $key => $label)
+                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, $pill => $tab !== $key])>{{ $label }}</button>
                 @endforeach
             </div>
 
@@ -348,7 +381,9 @@ new #[Layout('layouts.app')] class extends Component
                 <p class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">⚠️ {{ $error }}</p>
             @endif
 
-            @if ($tab === 'overview')
+            @if ($tab === 'board' && $board && $dashboards->contains('id', $board))
+                <livewire:smart-home.dashboard :dashboard-id="$board" :editing="$newBoard" wire:key="board-{{ $board }}" />
+            @elseif ($tab === 'overview' || $tab === 'board')
                 @if ($connections->isEmpty())
                     <div class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                         <p class="text-3xl">🔌</p>
@@ -405,26 +440,7 @@ new #[Layout('layouts.app')] class extends Component
                             <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $area }}</h3>
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                                 @foreach ($items as $entity)
-                                    @php($critical = \App\Support\SmartHome\EntityControl::isCritical($entity))
-                                    @php($tappable = $mayControl && ($entity->isSwitchable() || $entity->isRunnable() || $critical))
-                                    @php($slider = $mayControl ? match ($entity->domain()) { 'light' => ['min' => 1, 'max' => 100, 'step' => 1, 'value' => round(((int) ($entity->ha_attributes['brightness'] ?? 0)) / 2.55), 'unit' => ' %'], 'climate' => ['min' => 5, 'max' => 30, 'step' => 0.5, 'value' => (float) ($entity->ha_attributes['temperature'] ?? 20), 'unit' => ' °C'], 'cover' => isset($entity->ha_attributes['current_position']) ? ['min' => 0, 'max' => 100, 'step' => 5, 'value' => (int) $entity->ha_attributes['current_position'], 'unit' => ' %'] : null, default => null } : null)
-                                    <div wire:key="entity-{{ $entity->id }}" @class(['flex min-h-20 flex-col justify-between rounded-2xl p-3 shadow-xs transition', 'bg-amber-100 dark:bg-amber-900/40' => $entity->isOn() && ! $entity->isRunnable(), 'bg-white dark:bg-gray-800' => ! $entity->isOn() || $entity->isRunnable()])>
-                                        <button type="button" @if ($tappable) wire:click="pressEntity({{ $entity->id }}, {{ $critical ? 'true' : 'false' }})" @if ($critical) wire:confirm="{{ __('Really switch :name?', ['name' => $entity->name]) }}" @endif @else disabled @endif
-                                            @class(['flex flex-col items-start text-start', 'active:scale-[0.97]' => $tappable, 'cursor-default' => ! $tappable])>
-                                            <span class="text-xl">{{ $entity->icon() }}</span>
-                                            <span class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $entity->name }}</span>
-                                            <span class="text-xs text-gray-600 dark:text-gray-400">
-                                                {{ $entity->isRunnable() ? __('Start') : $entity->displayState() }}
-                                                @if ($entity->domain() === 'climate' && isset($entity->ha_attributes['current_temperature'])) · {{ number_format((float) $entity->ha_attributes['current_temperature'], 1, ',', '.') }} °C @endif
-                                            </span>
-                                        </button>
-                                        @if ($slider)
-                                            <label class="mt-2 block text-xs text-gray-600 dark:text-gray-400" x-data="{ value: {{ $slider['value'] }} }">
-                                                <span x-text="value + '{{ $slider['unit'] }}'"></span>
-                                                <input type="range" min="{{ $slider['min'] }}" max="{{ $slider['max'] }}" step="{{ $slider['step'] }}" x-model="value" x-on:change="$wire.setEntityValue({{ $entity->id }}, Number(value))" class="w-full accent-indigo-600" aria-label="{{ $entity->name }}">
-                                            </label>
-                                        @endif
-                                    </div>
+                                    <x-smart-home.entity :entity="$entity" :may-control="$mayControl" wire:key="entity-{{ $entity->id }}" />
                                 @endforeach
                             </div>
                         </section>

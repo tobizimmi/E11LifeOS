@@ -17,6 +17,24 @@ class HomeAssistantClient
     }
 
     /**
+     * The current picture of a camera (JPEG) through the Home Assistant camera proxy.
+     */
+    public function cameraImage(string $entityId): string
+    {
+        abort_unless((bool) preg_match('/^camera\.[a-z0-9_]+$/', $entityId), 404);
+
+        return $this->send(fn (PendingRequest $request, string $base) => $request->accept('image/*')->get($base.'/api/camera_proxy/'.$entityId))->body();
+    }
+
+    /**
+     * A light request to see whether Home Assistant answers (GET /api/).
+     */
+    public function ping(): void
+    {
+        $this->send(fn (PendingRequest $request, string $base) => $request->get($base.'/api/'));
+    }
+
+    /**
      * All entities with their state, sorted by name.
      *
      * @return list<array{entity_id: string, state: string, name: string, unit: ?string, attributes: array<string, mixed>}>

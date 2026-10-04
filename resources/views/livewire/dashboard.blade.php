@@ -110,7 +110,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function widgetAvailable(string $key): bool
     {
-        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE, 'energy' => Addons::SMART_HOME, 'smart_home' => Addons::SMART_HOME];
+        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE, 'energy' => Addons::SMART_HOME, 'smart_home' => Addons::SMART_HOME, 'smart_home_board' => Addons::SMART_HOME];
 
         return ! isset($modules[$key]) || $this->currentUser()->canUseAddon($modules[$key]);
     }
@@ -228,6 +228,7 @@ new #[Layout('layouts.app')] class extends Component
             'todayHabits' => in_array('habits', $widgets, true) ? $this->todayHabits() : [],
             'energyToday' => $shows('energy') && $this->householdId ? \App\Support\SmartHome\EnergyRecorder::energy($this->householdId, today()) : null,
             'energyNow' => $shows('energy') && $this->householdId ? \App\Support\SmartHome\EnergyRecorder::latest($this->householdId) : [],
+            'homeBoard' => $shows('smart_home_board') ? \App\Models\SmartHomeDashboard::query()->visibleTo($this->currentUser(), $this->householdId)->find($this->currentUser()->nav_preferences['board'] ?? 0) : null,
             'favoriteDevices' => $shows('smart_home') && $this->householdId ? \App\Models\SmartHomeEntity::where('household_id', $this->householdId)->where('favorite', true)->orderBy('position')->get() : collect(),
             'todayMood' => in_array('habits', $widgets, true) ? \App\Models\JournalEntry::where('user_id', $this->currentUser()->id)->whereDate('date', today()->toDateString())->value('mood') : null,
         ];
@@ -420,7 +421,7 @@ new #[Layout('layouts.app')] class extends Component
 
                 <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
                     @foreach ($widgets as $widget)
-                        <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" class="group/widget relative">
+                        <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" @class(['group/widget relative', 'md:col-span-2 xl:col-span-3' => $widget === 'smart_home_board'])>
                             <button type="button" class="widget-handle absolute right-2 top-2 z-10 cursor-grab opacity-70 sm:opacity-0 focus:opacity-100 rounded-md bg-white/80 px-1.5 py-0.5 text-xs text-gray-400 shadow-xs ring-1 ring-gray-200 sm:group-hover/widget:opacity-100 hover:text-gray-700 dark:bg-gray-900/80 dark:ring-gray-700" title="{{ __('Drag to move the card') }}" aria-label="{{ __('Drag to move the card') }}">⋮⋮</button>
                         @if (! $widgetsLoaded && in_array($widget, $this::LAZY_WIDGETS, true))
                             <section class="animate-pulse rounded-lg bg-white p-6 shadow-xs dark:bg-gray-800" aria-busy="true" aria-label="{{ $allWidgets[$widget]['label'] ?? __('Loading …') }}">
@@ -497,6 +498,16 @@ new #[Layout('layouts.app')] class extends Component
                                     </button>
                                 @endforeach
                             </div>
+                        @endif
+                    </section>
+                                @break
+                            @case('smart_home_board')
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4">
+                        @if ($homeBoard)
+                            <livewire:smart-home.dashboard :dashboard-id="$homeBoard->id" wire:key="home-board-{{ $homeBoard->id }}" />
+                        @else
+                            <x-dashboard-card-header :title="__('Smart home dashboard')" :href="route('smart-home.index')" />
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Open a dashboard under Smart home and choose “☆ Show on overview”.') }}</p>
                         @endif
                     </section>
                                 @break

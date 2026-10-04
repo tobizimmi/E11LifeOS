@@ -26,12 +26,12 @@ class RunAutomations extends Command
 
     /**
      * Polls Home Assistant for the picked entities and those used by automations – unless the
-     * webhook delivered values within the last five minutes.
+     * webhook or the live connection (smart-home:listen) delivered values within the last five minutes.
      */
     private function refreshStates(): void
     {
         SmartHomeConnection::where('type', SmartHomeConnection::HOME_ASSISTANT)->get()->each(function (SmartHomeConnection $connection) {
-            if ($connection->last_route === 'webhook' && $connection->last_contact_at?->gt(now()->subMinutes(5))) {
+            if (in_array($connection->last_route, ['webhook', 'websocket'], true) && $connection->last_contact_at?->gt(now()->subMinutes(5))) {
                 return;
             }
 

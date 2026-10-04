@@ -23,12 +23,14 @@ use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicCollectionController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
+use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RealEstateReceiptController;
 use App\Http\Controllers\RecipeCookbookController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
+use App\Http\Controllers\SmartHomeCameraController;
 use App\Http\Controllers\TripCoverController;
 use App\Http\Controllers\TripExportController;
 use App\Http\Controllers\TripPlaceImageController;
@@ -76,6 +78,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('vehicles', 'vehicles.index')->name('vehicles.index');
     Volt::route('house', 'house.index')->name('house.index');
     Volt::route('smart-home', 'smart-home.index')->name('smart-home.index')->middleware('addon:smart_home');
+    Volt::route('smart-home/wall/{dashboard}', 'smart-home.wall')->whereNumber('dashboard')->name('smart-home.wall')->middleware('addon:smart_home');
+    Route::get('smart-home/camera/{entity}', SmartHomeCameraController::class)->whereNumber('entity')->name('smart-home.camera')->middleware(['addon:smart_home', 'throttle:120,1']);
     Volt::route('automations', 'automations.index')->name('automations.index');
     Volt::route('review', 'review.index')->name('review.index');
     Volt::route('provision', 'provision.index')->name('provision.index');
@@ -255,6 +259,9 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('d/{token}/accept', [PublicDocumentController::class, 'accept'])->where('token', '[A-Za-z0-9]+')->name('documents.public.accept');
 });
 
+// Buttons in push notifications: the secret link is the authorisation (works once, for a few hours).
+Route::get('push-actions/{token}', [PushActionController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.show');
+Route::post('push-actions/{token}', [PushActionController::class, 'answer'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.answer');
 Volt::route('admin/settings', 'admin.settings')->middleware(['auth', 'can:admin'])->name('admin.settings');
 
 // Instagram videos analysed on another machine (header X-Push-Key, no session).

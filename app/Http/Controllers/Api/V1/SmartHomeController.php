@@ -62,6 +62,18 @@ class SmartHomeController extends ApiController
     }
 
     /**
+     * The app's geofence reports "home" or "away"; automations with "coming and going" or
+     * "who is at home" take it into account (also without Home Assistant).
+     */
+    public function presence(Request $request): JsonResponse
+    {
+        $data = $request->validate(['state' => ['required', 'in:home,away']]);
+        $this->user()->forceFill(['presence' => $data['state'], 'presence_at' => now()])->save();
+
+        return $this->ok(['state' => $data['state']]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function device(SmartHomeEntity $entity): array

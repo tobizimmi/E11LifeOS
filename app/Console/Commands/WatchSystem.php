@@ -4,17 +4,21 @@ namespace App\Console\Commands;
 
 use App\Support\Operations\AdminAlert;
 use App\Support\Operations\SystemHealth;
+use App\Support\SmartHome\ConnectionWatch;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
 #[Signature('system:watch')]
-#[Description('Checks scheduler, jobs, disk space and backups and alerts the admins when something turns red or is fine again')]
+#[Description('Checks scheduler, jobs, disk space, backups and the smart home connections and alerts when something turns red or is fine again')]
 class WatchSystem extends Command
 {
-    public function handle(): int
+    public function handle(ConnectionWatch $smartHome): int
     {
+        // Home Assistant and evcc of the households: the owner hears about outages.
+        $smartHome->check();
+
         $checks = SystemHealth::checks();
         $before = Cache::get(SystemHealth::STATE_KEY, []);
 

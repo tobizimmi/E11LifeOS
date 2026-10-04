@@ -1507,18 +1507,6 @@ parameters:
 			path: app/Support/ContractOverview.php
 
 		-
-			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Support/DashboardWidgets.php
-
-		-
-			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''energy''\|''freedom''\|''habits''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''smart_home''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Support/DashboardWidgets.php
-
-		-
 			message: '#^Method App\\Support\\DashboardWidgets\:\:deadlines\(\) should return array\<int, array\{entry\: App\\Models\\Item, collection\: App\\Models\\Collection, property\: App\\Models\\CollectionProperty, date\: string, days\: int\}\> but returns list\<array\{entry\: App\\Models\\Item, collection\: App\\Models\\Collection, property\: Illuminate\\Database\\Eloquent\\Model, date\: non\-empty\-string, days\: int\}\>\.$#'
 			identifier: return.type
 			count: 1

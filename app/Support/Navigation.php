@@ -116,10 +116,11 @@ class Navigation
         $known = array_keys(self::modules($user));
         $preferences = array_merge(self::preferences($user), $changes);
 
-        $user->forceFill(['nav_preferences' => [
+        // Other keys (e.g. the dashboard shown on the overview) stay as they are.
+        $user->forceFill(['nav_preferences' => array_merge($user->nav_preferences ?? [], [
             'pinned' => array_values(array_unique(array_intersect($preferences['pinned'], $known))),
             'hidden' => array_values(array_unique(array_diff(array_intersect($preferences['hidden'], $known), self::FIXED))),
-        ]])->save();
+        ])])->save();
     }
 
     public static function togglePinned(User $user, string $key): void

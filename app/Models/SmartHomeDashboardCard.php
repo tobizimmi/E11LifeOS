@@ -10,13 +10,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One card of a Smart Home dashboard: a device (shown as tile, button, value, gauge, slider,
  * history or row), a heading or the energy flow of evcc – in one of four sizes.
  *
- * @property array{min?: float, max?: float, hours?: int}|null $options
+ * @property array{min?: float, max?: float, hours?: int, when_entity?: string, when_state?: string}|null $options
  * @property-read SmartHomeEntity|null $entity
  */
 #[Fillable(['smart_home_dashboard_id', 'smart_home_entity_id', 'kind', 'display', 'size', 'title', 'options', 'position'])]
 class SmartHomeDashboardCard extends Model
 {
-    public const KINDS = ['entity', 'heading', 'energy'];
+    public const KINDS = ['entity', 'heading', 'energy', 'weather', 'agenda', 'scenes'];
 
     public const SIZES = ['small', 'medium', 'large', 'full'];
 
@@ -52,6 +52,7 @@ class SmartHomeDashboardCard extends Model
             'slider' => __('Slider'),
             'history' => __('History chart'),
             'row' => __('Compact row'),
+            'camera' => __('Camera picture'),
         ];
     }
 
@@ -78,6 +79,10 @@ class SmartHomeDashboardCard extends Model
      */
     public static function displaysFor(SmartHomeEntity $entity): array
     {
+        if ($entity->domain() === 'camera') {
+            return ['camera', 'tile'];
+        }
+
         $numeric = is_numeric($entity->state);
         $pressable = $entity->isSwitchable() || $entity->isRunnable() || in_array($entity->domain(), ['lock', 'cover', 'valve', 'alarm_control_panel'], true);
 
@@ -98,9 +103,23 @@ class SmartHomeDashboardCard extends Model
     public static function defaultDisplay(SmartHomeEntity $entity): string
     {
         return match (true) {
+            $entity->domain() === 'camera' => 'camera',
             in_array($entity->domain(), ['sensor', 'input_number', 'number'], true) && is_numeric($entity->state) => 'value',
             default => 'tile',
         };
+    }
+
+    /**
+     * Cards with a condition ("only when the car is plugged in") show only while the device has
+     * that state; without a condition always.
+     *
+     * @param  callable(string): ?string  $stateOf
+     */
+    public function isVisible(callable $stateOf): bool
+    {
+        $entityId = (string) ($this->options['when_entity'] ?? '');
+
+        return $entityId === '' || mb_strtolower((string) $stateOf($entityId)) === mb_strtolower((string) ($this->options['when_state'] ?? 'on'));
     }
 
     /**

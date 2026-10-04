@@ -2,6 +2,7 @@
 
 namespace App\Support\Operations;
 
+use App\Support\Vpn;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ class SystemHealth
             'backup' => self::backup(),
             'backup_remote' => self::remoteBackup(),
             'restore_test' => self::restoreTest(),
+            'vpn' => self::vpn(),
         ];
     }
 
@@ -157,6 +159,20 @@ class SystemHealth
             'label' => __('Restore test'),
             'detail' => ($last['ok'] ? '✓ ' : '✗ ').$at->diffForHumans().' · '.($last['summary'] ?? ''),
         ];
+    }
+
+    /**
+     * @return array{ok: bool, label: string, detail: string}
+     */
+    private static function vpn(): array
+    {
+        if (! Vpn::isConfigured()) {
+            return ['ok' => true, 'label' => __('VPN'), 'detail' => __('Not set up')];
+        }
+
+        $running = Vpn::isRunning();
+
+        return ['ok' => $running, 'label' => __('VPN'), 'detail' => $running ? __('Connected') : __('Not connected – the home network is not reachable')];
     }
 
     public static function latestBackup(): ?string

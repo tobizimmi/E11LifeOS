@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.31.0] – 2026-10-04
+
+### Neu
+- Smart Home › eigene Dashboards: beliebig viele Dashboards (gemeinsam oder „Nur für mich“) mit Name und Symbol, als eigene Reiter neben dem Überblick.
+- Karten für Geräte, Überschriften und den Energiefluss; ein ganzer Bereich (z. B. Wohnzimmer) lässt sich mit einem Klick samt Überschrift hinzufügen.
+- Pro Karte wählbar: Anzeigeart (Kachel, große Taste, großer Wert, Ring-Anzeige mit Min/Max, Regler, Verlaufsdiagramm über 6 Std. bis 7 Tage, kompakte Zeile mit Schalter), Größe (klein, breit, groß, ganze Breite) und ein eigener Titel.
+- Karten per Drag & Drop anordnen; angeboten werden nur Anzeigearten, die zum Gerät passen.
+
 ## [1.30.1] – 2026-10-04
 
 ### Behoben

@@ -6,6 +6,9 @@ use App\Models\HouseholdMember;
 use App\Models\SmartHomeEntity;
 use App\Models\User;
 use App\Support\Security\SecurityLog;
+use Closure;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 /**
  * Switching a device from the tool (Smart home page, dashboard): only members allowed to control,
@@ -20,6 +23,23 @@ class EntityControl
      * Whether the member may switch devices (owners always; others unless switched off on the
      * household page).
      */
+    /**
+     * Runs a tap or slider action of a page: Home Assistant errors come back as a message for a
+     * toast, missing rights (403) and unknown devices (404) are thrown on.
+     */
+    public static function attempt(Closure $action): ?string
+    {
+        try {
+            $action();
+
+            return null;
+        } catch (HttpExceptionInterface $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            return $exception->getMessage();
+        }
+    }
+
     public static function mayControl(User $user, int $householdId): bool
     {
         $membership = HouseholdMember::where('household_id', $householdId)->where('user_id', $user->id)->first();

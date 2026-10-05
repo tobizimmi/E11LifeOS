@@ -3,6 +3,18 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.36.0] – 2026-10-05
+
+### Neu
+- Administration als eigener Bereich mit Reitern: System (Systemzustand, Status, Fehler, Hintergrundaufgaben), Haushalte, Servereinstellungen und Admin-Protokoll.
+- Haushalte verwalten: neue Haushalte anlegen (mit bestehendem Konto als Inhaber/in oder per Einladungslink), umbenennen, Mitglieder hinzufügen, Rollen ändern und entfernen, Registrierungslinks erstellen.
+- Datenschutzkonform: Admins sehen nur Namen, Mitglieder und Mengen – nie Inhalte. Exporte enthalten nur die gemeinsamen Daten (keine privaten Einträge, keine Zugangsdaten), sind mit AES-256 und eigenem Passwort verschlüsselt, und die Inhaber/innen bekommen einen Hinweis.
+- Haushalt löschen: mit Namensbestätigung und erneuter Passworteingabe, inklusive aller Dateien; auf Wunsch auch die Konten von Mitgliedern, die danach zu keinem Haushalt mehr gehören.
+- Admin-Protokoll: jede Aktion von Administrator:innen mit Zeit, Gerät und IP-Adresse.
+
+### Verbessert
+- Wer sich als Erste/r mit einem Einladungslink eines von der Administration angelegten Haushalts registriert, wird Inhaber/in.
+
 ## [1.35.2] – 2026-10-05
 
 ### Behoben

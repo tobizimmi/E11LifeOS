@@ -1828,24 +1828,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Support/Life/HouseholdLoad.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\HouseholdMember\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Support/Life/HouseholdLoad.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\HouseholdMember\>\:\:filter\(\) expects \(callable\(App\\Models\\HouseholdMember, int\)\: bool\)\|null, Closure\(App\\Models\\HouseholdMember\)\: \(Illuminate\\Database\\Eloquent\\Model\|null\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Life/HouseholdLoad.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Support/Life/LifeDates.php
 
 		-

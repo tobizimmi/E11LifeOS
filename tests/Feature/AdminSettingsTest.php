@@ -185,7 +185,7 @@ class AdminSettingsTest extends TestCase
             'failed_at' => now(),
         ]);
 
-        Volt::test('admin.settings')
+        Volt::test('admin.system')
             ->assertSee('1 Hintergrundaufgabe fehlgeschlagen')
             ->assertSee('BroadcastEvent')
             ->assertSee('cURL error 7: Failed to connect.')

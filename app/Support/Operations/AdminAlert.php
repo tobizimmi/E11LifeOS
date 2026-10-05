@@ -22,7 +22,7 @@ class AdminAlert
 
         try {
             foreach (User::where('is_admin', true)->get() as $admin) {
-                app(WebPush::class)->send($admin, $title, $body, route('admin.settings'), urgent: true);
+                app(WebPush::class)->send($admin, $title, $body, route('admin.system'), urgent: true);
             }
 
             if ($mail && filled($to = config('security.error_report_email'))) {

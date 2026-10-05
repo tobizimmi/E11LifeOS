@@ -102,12 +102,12 @@ class OperationsWatchTest extends TestCase
         $this->actingAs($admin);
 
         foreach (range(1, 3) as $request) {
-            $this->get(route('admin.settings'))->assertOk();
+            $this->get(route('admin.system'))->assertOk();
         }
 
-        $this->assertSame(3, Cache::get(RecordSlowRequests::ROUTES_KEY)['admin.settings']['count']);
-        $this->assertSame('admin.settings', RecordSlowRequests::slowestRoutes()[0]['route']);
+        $this->assertSame(3, Cache::get(RecordSlowRequests::ROUTES_KEY)['admin.system']['count']);
+        $this->assertSame('admin.system', RecordSlowRequests::slowestRoutes()[0]['route']);
 
-        Volt::test('admin.settings')->assertSee(__('System health'))->assertSee(__('Daily backup'))->assertSee('admin.settings');
+        Volt::test('admin.system')->assertSee(__('System health'))->assertSee(__('Daily backup'))->assertSee('admin.system');
     }
 }

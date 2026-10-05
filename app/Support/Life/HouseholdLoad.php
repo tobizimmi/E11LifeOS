@@ -28,7 +28,7 @@ class HouseholdLoad
     public static function for(Household $household, int $days = 30): array
     {
         $since = now()->subDays($days);
-        $members = HouseholdMember::where('household_id', $household->id)->with('user:id,name')->get()->filter(fn (HouseholdMember $member) => $member->user);
+        $members = HouseholdMember::where('household_id', $household->id)->with('user:id,name')->get()->filter(fn (HouseholdMember $member) => $member->user !== null);
         $itemIds = Item::where('household_id', $household->id)->select('id');
 
         $completed = ItemActivity::whereIn('item_id', $itemIds)->where('action', 'completed')->where('created_at', '>=', $since)

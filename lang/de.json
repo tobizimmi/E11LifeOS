@@ -6495,5 +6495,21 @@
     "live": "live",
     "Lists are inserted as a checklist you can tick off. Shopping lists can also be shown live.": "Listen werden als abhakbare Checkliste eingefügt. Einkaufslisten lassen sich auch live anzeigen.",
     "Insert list as subtasks": "Liste als Unteraufgaben einfügen",
-    "Insert list as subtasks …": "Liste als Unteraufgaben einfügen …"
+    "Insert list as subtasks …": "Liste als Unteraufgaben einfügen …",
+    "Roadmap item": "Punkt",
+    "Roadmap :app": "Roadmap :app",
+    "As of :date · current version :version": "Stand :date · aktuelle Version :version",
+    "Each item has an ID (#number), type, priority, status, area and a description. Bugs also have the page, app version and browser of the report. Please work through the open items of each milestone in order of priority.": "Jeder Punkt hat eine ID (#Nummer), Art, Priorität, Status, Bereich und eine Beschreibung. Bugs enthalten zusätzlich Seite, App-Version und Browser der Meldung. Bitte arbeite die offenen Punkte je Meilenstein nach Priorität ab.",
+    "Backlog (not planned yet)": "Backlog (noch nicht eingeplant)",
+    "No open items.": "Keine offenen Punkte.",
+    "Browser": "Browser",
+    "Context": "Kontext",
+    "Export for Claude": "Export für Claude",
+    "Include solved items": "Gelöste Punkte einschließen",
+    "Markdown with milestones, items, descriptions, technical context and internal notes – without names or e-mail addresses of requesters. Paste it into Claude or save it as a file in the project.": "Markdown mit Meilensteinen, Punkten, Beschreibungen, technischem Kontext und internen Notizen – ohne Namen oder E-Mail-Adressen der Anfragenden. In Claude einfügen oder als Datei im Projekt ablegen.",
+    "Export": "Export",
+    "Download .md": "Als .md herunterladen",
+    "Nothing planned yet – add an item below or choose a milestone for tickets in the backlog.": "Noch nichts eingeplant – unten einen Punkt hinzufügen oder im Backlog einen Meilenstein wählen.",
+    "Unsolved bugs, feature requests and items without a milestone.": "Ungelöste Bugs, Feature-Wünsche und Punkte ohne Meilenstein.",
+    "New item …": "Neuer Punkt …"
 }

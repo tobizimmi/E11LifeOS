@@ -167,4 +167,47 @@ class SupportTicketsTest extends TestCase
         $member->delete();
         $this->assertSame(1, SupportTicket::count());
     }
+
+    public function test_roadmap_items_are_added_per_milestone_and_exported_for_claude(): void
+    {
+        [$member] = $this->memberWithHousehold();
+        $member->update(['name' => 'Berta Beispiel', 'email' => 'berta@example.com']);
+        $admin = $this->admin();
+        $milestone = RoadmapMilestone::factory()->create(['title' => 'Shop & Lizenzen', 'version' => '1.40', 'description' => 'Module einzeln kaufen']);
+        $bug = Tickets::open($member, ['subject' => 'Absturz beim Login', 'body' => 'Nach dem Login kommt ein weißer Bildschirm.', 'type' => 'bug', 'priority' => 'high', 'url' => 'https://lifeos.test/login?token=geheim']);
+        Tickets::reply($bug, $admin, 'Passiert nur mit Passkey', internal: true);
+        Tickets::change($bug, $admin, ['roadmap_milestone_id' => $milestone->id]);
+
+        $this->actingAs($admin);
+        Volt::test('admin.roadmap')
+            ->set('newItem.'.$milestone->id, ['title' => 'Checkout mit Stripe', 'type' => 'feature', 'priority' => 'normal'])->call('addItem', (string) $milestone->id)->assertHasNoErrors()
+            ->set('newItem.backlog', ['title' => 'Dunkelmodus für PDFs', 'type' => 'task', 'priority' => 'low'])->call('addItem', 'backlog')
+            ->set('newItem.backlog', ['title' => '', 'type' => 'task', 'priority' => 'low'])->call('addItem', 'backlog')->assertHasErrors('newItem.backlog.title')
+            ->assertSee('Checkout mit Stripe')->assertSee('Dunkelmodus für PDFs');
+
+        $item = SupportTicket::where('subject', 'Checkout mit Stripe')->sole();
+        $this->assertSame([$milestone->id, 'open', 'feature', 'admin'], [$item->roadmap_milestone_id, $item->status, $item->type, $item->source]);
+
+        $markdown = Volt::test('admin.roadmap')->call('openExport')->get('export');
+        $this->assertStringContainsString('## Meilenstein: Shop & Lizenzen (1.40)', $markdown);
+        $this->assertStringContainsString('### #'.$bug->id.' 🐞 Absturz beim Login', $markdown);
+        $this->assertStringContainsString('> Nach dem Login kommt ein weißer Bildschirm.', $markdown);
+        $this->assertStringContainsString('Passiert nur mit Passkey', $markdown);
+        $this->assertStringContainsString('Seite: /login', $markdown);
+        $this->assertStringContainsString('Dunkelmodus für PDFs', $markdown);
+        $this->assertTrue(strpos($markdown, 'Absturz beim Login') < strpos($markdown, 'Checkout mit Stripe'));
+        // Never personal data or tokens of requesters.
+        $this->assertStringNotContainsString('Berta', $markdown);
+        $this->assertStringNotContainsString('berta@example.com', $markdown);
+        $this->assertStringNotContainsString('geheim', $markdown);
+
+        $single = Volt::test('admin.roadmap')->call('openExport', $milestone->id)->get('export');
+        $this->assertStringNotContainsString('Dunkelmodus für PDFs', $single);
+
+        $this->get(route('admin.roadmap.export', ['milestone' => $milestone->id]))->assertOk()->assertHeader('Content-Type', 'text/markdown; charset=UTF-8')->assertSee('Checkout mit Stripe');
+        $this->actingAs($member)->get(route('admin.roadmap.export'))->assertForbidden();
+
+        // Members can't pick the team's item type.
+        Volt::test('support.index')->set('type', 'task')->set('subject', 'x')->set('body', 'y')->call('submit')->assertHasErrors('type');
+    }
 }

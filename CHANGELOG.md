@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.40.0] – 2026-10-05
+
+### Neu
+- Roadmap: Punkte (Aufgaben, Feature-Wünsche, Bugs) direkt in einem Meilenstein oder im Backlog anlegen – zusätzlich zu den Bugs und Wünschen aus dem Support.
+- Export für Claude: die ganze Roadmap oder ein einzelner Meilenstein als Markdown zum Kopieren oder als .md-Datei – mit Beschreibungen, technischem Kontext (Seite, Version, Browser) und internen Notizen, nach Priorität sortiert. Namen, E-Mail-Adressen und Links mit Tokens der Anfragenden sind nie enthalten.
+
+### Behoben
+- Fehlermeldung „Scheduled command [] failed with exit code [1]“: Der minütliche Scheduler-Herzschlag galt als fehlgeschlagen, wenn der Datenbank-Cache beim Schreiben keine Zeile änderte. Geplante Aufgaben werten Rückgabewerte nicht mehr als Fehler.
+
 ## [1.39.0] – 2026-10-05
 
 ### Neu

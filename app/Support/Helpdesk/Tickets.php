@@ -63,6 +63,20 @@ class Tickets
     }
 
     /**
+     * A roadmap item of the team (no requester to notify), straight into a milestone or the backlog.
+     */
+    public static function addItem(User $admin, string $title, string $type, string $priority = 'normal', ?int $milestoneId = null, string $description = ''): SupportTicket
+    {
+        abort_unless(in_array($type, SupportTicket::ROADMAP_TYPES, true) && in_array($priority, SupportTicket::PRIORITIES, true), 422);
+        abort_if($milestoneId !== null && ! RoadmapMilestone::whereKey($milestoneId)->exists(), 422);
+
+        $ticket = self::open($admin, ['subject' => $title, 'body' => $description !== '' ? $description : $title, 'type' => $type, 'priority' => $priority], [], $admin);
+        $ticket->forceFill(['status' => 'open', 'roadmap_milestone_id' => $milestoneId])->save();
+
+        return $ticket;
+    }
+
+    /**
      * A public reply or an internal note. Agents choose the status the ticket gets ("submit as").
      *
      * @param  list<UploadedFile>  $files

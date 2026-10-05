@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\RoadmapExportController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\BookkeepingReceiptController;
 use App\Http\Controllers\BusinessReportController;
@@ -273,6 +274,7 @@ Volt::route('admin/modules', 'admin.modules')->middleware(['auth', 'can:admin'])
 Volt::route('admin/support', 'admin.support')->middleware(['auth', 'can:admin'])->name('admin.support');
 Volt::route('admin/support/{ticket}', 'admin.support-ticket')->whereNumber('ticket')->middleware(['auth', 'can:admin'])->name('admin.support.ticket');
 Volt::route('admin/roadmap', 'admin.roadmap')->middleware(['auth', 'can:admin'])->name('admin.roadmap');
+Route::get('admin/roadmap/export.md', RoadmapExportController::class)->middleware(['auth', 'can:admin'])->name('admin.roadmap.export');
 Volt::route('admin/log', 'admin.audit')->middleware(['auth', 'can:admin'])->name('admin.audit');
 Volt::route('admin/settings', 'admin.settings')->middleware(['auth', 'can:admin'])->name('admin.settings');
 

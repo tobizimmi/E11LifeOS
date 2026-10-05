@@ -9,6 +9,7 @@ use App\Support\Backup\BackupVerifier;
 use App\Support\ErrorReporter;
 use App\Support\Operations\SystemHealth;
 use App\Support\WebPush;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -109,5 +110,16 @@ class OperationsWatchTest extends TestCase
         $this->assertSame('admin.system', RecordSlowRequests::slowestRoutes()[0]['route']);
 
         Volt::test('admin.system')->assertSee(__('System health'))->assertSee(__('Daily backup'))->assertSee('admin.system');
+    }
+
+    public function test_scheduled_callbacks_never_count_as_failed_because_of_a_return_value(): void
+    {
+        // A database cache write that changes no row returns false – the task must still succeed.
+        Cache::shouldReceive('forever')->once()->andReturn(false);
+        $heartbeat = collect(app(Schedule::class)->events())->first(fn ($event) => $event->description === 'scheduler-heartbeat');
+
+        $heartbeat->run(app());
+
+        $this->assertSame(0, $heartbeat->exitCode);
     }
 }

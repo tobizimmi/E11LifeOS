@@ -17,8 +17,13 @@ class AppSettings
      * @var array<string, array{group: string, config: list<string>, secret: bool, type: string}>
      */
     public const FIELDS = [
+        'ai_provider' => ['group' => 'ai', 'config' => ['services.anthropic.provider'], 'secret' => false, 'type' => 'select'],
         'anthropic_api_key' => ['group' => 'ai', 'config' => ['services.anthropic.key'], 'secret' => true, 'type' => 'text'],
         'anthropic_model' => ['group' => 'ai', 'config' => ['services.anthropic.model'], 'secret' => false, 'type' => 'text'],
+        'bedrock_region' => ['group' => 'ai', 'config' => ['services.anthropic.bedrock.region'], 'secret' => false, 'type' => 'text'],
+        'bedrock_model' => ['group' => 'ai', 'config' => ['services.anthropic.bedrock.model'], 'secret' => false, 'type' => 'text'],
+        'bedrock_access_key' => ['group' => 'ai', 'config' => ['services.anthropic.bedrock.access_key'], 'secret' => true, 'type' => 'text'],
+        'bedrock_secret_key' => ['group' => 'ai', 'config' => ['services.anthropic.bedrock.secret_key'], 'secret' => true, 'type' => 'text'],
         'ai_disabled_features' => ['group' => 'ai', 'config' => ['services.anthropic.disabled_features'], 'secret' => false, 'type' => 'features'],
 
         'mail_host' => ['group' => 'mail', 'config' => ['mail.mailers.smtp.host'], 'secret' => false, 'type' => 'text'],

@@ -49,6 +49,9 @@ class Household extends Model
         return $this->hasMany(Recipe::class);
     }
 
+    /**
+     * @return HasMany<HouseholdMember, $this>
+     */
     public function members(): HasMany
     {
         return $this->hasMany(HouseholdMember::class);

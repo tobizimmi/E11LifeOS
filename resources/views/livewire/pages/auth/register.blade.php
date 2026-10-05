@@ -78,7 +78,8 @@ new #[Layout('layouts.guest')] class extends Component
                 $role = 'owner';
             } else {
                 $household = $invite->household;
-                $role = 'member';
+                // The first person of a household an administrator created becomes its owner.
+                $role = $household->members()->where('role', 'owner')->exists() ? 'member' : 'owner';
             }
 
             HouseholdMember::create([

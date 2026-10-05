@@ -75,6 +75,7 @@ class RegistrationTest extends TestCase
     public function test_a_household_scoped_invite_joins_the_user_to_that_household(): void
     {
         $household = Household::create(['name' => 'Bestehender Haushalt']);
+        $household->members()->create(['user_id' => User::factory()->create()->id, 'role' => 'owner', 'joined_at' => now()]);
         $invite = HouseholdInvite::create([
             'household_id' => $household->id,
             'code' => HouseholdInvite::generateCode(),

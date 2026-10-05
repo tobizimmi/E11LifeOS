@@ -22,6 +22,7 @@ class ProfitabilityAnalysis
             'equity' => 60000, 'interest_rate' => 3.8, 'repayment_rate' => 2.0, 'fixed_years' => 10,
             'rent' => 1000, 'local_rent_per_sqm' => 14, 'vacancy_rate' => 2, 'non_allocable_costs' => 90,
             'maintenance_per_sqm' => 12, 'management' => 25, 'tax_rate' => 42, 'rent_increase' => 1.5, 'value_increase' => 1.5, 'years' => 15,
+            'subsidy' => 0, 'kfw_loan' => 0, 'kfw_rate' => 0, 'sale_costs_rate' => 2.0, 'alternative_rate' => 5.0,
         ];
     }
 
@@ -71,10 +72,19 @@ class ProfitabilityAnalysis
         $closing = $transferTax + $notary + $broker;
         $renovation = $n('renovation');
         $total = $price + $closing + $renovation;
-        $equity = min(max(0.0, $n('equity')), $total);
-        $loan = max(0.0, $total - $equity);
-        $interest = $n('interest_rate') / 100;
-        $annuity = $loan * ($interest + $n('repayment_rate') / 100);
+        // A one-time subsidy (grant) lowers the sum that has to be paid from equity and loan.
+        $subsidy = min(max(0.0, $n('subsidy')), $total);
+        $financed = $total - $subsidy;
+        $equity = min(max(0.0, $n('equity')), $financed);
+        $loan = max(0.0, $financed - $equity);
+        // A subsidised (e.g. KfW) tranche carries a lower rate; the rest is the bank loan.
+        $kfwLoan = min(max(0.0, $n('kfw_loan')), $loan);
+        $bankLoan = $loan - $kfwLoan;
+        $repayment = $n('repayment_rate') / 100;
+        $interest = $loan > 0 ? ($kfwLoan * $n('kfw_rate') / 100 + $bankLoan * $n('interest_rate') / 100) / $loan : $n('interest_rate') / 100;
+        $annuity = $loan * ($interest + $repayment);
+        // The projection runs on the blended loan rate.
+        $in['interest_rate'] = $interest * 100;
 
         $rentYear = $n('rent') * 12;
         $effectiveRent = $rentYear * (1 - $n('vacancy_rate') / 100);
@@ -92,7 +102,10 @@ class ProfitabilityAnalysis
         $first = $projection[0] ?? null;
         $fixedYears = max(1, (int) $n('fixed_years'));
         $remainingDebt = $projection[min($fixedYears, count($projection)) - 1]['debt'] ?? $loan;
-        $followUpRate = $remainingDebt * ($interest + 0.02 + $n('repayment_rate') / 100) / 12;
+        $followUpRate = $remainingDebt * ($interest + 0.02 + $repayment) / 12;
+
+        $exit = self::exit($in, $projection, $total, $closing, $depreciation);
+        $equityReturn = self::equityReturn($in, $equity, $exit, $projection);
 
         $result = [
             'price' => round($price, 2), 'renovation' => round($renovation, 2),
@@ -115,8 +128,13 @@ class ProfitabilityAnalysis
             'break_even_rent' => (1 - $n('vacancy_rate') / 100) > 0 ? round(($annuity + $costs) / 12 / (1 - $n('vacancy_rate') / 100), 2) : null,
             'remaining_debt' => round($remainingDebt, 2),
             'follow_up_rate' => round($followUpRate, 2),
+            'subsidy' => round($subsidy, 2),
+            'kfw_loan' => round($kfwLoan, 2),
+            'bank_loan' => round($bankLoan, 2),
+            'blended_rate' => round($interest * 100, 2),
             'projection' => $projection,
         ];
+        $result = array_merge($result, $exit, $equityReturn);
         $result['verdict'] = self::verdict($result);
         $result['hints'] = self::hints($in, $result);
 
@@ -166,6 +184,106 @@ class ProfitabilityAnalysis
         }
 
         return $rows;
+    }
+
+    /**
+     * Selling at the end of the projection: sale price, costs, remaining debt, speculation tax
+     * (gain is taxable when sold within ten years) and the net proceeds.
+     *
+     * @param  array<string, float|int|string>  $in
+     * @param  list<array{value: float, debt: float}>  $projection
+     * @return array<string, mixed>
+     */
+    private static function exit(array $in, array $projection, float $total, float $closing, float $depreciation): array
+    {
+        $last = end($projection) ?: null;
+        $years = max(1, min(40, (int) $in['years']));
+
+        if (! $last) {
+            return ['sale_price' => 0.0, 'sale_costs' => 0.0, 'exit_debt' => 0.0, 'speculation_tax' => 0.0, 'net_sale_proceeds' => 0.0, 'speculation_period' => false];
+        }
+
+        $salePrice = (float) $last['value'];
+        $saleCosts = $salePrice * (float) $in['sale_costs_rate'] / 100;
+        $exitDebt = (float) $last['debt'];
+
+        // Within ten years the whole gain is taxed; the depreciation already claimed raises it.
+        $withinPeriod = $years < 10;
+        $book = $total - $depreciation * $years;
+        $gain = $salePrice - $saleCosts - $book;
+        $speculationTax = $withinPeriod ? max(0.0, $gain) * (float) $in['tax_rate'] / 100 : 0.0;
+        $netProceeds = $salePrice - $saleCosts - $exitDebt - $speculationTax;
+
+        return [
+            'sale_price' => round($salePrice, 2),
+            'sale_costs' => round($saleCosts, 2),
+            'exit_debt' => round($exitDebt, 2),
+            'speculation_tax' => round($speculationTax, 2),
+            'net_sale_proceeds' => round($netProceeds, 2),
+            'speculation_period' => $withinPeriod,
+        ];
+    }
+
+    /**
+     * Total return over the holding period: the after-tax cash flows plus the net sale proceeds
+     * against the equity put in – as a sum, as an internal rate of return (IRR) and against a
+     * simple alternative investment of the same equity.
+     *
+     * @param  array<string, float|int|string>  $in
+     * @param  array{net_sale_proceeds: float}  $exit
+     * @param  list<array{cashflow_after_tax: float}>  $projection
+     * @return array<string, mixed>
+     */
+    private static function equityReturn(array $in, float $equity, array $exit, array $projection): array
+    {
+        $flows = [-$equity];
+
+        foreach ($projection as $index => $row) {
+            $flows[] = $row['cashflow_after_tax'] + ($index === count($projection) - 1 ? $exit['net_sale_proceeds'] : 0.0);
+        }
+
+        $cashSum = array_sum(array_map(fn (array $row) => $row['cashflow_after_tax'], $projection));
+        $totalProfit = $cashSum + $exit['net_sale_proceeds'] - $equity;
+        // The same equity put into an alternative at a fixed yearly return, for comparison.
+        $years = max(1, min(40, (int) $in['years']));
+        $alternative = $equity * ((1 + (float) $in['alternative_rate'] / 100) ** $years - 1);
+
+        return [
+            'total_cashflow' => round($cashSum, 2),
+            'total_profit' => round($totalProfit, 2),
+            'irr' => self::irr($flows),
+            'alternative_profit' => round($alternative, 2),
+        ];
+    }
+
+    /**
+     * Internal rate of return of a yearly cash-flow series (first entry is the outlay), by
+     * bisection; null when it has no sign change (e.g. never profitable).
+     *
+     * @param  list<float>  $flows
+     */
+    private static function irr(array $flows): ?float
+    {
+        $npv = fn (float $rate) => array_sum(array_map(fn (float $flow, int $year) => $flow / (1 + $rate) ** $year, $flows, array_keys($flows)));
+        $low = -0.9;
+        $high = 1.0;
+
+        if ($npv($low) * $npv($high) > 0) {
+            return null;
+        }
+
+        for ($i = 0; $i < 100; $i++) {
+            $mid = ($low + $high) / 2;
+            $value = $npv($mid);
+
+            if (abs($value) < 0.01) {
+                return round($mid * 100, 1);
+            }
+
+            ($npv($low) * $value < 0) ? $high = $mid : $low = $mid;
+        }
+
+        return round(($low + $high) / 2 * 100, 1);
     }
 
     /**
@@ -226,6 +344,22 @@ class ProfitabilityAnalysis
 
         if ((float) $in['renovation'] > 0) {
             $hints[] = __('Renovation within three years of purchase above 15 % of the building value counts as acquisition cost and is only depreciated, not deducted at once.');
+        }
+
+        if ($result['speculation_period'] && $result['speculation_tax'] > 0) {
+            $hints[] = __('Selling after :years years is still within the ten-year speculation period – about :amount income tax falls due on the gain. From the eleventh year the gain is tax-free.', ['years' => (int) $in['years'], 'amount' => $euro($result['speculation_tax'])]);
+        }
+
+        if ($result['irr'] !== null) {
+            $hints[] = __('Over :years years the equity earns about :irr % per year (IRR, incl. sale) – :profit after tax in total.', ['years' => (int) $in['years'], 'irr' => number_format($result['irr'], 1, ',', '.'), 'profit' => $euro($result['total_profit'])]);
+
+            if ($result['total_profit'] < $result['alternative_profit']) {
+                $hints[] = __('An alternative investment of the :equity equity at :rate % would yield about :alt in the same time – more than this property after tax. Weigh the effort against it.', ['equity' => $euro((float) $in['equity']), 'rate' => number_format((float) $in['alternative_rate'], 1, ',', '.'), 'alt' => $euro($result['alternative_profit'])]);
+            }
+        }
+
+        if ($result['subsidy'] > 0) {
+            $hints[] = __('The subsidy of :amount lowers the capital needed. Check the exact conditions and apply before signing – many grants are lost once the contract is signed or work has started.', ['amount' => $euro($result['subsidy'])]);
         }
 
         return $hints;

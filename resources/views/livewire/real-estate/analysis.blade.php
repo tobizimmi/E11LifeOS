@@ -29,6 +29,13 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $in = [];
 
+    /**
+     * Detailed renovation items (label + cost); their sum fills the renovation field.
+     *
+     * @var list<array{label: string, amount: string}>
+     */
+    public array $renoItems = [];
+
     public function mount(): void
     {
         $this->resolveHousehold();
@@ -38,6 +45,7 @@ new #[Layout('layouts.app')] class extends Component
 
         if ($saved) {
             $this->fill(['title' => $saved->title]);
+            $this->setRenoItems($saved->inputs['renovation_items'] ?? []);
             $this->setInputs(array_merge(ProfitabilityAnalysis::defaults(), $saved->inputs));
         } elseif ($realEstate) {
             $this->title = $realEstate->name;
@@ -53,7 +61,59 @@ new #[Layout('layouts.app')] class extends Component
      */
     private function setInputs(array $values): void
     {
-        $this->in = collect($values)->map(fn ($value) => is_float($value) ? rtrim(rtrim(number_format($value, 2, ',', ''), '0'), ',') : (string) $value)->all();
+        $this->in = collect($values)->map(fn ($value) => is_array($value) ? '' : (is_float($value) ? rtrim(rtrim(number_format($value, 2, ',', ''), '0'), ',') : (string) $value))->all();
+        unset($this->in['renovation_items']);
+    }
+
+    /**
+     * @param  mixed  $items
+     */
+    private function setRenoItems($items): void
+    {
+        $this->renoItems = collect(is_array($items) ? $items : [])
+            ->map(fn ($row) => ['label' => (string) ($row['label'] ?? ''), 'amount' => (string) ($row['amount'] ?? '')])
+            ->values()->all();
+    }
+
+    public function addRenoItem(): void
+    {
+        $this->renoItems[] = ['label' => '', 'amount' => ''];
+    }
+
+    public function removeRenoItem(int $index): void
+    {
+        unset($this->renoItems[$index]);
+        $this->renoItems = array_values($this->renoItems);
+        $this->syncRenovation();
+    }
+
+    /**
+     * When renovation items are used, their sum fills the renovation field.
+     */
+    public function updatedRenoItems(): void
+    {
+        $this->syncRenovation();
+    }
+
+    private function syncRenovation(): void
+    {
+        if ($this->renoItems === []) {
+            return;
+        }
+
+        $sum = array_sum(array_map(fn (array $row) => $this->toNumber($row['amount']), $this->renoItems));
+        $this->in['renovation'] = rtrim(rtrim(number_format($sum, 2, ',', ''), '0'), ',');
+    }
+
+    /**
+     * A German-written number ("1.200,50") as a float.
+     */
+    private function toNumber(string $raw): float
+    {
+        $raw = trim($raw);
+        $number = str_contains($raw, ',') || preg_match('/^\d{1,3}(\.\d{3})+$/', $raw) ? str_replace(['.', ','], ['', '.'], $raw) : $raw;
+
+        return is_numeric($number) ? max(0.0, (float) $number) : 0.0;
     }
 
     /**
@@ -95,6 +155,16 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $values['years'] = max(1, min(40, (int) $values['years']));
+
+        $items = collect($this->renoItems)
+            ->map(fn (array $row) => ['label' => mb_substr(trim($row['label']), 0, 120), 'amount' => $this->toNumber($row['amount'])])
+            ->filter(fn (array $row) => $row['label'] !== '' || $row['amount'] > 0)
+            ->values()->all();
+
+        if ($items !== []) {
+            $values['renovation'] = array_sum(array_column($items, 'amount'));
+            $values['renovation_items'] = $items;
+        }
 
         return $values;
     }
@@ -143,6 +213,7 @@ new #[Layout('layouts.app')] class extends Component
             'saved' => RealEstateAnalysis::where('household_id', $this->householdId)->latest('updated_at')->get(['id', 'title', 'updated_at']),
             'properties' => $this->properties(),
             'states' => \App\Support\Life\PublicHolidays::states(),
+            'checklist' => \App\Support\RealEstate\BuyingChecklist::groups(),
         ];
     }
 }; ?>
@@ -170,6 +241,8 @@ new #[Layout('layouts.app')] class extends Component
         '🏦 '.__('Financing') => [
             $field('equity', __('Equity'), '€'), $field('interest_rate', __('Interest rate'), '%'),
             $field('repayment_rate', __('Initial repayment'), '%'), $field('fixed_years', __('Fixed interest period'), __('years')),
+            $field('subsidy', __('Subsidy / grant'), '€', __('One-time grant (e.g. KfW/BAFA) – lowers the money needed.')),
+            $field('kfw_loan', __('Subsidised loan'), '€', __('Part of the loan at a lower rate (e.g. KfW tranche).')), $field('kfw_rate', __('Rate of the subsidised loan'), '%'),
         ],
         '🔑 '.__('Rent & costs') => [
             $field('rent', __('Net cold rent per month'), '€'), $field('local_rent_per_sqm', __('Local rent index (Mietspiegel)'), '€/m²', __('Comparable rent from the city\'s rent index.')),
@@ -178,7 +251,8 @@ new #[Layout('layouts.app')] class extends Component
         ],
         '🏛 '.__('Tax & outlook') => [
             $field('tax_rate', __('Personal marginal tax rate'), '%'), $field('rent_increase', __('Rent increase per year'), '%'),
-            $field('value_increase', __('Value increase per year'), '%'), $field('years', __('Years in the projection')),
+            $field('value_increase', __('Value increase per year'), '%'), $field('years', __('Holding period / projection'), __('years'), __('Sale is assumed at the end of this period.')),
+            $field('sale_costs_rate', __('Selling costs'), '%', __('Agent, notary and preparation on sale.')), $field('alternative_rate', __('Alternative return'), '%', __('e.g. a broad ETF, for comparison.')),
         ],
     ];
 @endphp
@@ -241,6 +315,23 @@ new #[Layout('layouts.app')] class extends Component
                                     </label>
                                 @endforeach
                             </div>
+                            @if ($loop->first)
+                                <div class="mt-3 border-t border-gray-100 pt-3 dark:border-gray-700">
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">🔨 {{ __('Renovation in detail') }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Add single items (roof, heating, bathroom …) – the total fills the renovation above.') }}</p>
+                                    @foreach ($renoItems as $i => $row)
+                                        <div class="mt-2 flex items-center gap-2" wire:key="reno-{{ $i }}">
+                                            <input type="text" wire:model.live.debounce.500ms="renoItems.{{ $i }}.label" placeholder="{{ __('e.g. new heating') }}" class="min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Item') }}">
+                                            <span class="relative w-28 shrink-0">
+                                                <input type="text" inputmode="decimal" wire:model.live.debounce.500ms="renoItems.{{ $i }}.amount" class="w-full rounded-md border-gray-300 pe-7 text-right text-sm shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" aria-label="{{ __('Cost') }}">
+                                                <span class="pointer-events-none absolute inset-y-0 end-2 flex items-center text-xs text-gray-400">€</span>
+                                            </span>
+                                            <button type="button" wire:click="removeRenoItem({{ $i }})" class="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400" aria-label="{{ __('Remove') }}">×</button>
+                                        </div>
+                                    @endforeach
+                                    <button type="button" wire:click="addRenoItem" class="mt-2 text-sm text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('Add item') }}</button>
+                                </div>
+                            @endif
                         </section>
                     @endforeach
                 </div>
@@ -297,6 +388,30 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     </section>
 
+                    <section class="grid gap-4 sm:grid-cols-2">
+                        <div class="rounded-2xl bg-white p-4 text-sm shadow-xs dark:bg-gray-800">
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏁 {{ __('Sale after :years years', ['years' => (int) ($in['years'] ?? 0)]) }}</h3>
+                            <dl class="mt-2 space-y-1">
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Estimated sale price') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['sale_price']) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Selling costs') }}</dt><dd class="whitespace-nowrap tabular-nums">−{{ $euro($result['sale_costs']) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Remaining debt') }}</dt><dd class="whitespace-nowrap tabular-nums">−{{ $euro($result['exit_debt']) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ $result['speculation_period'] ? __('Speculation tax (within 10 years)') : __('Speculation tax (tax-free after 10 years)') }}</dt><dd class="whitespace-nowrap tabular-nums">−{{ $euro($result['speculation_tax']) }}</dd></div>
+                                <div class="flex justify-between gap-3 border-t border-gray-100 pt-1 font-semibold dark:border-gray-700"><dt>{{ __('Net sale proceeds') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['net_sale_proceeds']) }}</dd></div>
+                            </dl>
+                        </div>
+                        <div class="rounded-2xl bg-white p-4 text-sm shadow-xs dark:bg-gray-800">
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">🎯 {{ __('Total return over :years years', ['years' => (int) ($in['years'] ?? 0)]) }}</h3>
+                            <dl class="mt-2 space-y-1">
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Equity put in') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['equity']) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Sum of cashflows after tax') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['total_cashflow']) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Net sale proceeds') }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['net_sale_proceeds']) }}</dd></div>
+                                <div class="flex justify-between gap-3 border-t border-gray-100 pt-1 font-semibold dark:border-gray-700"><dt>{{ __('Total profit after tax') }}</dt><dd @class(['whitespace-nowrap tabular-nums', 'text-emerald-700 dark:text-emerald-300' => $result['total_profit'] >= 0, 'text-red-700 dark:text-red-300' => $result['total_profit'] < 0])>{{ $euro($result['total_profit']) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Return per year (IRR)') }}</dt><dd class="whitespace-nowrap font-semibold tabular-nums">{{ $result['irr'] !== null ? $pct($result['irr']) : '–' }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="text-gray-600 dark:text-gray-400">{{ __('Alternative (:rate %)', ['rate' => number_format((float) ($in['alternative_rate'] ?? 0), 1, ',', '.')]) }}</dt><dd class="whitespace-nowrap tabular-nums">{{ $euro($result['alternative_profit']) }}</dd></div>
+                            </dl>
+                        </div>
+                    </section>
+
                     @if ($result['hints'] !== [])
                         <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Points to check') }}</h3>
@@ -329,6 +444,26 @@ new #[Layout('layouts.app')] class extends Component
                             </tbody>
                         </table>
                         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Simplified calculation without guarantee – interest after the fixed period, tax law and market developments can differ. Have a purchase checked by your tax adviser.') }}</p>
+                    </section>
+
+                    <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800" x-data="{ open: false }">
+                        <button type="button" x-on:click="open = !open" class="flex w-full items-center justify-between gap-2 text-left">
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">✅ {{ __('Before you buy: what to check') }}</h3>
+                            <svg class="h-5 w-5 shrink-0 text-gray-400 transition-transform" x-bind:class="open && 'rotate-180'" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak x-transition class="mt-3 space-y-4">
+                            @foreach ($checklist as $group)
+                                <div wire:key="check-{{ $loop->index }}">
+                                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ $group['icon'] }} {{ $group['title'] }}</p>
+                                    <ul class="mt-1 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                                        @foreach ($group['items'] as $item)
+                                            <li class="flex gap-2"><span class="mt-0.5 text-gray-400" aria-hidden="true">☐</span><span>{{ $item }}</span></li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Guidance, not legal advice – a surveyor, tax adviser and the notary stay the authority.') }}</p>
+                        </div>
                     </section>
                 </div>
             </div>

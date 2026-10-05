@@ -36,6 +36,54 @@ class RealEstateAnalysisTest extends TestCase
         $this->assertSame('green', $good['verdict']['level']);
     }
 
+    public function test_the_sale_scenario_speculation_tax_total_return_and_irr_are_calculated(): void
+    {
+        $base = ['purchase_price' => 200000, 'rent' => 1000, 'equity' => 80000] + ProfitabilityAnalysis::defaults();
+
+        // Sold after 15 years: outside the ten-year period, so the gain is tax-free.
+        $late = ProfitabilityAnalysis::calculate(['years' => 15] + $base);
+        $this->assertFalse($late['speculation_period']);
+        $this->assertSame(0.0, $late['speculation_tax']);
+        $this->assertGreaterThan(0, $late['net_sale_proceeds']);
+        $this->assertNotNull($late['irr']);
+        // Total profit = cash flows + net sale proceeds − equity.
+        $this->assertEqualsWithDelta($late['total_cashflow'] + $late['net_sale_proceeds'] - $late['equity'], $late['total_profit'], 0.01);
+
+        // Sold after 8 years: still within the speculation period, so tax falls due.
+        $early = ProfitabilityAnalysis::calculate(['years' => 8] + $base);
+        $this->assertTrue($early['speculation_period']);
+        $this->assertGreaterThan(0, $early['speculation_tax']);
+    }
+
+    public function test_a_subsidy_and_a_cheaper_loan_lower_the_financing(): void
+    {
+        $plain = ProfitabilityAnalysis::calculate(ProfitabilityAnalysis::defaults());
+        $funded = ProfitabilityAnalysis::calculate(['subsidy' => 20000, 'kfw_loan' => 50000, 'kfw_rate' => 1.5] + ProfitabilityAnalysis::defaults());
+
+        $this->assertSame(round($plain['loan'] - 20000, 2), $funded['loan']);
+        $this->assertSame(20000.0, $funded['subsidy']);
+        $this->assertLessThan($plain['blended_rate'], $funded['blended_rate']);
+        $this->assertLessThan($plain['monthly_rate'], $funded['monthly_rate']);
+    }
+
+    public function test_renovation_items_are_summed_saved_and_a_checklist_is_shown(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('real-estate.analysis')
+            ->assertSee('Vor dem Kauf')
+            ->call('addRenoItem')->set('renoItems.0.label', 'Neue Heizung')->set('renoItems.0.amount', '25.000')
+            ->call('addRenoItem')->set('renoItems.1.label', 'Bad', 'amount')->set('renoItems.1.amount', '15.000')
+            ->assertSet('in.renovation', '40000')
+            ->set('title', 'Sanierungsobjekt')->call('save')->assertHasNoErrors();
+
+        $analysis = RealEstateAnalysis::sole();
+        $this->assertSame(40000.0, (float) $analysis->inputs['renovation']);
+        $this->assertCount(2, $analysis->inputs['renovation_items']);
+        $this->assertSame('Neue Heizung', $analysis->inputs['renovation_items'][0]['label']);
+    }
+
     public function test_a_calculation_is_entered_saved_and_prefilled_from_a_property(): void
     {
         [$user, $household] = $this->memberWithHousehold();

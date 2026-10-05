@@ -6511,5 +6511,22 @@
     "Download .md": "Als .md herunterladen",
     "Nothing planned yet – add an item below or choose a milestone for tickets in the backlog.": "Noch nichts eingeplant – unten einen Punkt hinzufügen oder im Backlog einen Meilenstein wählen.",
     "Unsolved bugs, feature requests and items without a milestone.": "Ungelöste Bugs, Feature-Wünsche und Punkte ohne Meilenstein.",
-    "New item …": "Neuer Punkt …"
+    "New item …": "Neuer Punkt …",
+    "Module trial started": "Modul-Test gestartet",
+    "You already asked for this module.": "Du hast dieses Modul bereits angefragt.",
+    "License request: :module": "Lizenzanfrage: :module",
+    "I would like to use the module “:module” for our household.": "Ich möchte das Modul „:module“ für unseren Haushalt nutzen.",
+    "The trial has started – have fun!": "Der Testzeitraum läuft – viel Spaß!",
+    "Request sent as :number – the team gets back to you.": "Anfrage als :number gesendet – das Team meldet sich.",
+    "Modules & subscription": "Module & Abo",
+    "All areas are included for your household – nothing to buy.": "Alle Bereiche sind für deinen Haushalt enthalten – nichts zu kaufen.",
+    "These areas are offered separately. Start a trial or ask the team for a license.": "Diese Bereiche gibt es separat. Starte einen Testzeitraum oder frag beim Team eine Lizenz an.",
+    "Start a :days-day trial for the whole household?": "Einen :days-tägigen Testzeitraum für den ganzen Haushalt starten?",
+    "Try :count day|Try :count days": ":count Tag testen|:count Tage testen",
+    "Requested": "Angefragt",
+    "Request license": "Lizenz anfragen",
+    "Note for the team (optional)": "Hinweis an das Team (optional)",
+    "Trial days for :module": "Testtage für :module",
+    "Price, e.g. 2 €/month": "Preis, z. B. 2 €/Monat",
+    "Price for :module": "Preis für :module"
 }

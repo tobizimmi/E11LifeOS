@@ -49,6 +49,7 @@ class SecurityLog
             'trusted_access' => ['label' => __('Trusted person opened the emergency folder'), 'icon' => '🆘', 'level' => 'critical'],
             'virus_found' => ['label' => __('Upload with a virus blocked'), 'icon' => '🦠', 'level' => 'critical'],
             'admin_action' => ['label' => __('Administrator action'), 'icon' => '🛠', 'level' => 'warning'],
+            'module_trial' => ['label' => __('Module trial started'), 'icon' => '🧪', 'level' => 'info'],
         ];
     }
 

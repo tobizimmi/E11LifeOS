@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.42.0] – 2026-10-05
+
+### Neu
+- „Module & Abo“ (Benutzermenü): zeigt für jeden lizenzpflichtigen Bereich den Status (Test, Lizenz, freigegeben bis, gesperrt) und den Preis. Inhaber/innen starten einen kostenlosen Testzeitraum einmal pro Haushalt; alle anderen fragen eine Lizenz an – die Anfrage landet als Ticket im Support.
+- Admin → Module: Testtage und Preistext je lizenzpflichtigem Modul einstellbar.
+
 ## [1.41.0] – 2026-10-05
 
 ### Verbessert

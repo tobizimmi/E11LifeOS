@@ -35,10 +35,10 @@ class ModuleAccess
     private static function memo(): \ArrayObject
     {
         if (! app()->bound('module-access.memo')) {
-            app()->scoped('module-access.memo', fn () => new \ArrayObject(['at' => time()]));
+            app()->scoped('module-access.memo', fn () => new \ArrayObject(['at' => now()->getTimestamp()]));
         }
 
-        if (app('module-access.memo')['at'] < time() - 60) {
+        if (app('module-access.memo')['at'] < now()->getTimestamp() - 60) {
             self::forget();
         }
 
@@ -77,6 +77,39 @@ class ModuleAccess
             AppSetting::updateOrCreate(['key' => 'module_plans'], ['value' => json_encode($licensed)]);
         }
 
+        self::forget();
+    }
+
+    /**
+     * What a licensed module offers: trial days (0 = no trial) and a price text for members.
+     *
+     * @return array<string, array{trial_days: int, price: string}>
+     */
+    public static function offers(): array
+    {
+        $memo = self::memo();
+
+        return $memo['offers'] ??= (function (): array {
+            $stored = json_decode((string) AppSetting::where('key', 'module_offers')->first()?->value, true);
+
+            return is_array($stored) ? collect($stored)->filter(fn ($offer, $module) => ModuleCatalog::exists((string) $module) && is_array($offer))
+                ->map(fn (array $offer) => ['trial_days' => max(0, min(365, (int) ($offer['trial_days'] ?? 0))), 'price' => mb_substr((string) ($offer['price'] ?? ''), 0, 60)])->all() : [];
+        })();
+    }
+
+    /**
+     * @return array{trial_days: int, price: string}
+     */
+    public static function offer(string $module): array
+    {
+        return self::offers()[$module] ?? ['trial_days' => 0, 'price' => ''];
+    }
+
+    public static function saveOffer(string $module, int $trialDays, string $price): void
+    {
+        abort_unless(ModuleCatalog::exists($module), 422);
+        $offers = array_merge(self::offers(), [$module => ['trial_days' => max(0, min(365, $trialDays)), 'price' => mb_substr(trim($price), 0, 60)]]);
+        AppSetting::updateOrCreate(['key' => 'module_offers'], ['value' => json_encode($offers)]);
         self::forget();
     }
 

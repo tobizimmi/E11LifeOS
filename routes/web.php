@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('inbox', 'inbox.index')->name('inbox.index');
     Volt::route('notifications', 'notifications.index')->name('notifications.index');
     Volt::route('support', 'support.index')->name('support.index');
+    Volt::route('modules', 'modules.index')->name('modules.index');
     Volt::route('support/{ticket}', 'support.show')->whereNumber('ticket')->name('support.show');
     Route::get('support/files/{message}/{index}', SupportFileController::class)->whereNumber(['message', 'index'])->name('support.file')->middleware('throttle:120,1');
     Volt::route('calendar', 'calendar.index')->name('calendar.index');

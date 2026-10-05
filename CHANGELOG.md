@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.37.1] – 2026-10-05
+
+### Behoben
+- Notizen in Aufgaben und Sammlungseinträgen: Beim Tippen im Editor (z. B. „/“ für eine Checkliste) erschien nach kurzer Pause „500 Server Error“. Das automatische Speichern ist nur noch auf Seiten aktiv, wo es hingehört; Einträge speichern weiter mit „Speichern“.
+
 ## [1.37.0] – 2026-10-05
 
 ### Neu

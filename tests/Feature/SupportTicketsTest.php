@@ -7,12 +7,18 @@ use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Notifications\SupportTicketUpdated;
+use App\Support\Admin\AdminOverview;
+use App\Support\ErrorReporter;
+use App\Support\Helpdesk\Macros;
+use App\Support\Helpdesk\SupportMail;
 use App\Support\Helpdesk\Tickets;
+use App\Support\Security\SecurityLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
@@ -209,5 +215,74 @@ class SupportTicketsTest extends TestCase
 
         // Members can't pick the team's item type.
         Volt::test('support.index')->set('type', 'task')->set('subject', 'x')->set('body', 'y')->call('submit')->assertHasErrors('type');
+    }
+
+    public function test_requesters_answer_the_support_mail_and_the_answer_lands_in_the_ticket(): void
+    {
+        Storage::fake('local');
+        config(['services.inbound_mail.domain' => 'in.example.org']);
+        [$member] = $this->memberWithHousehold();
+        $admin = $this->admin();
+        $ticket = Tickets::open($member, ['subject' => 'Login klappt nicht', 'body' => 'Hilfe', 'type' => 'problem']);
+        $answer = Tickets::reply($ticket, $admin, 'Bitte Cache leeren.');
+
+        $address = (string) $ticket->fresh()->replyAddress();
+        $this->assertMatchesRegularExpression('/^support\.[a-z0-9]{32}@in\.example\.org$/', $address);
+        $this->assertSame($address, (new SupportTicketUpdated($ticket->fresh(), $answer))->toMail($member)->replyTo[0][0]);
+
+        $mail = fn (string $from, string $to = '') => "From: Max <{$from}>\r\nTo: ".($to ?: $address)."\r\nSubject: Re: Antwort\r\nMIME-Version: 1.0\r\n"
+            ."Content-Type: multipart/mixed; boundary=\"b1\"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nDanke, klappt jetzt!\r\n\r\nAm 05.10.2026 um 11:00 schrieb Support <s@example.org>:\r\n> Bitte Cache leeren.\r\n"
+            ."--b1\r\nContent-Type: application/pdf; name=\"log.pdf\"\r\nContent-Disposition: attachment; filename=\"log.pdf\"\r\nContent-Transfer-Encoding: base64\r\n\r\n".base64_encode('%PDF-1.4 test')."\r\n--b1--\r\n";
+
+        // Only from the requester's own address; unknown tokens go on to the household intake.
+        $this->assertFalse(SupportMail::process($mail('fremd@example.org')));
+        $this->assertNull(SupportMail::process($mail($member->email, 'support.'.str_repeat('a', 32).'@in.example.org')));
+        $this->assertSame(2, $ticket->messages()->where('kind', 'reply')->count());
+
+        $this->assertTrue(SupportMail::process($mail($member->email)));
+        $reply = $ticket->messages()->where('kind', 'reply')->get()->last();
+        $this->assertSame(['Danke, klappt jetzt!', 'mail', 'log.pdf'], [$reply->body, $reply->via, $reply->attachments[0]['name']]);
+        $this->assertSame(['open', true], [$ticket->fresh()->status, $ticket->fresh()->agent_unread]);
+
+        $ticket->forceFill(['status' => 'closed'])->save();
+        $this->assertFalse(SupportMail::process($mail($member->email)));
+    }
+
+    public function test_agents_insert_canned_responses_with_placeholders(): void
+    {
+        [$member] = $this->memberWithHousehold();
+        $member->update(['name' => 'Max Muster']);
+        $admin = $this->admin();
+        $ticket = Tickets::open($member, ['subject' => 'Frage', 'body' => 'Wie geht das?', 'type' => 'question']);
+
+        $this->actingAs($member)->get(route('admin.support.macros'))->assertForbidden();
+
+        $this->actingAs($admin);
+        Volt::test('admin.support-macros')->call('create')->set('title', 'Gelöst')->set('body', 'Hallo {name}, {number} ist erledigt. Gruß {agent}')->set('status', 'solved')->call('save')->assertHasNoErrors()->assertSee('Gelöst');
+        $id = Macros::all()[0]['id'];
+
+        Volt::test('admin.support-ticket', ['ticket' => $ticket])->set('body', 'Kurz vorab.')->call('applyMacro', $id)
+            ->assertSet('body', "Kurz vorab.\n\nHallo Max, {$ticket->number()} ist erledigt. Gruß Ada")->assertSet('submitAs', 'solved')
+            ->call('send');
+        $this->assertSame('solved', $ticket->fresh()->status);
+
+        Volt::test('admin.support-macros')->call('delete', $id);
+        $this->assertSame([], Macros::all());
+    }
+
+    public function test_the_admin_overview_shows_activity_storage_tickets_and_errors(): void
+    {
+        [$member, $household] = $this->memberWithHousehold();
+        $admin = $this->admin();
+        SecurityLog::record($member, 'login');
+        Tickets::open($member, ['subject' => 'Frage', 'body' => 'x', 'type' => 'question']);
+        ErrorReporter::handle(new RuntimeException('Kaputt'));
+
+        $this->assertSame(1, AdminOverview::activeSince(7));
+        $this->assertSame(1, AdminOverview::errors()[now()->toDateString()]);
+        $this->assertSame(['unsolved' => 1, 'unassigned' => 1, 'overdue' => 0, 'new7' => 1], AdminOverview::support());
+
+        $this->actingAs($member)->get(route('admin.overview'))->assertForbidden();
+        $this->actingAs($admin)->get(route('admin.overview'))->assertOk()->assertSee($household->name)->assertSee('Fehler pro Tag');
     }
 }

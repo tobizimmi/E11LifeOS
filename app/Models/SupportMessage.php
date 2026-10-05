@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
  *
  * @property list<array{path: string, name: string, size: int, mime: string}>|null $attachments
  */
-#[Fillable(['support_ticket_id', 'user_id', 'kind', 'body', 'attachments'])]
+#[Fillable(['support_ticket_id', 'user_id', 'kind', 'via', 'body', 'attachments'])]
 class SupportMessage extends Model
 {
     /** @use HasFactory<SupportMessageFactory> */
@@ -26,6 +26,9 @@ class SupportMessage extends Model
     public const NOTE = 'note';
 
     public const EVENT = 'event';
+
+    /** Written as an answer to the notification e-mail. */
+    public const VIA_MAIL = 'mail';
 
     protected static function booted(): void
     {

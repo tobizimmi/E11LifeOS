@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Mail\MailIntake;
 use Database\Factories\SupportTicketFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * A support request of a member (or an internal bug/feature of an administrator), handled like in
@@ -31,6 +33,9 @@ class SupportTicket extends Model
     use HasFactory;
 
     public const DISK = 'local';
+
+    /** Local part of the reply address before the ticket's token (support.<token>@inbound domain). */
+    public const MAIL_PREFIX = 'support.';
 
     public const STATUSES = ['new', 'open', 'pending', 'on_hold', 'solved', 'closed'];
 
@@ -178,6 +183,24 @@ class SupportTicket extends Model
     public function isOverdue(): bool
     {
         return $this->first_response_at === null && $this->first_response_due_at !== null && $this->first_response_due_at->isPast() && in_array($this->status, self::UNSOLVED, true);
+    }
+
+    /**
+     * The address the requester answers by e-mail (into this ticket), or null without mail intake.
+     */
+    public function replyAddress(): ?string
+    {
+        $domain = MailIntake::domain();
+
+        if ($domain === null) {
+            return null;
+        }
+
+        if (! $this->reply_token) {
+            $this->forceFill(['reply_token' => Str::lower(Str::random(32))])->saveQuietly();
+        }
+
+        return self::MAIL_PREFIX.$this->reply_token.'@'.$domain;
     }
 
     public function number(): string

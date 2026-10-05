@@ -2,6 +2,7 @@
 
 use App\Models\RoadmapMilestone;
 use App\Models\SupportTicket;
+use App\Support\Helpdesk\Macros;
 use App\Support\Helpdesk\Tickets;
 use App\Support\Modules\ModuleCatalog;
 use Illuminate\Support\Facades\Auth;
@@ -75,6 +76,19 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: $this->internal ? __('Note saved.') : __('Answer sent.'));
     }
 
+    /**
+     * Puts a canned response into the answer (after what is already written) and takes its status.
+     */
+    public function applyMacro(string $id): void
+    {
+        $macro = Macros::find($id);
+        abort_if($macro === null, 404);
+        $text = Macros::render($macro, $this->ticket(), Auth::user());
+        $this->body = trim($this->body) !== '' ? rtrim($this->body)."\n\n".$text : $text;
+        $this->internal = false;
+        $this->submitAs = $macro['status'] ?? $this->submitAs;
+    }
+
     public function setField(string $field, string $value): void
     {
         abort_unless(in_array($field, ['status', 'priority', 'type', 'assignee_id', 'roadmap_milestone_id', 'area'], true), 422);
@@ -112,6 +126,7 @@ new #[Layout('layouts.app')] class extends Component
             'ticket' => $ticket,
             'messages' => $ticket->messages()->with('author:id,name')->get(),
             'agents' => Tickets::agents(),
+            'macros' => Macros::all(),
             'milestones' => RoadmapMilestone::where('status', '!=', 'done')->orWhere('id', $ticket->roadmap_milestone_id)->orderBy('position')->orderBy('due_on')->get(),
             'statusLabels' => SupportTicket::statusLabels(),
             'priorityLabels' => SupportTicket::priorityLabels(),
@@ -149,6 +164,17 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="button" role="tab" aria-selected="{{ $internal ? 'false' : 'true' }}" wire:click="$set('internal', false)" @class(['flex-1 rounded-md px-3 py-1.5', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => ! $internal, 'text-gray-600 dark:text-gray-400' => $internal])>💬 {{ __('Public answer') }}</button>
                         <button type="button" role="tab" aria-selected="{{ $internal ? 'true' : 'false' }}" wire:click="$set('internal', true)" @class(['flex-1 rounded-md px-3 py-1.5', 'bg-white font-medium shadow-xs dark:bg-gray-700 dark:text-gray-100' => $internal, 'text-gray-600 dark:text-gray-400' => ! $internal])>🔒 {{ __('Internal note') }}</button>
                     </div>
+                    @if (! $internal)
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            @if ($macros !== [])
+                                <select x-on:change="if ($event.target.value) { $wire.applyMacro($event.target.value); $event.target.value = '' }" class="rounded-md border-gray-300 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Insert canned response') }}">
+                                    <option value="">💬 {{ __('Insert canned response') }}</option>
+                                    @foreach ($macros as $macro)<option value="{{ $macro['id'] }}">{{ $macro['title'] }}</option>@endforeach
+                                </select>
+                            @endif
+                            <a href="{{ route('admin.support.macros') }}" wire:navigate class="text-xs text-indigo-600 underline dark:text-indigo-400">{{ $macros === [] ? __('Create canned responses') : __('Manage') }}</a>
+                        </div>
+                    @endif
                     <textarea wire:model="body" rows="5" class="{{ $input }}" aria-label="{{ $internal ? __('Internal note') : __('Public answer') }}" placeholder="{{ $internal ? __('Only administrators see this note.') : __('The requester gets this answer by push and e-mail.') }}"></textarea>
                     <x-input-error :messages="$errors->get('body')" />
                     <input type="file" wire:model="files" multiple accept="image/*,.pdf,.txt,.log" aria-label="{{ __('Attachment') }}" class="block w-full text-sm text-gray-600 file:me-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm dark:text-gray-300 dark:file:bg-gray-700 dark:file:text-gray-200">

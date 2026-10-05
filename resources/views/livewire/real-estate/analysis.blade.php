@@ -341,8 +341,10 @@ new #[Layout('layouts.app')] class extends Component
 
                     <section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         @foreach ([
+                            [__('Return per year (IRR)'), $result['irr'] !== null ? $pct($result['irr']) : '–', ($result['irr'] ?? -1) >= 4.5],
+                            [__('Operating cashflow'), $euro($result['operating_cashflow'] / 12).' '.__('/ month'), $result['operating_cashflow'] >= 0],
                             [__('Cashflow after tax'), $euro($result['cashflow_after_tax'] / 12).' '.__('/ month'), $result['cashflow_after_tax'] >= 0],
-                            [__('Cashflow before tax'), $euro($result['cashflow_pre_tax'] / 12).' '.__('/ month'), $result['cashflow_pre_tax'] >= 0],
+                            [__('Thereof repayment'), $euro($result['principal_first'] / 12).' '.__('/ month'), null],
                             [__('Gross yield'), $pct($result['gross_yield']), ($result['gross_yield'] ?? 0) >= 4.5],
                             [__('Net yield'), $pct($result['net_yield']), ($result['net_yield'] ?? 0) >= 3.5],
                             [__('Price factor'), $result['price_factor'] !== null ? number_format($result['price_factor'], 1, ',', '.').'×' : '–', ($result['price_factor'] ?? 99) <= 22],

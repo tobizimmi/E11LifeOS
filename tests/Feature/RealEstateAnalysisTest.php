@@ -28,7 +28,8 @@ class RealEstateAnalysisTest extends TestCase
         $this->assertSame(-5958.18, $result['cashflow_pre_tax']);
         $this->assertSame(-2319.29, $result['tax']);
         $this->assertSame(-3638.89, $result['cashflow_after_tax']);
-        $this->assertSame('red', $result['verdict']['level']);
+        $this->assertSame('yellow', $result['verdict']['level']);
+        $this->assertSame(-613.98, $result['operating_cashflow']);
         $this->assertCount(15, $result['projection']);
         $this->assertLessThan($result['projection'][0]['debt'], $result['projection'][14]['debt']);
 

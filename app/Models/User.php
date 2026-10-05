@@ -80,6 +80,9 @@ class User extends Authenticatable implements HasPasskeys
             Vehicle::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
             Contact::where('created_by', $user->id)->where('visibility', Item::VISIBILITY_PRIVATE)->delete();
 
+            // Support requests with their files (the rows would go with the foreign key cascade).
+            SupportTicket::where('user_id', $user->id)->get()->each->delete();
+
             // Business receipts are personal files; their rows go with the foreign key cascade.
             Storage::disk(BookkeepingEntry::RECEIPT_DISK)->deleteDirectory('business-receipts/'.$user->id);
         });

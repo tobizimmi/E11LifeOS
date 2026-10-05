@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.38.0] – 2026-10-05
+
+### Neu
+- Hilfe & Support: Über „Hilfe & Support“ in der Seitenleiste schreiben Mitglieder Anfragen (Frage, Problem, Bug, Feature-Wunsch, Konto) mit Bereich, Dringlichkeit und bis zu drei Screenshots. Sie sehen den Verlauf, antworten, markieren als gelöst und bewerten die Hilfe; neue Antworten kommen per Push, Glocke und E-Mail.
+- Administration › Support: Ticketverwaltung wie in einem Helpdesk – Ansichten (alle ungelösten, nicht zugewiesen, meine, neu, überfällig, wartend, Bugs, Feature-Wünsche, gelöst), Suche nach Betreff, #Nummer, Name oder E-Mail, Prioritätsfilter und Kennzahlen (offene Tickets, Ø erste Antwort, Zufriedenheit).
+- Tickets bearbeiten: öffentliche Antworten und interne Notizen, „Senden als“ Status, Zuweisung, Priorität, Typ, Bereich, Tags und Meilenstein – jede Änderung steht im Verlauf. Zielzeiten für die erste Antwort je Priorität (4 h bis 72 h) mit Überfällig-Hinweis; gelöste Tickets schließen sich nach 7 Tagen.
+- Administration › Roadmap: Meilensteine mit Version, Zieldatum, Status und Fortschritt; Bugs und Feature-Wünsche aus dem Support werden eingeplant, alles andere steht im Backlog. Interne Tickets für Ideen aus dem Team.
+- Datenschutz: Anhänge sehen nur die anfragende Person und Administratoren; wird ein Konto gelöscht, gehen seine Anfragen samt Dateien mit.
+
 ## [1.37.1] – 2026-10-05
 
 ### Behoben

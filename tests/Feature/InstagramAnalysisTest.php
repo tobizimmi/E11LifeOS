@@ -8,10 +8,13 @@ use App\Models\PriceAlert;
 use App\Models\Security;
 use App\Models\User;
 use App\Models\WatchlistItem;
+use App\Support\ErrorReporter;
 use App\Support\Portfolio\InstagramAi;
+use App\Support\WebPush;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
@@ -67,6 +70,19 @@ class InstagramAnalysisTest extends TestCase
 
         // Already known posts are neither analysed nor announced again.
         $this->artisan('portfolio:instagram')->expectsOutputToContain('New posts: 0, analysed: 0, notifications: 0');
+    }
+
+    public function test_a_refused_apify_key_alerts_the_admins_once_instead_of_an_error(): void
+    {
+        Http::fake(['api.apify.com/*' => Http::response(['error' => ['type' => 'insufficient-permissions']], 403)]);
+        $this->mock(WebPush::class, fn (MockInterface $push) => $push->shouldReceive('send')->once()->andReturn(1));
+        [$admin] = $this->memberWithHousehold();
+        $admin->forceFill(['is_admin' => true])->save();
+
+        $this->artisan('portfolio:instagram')->expectsOutputToContain('APIFY_API_KEY')->assertSuccessful();
+        $this->artisan('portfolio:instagram')->assertSuccessful();
+
+        $this->assertSame([], Cache::get(ErrorReporter::CACHE_KEY, []));
     }
 
     public function test_the_page_compares_with_the_current_price_and_creates_alerts(): void

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.35.1] – 2026-10-05
+
+### Behoben
+- Eine Log-Datei, die von einem anderen Benutzer neu angelegt wurde (z. B. durch die Log-Rotation), ließ geplante Aufgaben abbrechen: Schreibfehler im Log brechen nichts mehr ab, der Wächter und der Deploy legen eine nicht beschreibbare Log-Datei beiseite, und der Systemzustand zeigt das Problem an.
+- Lehnt Apify den Schlüssel ab (401/402/403), erscheint kein Fehler mehr alle sechs Stunden – Admins bekommen höchstens einmal am Tag den Hinweis, Schlüssel und Kontingent zu prüfen.
+
 ## [1.35.0] – 2026-10-05
 
 ### Neu

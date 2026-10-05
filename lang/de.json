@@ -6265,5 +6265,10 @@
     "🗑️ Put the bins out": "🗑️ Mülltonnen rausstellen",
     "🚪 Door still open": "🚪 Tür noch offen",
     "🧳 Guest mode is on": "🧳 Gästemodus ist an",
-    "🪟 Rain expected – a window is open": "🪟 Regen erwartet – ein Fenster ist offen"
+    "🪟 Rain expected – a window is open": "🪟 Regen erwartet – ein Fenster ist offen",
+    "Apify refused access (:status): check the APIFY_API_KEY and the plan or monthly limit of the Apify account.": "Apify verweigert den Zugriff (:status): APIFY_API_KEY sowie Tarif bzw. Monatslimit des Apify-Kontos prüfen.",
+    "Instagram analysis paused": "Instagram-Analyse pausiert",
+    "Log files": "Log-Dateien",
+    "Writable": "Beschreibbar",
+    "Not writable for the app: :files – the owner of the file has to be the user of the app.": "Für die App nicht beschreibbar: :files – die Datei muss dem Benutzer der App gehören."
 }

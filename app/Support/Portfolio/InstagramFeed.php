@@ -40,6 +40,10 @@ class InstagramFeed
                 'resultsLimit' => (int) config('services.instagram.limit', 20),
             ]);
 
+        if (in_array($response->status(), [401, 402, 403], true)) {
+            throw new InstagramAccessDenied(__('Apify refused access (:status): check the APIFY_API_KEY and the plan or monthly limit of the Apify account.', ['status' => $response->status()]));
+        }
+
         if (! $response->successful()) {
             throw new RuntimeException(__('Apify answered with :status.', ['status' => $response->status()]));
         }

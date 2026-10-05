@@ -276,6 +276,8 @@ class WebSocketClient
      */
     private function fill(int $bytes, bool $mustComplete = false): bool
     {
+        $waitingSince = null;
+
         while (strlen($this->buffer) < $bytes) {
             $chunk = fread($this->stream, max(8192, $bytes - strlen($this->buffer)));
 
@@ -285,6 +287,15 @@ class WebSocketClient
                 }
 
                 if ($mustComplete || $this->buffer !== '') {
+                    // The rest of a frame is on its way: wait briefly (never spin), give up after 30 s.
+                    $waitingSince ??= microtime(true);
+
+                    if (microtime(true) - $waitingSince > 30) {
+                        throw new RuntimeException('The connection to Home Assistant broke off.');
+                    }
+
+                    usleep(20000);
+
                     continue;
                 }
 

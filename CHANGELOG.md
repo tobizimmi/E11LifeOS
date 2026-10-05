@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.35.2] – 2026-10-05
+
+### Behoben
+- Live-Verbindung zu Home Assistant: Eine halb geschlossene Verbindung kann den Prozess nicht mehr in eine Dauerschleife mit voller CPU-Last bringen – sie wird erkannt und neu aufgebaut, mit wachsender Wartezeit zwischen den Versuchen.
+
 ## [1.35.1] – 2026-10-05
 
 ### Behoben

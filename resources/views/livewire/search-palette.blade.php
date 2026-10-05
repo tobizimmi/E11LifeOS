@@ -294,7 +294,8 @@ new class extends Component
 
         if ($user->isAdmin()) {
             $places[] = ['🛠 '.__('Server settings'), route('admin.settings'), 'server admin einstellungen vpn'];
-            $places[] = ['🩺 '.__('Administration'), route('admin.system'), 'admin system zustand fehler'];
+            $places[] = ['📊 '.__('Administration'), route('admin.overview'), 'admin übersicht dashboard nutzer speicher'];
+            $places[] = ['🩺 '.__('System'), route('admin.system'), 'admin system zustand fehler'];
             $places[] = ['🏠 '.__('Households'), route('admin.households'), 'admin haushalte verwalten export löschen'];
         }
 

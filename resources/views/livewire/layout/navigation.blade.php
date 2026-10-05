@@ -300,7 +300,7 @@ new class extends Component
                     <x-sidebar-link :href="route('modules.index')" :active="request()->routeIs('modules.index')" wire:navigate>{{ __('Modules & subscription') }}</x-sidebar-link>
                 @endif
                 @can('admin')
-                    <x-sidebar-link :href="route('admin.system')" :active="request()->routeIs('admin.*')" wire:navigate>{{ __('Administration') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('admin.overview')" :active="request()->routeIs('admin.*')" wire:navigate>{{ __('Administration') }}</x-sidebar-link>
                 @endcan
                 <x-sidebar-link :href="route('changelog')" :active="request()->routeIs('changelog')" wire:navigate>{{ __('What\'s new') }}</x-sidebar-link>
                 <button type="button" wire:click="logout" class="w-full rounded-md px-2 py-1.5 text-start text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60">

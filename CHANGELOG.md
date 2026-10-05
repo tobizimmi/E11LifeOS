@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.43.0] – 2026-10-05
+
+### Neu
+- Support: Anfragen lassen sich direkt per E-Mail beantworten – die Antwort auf die Benachrichtigungs-Mail landet automatisch im Ticket (nur von der eigenen Adresse der anfragenden Person, ohne zitierten Verlauf, mit Anhängen nach Virenprüfung).
+- Textbausteine für das Support-Team: wiederkehrende Antworten mit Platzhaltern ({name}, {number}, {subject}, {agent}) und optionalem Folgestatus, im Ticket per Auswahl einfügbar.
+- Admin-Übersicht: Konten und Aktivität (7/30 Tage), Speicher pro Haushalt, Support-Warteschlange und Fehlertrend der letzten 14 Tage auf einen Blick.
+
 ## [1.42.0] – 2026-10-05
 
 ### Neu

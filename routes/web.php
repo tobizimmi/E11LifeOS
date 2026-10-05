@@ -268,11 +268,13 @@ Route::middleware('throttle:60,1')->group(function () {
 // Buttons in push notifications: the secret link is the authorisation (works once, for a few hours).
 Route::get('push-actions/{token}', [PushActionController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.show');
 Route::post('push-actions/{token}', [PushActionController::class, 'answer'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.answer');
+Volt::route('admin/overview', 'admin.overview')->middleware(['auth', 'can:admin'])->name('admin.overview');
 Volt::route('admin', 'admin.system')->middleware(['auth', 'can:admin'])->name('admin.system');
 Volt::route('admin/households', 'admin.households')->middleware(['auth', 'can:admin'])->name('admin.households');
 Volt::route('admin/users', 'admin.users')->middleware(['auth', 'can:admin'])->name('admin.users');
 Volt::route('admin/modules', 'admin.modules')->middleware(['auth', 'can:admin'])->name('admin.modules');
 Volt::route('admin/support', 'admin.support')->middleware(['auth', 'can:admin'])->name('admin.support');
+Volt::route('admin/support/macros', 'admin.support-macros')->middleware(['auth', 'can:admin'])->name('admin.support.macros');
 Volt::route('admin/support/{ticket}', 'admin.support-ticket')->whereNumber('ticket')->middleware(['auth', 'can:admin'])->name('admin.support.ticket');
 Volt::route('admin/roadmap', 'admin.roadmap')->middleware(['auth', 'can:admin'])->name('admin.roadmap');
 Route::get('admin/roadmap/export.md', RoadmapExportController::class)->middleware(['auth', 'can:admin'])->name('admin.roadmap.export');

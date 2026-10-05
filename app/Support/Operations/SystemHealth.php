@@ -181,7 +181,8 @@ class SystemHealth
      */
     private static function logs(): array
     {
-        $files = array_map('basename', LogFiles::unwritable());
+        // Repairs right away where it can (the folder belongs to the app), then reports what is left.
+        $files = array_map('basename', LogFiles::repair());
 
         return [
             'ok' => $files === [],

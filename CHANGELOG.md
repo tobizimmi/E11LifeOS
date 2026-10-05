@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.36.2] – 2026-10-05
+
+### Verbessert
+- Untermenüs überall einheitlich: Finanzen, Karriere, Reisen, Notfallordner, Haus, Journal, Wissen, Lernen, Vorsorge, Kostenteilung, Fahrzeuge, Arbeit, Vermietung, Gesundheit, Smart Home, Business, Rezept-Import und Administration nutzen dieselbe Navigation – bis vier Bereiche als Segmentschalter, mehr als Blatt auf dem Handy bzw. gruppierte Leiste auf größeren Bildschirmen.
+- Lange Bereichsnamen werden auf dem Handy sauber umbrochen statt abgeschnitten.
+
 ## [1.36.1] – 2026-10-05
 
 ### Verbessert

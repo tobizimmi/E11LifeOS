@@ -84,7 +84,7 @@ class SmartHomeDashboardTest extends TestCase
         Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id])
             ->assertSee('🛋️ Wohnzimmer')->assertSee('Solar')->assertSee('21,5 °C')->assertSee('aria-pressed="false"', false);
 
-        Volt::test('smart-home.index')->assertSee('🛋️ Wohnzimmer')->call('openBoard', $dashboard->id)->assertSet('board', $dashboard->id)->assertSee('Solar');
+        Volt::test('smart-home.index')->assertSeeInOrder(['🛋️', 'Wohnzimmer'])->call('openBoard', $dashboard->id)->assertSet('board', $dashboard->id)->assertSee('Solar');
 
         $board->call('removeCard', $lightCard->id)->call('deleteDashboard')->assertDispatched('smart-home-dashboard-deleted');
         $this->assertSame(0, SmartHomeDashboardCard::count());

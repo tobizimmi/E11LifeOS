@@ -262,11 +262,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
-                @foreach (['insurance' => '🛡️ '.__('Insurances'), 'retirement' => '🌅 '.__('Pension & freedom')] as $key => $label)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
-                @endforeach
-            </nav>
+            <x-section-nav :label="__('Provision')" :active="$tab" :groups="['' => ['insurance' => ['🛡️', __('Insurances')], 'retirement' => ['🌅', __('Pension & freedom')]]]" />
 
             @if ($tab === 'insurance')
                 <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">

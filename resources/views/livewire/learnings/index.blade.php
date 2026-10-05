@@ -164,11 +164,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="mx-auto max-w-3xl space-y-5 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-wrap items-center gap-2">
-                <nav class="flex flex-1 gap-1 rounded-xl bg-gray-100 p-1 text-sm dark:bg-gray-800" aria-label="{{ __('Sections') }}">
-                    @foreach (['review' => '🔁 '.__('Review').($due->count() ? ' ('.$due->count().')' : ''), 'library' => '📚 '.__('All lessons').' ('.$total.')'] as $key => $label)
-                        <button type="button" wire:click="$set('tab', '{{ $key }}')" aria-pressed="{{ $tab === $key ? 'true' : 'false' }}" @class(['flex-1 rounded-lg px-3 py-2 font-medium', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400' => $tab !== $key])>{{ $label }}</button>
-                    @endforeach
-                </nav>
+                <x-section-nav class="flex-1" :label="__('Insights')" :active="$tab" :groups="['' => ['review' => ['🔁', __('Review'), null, $due->count() ? (string) $due->count() : null], 'library' => ['📚', __('All lessons'), null, (string) $total]]]" />
                 <x-primary-button type="button" wire:click="create">+ {{ __('Lesson') }}</x-primary-button>
             </div>
 

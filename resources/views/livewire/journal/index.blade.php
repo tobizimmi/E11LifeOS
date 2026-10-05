@@ -342,11 +342,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
-            <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                @foreach (['today' => '☀️ '.__('Day'), 'habits' => '✅ '.__('Habits'), 'journal' => '📔 '.__('Journal'), 'insights' => '📊 '.__('Evaluation')] as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
-                @endforeach
-            </div>
+            <x-section-nav :label="__('Routines & journal')" :active="$tab" :groups="['' => ['today' => ['☀️', __('Day')], 'habits' => ['✅', __('Habits')], 'journal' => ['📔', __('Journal')], 'insights' => ['📊', __('Evaluation')]]]" />
 
             @if ($tab === 'today')
                 <div class="flex items-center justify-between gap-2">

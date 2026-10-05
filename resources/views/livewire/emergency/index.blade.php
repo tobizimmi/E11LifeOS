@@ -210,13 +210,11 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <nav class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="{{ __('Sections') }}">
-                <button type="button" wire:click="$set('section', 'overview')" class="{{ $chip }} {{ $section === 'overview' ? $chipOn : $chipOff }}">🧭 {{ __('Overview') }}</button>
-                @foreach ($sections as $key => $info)
-                    <button type="button" wire:click="$set('section', '{{ $key }}')" class="{{ $chip }} {{ $section === $key ? $chipOn : $chipOff }}">{{ $info['icon'] }} {{ $info['label'] }} <span class="opacity-70">{{ $progress['sections'][$key]['done'] }}/{{ $progress['sections'][$key]['total'] }}</span></button>
-                @endforeach
-                <button type="button" wire:click="$set('section', 'access')" class="{{ $chip }} {{ $section === 'access' ? $chipOn : $chipOff }}">🔐 {{ __('Trusted people') }}</button>
-            </nav>
+            <x-section-nav tab-property="section" :label="__('Emergency folder')" :active="$section" :groups="[
+                '' => ['overview' => ['🧭', __('Overview')]],
+                __('Contents') => collect($sections)->mapWithKeys(fn ($info, $key) => [$key => [$info['icon'], $info['label'], null, $progress['sections'][$key]['done'].'/'.$progress['sections'][$key]['total']]])->all(),
+                __('Access') => ['access' => ['🔐', __('Trusted people')]],
+            ]" />
 
             @if ($section === 'overview')
                 <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">

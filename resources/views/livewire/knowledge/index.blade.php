@@ -135,11 +135,7 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <nav class="flex gap-1 rounded-xl bg-gray-100 p-1 text-sm dark:bg-gray-800" aria-label="{{ __('Sections') }}">
-                @foreach (['tips' => '💡 '.__('Tips'), 'news' => '📰 '.__('What\'s new'), 'theses' => '📝 '.__('My theses').' ('.$theses->count().')', 'favorites' => '⭐ '.__('Favourites').' ('.$favorites->count().')'] as $key => $label)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" @class(['flex-1 rounded-lg px-3 py-2 font-medium transition pointer-coarse:min-h-11', 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
-                @endforeach
-            </nav>
+            <x-section-nav :label="__('Knowledge')" :active="$tab" :groups="['' => ['tips' => ['💡', __('Tips')], 'news' => ['📰', __('What\'s new')], 'theses' => ['📝', __('My theses'), null, (string) $theses->count()], 'favorites' => ['⭐', __('Favourites'), null, (string) $favorites->count()]]]" />
 
             @if ($tab === 'theses')
                 <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Your investment theses – why you own a security and when you would sell. Write them on the page of each security.') }}</p>

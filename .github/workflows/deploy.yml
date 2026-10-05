@@ -187,6 +187,11 @@ jobs:
               exit 1
             fi
 
+            # Log files recreated by another user (log rotation, Plesk cron) block every write: move them aside.
+            for log_file in storage/logs/*.log; do
+              if [ -e "$log_file" ] && [ ! -w "$log_file" ]; then mv "$log_file" "$log_file.unwritable-$(date +%Y%m%d%H%M%S)" || true; fi
+            done
+
             composer install --no-dev --optimize-autoloader --no-scripts
             php artisan package:discover --ansi
 

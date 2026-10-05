@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Operations\AdminAlert;
+use App\Support\Portfolio\InstagramAccessDenied;
 use App\Support\Portfolio\InstagramFeed;
 use App\Support\Portfolio\Notifier;
 use Illuminate\Console\Attributes\Description;
@@ -23,6 +25,10 @@ class UpdateInstagramAnalysis extends Command
             } else {
                 try {
                     $new = $feed->fetch();
+                } catch (InstagramAccessDenied $exception) {
+                    // A setup problem: tell the admins once a day instead of an error every six hours.
+                    AdminAlert::send('instagram:access-denied', __('Instagram analysis paused'), $exception->getMessage(), 60 * 24, mail: false);
+                    $this->warn($exception->getMessage());
                 } catch (Throwable $exception) {
                     report($exception);
                     $this->error($exception->getMessage());

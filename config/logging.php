@@ -55,7 +55,9 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
-            'ignore_exceptions' => false,
+            // An unwritable log file must not abort requests and scheduled commands; errors are
+            // still recorded in the database (ErrorReporter) and the watcher repairs the file.
+            'ignore_exceptions' => true,
         ],
 
         'single' => [

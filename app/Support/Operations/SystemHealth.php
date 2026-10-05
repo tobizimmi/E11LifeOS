@@ -38,6 +38,7 @@ class SystemHealth
             'backup_remote' => self::remoteBackup(),
             'restore_test' => self::restoreTest(),
             'vpn' => self::vpn(),
+            'logs' => self::logs(),
         ];
     }
 
@@ -173,6 +174,20 @@ class SystemHealth
         $running = Vpn::isRunning();
 
         return ['ok' => $running, 'label' => __('VPN'), 'detail' => $running ? __('Connected') : __('Not connected – the home network is not reachable')];
+    }
+
+    /**
+     * @return array{ok: bool, label: string, detail: string}
+     */
+    private static function logs(): array
+    {
+        $files = array_map('basename', LogFiles::unwritable());
+
+        return [
+            'ok' => $files === [],
+            'label' => __('Log files'),
+            'detail' => $files === [] ? __('Writable') : __('Not writable for the app: :files – the owner of the file has to be the user of the app.', ['files' => implode(', ', $files)]),
+        ];
     }
 
     public static function latestBackup(): ?string

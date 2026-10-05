@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Support\Operations\AdminAlert;
+use App\Support\Operations\LogFiles;
 use App\Support\Operations\SystemHealth;
 use App\Support\SmartHome\ConnectionWatch;
 use Illuminate\Console\Attributes\Description;
@@ -16,6 +17,9 @@ class WatchSystem extends Command
 {
     public function handle(ConnectionWatch $smartHome): int
     {
+        // A log file another user recreated would make every log write (and the command) fail.
+        LogFiles::repair();
+
         // Home Assistant and evcc of the households: the owner hears about outages.
         $smartHome->check();
 

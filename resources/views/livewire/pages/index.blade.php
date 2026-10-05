@@ -92,6 +92,27 @@ new #[Layout('layouts.app')] class extends Component
      * Also reached via ?create=1&parent=ID&private=1 (sidebar "+") and
      * ?new=Title (wiki link to a page that does not exist yet).
      */
+    /**
+     * Packing lists, checklists and shopping lists for the editor's "Insert list".
+     *
+     * @return list<array{key: string, group: string, icon: string, name: string, count: int, live: bool}>
+     */
+    public function insertableLists(): array
+    {
+        return \App\Support\InsertableLists::options(Auth::user(), (int) $this->householdId);
+    }
+
+    /**
+     * A list as Markdown for the editor; a shopping list optionally as a live block.
+     */
+    public function listMarkdown(string $key, bool $live = false): string
+    {
+        $markdown = \App\Support\InsertableLists::markdown(Auth::user(), (int) $this->householdId, mb_substr($key, 0, 60), $live);
+        abort_if($markdown === null, 404);
+
+        return $markdown;
+    }
+
     public function mount(?int $item = null): void
     {
         $this->resolveHousehold();
@@ -539,11 +560,13 @@ new #[Layout('layouts.app')] class extends Component
                             ]))"
                             wire:key="editor-{{ $editingId ?? 'new' }}"
                         >
-                            <div class="flex items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 [&>button]:whitespace-nowrap">
                                 <x-input-label for="body" :value="__('Content')" />
                                 <span class="flex-1"></span>
+                                <button type="button" x-show="mode === 'rich'" x-on:click="openListPicker()" class="text-xs text-gray-500 dark:text-gray-400 underline">📋 {{ __('Insert list') }}</button>
                                 <button type="button" x-show="mode !== 'loading'" x-on:click="pickFile()" class="text-xs text-gray-500 dark:text-gray-400 underline">📎 {{ __('Image or file') }}</button>
                                 <input type="file" x-ref="file" class="hidden" x-on:change="uploadFiles($event.target.files); $event.target.value = ''" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" />
+                                <x-editor-list-picker />
                                 <button type="button" x-show="mode !== 'loading'" x-on:click="toggleMode()" class="text-xs text-gray-500 dark:text-gray-400 underline">
                                     <span x-show="mode === 'rich'">{{ __('Edit as Markdown') }}</span>
                                     <span x-show="mode === 'markdown'" x-cloak>{{ __('Back to editor') }}</span>

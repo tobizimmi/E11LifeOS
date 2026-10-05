@@ -6480,5 +6480,20 @@
     "Feature request": "Feature-Wunsch",
     "Account & access": "Konto & Zugang",
     "We marked your request as solved. If something is still open, simply answer – the request opens again.": "Wir haben deine Anfrage als gelöst markiert. Falls noch etwas offen ist, antworte einfach – dann wird sie wieder geöffnet.",
-    "Open request": "Anfrage öffnen"
+    "Open request": "Anfrage öffnen",
+    "Packing lists": "Packlisten",
+    "My templates": "Meine Vorlagen",
+    "Checklists": "Checklisten",
+    "This shopping list no longer exists.": "Diese Einkaufsliste gibt es nicht mehr.",
+    "Open shopping list": "Einkaufsliste öffnen",
+    "Everything bought – the list is empty.": "Alles eingekauft – die Liste ist leer.",
+    "Shopping list (live)": "Einkaufsliste (live)",
+    "Insert list (packing, checklist, shopping)": "Liste einfügen (Pack-, Check-, Einkaufsliste)",
+    "Insert list": "Liste einfügen",
+    "Search lists": "Listen suchen",
+    "Always shows the current entries of the list": "Zeigt immer die aktuellen Einträge der Liste",
+    "live": "live",
+    "Lists are inserted as a checklist you can tick off. Shopping lists can also be shown live.": "Listen werden als abhakbare Checkliste eingefügt. Einkaufslisten lassen sich auch live anzeigen.",
+    "Insert list as subtasks": "Liste als Unteraufgaben einfügen",
+    "Insert list as subtasks …": "Liste als Unteraufgaben einfügen …"
 }

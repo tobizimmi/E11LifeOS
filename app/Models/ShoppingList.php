@@ -52,6 +52,9 @@ class ShoppingList extends Model
         return $this->belongsTo(ShoppingStore::class, 'store_id');
     }
 
+    /**
+     * @return HasMany<ShoppingListEntry, $this>
+     */
     public function entries(): HasMany
     {
         return $this->hasMany(ShoppingListEntry::class);

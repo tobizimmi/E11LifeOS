@@ -41,6 +41,8 @@ class EditorTranslations
             'embedTasks' => __('Tasks of this page'),
             'embedCalendar' => __('Calendar: next 14 days'),
             'embedSubpages' => __('List of subpages'),
+            'embedShopping' => __('Shopping list (live)'),
+            'insertList' => __('Insert list (packing, checklist, shopping)'),
             'embedHint' => __('shown live when the page is read'),
             'uploading' => __('Uploading …'),
             'uploadFailed' => __('The file could not be uploaded (max. 20 MB; images, PDF, Office, text, ZIP).'),

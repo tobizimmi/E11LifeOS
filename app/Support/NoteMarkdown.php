@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Item;
+use App\Models\ShoppingList;
 use App\Models\User;
 use Closure;
 use Illuminate\Support\Carbon;
@@ -86,7 +87,7 @@ class NoteMarkdown
             return $placeholder;
         }, $note->body());
 
-        $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks);
+        $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks, $attributes);
         $html = strtr(self::highlight(self::renderBlocks((string) $markdown, $embed)), $links);
 
         $html = self::decorateChecklists($html, $note, $viewer);
@@ -423,16 +424,40 @@ class NoteMarkdown
     }
 
     /**
-     * Live content embedded in a page: its linked tasks, the next two weeks or its subpages.
+     * Live content embedded in a page: its linked tasks, the next two weeks, its subpages or a
+     * shopping list of the household.
+     *
+     * @param  array<string, string>  $attributes
      */
-    private static function embed(Item $page, User $viewer, string $type, bool $interactive): string
+    private static function embed(Item $page, User $viewer, string $type, bool $interactive, array $attributes = []): string
     {
         return match ($type) {
             'tasks' => self::embedTasks($page, $viewer, $interactive && $page->collection_id === null),
             'calendar' => self::embedCalendar($page, $viewer),
             'subpages' => self::embedSubpages($page, $viewer),
+            'shopping' => self::embedShopping($page, (int) ($attributes['list'] ?? 0)),
             default => '',
         };
+    }
+
+    /**
+     * The open items of a shopping list of the page's household, always up to date.
+     */
+    private static function embedShopping(Item $page, int $listId): string
+    {
+        $list = ShoppingList::where('household_id', $page->household_id)->find($listId);
+
+        if (! $list) {
+            return self::embedFrame('🛒 '.__('Shopping list'), '<p class="page-embed-empty">'.e(__('This shopping list no longer exists.')).'</p>');
+        }
+
+        $open = $list->entries()->where('checked', false)->orderBy('position')->get();
+        $rows = $open->map(fn ($entry) => sprintf('<li>%s%s</li>', e($entry->label), $entry->quantity ? ' <span class="page-embed-meta">'.e($entry->quantity).'</span>' : ''));
+        $link = sprintf('<p class="page-embed-empty"><a href="%s">%s</a></p>', e(route('shopping-list.index', ['list' => $list->id])), e(__('Open shopping list')));
+
+        return self::embedFrame(($list->icon ?: '🛒').' '.$list->name, ($rows->isEmpty()
+            ? '<p class="page-embed-empty">'.e(__('Everything bought – the list is empty.')).'</p>'
+            : '<ul class="page-embed-subpages">'.$rows->implode('').'</ul>').$link);
     }
 
     private static function embedTasks(Item $page, User $viewer, bool $interactive): string

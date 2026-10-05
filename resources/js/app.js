@@ -136,6 +136,7 @@ document.addEventListener('alpine:init', () => {
                         },
                         onFiles: (files) => this.uploadFiles(files),
                         onPickFile: () => this.pickFile(),
+                        onPickList: () => this.openListPicker(),
                         searchLinks: (term) => this.$wire.linkTargets(term),
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
@@ -197,6 +198,43 @@ document.addEventListener('alpine:init', () => {
 
             pickFile() {
                 this.$refs.file?.click();
+            },
+
+            // "/ Insert list": packing lists, checklists and shopping lists from the server.
+            listPicker: { open: false, loading: false, options: [], filter: '' },
+
+            async openListPicker() {
+                this.listPicker = { open: true, loading: true, options: [], filter: '' };
+
+                try {
+                    this.listPicker.options = await this.$wire.insertableLists();
+                } finally {
+                    this.listPicker.loading = false;
+                }
+            },
+
+            listGroups() {
+                const term = this.listPicker.filter.trim().toLowerCase();
+                const groups = {};
+
+                for (const option of this.listPicker.options) {
+                    if (term === '' || option.name.toLowerCase().includes(term)) {
+                        (groups[option.group] ??= []).push(option);
+                    }
+                }
+
+                return Object.entries(groups);
+            },
+
+            async insertList(key, live = false) {
+                const markdown = await this.$wire.listMarkdown(key, live);
+                this.listPicker.open = false;
+
+                if (!editor || !markdown) {
+                    return;
+                }
+
+                editor.chain().focus().insertContent(markdown, { contentType: 'markdown' }).run();
             },
 
             /**

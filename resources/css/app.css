@@ -445,6 +445,7 @@
     }
 
     .note-content .page-embed-time,
+    .note-content .page-embed-meta,
     .note-content .page-embed-empty {
         @apply text-gray-500 dark:text-gray-400;
     }

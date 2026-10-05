@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.39.0] – 2026-10-05
+
+### Neu
+- Listen einfügen: In Seiten und Aufgaben-Notizen fügt „/“ → „Liste einfügen“ (oder der Link „📋 Liste einfügen“ über dem Editor) Packlisten, Checklisten, eigene Vorlagen und Einkaufslisten als abhakbare Checkliste ein – auch ohne Reise. Einkaufslisten lassen sich zusätzlich live einbetten und zeigen dann immer die aktuellen offenen Einträge.
+- Aufgaben: „Liste als Unteraufgaben einfügen“ übernimmt eine Pack-, Check- oder Einkaufsliste als Unteraufgaben (ohne Doppelte).
+
+### Behoben
+- Administration auf dem Handy: Das Bereichsmenü rutschte nach oben weg und ließ sich nicht bedienen. Auswahlblätter öffnen jetzt immer unten am Bildschirm.
+
 ## [1.38.0] – 2026-10-05
 
 ### Neu

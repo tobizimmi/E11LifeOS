@@ -296,6 +296,9 @@ new class extends Component
             </button>
             <div x-show="menuOpen" x-cloak class="mt-1 space-y-0.5">
                 <x-sidebar-link :href="route('profile')" :active="request()->routeIs('profile')" wire:navigate>{{ __('Profile') }}</x-sidebar-link>
+                @if (collect(\App\Support\Modules\ModuleAccess::plans())->isNotEmpty())
+                    <x-sidebar-link :href="route('modules.index')" :active="request()->routeIs('modules.index')" wire:navigate>{{ __('Modules & subscription') }}</x-sidebar-link>
+                @endif
                 @can('admin')
                     <x-sidebar-link :href="route('admin.system')" :active="request()->routeIs('admin.*')" wire:navigate>{{ __('Administration') }}</x-sidebar-link>
                 @endcan

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ApiToken;
 use App\Models\ModuleEntitlement;
 use App\Models\SecurityEvent;
+use App\Models\SupportTicket;
 use App\Models\Trip;
 use App\Models\User;
 use App\Support\Addons;
@@ -157,5 +158,38 @@ class AdminUsersAndModulesTest extends TestCase
         Volt::test('dashboard')->call('sortWidget', 'habits', 0)->assertNotFound();
         $this->withToken($token)->getJson('/api/v1/shopping')->assertNotFound();
         $this->withToken($token)->getJson('/api/v1/tasks')->assertOk();
+    }
+
+    public function test_members_start_a_trial_or_request_a_license_for_licensed_modules(): void
+    {
+        [$owner, $household] = $this->memberWithHousehold();
+        $member = $this->addMemberTo($household);
+        $admin = $this->admin();
+        ModuleAccess::savePlans(['vehicles' => 'licensed', 'health' => 'licensed']);
+        $this->actingAs($admin);
+        Volt::test('admin.modules')->call('setOffer', 'vehicles', 'trial_days', '14')->call('setOffer', 'vehicles', 'price', '2 €/Monat');
+        $this->assertSame(['trial_days' => 14, 'price' => '2 €/Monat'], ModuleAccess::offer('vehicles'));
+
+        // Only the owner starts the trial, once per household.
+        $this->actingAs($member);
+        Volt::test('modules.index')->assertSee('2 €/Monat')->assertDontSee('14 Tage testen')->call('startTrial', 'vehicles')->assertForbidden();
+
+        $this->actingAs($owner);
+        Volt::test('modules.index')->assertSee('14 Tage testen')->call('startTrial', 'vehicles');
+        $trial = ModuleEntitlement::where('source', 'trial')->sole();
+        $this->assertSame([$household->id, 'vehicles'], [$trial->household_id, $trial->module]);
+        $this->assertTrue($member->fresh()->exists && ModuleAccess::allows($member->fresh(), 'vehicles'));
+        $this->get(route('vehicles.index'))->assertOk();
+
+        $this->travel(15)->days();
+        $this->assertFalse(ModuleAccess::allows($owner->fresh(), 'vehicles'));
+        Volt::test('modules.index')->assertDontSee('14 Tage testen')->call('startTrial', 'vehicles')->assertForbidden();
+
+        // No trial offered for health: a license request goes to the support.
+        Volt::test('modules.index')->call('openRequest', 'health')->set('note', 'Für die ganze Familie')->call('sendRequest')->assertHasNoErrors();
+        $ticket = SupportTicket::sole();
+        $this->assertSame(['account', 'health'], [$ticket->type, $ticket->area]);
+        $this->assertStringContainsString('Für die ganze Familie', $ticket->messages()->first()->body);
+        Volt::test('modules.index')->assertSee('Angefragt')->call('openRequest', 'health')->call('sendRequest')->assertStatus(422);
     }
 }

@@ -29,6 +29,15 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: __('Saved.'));
     }
 
+    public function setOffer(string $module, string $field, string $value): void
+    {
+        $this->authorize('admin');
+        $offer = ModuleAccess::offer($module);
+        $offer[$field === 'trial_days' ? 'trial_days' : 'price'] = $field === 'trial_days' ? (int) $value : $value;
+        ModuleAccess::saveOffer($module, (int) $offer['trial_days'], (string) $offer['price']);
+        SecurityLog::record(Auth::user(), 'admin_action', details: 'module_offer '.$module);
+    }
+
     public function removeEntry(int $id): void
     {
         $this->authorize('admin');
@@ -45,6 +54,7 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'modules' => ModuleCatalog::all(),
             'plans' => ModuleAccess::plans(),
+            'offers' => ModuleAccess::offers(),
             'entries' => $entries,
             'summary' => collect(ModuleCatalog::all())->map(fn (array $module, string $key) => [
                 'granted' => $entries->where('module', $key)->where('access', ModuleEntitlement::GRANTED)->count(),
@@ -77,6 +87,10 @@ new #[Layout('layouts.app')] class extends Component
                                     @if ($licensed && $summary[$key]['households'] > 0) · <span class="text-amber-700 dark:text-amber-300">{{ trans_choice(':count household without release|:count households without release', $summary[$key]['households']) }}</span>@endif
                                 </span>
                             </span>
+                            @if ($licensed)
+                                <label class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">🧪 <input type="number" min="0" max="365" value="{{ $offers[$key]['trial_days'] ?? 0 }}" wire:change="setOffer('{{ $key }}', 'trial_days', $event.target.value)" class="w-16 rounded-md border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Trial days for :module', ['module' => $module['label']]) }}"> {{ __('days') }}</label>
+                                <input type="text" maxlength="60" value="{{ $offers[$key]['price'] ?? '' }}" wire:change="setOffer('{{ $key }}', 'price', $event.target.value)" placeholder="{{ __('Price, e.g. 2 €/month') }}" class="w-36 rounded-md border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Price for :module', ['module' => $module['label']]) }}">
+                            @endif
                             <select wire:change="setPlan('{{ $key }}', $event.target.value)" class="rounded-md border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Plan for :module', ['module' => $module['label']]) }}">
                                 <option value="included" @selected(! $licensed)>{{ __('Included') }}</option>
                                 <option value="licensed" @selected($licensed)>{{ __('Licensed') }}</option>

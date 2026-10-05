@@ -264,6 +264,8 @@ Route::get('push-actions/{token}', [PushActionController::class, 'show'])->where
 Route::post('push-actions/{token}', [PushActionController::class, 'answer'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.answer');
 Volt::route('admin', 'admin.system')->middleware(['auth', 'can:admin'])->name('admin.system');
 Volt::route('admin/households', 'admin.households')->middleware(['auth', 'can:admin'])->name('admin.households');
+Volt::route('admin/users', 'admin.users')->middleware(['auth', 'can:admin'])->name('admin.users');
+Volt::route('admin/modules', 'admin.modules')->middleware(['auth', 'can:admin'])->name('admin.modules');
 Volt::route('admin/log', 'admin.audit')->middleware(['auth', 'can:admin'])->name('admin.audit');
 Volt::route('admin/settings', 'admin.settings')->middleware(['auth', 'can:admin'])->name('admin.settings');
 

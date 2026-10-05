@@ -1512,24 +1512,58 @@ document.addEventListener('livewire:init', () => {
         return;
     }
 
-    let startY = null;
+    let start = null;
+    let direction = null;
     let indicator = null;
 
+    // Inside something that scrolls sideways (sub-menus, tables, carousels) a swipe is never a pull.
+    const scrollsSideways = (element) => {
+        for (let node = element; node && node !== document.body; node = node.parentElement) {
+            const style = window.getComputedStyle(node);
+
+            if (/(auto|scroll)/.test(style.overflowX) && node.scrollWidth > node.clientWidth) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     document.addEventListener('touchstart', (event) => {
-        startY = window.scrollY <= 0 && !event.target.closest('[role=dialog], .ProseMirror, textarea') ? event.touches[0].clientY : null;
+        const target = event.target;
+        start = window.scrollY <= 0 && event.touches.length === 1 && !target.closest('[role=dialog], .ProseMirror, textarea, [data-no-pull]') && !scrollsSideways(target)
+            ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+            : null;
+        direction = null;
     }, { passive: true });
 
     document.addEventListener('touchmove', (event) => {
-        if (startY === null) {
+        if (start === null) {
             return;
         }
 
-        const distance = event.touches[0].clientY - startY;
+        const dx = event.touches[0].clientX - start.x;
+        const dy = event.touches[0].clientY - start.y;
+
+        // Decide once after a few pixels: only a clearly downward swipe is a pull, a sideways or
+        // diagonal one is left alone for the rest of the gesture.
+        if (direction === null && Math.hypot(dx, dy) > 10) {
+            direction = dy > 0 && Math.abs(dy) > Math.abs(dx) * 2 ? 'pull' : 'other';
+        }
+
+        if (direction !== 'pull') {
+            indicator?.remove();
+            indicator = null;
+
+            return;
+        }
+
+        const distance = dy;
 
         if (distance > 10) {
             indicator ??= Object.assign(document.body.appendChild(document.createElement('div')), { className: 'e11-pull' });
             indicator.style.setProperty('--pull', Math.min(distance, 120) / 120);
-            indicator.classList.toggle('is-ready', distance > 80);
+            indicator.classList.toggle('is-ready', distance > 80 && Math.abs(dx) < distance / 2);
         }
     }, { passive: true });
 
@@ -1540,7 +1574,8 @@ document.addEventListener('livewire:init', () => {
 
         indicator?.remove();
         indicator = null;
-        startY = null;
+        start = null;
+        direction = null;
     });
 })();
 

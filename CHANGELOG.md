@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.37.0] – 2026-10-05
+
+### Neu
+- Administration › Nutzer: alle Konten mit Haushalten und Rolle, letzter Anmeldung, zweitem Faktor und Registrierungsdatum, mit Suche. Eigener Reiter „Administratoren“; Administratorrechte vergeben oder entziehen nur nach erneuter Passworteingabe (nie für sich selbst).
+- Rechteverwaltung: Jeder Bereich (Reisen, Gesundheit, Finanzen, Smart Home …) lässt sich pro Haushalt und pro Konto freigeben oder sperren, auf Wunsch bis zu einem Datum. Gesperrte Bereiche verschwinden aus dem Menü und sind nicht mehr aufrufbar; die Daten bleiben erhalten. Sperren gehen immer vor.
+- Administration › Module: pro Bereich „Inklusive“ oder „Lizenzpflichtig“, mit Übersicht aller aktiven Freigaben, Sperren und Lizenzen. Das Datenmodell ist für ein späteres Lizenzsystem vorbereitet (Herkunft Administrator/Lizenz/Testzeitraum, Gültigkeitszeitraum, Referenz).
+- Haushaltsseite: Vom Administrator gesperrte oder lizenzpflichtige Zusatzmodule sind gekennzeichnet.
+
 ## [1.36.2] – 2026-10-05
 
 ### Verbessert

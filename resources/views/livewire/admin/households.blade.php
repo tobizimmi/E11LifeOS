@@ -311,6 +311,11 @@ new #[Layout('layouts.app')] class extends Component
                                         <x-input-error :messages="$errors->get('memberEmail')" />
                                     </div>
 
+                                    <div>
+                                        <p class="mb-1 font-medium text-gray-900 dark:text-gray-100">{{ __('Areas for this household') }}</p>
+                                        <livewire:admin.module-access subject-type="household" :subject-id="$household->id" :key="'module-access-household-'.$household->id" />
+                                    </div>
+
                                     <div class="flex flex-wrap gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
                                         <x-secondary-button type="button" wire:click="startExport({{ $household->id }})">📦 {{ __('Export data') }}</x-secondary-button>
                                         <x-danger-button type="button" wire:click="startDelete({{ $household->id }})">🗑 {{ __('Delete household') }}</x-danger-button>

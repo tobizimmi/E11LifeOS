@@ -38,7 +38,7 @@ new #[Layout('layouts.app')] class extends Component
         $membership = $household->members()->where('user_id', Auth::id())->first();
         abort_unless($membership?->isOwner(), 403);
 
-        $household->setAddon($addon, ! $household->hasAddon($addon));
+        $household->setAddon($addon, ! Addons::switchedOn($household, $addon));
 
         // Full navigation so the sidebar reflects the change.
         $this->redirectRoute('household.show', navigate: true);
@@ -281,7 +281,9 @@ new #[Layout('layouts.app')] class extends Component
                                 <p class="font-medium text-gray-900 dark:text-gray-100">{{ $addon['icon'] }} {{ $addon['label'] }}</p>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $addon['description'] }}</p>
                             </div>
-                            @if ($isOwner)
+                            @if (! \App\Support\Modules\ModuleAccess::availableForHousehold($household, $key))
+                                <span class="shrink-0 text-sm text-gray-500 dark:text-gray-400">🔒 {{ \App\Support\Modules\ModuleAccess::plan($key) === \App\Support\Modules\ModuleAccess::LICENSED ? __('Needs a license') : __('Locked by the administrator') }}</span>
+                            @elseif ($isOwner)
                                 <button
                                     type="button"
                                     role="switch"

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Support\Modules\ModuleAccess;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -84,9 +85,12 @@ class Navigation
             'pdf' => ['household', __('PDF design'), 'document-text', 'pdf.editor', ['pdf.editor']],
         ];
 
+        // Areas the administrator locked for the household or the account (or not licensed).
+        $modules = array_filter($modules, fn (?array $module, string $key) => $module !== null && ModuleAccess::allows($user, $key), ARRAY_FILTER_USE_BOTH);
+
         return array_map(
             fn (array $module) => ['group' => $module[0], 'label' => $module[1], 'icon' => $module[2], 'route' => $module[3], 'active' => $module[4]],
-            array_filter($modules),
+            $modules,
         );
     }
 

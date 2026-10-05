@@ -3,6 +3,7 @@
 use App\Http\Middleware\ApplyUrlPrefix;
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAddonEnabled;
+use App\Http\Middleware\EnsureModuleAllowed;
 use App\Http\Middleware\LogSensitiveAccess;
 use App\Http\Middleware\RecordSlowRequests;
 use App\Http\Middleware\RequireTwoFactor;
@@ -36,7 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Uploads are checked for viruses after the session started, so errors reach the form.
         // Answers from push notifications come from the service worker without a form token.
         $middleware->validateCsrfTokens(except: ['push-actions/*']);
-        $middleware->web(append: [RequireTwoFactor::class, ScanUploads::class, ApplyUrlPrefix::class, RecordSlowRequests::class]);
+        $middleware->web(append: [RequireTwoFactor::class, EnsureModuleAllowed::class, ScanUploads::class, ApplyUrlPrefix::class, RecordSlowRequests::class]);
         $middleware->api(append: [ScanUploads::class]);
         $middleware->append(SecurityHeaders::class);
 

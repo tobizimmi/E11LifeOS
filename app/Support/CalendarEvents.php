@@ -10,6 +10,7 @@ use App\Models\MealPlan;
 use App\Models\RealEstateTenant;
 use App\Models\User;
 use App\Support\Life\LifeDates;
+use App\Support\Modules\ModuleAccess;
 use App\Support\Portfolio\PortfolioLink;
 use App\Support\RealEstate\RealEstateLink;
 use Illuminate\Support\Carbon;
@@ -108,6 +109,9 @@ class CalendarEvents
                 }
             }
         }
+
+        // Entries of areas locked for the member (trips, health, vehicles …) stay hidden.
+        $events = array_values(array_filter($events, fn (array $event) => ModuleAccess::allowsUrl($user, $event['url'])));
 
         usort($events, fn (array $a, array $b) => [$a['date'], $a['time'] ?? '99:99', $a['title']] <=> [$b['date'], $b['time'] ?? '99:99', $b['title']]);
 

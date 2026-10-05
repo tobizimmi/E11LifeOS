@@ -19,7 +19,8 @@ class EnsureModuleAllowed
         $route = $request->route();
         $module = ModuleCatalog::forRoute($route?->getName());
 
-        if ($module !== null && $request->user() && in_array('auth', $route->gatherMiddleware(), true)) {
+        // Only signed-in routes (session or app token); public share links stay reachable.
+        if ($module !== null && $request->user() && array_intersect(['auth', 'auth.token'], $route->gatherMiddleware()) !== []) {
             abort_unless(ModuleAccess::allows($request->user(), $module), 404);
         }
 

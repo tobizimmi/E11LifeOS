@@ -11,6 +11,7 @@ use App\Models\Tag;
 use App\Models\Trip;
 use App\Support\Paperless\PaperlessClient;
 use App\Support\Addons;
+use App\Support\Modules\ModuleAccess;
 use App\Support\BrainAi;
 use App\Support\Portfolio\PortfolioLink;
 use Illuminate\Support\Facades\Auth;
@@ -148,6 +149,10 @@ new class extends Component
                 ])
                 ->all(),
         ];
+
+        // Hits from areas locked for the member (or not licensed) stay hidden.
+        $user = Auth::user();
+        $groups = array_map(fn (array $entries) => array_values(array_filter($entries, fn (array $entry) => ! isset($entry['url']) || ModuleAccess::allowsUrl($user, (string) $entry['url']))), $groups);
 
         return array_filter($groups);
     }
@@ -298,6 +303,7 @@ new class extends Component
         return collect($places)
             ->map(fn (array $place) => ['label' => $place[0], 'url' => $place[1], 'keywords' => mb_strtolower($place[0].' '.$place[2])])
             ->filter(fn (array $place) => $term === '' || str_contains($place['keywords'], $term))
+            ->filter(fn (array $place) => ModuleAccess::allowsUrl($user, $place['url']))
             ->take($term === '' ? 12 : 5)
             ->values()->all();
     }

@@ -20,7 +20,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // Home Assistant reports state changes here (secret in the address, see Smart home › Settings).
     Route::post('smart-home/webhook/{secret}', SmartHomeWebhookController::class)->middleware('throttle:240,1')->where('secret', '[A-Za-z0-9]{32,64}')->name('smart-home.webhook');
 
-    Route::middleware(['auth.token', 'throttle:120,1'])->group(function () {
+    Route::middleware(['auth.token', 'throttle:120,1', 'module'])->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('logout');
 

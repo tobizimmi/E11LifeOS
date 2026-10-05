@@ -98,6 +98,17 @@ class ModuleAccess
         return self::plan($module) === self::INCLUDED || $entries->contains('access', ModuleEntitlement::GRANTED);
     }
 
+    /**
+     * Whether a link of the app leads into an area the user may use (search hits, calendar
+     * entries, widgets); links outside the app and core pages are always allowed.
+     */
+    public static function allowsUrl(?User $user, string $url): bool
+    {
+        $module = ModuleCatalog::forUrl($url);
+
+        return $module === null || self::allows($user, $module);
+    }
+
     public static function allows(?User $user, string $module): bool
     {
         return self::explain($user, $module)['allowed'];

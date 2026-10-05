@@ -13,6 +13,7 @@
             <meta property="og:image" content="{{ route('recipes.public.image', $recipe->public_token) }}">
         @endif
         <link rel="icon" href="{{ asset('icons/icon.svg') }}" type="image/svg+xml">
+        <script type="application/ld+json">{!! json_encode(\App\Support\RecipeSchema::toArray($recipe, $recipe->image_path ? route('recipes.public.image', $recipe->public_token) : null), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) !!}</script>
         @vite(['resources/css/app.css'])
     </head>
     <body class="font-sans antialiased bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">

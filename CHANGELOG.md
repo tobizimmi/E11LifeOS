@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.47.0] – 2026-10-05
+
+### Neu
+- Rezepte teilen & mitnehmen: Jedes Rezept lässt sich als **Rezept-Datei (JSON im schema.org-Standard)** oder als **Text (Markdown)** exportieren (Rezept → ⋯ → Exportieren) – so wandert es in andere Koch-Apps oder in eine Nachricht.
+- Geteilte Rezeptseiten enthalten jetzt strukturierte schema.org-Daten (JSON-LD). Dadurch erkennt Google das Rezept und andere Rezept-Apps können es direkt importieren.
+
 ## [1.46.0] – 2026-10-05
 
 ### Neu

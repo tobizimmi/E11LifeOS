@@ -379,6 +379,8 @@ new #[Layout('layouts.app')] class extends Component
                                 <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="{{ __('More') }}">⋯</button>
                                 <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
                                     <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📄 {{ __('Download as PDF') }}</a>
+                                    <a href="{{ route('recipes.export', ['recipe' => $recipe]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🗂️ {{ __('Export as recipe file (JSON)') }}</a>
+                                    <a href="{{ route('recipes.export', ['recipe' => $recipe, 'format' => 'md']) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📝 {{ __('Export as text (Markdown)') }}</a>
                                     @if ($foreign)
                                         <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Save a copy to my recipes') }}</button>
                                     @else

@@ -16,7 +16,7 @@ class PublicRecipeController extends Controller
 {
     public function show(Request $request, string $token): View
     {
-        $recipe = $this->findRecipe($token);
+        $recipe = $this->findRecipe($token)->load('categories', 'tags');
         $servings = $request->integer('servings') ?: $recipe->servings;
         $servings = $servings ? max(1, min(99, $servings)) : null;
 

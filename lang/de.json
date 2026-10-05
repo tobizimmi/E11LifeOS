@@ -6316,5 +6316,12 @@
     "Your household data was exported": "Deine Haushaltsdaten wurden exportiert",
     "Your household membership changed": "Deine Haushaltsmitgliedschaft hat sich geändert",
     "e.g. Family Müller": "z. B. Familie Müller",
-    "“:name” was deleted.": "„:name“ wurde gelöscht."
+    "“:name” was deleted.": "„:name“ wurde gelöscht.",
+    ":count section|:count sections": ":count Bereich|:count Bereiche",
+    "Depot": "Depot",
+    "Research": "Recherche",
+    "Data": "Daten",
+    "Sales": "Verkauf",
+    "Bookkeeping": "Buchhaltung",
+    "Ownership": "Besitz"
 }

@@ -660,13 +660,10 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
-            <nav class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="{{ __('Sections') }}">
-                <div class="inline-flex min-w-max rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                    @foreach (['overview' => '📊 '.__('Overview'), 'purchase' => '🏷 '.__('Purchase & financing'), 'budget' => '🧱 '.__('Budget & trades'), 'invoices' => '🧾 '.__('Invoices'), 'subsidies' => '🎁 '.__('Subsidies'), 'rental' => '🔑 '.__('Letting'), 'value' => '📈 '.__('Value development'), 'tax' => '🏛 '.__('Tax')] as $key => $label)
-                        <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm whitespace-nowrap', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
-                    @endforeach
-                </div>
-            </nav>
+            <x-section-nav :label="__('Sections')" :active="$tab" :groups="[
+                __('Purchase') => ['overview' => ['📊', __('Overview'), null], 'purchase' => ['🏷', __('Purchase & financing'), null], 'budget' => ['🧱', __('Budget & trades'), null], 'invoices' => ['🧾', __('Invoices'), null], 'subsidies' => ['🎁', __('Subsidies'), null]],
+                __('Ownership') => ['rental' => ['🔑', __('Letting'), null], 'value' => ['📈', __('Value development'), null], 'tax' => ['🏛', __('Tax'), null]],
+            ]" />
 
             @include('real-estate.partials.'.$tab)
         </div>

@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.36.1] – 2026-10-05
+
+### Verbessert
+- Untermenüs (Portfolio, Business, Immobilien): Auf dem Handy öffnet der aktuelle Bereich ein Blatt mit allen Bereichen in Gruppen – kein seitliches Scrollen mehr. Auf größeren Bildschirmen sind alle Bereiche auf einen Blick sichtbar und nach Gruppen getrennt.
+- Seitlich scrollende Leisten bleiben in sich, zeigen keinen Scrollbalken mehr und blenden an den Rändern aus.
+
+### Behoben
+- In der installierten App lud ein schräges Wischen am Seitenanfang (z. B. im Untermenü) die Seite neu: Nur ein klar senkrechtes Herunterziehen außerhalb seitlich scrollender Bereiche löst noch das Neuladen aus.
+
 ## [1.36.0] – 2026-10-05
 
 ### Neu

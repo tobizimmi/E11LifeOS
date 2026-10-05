@@ -758,3 +758,15 @@ h1, h2, h3,
         filter: brightness(0.8) contrast(1.1) saturate(0.8);
     }
 }
+
+/* Sideways strips at full width (chips, small tab rows): the swipe stays inside the strip, no
+   scrollbar, and the edges fade so it is clear that more follows. */
+nav.\-mx-4.overflow-x-auto {
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent 0, #000 1rem, #000 calc(100% - 1.5rem), transparent 100%);
+}
+
+nav.\-mx-4.overflow-x-auto::-webkit-scrollbar {
+    display: none;
+}

@@ -282,7 +282,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $addon['description'] }}</p>
                             </div>
                             @if (! \App\Support\Modules\ModuleAccess::availableForHousehold($household, $key))
-                                <span class="shrink-0 text-sm text-gray-500 dark:text-gray-400">🔒 {{ \App\Support\Modules\ModuleAccess::plan($key) === \App\Support\Modules\ModuleAccess::LICENSED ? __('Needs a license') : __('Locked by the administrator') }}</span>
+                                <span class="shrink-0 text-sm text-gray-500 dark:text-gray-400">🔒 @if (\App\Support\Modules\ModuleAccess::plan($key) === \App\Support\Modules\ModuleAccess::LICENSED)<a href="{{ route('modules.index') }}" wire:navigate class="text-indigo-600 underline dark:text-indigo-400">{{ __('Needs a license') }}</a>@else{{ __('Locked by the administrator') }}@endif</span>
                             @elseif ($isOwner)
                                 <button
                                     type="button"

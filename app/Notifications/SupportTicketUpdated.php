@@ -39,6 +39,12 @@ class SupportTicketUpdated extends Notification
             $mail->line(__('We marked your request as solved. If something is still open, simply answer – the request opens again.'));
         }
 
-        return $mail->action(__('Open request'), route('support.show', $this->ticket));
+        $mail->action(__('Open request'), route('support.show', $this->ticket));
+
+        if ($this->ticket->status !== 'closed' && ($address = $this->ticket->replyAddress())) {
+            $mail->replyTo($address)->line(__('You can also simply answer this e-mail – your answer is added to the request.'));
+        }
+
+        return $mail;
     }
 }

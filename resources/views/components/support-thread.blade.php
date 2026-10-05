@@ -21,6 +21,7 @@
                             @if ($message->kind === 'note') <span class="text-amber-700 dark:text-amber-300">· 🔒 {{ __('Internal note') }}</span>
                             @elseif (! $fromRequester) <span class="text-indigo-600 dark:text-indigo-300">· {{ __('Support') }}</span>
                             @endif
+                            @if ($message->via === 'mail') <span title="{{ __('Answered by e-mail') }}">· ✉️</span>@endif
                         </span>
                         <time datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->format('d.m.Y H:i') }}</time>
                     </p>

@@ -154,7 +154,7 @@ class MailIntake
         return null;
     }
 
-    private static function isAutomatic(MimeMessage $message): bool
+    public static function isAutomatic(MimeMessage $message): bool
     {
         $auto = strtolower($message->headers['auto-submitted'] ?? 'no');
 
@@ -212,12 +212,12 @@ class MailIntake
     /**
      * The mail text without quoted replies, signature and forwarding header noise (at most 5000 characters).
      */
-    private static function cleanText(string $text): string
+    public static function cleanText(string $text): string
     {
         $lines = [];
 
         foreach (preg_split('/\R/u', $text) ?: [] as $line) {
-            if (rtrim($line) === '--' || preg_match('/^(von meinem iphone gesendet|sent from my iphone|gesendet von)/i', trim($line))) {
+            if (rtrim($line) === '--' || preg_match('/^(von meinem iphone gesendet|sent from my iphone|gesendet von)/i', trim($line)) || self::isQuoteHeader($line)) {
                 break;
             }
 
@@ -227,6 +227,17 @@ class MailIntake
         }
 
         return mb_substr(trim((string) preg_replace("/\n{3,}/", "\n\n", implode("\n", $lines))), 0, 5000);
+    }
+
+    /**
+     * "Am 05.10.2026 um 11:00 schrieb …:", "On … wrote:" or "-----Original Message-----": the quoted mail follows.
+     */
+    private static function isQuoteHeader(string $line): bool
+    {
+        $line = trim($line);
+
+        return (bool) preg_match('/^(am|on)\s.{4,200}\s(schrieb|wrote)\b.*:$/iu', $line)
+            || (bool) preg_match('/^-{2,}\s*(original message|ursprüngliche nachricht)\s*-{2,}$/iu', $line);
     }
 
     private static function toTask(InboundMail $log, User $user, Household $household, string $subject, string $text): void

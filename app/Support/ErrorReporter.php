@@ -21,6 +21,9 @@ class ErrorReporter
 {
     public const CACHE_KEY = 'errors:recent';
 
+    /** Errors per day (errors:day:Y-m-d) for the trend on the admin overview. */
+    public const DAY_KEY = 'errors:day:';
+
     public static function handle(Throwable $exception): void
     {
         if (self::isExpected($exception)) {
@@ -39,6 +42,8 @@ class ErrorReporter
 
             $recent = array_slice([$entry, ...Cache::get(self::CACHE_KEY, [])], 0, 20);
             Cache::put(self::CACHE_KEY, $recent, now()->addDays(14));
+            Cache::add(self::DAY_KEY.now()->toDateString(), 0, now()->addDays(31));
+            Cache::increment(self::DAY_KEY.now()->toDateString());
 
             $to = config('security.error_report_email');
 
@@ -54,6 +59,23 @@ class ErrorReporter
         } catch (Throwable) {
             // Reporting must never break the request or loop.
         }
+    }
+
+    /**
+     * Errors per day of the last $days days, oldest first.
+     *
+     * @return array<string, int>
+     */
+    public static function perDay(int $days = 14): array
+    {
+        $counts = [];
+
+        for ($offset = $days - 1; $offset >= 0; $offset--) {
+            $day = now()->subDays($offset)->toDateString();
+            $counts[$day] = (int) Cache::get(self::DAY_KEY.$day, 0);
+        }
+
+        return $counts;
     }
 
     private static function isExpected(Throwable $exception): bool

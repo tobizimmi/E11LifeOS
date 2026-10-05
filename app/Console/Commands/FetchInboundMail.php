@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Helpdesk\SupportMail;
 use App\Support\Mail\Mailbox;
 use App\Support\Mail\MailIntake;
 use Illuminate\Console\Attributes\Description;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 #[Signature('mail:fetch {--limit=50 : Mails per run}')]
-#[Description('Fetches the mails sent to the household addresses and files them (bookings, tasks, shopping list, inbox)')]
+#[Description('Fetches the mails sent to the household addresses and files them (bookings, tasks, shopping list, inbox) and answers to support tickets')]
 class FetchInboundMail extends Command
 {
     /** Larger mails are deleted unread (attachments beyond that are not kept anyway). */
@@ -51,8 +52,10 @@ class FetchInboundMail extends Command
         try {
             foreach ($mailbox->messages((int) $this->option('limit')) as $number) {
                 try {
-                    $log = $mailbox->size($number) > self::MAX_BYTES ? null : MailIntake::process($mailbox->raw($number));
-                    $log ? $processed++ : $ignored++;
+                    $raw = $mailbox->size($number) > self::MAX_BYTES ? null : $mailbox->raw($number);
+                    // Answers to support e-mails first, then the household addresses.
+                    $handled = $raw !== null && (SupportMail::process($raw) ?? (MailIntake::process($raw) !== null));
+                    $handled ? $processed++ : $ignored++;
                 } catch (Throwable $exception) {
                     // A broken mail must not block the ones after it.
                     report($exception);

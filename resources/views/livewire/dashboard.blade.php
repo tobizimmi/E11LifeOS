@@ -110,9 +110,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function widgetAvailable(string $key): bool
     {
-        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE, 'energy' => Addons::SMART_HOME, 'smart_home' => Addons::SMART_HOME, 'smart_home_board' => Addons::SMART_HOME];
-
-        return ! isset($modules[$key]) || $this->currentUser()->canUseAddon($modules[$key]);
+        return DashboardWidgets::allowedFor($this->currentUser(), $key);
     }
 
     public function dismissOnboarding(): void

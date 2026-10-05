@@ -3,6 +3,32 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.44.0] – 2026-10-05
+
+### Neu
+- Immobilien-Wirtschaftlichkeit als Komplettbild: Verkaufsszenario am Ende der Haltedauer (Verkaufspreis, Verkaufskosten, Restschuld, Spekulationssteuer bei Verkauf innerhalb von zehn Jahren, Netto-Verkaufserlös), Gesamtrendite inkl. interner Zinsfuß (IRR) und Vergleich mit einer Alternativanlage.
+- Förderungen fließen in die Kalkulation ein: einmaliger Zuschuss senkt den Kapitalbedarf, ein günstiger Förderkredit (z. B. KfW) wird mit dem Bankdarlehen zu einem Mischzins verrechnet.
+- Detaillierte Renovierungskalkulation: Einzelposten (Dach, Heizung, Bad …) werden zur Renovierungssumme addiert und mit der Berechnung gespeichert.
+- Kauf-Checkliste „Vor dem Kauf: worauf achten“ (Lage, Gebäude, Unterlagen, Geld, Vertrag) direkt in der Wirtschaftlichkeitsprüfung.
+
+## [1.43.0] – 2026-10-05
+
+### Neu
+- Support: Anfragen lassen sich direkt per E-Mail beantworten – die Antwort auf die Benachrichtigungs-Mail landet automatisch im Ticket (nur von der eigenen Adresse der anfragenden Person, ohne zitierten Verlauf, mit Anhängen nach Virenprüfung).
+- Textbausteine für das Support-Team: wiederkehrende Antworten mit Platzhaltern ({name}, {number}, {subject}, {agent}) und optionalem Folgestatus, im Ticket per Auswahl einfügbar.
+- Admin-Übersicht: Konten und Aktivität (7/30 Tage), Speicher pro Haushalt, Support-Warteschlange und Fehlertrend der letzten 14 Tage auf einen Blick.
+
+## [1.42.0] – 2026-10-05
+
+### Neu
+- „Module & Abo“ (Benutzermenü): zeigt für jeden lizenzpflichtigen Bereich den Status (Test, Lizenz, freigegeben bis, gesperrt) und den Preis. Inhaber/innen starten einen kostenlosen Testzeitraum einmal pro Haushalt; alle anderen fragen eine Lizenz an – die Anfrage landet als Ticket im Support.
+- Admin → Module: Testtage und Preistext je lizenzpflichtigem Modul einstellbar.
+
+## [1.41.0] – 2026-10-05
+
+### Verbessert
+- Rechteverwaltung lückenlos: Gesperrte oder nicht lizenzierte Bereiche tauchen auch nicht mehr in der Suche, im Kalender, in den Kacheln der Übersicht und in der App (API) auf.
+
 ## [1.40.1] – 2026-10-05
 
 ### Behoben

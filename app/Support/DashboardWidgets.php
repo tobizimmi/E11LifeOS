@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Models\User;
+use App\Support\Modules\ModuleAccess;
 use Illuminate\Support\Carbon;
 
 /**
@@ -55,7 +56,35 @@ class DashboardWidgets
             return self::DEFAULT;
         }
 
+        // The stored choice and order; cards of areas the member can't use are skipped when shown (allowedFor).
         return array_values(array_unique(array_filter($user->dashboard_widgets, fn ($key) => is_string($key) && array_key_exists($key, self::all()))));
+    }
+
+    /**
+     * The area a widget shows data from (widgets of locked areas are left out).
+     */
+    private const MODULES = [
+        'habits' => 'journal',
+        'shopping' => 'shopping',
+        'meals' => Addons::RECIPES,
+        'portfolio' => Addons::PORTFOLIO,
+        'real_estate' => Addons::REAL_ESTATE,
+        'tax' => Addons::FINANCE,
+        'freedom' => Addons::FINANCE,
+        'energy' => Addons::SMART_HOME,
+        'smart_home' => Addons::SMART_HOME,
+        'smart_home_board' => Addons::SMART_HOME,
+    ];
+
+    public static function allowedFor(User $user, string $widget): bool
+    {
+        $module = self::MODULES[$widget] ?? null;
+
+        return match (true) {
+            $module === null => true,
+            array_key_exists($module, Addons::all()) => $user->canUseAddon($module),
+            default => ModuleAccess::allows($user, $module),
+        };
     }
 
     /**

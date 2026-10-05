@@ -24,6 +24,12 @@ class ListenHomeAssistant extends Command
     /** @var array<int, int> connection id => failed attempts in a row */
     private array $failures = [];
 
+    /** @var array<int, int> connection id => wake-ups in a row without a message */
+    private array $emptyReads = [];
+
+    /** Wake-ups without a message after which a connection counts as broken (no busy loop). */
+    private const MAX_EMPTY_READS = 20;
+
     public function handle(AutomationEngine $engine): int
     {
         $stopAt = time() + (int) $this->option('hours') * 3600;
@@ -122,18 +128,34 @@ class ListenHomeAssistant extends Command
         $write = $except = null;
 
         if (@stream_select($read, $write, $except, $seconds) === false) {
+            // Interrupted or a broken stream: never spin, wait a moment.
+            sleep(1);
+
             return;
         }
 
         foreach ($this->sessions as $id => $session) {
             try {
                 if (in_array($session['client']->stream(), $read, true)) {
+                    $received = false;
+
                     while ($message = $session['client']->receiveJson()) {
+                        $received = true;
                         $session['stream']->handle($message);
 
                         if (! $session['client']->hasPending() && ! $this->hasBufferedData($session['client'])) {
                             break;
                         }
+                    }
+
+                    // A socket that keeps waking up without data is dead (half-closed TLS): reconnect
+                    // instead of spinning at full CPU.
+                    $this->emptyReads[$id] = $received ? 0 : ($this->emptyReads[$id] ?? 0) + 1;
+
+                    if ($this->emptyReads[$id] >= self::MAX_EMPTY_READS) {
+                        $this->emptyReads[$id] = 0;
+
+                        throw new \RuntimeException('Readable without data – reconnecting.');
                     }
                 }
 
@@ -146,7 +168,7 @@ class ListenHomeAssistant extends Command
                 $this->warn("Connection {$id} lost: ".$exception->getMessage());
                 $session['client']->close();
                 unset($this->sessions[$id]);
-                $this->retryAt[$id] = time() + 15;
+                $this->retryAt[$id] = time() + min(300, 15 * 2 ** min($this->failures[$id] = ($this->failures[$id] ?? 0) + 1, 5));
             }
         }
     }

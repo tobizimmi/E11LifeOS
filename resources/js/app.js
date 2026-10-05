@@ -112,7 +112,7 @@ document.addEventListener('alpine:init', () => {
      * The editor instance lives in the closure, not in Alpine's reactive state:
      * wrapping it in a proxy breaks ProseMirror.
      */
-    window.Alpine.data('pageEditor', ({ pageTitles, translations }) => {
+    window.Alpine.data('pageEditor', ({ pageTitles, translations, autosave = false }) => {
         let editor = null;
 
         return {
@@ -136,6 +136,7 @@ document.addEventListener('alpine:init', () => {
                         },
                         onFiles: (files) => this.uploadFiles(files),
                         onPickFile: () => this.pickFile(),
+                        onPickList: () => this.openListPicker(),
                         searchLinks: (term) => this.$wire.linkTargets(term),
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
@@ -161,7 +162,9 @@ document.addEventListener('alpine:init', () => {
              * next to the save button listens to "page-autosave".
              */
             scheduleAutosave() {
-                if (!this.$wire.editingId) {
+                // Only components with an autosave() method ask for it (pages). Unknown $wire
+                // properties are callable proxies, so checking editingId alone is always true.
+                if (!autosave || typeof this.$wire.editingId !== 'number') {
                     return;
                 }
 
@@ -195,6 +198,43 @@ document.addEventListener('alpine:init', () => {
 
             pickFile() {
                 this.$refs.file?.click();
+            },
+
+            // "/ Insert list": packing lists, checklists and shopping lists from the server.
+            listPicker: { open: false, loading: false, options: [], filter: '' },
+
+            async openListPicker() {
+                this.listPicker = { open: true, loading: true, options: [], filter: '' };
+
+                try {
+                    this.listPicker.options = await this.$wire.insertableLists();
+                } finally {
+                    this.listPicker.loading = false;
+                }
+            },
+
+            listGroups() {
+                const term = this.listPicker.filter.trim().toLowerCase();
+                const groups = {};
+
+                for (const option of this.listPicker.options) {
+                    if (term === '' || option.name.toLowerCase().includes(term)) {
+                        (groups[option.group] ??= []).push(option);
+                    }
+                }
+
+                return Object.entries(groups);
+            },
+
+            async insertList(key, live = false) {
+                const markdown = await this.$wire.listMarkdown(key, live);
+                this.listPicker.open = false;
+
+                if (!editor || !markdown) {
+                    return;
+                }
+
+                editor.chain().focus().insertContent(markdown, { contentType: 'markdown' }).run();
             },
 
             /**
@@ -1512,24 +1552,58 @@ document.addEventListener('livewire:init', () => {
         return;
     }
 
-    let startY = null;
+    let start = null;
+    let direction = null;
     let indicator = null;
 
+    // Inside something that scrolls sideways (sub-menus, tables, carousels) a swipe is never a pull.
+    const scrollsSideways = (element) => {
+        for (let node = element; node && node !== document.body; node = node.parentElement) {
+            const style = window.getComputedStyle(node);
+
+            if (/(auto|scroll)/.test(style.overflowX) && node.scrollWidth > node.clientWidth) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     document.addEventListener('touchstart', (event) => {
-        startY = window.scrollY <= 0 && !event.target.closest('[role=dialog], .ProseMirror, textarea') ? event.touches[0].clientY : null;
+        const target = event.target;
+        start = window.scrollY <= 0 && event.touches.length === 1 && !target.closest('[role=dialog], .ProseMirror, textarea, [data-no-pull]') && !scrollsSideways(target)
+            ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+            : null;
+        direction = null;
     }, { passive: true });
 
     document.addEventListener('touchmove', (event) => {
-        if (startY === null) {
+        if (start === null) {
             return;
         }
 
-        const distance = event.touches[0].clientY - startY;
+        const dx = event.touches[0].clientX - start.x;
+        const dy = event.touches[0].clientY - start.y;
+
+        // Decide once after a few pixels: only a clearly downward swipe is a pull, a sideways or
+        // diagonal one is left alone for the rest of the gesture.
+        if (direction === null && Math.hypot(dx, dy) > 10) {
+            direction = dy > 0 && Math.abs(dy) > Math.abs(dx) * 2 ? 'pull' : 'other';
+        }
+
+        if (direction !== 'pull') {
+            indicator?.remove();
+            indicator = null;
+
+            return;
+        }
+
+        const distance = dy;
 
         if (distance > 10) {
             indicator ??= Object.assign(document.body.appendChild(document.createElement('div')), { className: 'e11-pull' });
             indicator.style.setProperty('--pull', Math.min(distance, 120) / 120);
-            indicator.classList.toggle('is-ready', distance > 80);
+            indicator.classList.toggle('is-ready', distance > 80 && Math.abs(dx) < distance / 2);
         }
     }, { passive: true });
 
@@ -1540,7 +1614,8 @@ document.addEventListener('livewire:init', () => {
 
         indicator?.remove();
         indicator = null;
-        startY = null;
+        start = null;
+        direction = null;
     });
 })();
 

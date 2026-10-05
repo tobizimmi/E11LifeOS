@@ -48,6 +48,7 @@ class SecurityLog
             'smart_home_connection' => ['label' => __('Smart home connection changed'), 'icon' => '🔌', 'level' => 'warning'],
             'trusted_access' => ['label' => __('Trusted person opened the emergency folder'), 'icon' => '🆘', 'level' => 'critical'],
             'virus_found' => ['label' => __('Upload with a virus blocked'), 'icon' => '🦠', 'level' => 'critical'],
+            'admin_action' => ['label' => __('Administrator action'), 'icon' => '🛠', 'level' => 'warning'],
         ];
     }
 

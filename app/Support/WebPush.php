@@ -50,7 +50,10 @@ class WebPush
      * priority so the phone shows them at once. With "all notifications via Pushover" in the
      * profile they also go to Pushover ($pushover = false when the caller sends there itself).
      */
-    public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true): int
+    /**
+     * @param  list<array{label: string, url: string}>  $actions  buttons in the notification (answered by a POST to the url)
+     */
+    public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true, array $actions = []): int
     {
         InAppNotifications::record($user, $title, $body, $url);
 
@@ -66,7 +69,7 @@ class WebPush
             return 0;
         }
 
-        $message = PushMessage::create(['user_id' => $user->id, 'title' => mb_substr($title, 0, 255), 'body' => $body, 'url' => $url]);
+        $message = PushMessage::create(['user_id' => $user->id, 'title' => mb_substr($title, 0, 255), 'body' => $body, 'url' => $url, 'actions' => $actions ?: null]);
 
         if ($quiet) {
             // Queued for the devices; "push:release-quiet" wakes them when the quiet hours end.
@@ -82,7 +85,7 @@ class WebPush
      *
      * @param  Collection<int, PushSubscription>  $subscriptions
      * @param  Collection<int, PushMessage>  $messages
-     * @param  list<array{title: string, body: string, url: string, tag: string}>  $shown
+     * @param  list<array{title: string, body: string, url: string, tag: string, actions?: list<array{label: string, url: string}>}>  $shown
      */
     private function deliver(Collection $subscriptions, Collection $messages, string $urgency, array $shown): int
     {
@@ -113,7 +116,7 @@ class WebPush
      * The JSON the service worker reads from the push, or null when it is too big (the service
      * worker then fetches the texts).
      *
-     * @param  list<array{title: string, body: string, url: string, tag: string}>  $shown
+     * @param  list<array{title: string, body: string, url: string, tag: string, actions?: list<array{label: string, url: string}>}>  $shown
      */
     public static function payload(array $shown): ?string
     {
@@ -173,7 +176,7 @@ class WebPush
      * user wants every message on its own).
      *
      * @param  Collection<int, PushMessage>  $messages
-     * @return list<array{title: string, body: string, url: string, tag: string}>
+     * @return list<array{title: string, body: string, url: string, tag: string, actions?: list<array{label: string, url: string}>}>
      */
     public static function present(User $user, Collection $messages, bool $bundle = true): array
     {
@@ -186,12 +189,20 @@ class WebPush
             ]];
         }
 
-        return $messages->map(fn (PushMessage $message) => [
-            'title' => $message->title,
-            'body' => (string) $message->body,
-            'url' => $message->url ?: route('dashboard'),
-            'tag' => 'e11-'.$message->id,
-        ])->values()->all();
+        return $messages->map(function (PushMessage $message) {
+            $shown = [
+                'title' => $message->title,
+                'body' => (string) $message->body,
+                'url' => $message->url ?: route('dashboard'),
+                'tag' => 'e11-'.$message->id,
+            ];
+
+            if ($message->actions) {
+                $shown['actions'] = $message->actions;
+            }
+
+            return $shown;
+        })->values()->all();
     }
 
     /**

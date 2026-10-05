@@ -408,16 +408,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
 
                 {{-- Document types --}}
-                <div class="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-2 dark:border-gray-700" role="tablist">
-                    @foreach (['invoice' => '🧾 '.__('Invoices'), 'quote' => '📝 '.__('Quotes'), 'credit_note' => '↩ '.__('Credit notes')] as $key => $label)
-                        <button type="button" role="tab" aria-selected="{{ $type === $key ? 'true' : 'false' }}" wire:click="$set('type', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white dark:bg-indigo-500' => $type === $key, 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $type !== $key])>
-                            {{ $label }} <span class="text-xs opacity-70">{{ $typeCounts[$key] ?? 0 }}</span>
-                        </button>
-                    @endforeach
-                    @if ($openQuotes > 0 && $type !== 'quote')
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ trans_choice(':count quote awaiting an answer|:count quotes awaiting an answer', $openQuotes) }}</span>
-                    @endif
-                </div>
+                <x-section-nav tab-property="type" :label="__('Document type')" :active="$type" :groups="['' => ['invoice' => ['🧾', __('Invoices')], 'quote' => ['📝', __('Quotes')], 'credit_note' => ['↩', __('Credit notes')]]]" />
 
                 <div class="flex flex-wrap items-center gap-3">
                     <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search number, customer, subject …') }}" aria-label="{{ __('Search') }}" class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-auto sm:min-w-0 sm:flex-1">

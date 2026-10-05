@@ -633,11 +633,10 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
-                <div class="inline-flex rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                    @foreach (['report' => '📊 '.__('Report'), 'forecast' => '🔮 '.__('Forecast'), 'transactions' => '📄 '.__('Bookings'), 'budgets' => '🎯 '.__('Budgets'), 'tax' => '🏛 '.__('Tax'), 'import' => '⬆ '.__('Import')] as $key => $label)
-                        <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
-                    @endforeach
-                </div>
+                <x-section-nav class="w-full md:w-auto" :label="__('Finances')" :active="$tab" :groups="[
+                    __('Overview') => ['report' => ['📊', __('Report')], 'forecast' => ['🔮', __('Forecast')], 'budgets' => ['🎯', __('Budgets')]],
+                    __('Data') => ['transactions' => ['📄', __('Bookings')], 'tax' => ['🏛', __('Tax')], 'import' => ['⬆', __('Import')]],
+                ]" />
                 @if (! in_array($tab, ['import', 'budgets', 'tax', 'forecast'], true))
                     <select wire:model.live="period" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Period') }}">
                         @foreach ($periods as $key => $label)

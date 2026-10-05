@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
+use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +34,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('shopping', [LifeController::class, 'storeShopping'])->name('shopping.store');
         Route::post('shopping/{entry}/toggle', [LifeController::class, 'toggleShopping'])->whereNumber('entry')->name('shopping.toggle');
         Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
+        Route::get('today', [TodayController::class, 'today'])->name('today');
+        Route::get('widgets', [TodayController::class, 'widgets'])->name('widgets');
+        Route::post('capture', [TodayController::class, 'capture'])->name('capture');
+        Route::post('presence', [SmartHomeController::class, 'presence'])->name('presence');
+
+        Route::middleware('addon:smart_home')->group(function () {
+            Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
+            Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
+            Route::post('smart-home/modes/{key}', [SmartHomeController::class, 'mode'])->where('key', '[a-z_]{1,40}')->name('smart-home.mode');
+        });
 
         Route::middleware('addon:portfolio')->group(function () {
             Route::get('portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');

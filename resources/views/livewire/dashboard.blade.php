@@ -110,7 +110,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function widgetAvailable(string $key): bool
     {
-        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE, 'energy' => Addons::SMART_HOME, 'smart_home' => Addons::SMART_HOME];
+        $modules = ['meals' => Addons::RECIPES, 'portfolio' => Addons::PORTFOLIO, 'real_estate' => Addons::REAL_ESTATE, 'tax' => Addons::FINANCE, 'freedom' => Addons::FINANCE, 'energy' => Addons::SMART_HOME, 'smart_home' => Addons::SMART_HOME, 'smart_home_board' => Addons::SMART_HOME];
 
         return ! isset($modules[$key]) || $this->currentUser()->canUseAddon($modules[$key]);
     }
@@ -130,7 +130,18 @@ new #[Layout('layouts.app')] class extends Component
         $todo = $this->findVisibleItem(Item::TYPE_TODO, $id);
 
         $todo->update(['done' => ! $todo->done]);
-        $this->announceReschedule($todo);
+
+        if ($todo->rescheduledTo) {
+            $this->announceReschedule($todo);
+        } elseif ($todo->done) {
+            $this->dispatch('toast', message: __('Done: :title', ['title' => \Illuminate\Support\Str::limit($todo->title, 40)]), action: ['label' => __('Undo'), 'event' => 'dashboard-task-undo', 'params' => ['taskId' => $todo->id]]);
+        }
+    }
+
+    #[\Livewire\Attributes\On('dashboard-task-undo')]
+    public function undoTodo(int $taskId): void
+    {
+        $this->findVisibleItem(Item::TYPE_TODO, $taskId)->update(['done' => false]);
     }
 
     /**
@@ -183,6 +194,7 @@ new #[Layout('layouts.app')] class extends Component
         $shows = fn (string $widget) => $this->widgetsLoaded && in_array($widget, $widgets, true);
 
         return $data + [
+            'today' => $this->widgetsLoaded ? \App\Support\TodayView::for($this->currentUser(), $this->householdId) : null,
             'onboarding' => \App\Support\Onboarding::isVisible($this->currentUser()) ? \App\Support\Onboarding::steps($this->currentUser()) : null,
             'tasksCollection' => $tasks,
             'dueProperty' => $dueProperty,
@@ -201,7 +213,7 @@ new #[Layout('layouts.app')] class extends Component
             'allWidgets' => array_filter(DashboardWidgets::all(), fn (string $key) => $this->widgetAvailable($key), ARRAY_FILTER_USE_KEY),
             'portfolio' => $shows('portfolio') ? PortfolioLink::summary($this->currentUser()) : null,
             'portfolioEvents' => $shows('portfolio') ? array_slice(PortfolioLink::events($this->currentUser(), today(), today()->addDays(30)), 0, 3) : [],
-            'weather' => $shows('weather') && $this->currentUser()->weather_latitude !== null
+            'weather' => $this->widgetsLoaded && $this->currentUser()->weather_latitude !== null
                 ? \App\Support\Weather::today($this->currentUser()->weather_latitude, $this->currentUser()->weather_longitude)
                 : null,
             'realEstates' => $shows('real_estate')
@@ -216,6 +228,7 @@ new #[Layout('layouts.app')] class extends Component
             'todayHabits' => in_array('habits', $widgets, true) ? $this->todayHabits() : [],
             'energyToday' => $shows('energy') && $this->householdId ? \App\Support\SmartHome\EnergyRecorder::energy($this->householdId, today()) : null,
             'energyNow' => $shows('energy') && $this->householdId ? \App\Support\SmartHome\EnergyRecorder::latest($this->householdId) : [],
+            'homeBoard' => $shows('smart_home_board') ? \App\Models\SmartHomeDashboard::query()->visibleTo($this->currentUser(), $this->householdId)->find($this->currentUser()->nav_preferences['board'] ?? 0) : null,
             'favoriteDevices' => $shows('smart_home') && $this->householdId ? \App\Models\SmartHomeEntity::where('household_id', $this->householdId)->where('favorite', true)->orderBy('position')->get() : collect(),
             'todayMood' => in_array('habits', $widgets, true) ? \App\Models\JournalEntry::where('user_id', $this->currentUser()->id)->whereDate('date', today()->toDateString())->value('mood') : null,
         ];
@@ -309,6 +322,64 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
+                <section class="rounded-2xl bg-white p-5 shadow-xs sm:p-6 dark:bg-gray-800" aria-labelledby="today-heading" @if (! $widgetsLoaded) wire:init="loadWidgets" @endif>
+                    @if (! $today)
+                        <div class="animate-pulse space-y-3" aria-busy="true">
+                            <div class="h-5 w-1/4 rounded-sm bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="h-4 w-2/3 rounded-sm bg-gray-100 dark:bg-gray-700/60"></div>
+                            <div class="h-4 w-1/2 rounded-sm bg-gray-100 dark:bg-gray-700/60"></div>
+                        </div>
+                    @else
+                        @php($sourceIcons = ['tasks' => '✅', 'dates' => '📌', 'meals' => '🍳', 'real_estate' => '🏠', 'business' => '💼', 'portfolio' => '📈', 'life' => '🗂️', 'external' => '🗓️'])
+                        <div class="flex flex-wrap items-baseline justify-between gap-2">
+                            <h3 id="today-heading" class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $today['mode'] === 'morning' ? '🌅' : ($today['mode'] === 'day' ? '☀️' : '🌙') }} {{ $today['title'] }}</h3>
+                            <a href="{{ route('calendar.index') }}" wire:navigate class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Calendar') }} →</a>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                            @if ($today['next'])
+                                <span class="rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200">⏭ {{ $today['minutesUntilNext'] < 1 ? __('Now') : ($today['minutesUntilNext'] < 60 ? __('In :minutes min', ['minutes' => $today['minutesUntilNext']]) : __('At :time', ['time' => $today['next']['time']])) }}: {{ \Illuminate\Support\Str::limit($today['next']['title'], 40) }}</span>
+                            @endif
+                            @if ($weather)
+                                <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">{{ $weather['icon'] }} {{ $weather['min'] }}–{{ $weather['max'] }} °C · {{ __('rain :percent %', ['percent' => $weather['rain']]) }}</span>
+                            @endif
+                            @if ($today['overdue'] > 0)
+                                <a href="{{ route('tasks.index') }}" wire:navigate class="rounded-full bg-red-50 px-2.5 py-1 text-red-800 hover:underline dark:bg-red-900/40 dark:text-red-200">⚠ {{ trans_choice(':count task overdue|:count tasks overdue', $today['overdue']) }}</a>
+                            @endif
+                            @if ($today['done'] > 0)
+                                <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">✓ {{ trans_choice(':count done today|:count done today', $today['done']) }}</span>
+                            @endif
+                        </div>
+                        @if ($today['events'] === [])
+                            <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">{{ __('Nothing planned for today – enjoy it.') }}</p>
+                        @else
+                            <ol class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach ($today['events'] as $index => $event)
+                                    <li wire:key="today-{{ $index }}-{{ md5($event['title']) }}" @class(['flex items-center gap-3 py-2', 'opacity-50' => $event['past']])>
+                                        <span class="w-14 shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ $event['time'] ?? __('All day') }}</span>
+                                        @if ($event['task_id'])
+                                            <input type="checkbox" wire:click="toggleTodo({{ $event['task_id'] }})" class="size-5 shrink-0 rounded-full border-gray-300 text-emerald-600" aria-label="{{ __('Mark :title as done', ['title' => $event['title']]) }}">
+                                        @else
+                                            <span class="w-5 shrink-0 text-center" aria-hidden="true">{{ $sourceIcons[$event['source']] ?? '•' }}</span>
+                                        @endif
+                                        <a href="{{ $event['url'] }}" wire:navigate @class(['min-w-0 flex-1 truncate text-sm text-gray-900 hover:underline dark:text-gray-100', 'font-semibold' => $today['next'] && $event === $today['next']])>{{ $event['title'] }}</a>
+                                    </li>
+                                @endforeach
+                            </ol>
+                        @endif
+                        @if ($today['tomorrow'] !== [])
+                            <h4 class="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Tomorrow') }}</h4>
+                            <ul class="mt-1 space-y-1 text-sm">
+                                @foreach (array_slice($today['tomorrow'], 0, 6) as $index => $event)
+                                    <li wire:key="tomorrow-{{ $index }}" class="flex gap-3"><span class="w-14 shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ $event['time'] ?? '–' }}</span><a href="{{ $event['url'] }}" wire:navigate class="min-w-0 flex-1 truncate text-gray-800 hover:underline dark:text-gray-200">{{ ($sourceIcons[$event['source']] ?? '•').' '.$event['title'] }}</a></li>
+                                @endforeach
+                                @if (count($today['tomorrow']) > 6)
+                                    <li class="text-xs text-gray-500">{{ __('and :count more', ['count' => count($today['tomorrow']) - 6]) }}</li>
+                                @endif
+                            </ul>
+                        @endif
+                    @endif
+                </section>
+
                 <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
                     <div class="flex items-center justify-between gap-3 mb-3">
                         <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ __('Quick capture') }}</h3>
@@ -348,9 +419,9 @@ new #[Layout('layouts.app')] class extends Component
                     </section>
                 @endif
 
-                <div @if (! $widgetsLoaded) wire:init="loadWidgets" @endif class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
+                <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" x-sort="$wire.sortWidget($item, $position)" x-sort:config="{ handle: '.widget-handle', animation: 180, ghostClass: 'opacity-40' }">
                     @foreach ($widgets as $widget)
-                        <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" class="group/widget relative">
+                        <div wire:key="widget-{{ $widget }}" x-sort:item="@js($widget)" @class(['group/widget relative', 'md:col-span-2 xl:col-span-3' => $widget === 'smart_home_board'])>
                             <button type="button" class="widget-handle absolute right-2 top-2 z-10 cursor-grab opacity-70 sm:opacity-0 focus:opacity-100 rounded-md bg-white/80 px-1.5 py-0.5 text-xs text-gray-400 shadow-xs ring-1 ring-gray-200 sm:group-hover/widget:opacity-100 hover:text-gray-700 dark:bg-gray-900/80 dark:ring-gray-700" title="{{ __('Drag to move the card') }}" aria-label="{{ __('Drag to move the card') }}">⋮⋮</button>
                         @if (! $widgetsLoaded && in_array($widget, $this::LAZY_WIDGETS, true))
                             <section class="animate-pulse rounded-lg bg-white p-6 shadow-xs dark:bg-gray-800" aria-busy="true" aria-label="{{ $allWidgets[$widget]['label'] ?? __('Loading …') }}">
@@ -427,6 +498,16 @@ new #[Layout('layouts.app')] class extends Component
                                     </button>
                                 @endforeach
                             </div>
+                        @endif
+                    </section>
+                                @break
+                            @case('smart_home_board')
+                    <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4">
+                        @if ($homeBoard)
+                            <livewire:smart-home.dashboard :dashboard-id="$homeBoard->id" wire:key="home-board-{{ $homeBoard->id }}" />
+                        @else
+                            <x-dashboard-card-header :title="__('Smart home dashboard')" :href="route('smart-home.index')" />
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{{ __('Open a dashboard under Smart home and choose “☆ Show on overview”.') }}</p>
                         @endif
                     </section>
                                 @break

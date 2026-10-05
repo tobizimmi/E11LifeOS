@@ -1507,18 +1507,6 @@ parameters:
 			path: app/Support/ContractOverview.php
 
 		-
-			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Support/DashboardWidgets.php
-
-		-
-			message: '#^Call to function is_string\(\) with ''costs''\|''deadlines''\|''energy''\|''freedom''\|''habits''\|''inbox''\|''life''\|''meals''\|''pages''\|''portfolio''\|''real_estate''\|''shopping''\|''smart_home''\|''tasks''\|''tax''\|''weather'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Support/DashboardWidgets.php
-
-		-
 			message: '#^Method App\\Support\\DashboardWidgets\:\:deadlines\(\) should return array\<int, array\{entry\: App\\Models\\Item, collection\: App\\Models\\Collection, property\: App\\Models\\CollectionProperty, date\: string, days\: int\}\> but returns list\<array\{entry\: App\\Models\\Item, collection\: App\\Models\\Collection, property\: Illuminate\\Database\\Eloquent\\Model, date\: non\-empty\-string, days\: int\}\>\.$#'
 			identifier: return.type
 			count: 1
@@ -1835,24 +1823,6 @@ parameters:
 			identifier: method.nonObject
 			count: 2
 			path: app/Support/Life/HealthPlan.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/Life/HouseholdLoad.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\HouseholdMember\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Support/Life/HouseholdLoad.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\HouseholdMember\>\:\:filter\(\) expects \(callable\(App\\Models\\HouseholdMember, int\)\: bool\)\|null, Closure\(App\\Models\\HouseholdMember\)\: \(Illuminate\\Database\\Eloquent\\Model\|null\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Support/Life/HouseholdLoad.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'

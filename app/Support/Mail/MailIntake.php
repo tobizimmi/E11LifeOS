@@ -10,6 +10,7 @@ use App\Models\PaperlessInstance;
 use App\Models\ShoppingList;
 use App\Models\Trip;
 use App\Models\User;
+use App\Support\Automation\AutomationEngine;
 use App\Support\Life\BookingMail;
 use App\Support\Paperless\PaperlessClient;
 use App\Support\QuickCapture;
@@ -127,6 +128,9 @@ class MailIntake
         $log->note = trim(($log->note ? $log->note.' ' : '').($sender ? '' : __('Sender is not a member of the household.')));
         $log->attachments = self::attachments($log, $message, $user, $household);
         $log->save();
+
+        // Mail triggers of automations (e.g. "Paket" → push); a failing automation never loses the mail.
+        rescue(fn () => app(AutomationEngine::class)->mailReceived($household->id, (string) $log->subject, $log->from_address));
 
         return $log;
     }

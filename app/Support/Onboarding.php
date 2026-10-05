@@ -18,6 +18,7 @@ class Onboarding
         $household = $user->currentHousehold();
 
         return [
+            ['key' => 'menu', 'label' => __('Choose your modules'), 'hint' => __('Keep the menu to what you use – everything else stays one search away.'), 'done' => $user->nav_preferences !== null, 'url' => route('navigation.settings')],
             ['key' => 'two_factor', 'label' => __('Protect your account with two-factor authentication'), 'hint' => __('Recommended – finances and documents are in here.'), 'done' => $user->hasSecondFactor(), 'url' => route('profile')],
             ['key' => 'household', 'label' => __('Invite your household'), 'hint' => __('Tasks, shopping list and collections are shared automatically.'), 'done' => $household && $household->members()->count() > 1, 'url' => route('household.show')],
             ['key' => 'task', 'label' => __('Create your first task'), 'hint' => __('e.g. "Take out the rubbish every Tuesday" – dates and repetitions are recognised.'), 'done' => $household && Item::where('household_id', $household->id)->where('type', Item::TYPE_TODO)->where('created_by', $user->id)->exists(), 'url' => route('tasks.index')],

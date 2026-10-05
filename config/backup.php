@@ -32,4 +32,11 @@ return [
 
     'remote_keep' => (int) env('BACKUP_REMOTE_KEEP', 30),
 
+    /*
+    | Weekly restore test (backup:verify): SQLite dumps are loaded into memory; for MySQL name a
+    | connection to an empty scratch database here – never the live one – to load the dump for real.
+    */
+
+    'verify_connection' => env('BACKUP_VERIFY_CONNECTION'),
+
 ];

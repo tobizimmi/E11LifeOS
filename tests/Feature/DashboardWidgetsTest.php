@@ -61,7 +61,7 @@ class DashboardWidgetsTest extends TestCase
             ->call('moveWidget', 'tasks', -1)
             ->assertDontSee('Nichts zu kaufen');
 
-        $this->assertSame(['weather', 'deadlines', 'tasks', 'life', 'habits', 'meals', 'portfolio', 'real_estate', 'tax', 'freedom', 'costs', 'pages', 'inbox', 'energy', 'smart_home'], $user->fresh()->dashboard_widgets);
+        $this->assertSame(['weather', 'deadlines', 'tasks', 'life', 'habits', 'meals', 'portfolio', 'real_estate', 'tax', 'freedom', 'costs', 'pages', 'inbox', 'energy', 'smart_home', 'smart_home_board'], $user->fresh()->dashboard_widgets);
 
         Volt::test('dashboard')->call('toggleWidget', 'shopping')->call('resetWidgets');
         $this->assertNull($user->fresh()->dashboard_widgets);

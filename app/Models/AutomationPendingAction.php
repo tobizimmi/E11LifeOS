@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * The remaining actions of an automation after a "wait" action, run when their time has come.
+ * The remaining actions of an automation after a "wait" action, run when their time has come –
+ * or after an "ask by push" action, run when someone answers "yes" before expires_at.
  *
  * @property list<array<string, mixed>> $actions
- * @property Carbon $run_at
+ * @property Carbon|null $run_at
+ * @property Carbon|null $expires_at
  */
-#[Fillable(['automation_id', 'actions', 'depth', 'run_at'])]
+#[Fillable(['automation_id', 'actions', 'depth', 'run_at', 'expires_at'])]
 class AutomationPendingAction extends Model
 {
     protected function casts(): array
@@ -21,6 +23,7 @@ class AutomationPendingAction extends Model
         return [
             'actions' => 'array',
             'run_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
     }
 

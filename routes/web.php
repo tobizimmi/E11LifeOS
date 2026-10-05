@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\RoadmapExportController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\BookkeepingReceiptController;
 use App\Http\Controllers\BusinessReportController;
@@ -23,12 +24,15 @@ use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicCollectionController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
+use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RealEstateReceiptController;
 use App\Http\Controllers\RecipeCookbookController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
+use App\Http\Controllers\SmartHomeCameraController;
+use App\Http\Controllers\SupportFileController;
 use App\Http\Controllers\TripCoverController;
 use App\Http\Controllers\TripExportController;
 use App\Http\Controllers\TripPlaceImageController;
@@ -63,6 +67,9 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');
     Volt::route('inbox', 'inbox.index')->name('inbox.index');
     Volt::route('notifications', 'notifications.index')->name('notifications.index');
+    Volt::route('support', 'support.index')->name('support.index');
+    Volt::route('support/{ticket}', 'support.show')->whereNumber('ticket')->name('support.show');
+    Route::get('support/files/{message}/{index}', SupportFileController::class)->whereNumber(['message', 'index'])->name('support.file')->middleware('throttle:120,1');
     Volt::route('calendar', 'calendar.index')->name('calendar.index');
     Volt::route('net-worth', 'net-worth.index')->name('net-worth.index');
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
@@ -70,11 +77,14 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('wishlist', 'wishlist.index')->name('wishlist.index');
     Volt::route('pantry', 'pantry.index')->name('pantry.index');
     Volt::route('changelog', 'changelog.index')->name('changelog');
+    Volt::route('menu', 'navigation.settings')->name('navigation.settings');
     Volt::route('knowledge', 'knowledge.index')->name('knowledge.index');
     Volt::route('emergency', 'emergency.index')->middleware([Security::SENSITIVE, 'sensitive.log:emergency'])->name('emergency.index');
     Volt::route('vehicles', 'vehicles.index')->name('vehicles.index');
     Volt::route('house', 'house.index')->name('house.index');
     Volt::route('smart-home', 'smart-home.index')->name('smart-home.index')->middleware('addon:smart_home');
+    Volt::route('smart-home/wall/{dashboard}', 'smart-home.wall')->whereNumber('dashboard')->name('smart-home.wall')->middleware('addon:smart_home');
+    Route::get('smart-home/camera/{entity}', SmartHomeCameraController::class)->whereNumber('entity')->name('smart-home.camera')->middleware(['addon:smart_home', 'throttle:120,1']);
     Volt::route('automations', 'automations.index')->name('automations.index');
     Volt::route('review', 'review.index')->name('review.index');
     Volt::route('provision', 'provision.index')->name('provision.index');
@@ -254,6 +264,18 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('d/{token}/accept', [PublicDocumentController::class, 'accept'])->where('token', '[A-Za-z0-9]+')->name('documents.public.accept');
 });
 
+// Buttons in push notifications: the secret link is the authorisation (works once, for a few hours).
+Route::get('push-actions/{token}', [PushActionController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.show');
+Route::post('push-actions/{token}', [PushActionController::class, 'answer'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('push-actions.answer');
+Volt::route('admin', 'admin.system')->middleware(['auth', 'can:admin'])->name('admin.system');
+Volt::route('admin/households', 'admin.households')->middleware(['auth', 'can:admin'])->name('admin.households');
+Volt::route('admin/users', 'admin.users')->middleware(['auth', 'can:admin'])->name('admin.users');
+Volt::route('admin/modules', 'admin.modules')->middleware(['auth', 'can:admin'])->name('admin.modules');
+Volt::route('admin/support', 'admin.support')->middleware(['auth', 'can:admin'])->name('admin.support');
+Volt::route('admin/support/{ticket}', 'admin.support-ticket')->whereNumber('ticket')->middleware(['auth', 'can:admin'])->name('admin.support.ticket');
+Volt::route('admin/roadmap', 'admin.roadmap')->middleware(['auth', 'can:admin'])->name('admin.roadmap');
+Route::get('admin/roadmap/export.md', RoadmapExportController::class)->middleware(['auth', 'can:admin'])->name('admin.roadmap.export');
+Volt::route('admin/log', 'admin.audit')->middleware(['auth', 'can:admin'])->name('admin.audit');
 Volt::route('admin/settings', 'admin.settings')->middleware(['auth', 'can:admin'])->name('admin.settings');
 
 // Instagram videos analysed on another machine (header X-Push-Key, no session).

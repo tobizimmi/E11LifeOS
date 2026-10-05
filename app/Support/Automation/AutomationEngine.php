@@ -5,20 +5,33 @@ namespace App\Support\Automation;
 use App\Models\Automation;
 use App\Models\AutomationPendingAction;
 use App\Models\AutomationRun;
+use App\Models\BankAccount;
+use App\Models\Contact;
 use App\Models\HouseholdMember;
 use App\Models\HouseholdMode;
 use App\Models\Item;
+use App\Models\PushAction;
+use App\Models\ShoppingList;
 use App\Models\SmartHomeConnection;
 use App\Models\SmartHomeEntity;
 use App\Models\User;
 use App\Support\CalendarEvents;
+use App\Support\DashboardWidgets;
+use App\Support\Drives\WebDavClient;
 use App\Support\Finance\Budgets;
+use App\Support\Pantry;
 use App\Support\QuickCapture;
+use App\Support\ShoppingLists;
 use App\Support\SmartHome\EntityStates;
 use App\Support\SmartHome\PresenceSimulator;
+use App\Support\Vpn;
+use App\Support\Weather;
 use App\Support\WebPush;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -30,6 +43,12 @@ use Throwable;
 class AutomationEngine
 {
     private const MAX_DEPTH = 3;
+
+    /** Triggers at a moment that is checked every minute. */
+    private const MOMENT_TRIGGERS = ['sun', 'appointment', 'task_due', 'waste', 'deadline', 'birthday', 'expiry'];
+
+    /** Triggers on a state that fire when it begins (or ends). */
+    private const STATE_TRIGGERS = ['calendar', 'entity', 'entity_for', 'evcc', 'budget', 'presence', 'weather', 'balance'];
 
     /** @var array<int, array<string, mixed>|false> evcc state per household for this tick */
     private array $evccStates = [];
@@ -52,9 +71,9 @@ class AutomationEngine
 
             if ($type === 'time') {
                 $ran += $this->checkTime($automation, $now) ? 1 : 0;
-            } elseif (in_array($type, ['sun', 'appointment', 'task_due'], true)) {
+            } elseif (in_array($type, self::MOMENT_TRIGGERS, true)) {
                 $ran += $this->checkMoment($automation, $now) ? 1 : 0;
-            } elseif (in_array($type, ['calendar', 'entity', 'evcc', 'budget', 'presence'], true)) {
+            } elseif (in_array($type, self::STATE_TRIGGERS, true)) {
                 $ran += $this->checkState($automation, $this->stateHolds($automation, $now), $now) ? 1 : 0;
             }
         });
@@ -72,6 +91,22 @@ class AutomationEngine
         Automation::where('household_id', $householdId)->where('active', true)->with('user')->get()
             ->filter(fn (Automation $automation) => ($automation->trigger['type'] ?? '') === 'entity' && ($automation->trigger['entity_id'] ?? '') === $entityId)
             ->each(fn (Automation $automation) => $this->checkState($automation, self::compare($state, (string) ($automation->trigger['operator'] ?? 'eq'), (string) ($automation->trigger['value'] ?? '')), now()));
+    }
+
+    /**
+     * A mail reached the household's address: mail triggers whose word is in the subject or the
+     * sender run at once (e.g. "Paket" for parcel notices).
+     */
+    public function mailReceived(int $householdId, string $subject, string $from): void
+    {
+        Automation::where('household_id', $householdId)->where('active', true)->with('user')->get()
+            ->filter(fn (Automation $automation) => ($automation->trigger['type'] ?? '') === 'mail')
+            ->filter(function (Automation $automation) use ($subject, $from) {
+                $keyword = mb_strtolower(trim((string) ($automation->trigger['keyword'] ?? '')));
+
+                return $keyword === '' || str_contains(mb_strtolower($subject.' '.$from), $keyword);
+            })
+            ->each(fn (Automation $automation) => $this->run($automation, __('Mail from :from: :subject', ['from' => $from, 'subject' => $subject])));
     }
 
     /**
@@ -107,26 +142,86 @@ class AutomationEngine
             return $automation->runs()->create(['reason' => $reason, 'status' => 'skipped', 'log' => [['ok' => true, 'message' => __('Ran shortly before – paused.')]]]);
         }
 
-        $failed = collect($automation->conditions ?? [])->first(fn (array $condition) => ! $this->conditionHolds($automation, $condition, $now));
+        $checked = [];
 
-        if ($failed && ! $manual) {
-            return $automation->runs()->create(['reason' => $reason, 'status' => 'skipped', 'log' => [['ok' => true, 'message' => __('Condition not met: :condition', ['condition' => AutomationCatalog::describe($failed)])]]]);
+        foreach ($automation->conditions ?? [] as $condition) {
+            if (! $this->conditionHolds($automation, $condition, $now)) {
+                if (! $manual) {
+                    return $automation->runs()->create(['reason' => mb_substr($reason, 0, 255), 'status' => 'skipped', 'log' => [...$checked, ['ok' => true, 'message' => __('Condition not met: :condition', ['condition' => AutomationCatalog::describe($condition)])]]]);
+                }
+
+                $checked[] = ['ok' => true, 'message' => __('Condition not met: :condition', ['condition' => AutomationCatalog::describe($condition)]).' – '.__('ignored when started by hand')];
+
+                continue;
+            }
+
+            $checked[] = ['ok' => true, 'message' => __('Condition met: :condition', ['condition' => AutomationCatalog::describe($condition)])];
         }
 
-        return $this->performAll($automation, $automation->actions ?? [], $reason, $depth);
+        return $this->performAll($automation, $automation->actions ?? [], $reason, $depth, $checked);
+    }
+
+    /**
+     * What would happen now, without doing anything: the trigger, each condition and the actions
+     * with their placeholders filled in.
+     *
+     * @return list<array{ok: bool, message: string}>
+     */
+    public function dryRun(Automation $automation): array
+    {
+        $now = now();
+        $trigger = $automation->trigger;
+        $holds = in_array($trigger['type'], self::STATE_TRIGGERS, true) ? $this->stateHolds($automation, $now) : null;
+        $log = [['ok' => true, 'message' => __('Trigger: :trigger', ['trigger' => AutomationCatalog::describe($trigger)])
+            .($holds === null ? '' : ' – '.($holds ? __('holds right now') : __('does not hold right now')))]];
+        $reason = __('Test run');
+        $stop = false;
+
+        foreach ($automation->conditions ?? [] as $condition) {
+            $met = $this->conditionHolds($automation, $condition, $now);
+            $stop = $stop || ! $met;
+            $log[] = ['ok' => $met, 'message' => __($met ? 'Condition met: :condition' : 'Condition not met: :condition', ['condition' => AutomationCatalog::describe($condition)])];
+        }
+
+        if ($stop) {
+            $log[] = ['ok' => false, 'message' => __('The actions would not run now.')];
+
+            return $log;
+        }
+
+        foreach ($automation->actions ?? [] as $action) {
+            $log[] = ['ok' => true, 'message' => __('Would run: :action', ['action' => AutomationCatalog::describe(Placeholders::apply($action, $automation, $reason))])];
+
+            if ($action['type'] === 'ask') {
+                $log[] = ['ok' => true, 'message' => __('The rest runs only after “yes”.')];
+            }
+        }
+
+        return $log;
     }
 
     /**
      * Runs a list of actions; a "wait" action parks the rest until its time has come.
      *
+     * Texts get their placeholders filled in with the reason of this run (also for the actions
+     * that wait, so they keep the original reason).
+     *
      * @param  list<array<string, mixed>>  $actions
+     * @param  list<array{ok: bool, message: string}>  $log  checked conditions
      */
-    private function performAll(Automation $automation, array $actions, string $reason, int $depth): AutomationRun
+    private function performAll(Automation $automation, array $actions, string $reason, int $depth, array $log = []): AutomationRun
     {
         $now = now();
-        $log = [];
+        $checked = count($log);
+        $actions = array_map(fn (array $action) => Placeholders::apply($action, $automation, $reason), $actions);
 
         foreach ($actions as $index => $action) {
+            if (($action['type'] ?? '') === 'ask') {
+                $log[] = ['ok' => true, 'message' => AutomationCatalog::describe($action).' – '.$this->ask($automation, $action, array_slice($actions, $index + 1), $depth)];
+
+                break;
+            }
+
             if (($action['type'] ?? '') === 'delay') {
                 $minutes = max(1, min(1440, (int) ($action['minutes'] ?? 5)));
                 AutomationPendingAction::create(['automation_id' => $automation->id, 'actions' => array_slice($actions, $index + 1), 'depth' => $depth, 'run_at' => $now->copy()->addMinutes($minutes)]);
@@ -136,7 +231,7 @@ class AutomationEngine
             }
 
             try {
-                $message = $this->perform($automation, $action, $depth);
+                $message = $this->perform($automation, $action, $depth, $reason);
                 $log[] = ['ok' => true, 'message' => AutomationCatalog::describe($action).($message ? ' – '.$message : '')];
             } catch (Throwable $exception) {
                 $log[] = ['ok' => false, 'message' => AutomationCatalog::describe($action).' – '.mb_strimwidth($exception->getMessage(), 0, 200, '…')];
@@ -148,16 +243,69 @@ class AutomationEngine
 
         return $automation->runs()->create([
             'reason' => mb_substr($reason, 0, 255),
-            'status' => $errors === 0 ? 'done' : ($errors === count($log) ? 'failed' : 'partial'),
+            'status' => $errors === 0 ? 'done' : ($errors === count($log) - $checked ? 'failed' : 'partial'),
             'log' => $log,
         ]);
     }
 
     /**
-     * Continues automations whose "wait" is over.
+     * "Ask by push": the remaining actions wait for an answer; each recipient gets a notification
+     * with the two buttons (and a link to a page with them, for phones without buttons).
+     *
+     * @param  array<string, mixed>  $action
+     * @param  list<array<string, mixed>>  $rest
+     */
+    private function ask(Automation $automation, array $action, array $rest, int $depth): string
+    {
+        $expires = now()->addHours(max(1, min(48, (int) ($action['hours'] ?? 2))));
+        $pending = AutomationPendingAction::create(['automation_id' => $automation->id, 'actions' => $rest, 'depth' => $depth, 'run_at' => null, 'expires_at' => $expires]);
+        $recipients = ($action['to'] ?? 'me') === 'household' ? $this->members($automation->household_id) : collect([$automation->user])->filter();
+
+        foreach ($recipients as $user) {
+            $yes = PushAction::issue($user, (string) ($action['yes'] ?? __('Yes')) ?: __('Yes'), ['kind' => 'automation', 'pending_id' => $pending->id, 'choice' => 'yes'], $expires);
+            $no = PushAction::issue($user, (string) ($action['no'] ?? __('No')) ?: __('No'), ['kind' => 'automation', 'pending_id' => $pending->id, 'choice' => 'no'], $expires);
+            $this->webPush->send($user, (string) ($action['title'] ?? $automation->name) ?: $automation->name, (string) ($action['body'] ?? ''), $yes['url'], urgent: true, actions: [
+                ['label' => $yes['action']->label, 'url' => $yes['url']],
+                ['label' => $no['action']->label, 'url' => $no['url']],
+            ]);
+        }
+
+        return trans_choice(':count recipient|:count recipients', $recipients->count());
+    }
+
+    /**
+     * The answer to an "ask by push": "yes" runs the waiting actions, "no" drops them. The first
+     * answer counts; later ones (other members, second tap) change nothing.
+     */
+    public function answer(PushAction $pushAction, string $choice): string
+    {
+        $pending = AutomationPendingAction::whereNull('run_at')->with('automation.user')->find($pushAction->payload['pending_id'] ?? 0);
+        PushAction::where('payload->pending_id', $pushAction->payload['pending_id'] ?? 0)->whereNull('answered_at')->update(['answered_at' => now()]);
+
+        if (! $pending || ($pending->expires_at && $pending->expires_at->isPast())) {
+            $pending?->delete();
+
+            return __('This question has already been answered or has expired.');
+        }
+
+        $pending->delete();
+
+        if ($choice !== 'yes' || ! $pending->automation?->active) {
+            return __('OK, nothing happens.');
+        }
+
+        $run = $this->performAll($pending->automation, $pending->actions, __('Answered “:answer” by :name', ['answer' => $pushAction->label, 'name' => $pushAction->user->name]), $pending->depth);
+
+        return $run->status === 'done' ? __('Done.') : __('Done with errors – see the automation.');
+    }
+
+    /**
+     * Continues automations whose "wait" is over; drops questions nobody answered in time.
      */
     private function runPending(Carbon $now): void
     {
+        AutomationPendingAction::whereNull('run_at')->where('expires_at', '<', $now)->delete();
+
         AutomationPendingAction::where('run_at', '<=', $now)->with('automation.user')->get()->each(function (AutomationPendingAction $pending) {
             $pending->delete();
 
@@ -196,6 +344,8 @@ class AutomationEngine
                     break;
                 }
             }
+        } elseif (in_array($trigger['type'], ['waste', 'deadline', 'birthday', 'expiry'], true)) {
+            $reason = ($trigger['at'] ?? '') === $now->format('H:i') ? $this->dailyReason($automation, $automation->user, $now) : null;
         } else {
             $keyword = mb_strtolower(trim((string) ($trigger['keyword'] ?? '')));
             $task = Item::query()->forHousehold($automation->household_id)->visibleTo($automation->user)
@@ -211,6 +361,82 @@ class AutomationEngine
         $this->run($automation, $reason);
 
         return true;
+    }
+
+    /**
+     * Once a day at the chosen time: waste collection tomorrow, a deadline, a birthday or a
+     * best-before date exactly the chosen number of days ahead; null when there is none.
+     */
+    private function dailyReason(Automation $automation, User $user, Carbon $now): ?string
+    {
+        $trigger = $automation->trigger;
+        $householdId = $automation->household_id;
+        $days = max(0, min(365, (int) ($trigger['days'] ?? 0)));
+        $target = $now->copy()->startOfDay()->addDays($days);
+        $keyword = mb_strtolower(trim((string) ($trigger['keyword'] ?? '')));
+        $matches = fn (string $text) => $keyword === '' || str_contains(mb_strtolower($text), $keyword);
+
+        $titles = match ($trigger['type']) {
+            'waste' => collect(CalendarEvents::between($user, $householdId, $now->copy()->addDay()->startOfDay(), $now->copy()->addDay()->endOfDay(), array_keys(CalendarEvents::sources($user))))
+                ->pluck('title')->filter(fn ($title) => $matches((string) $title)),
+            'deadline' => collect(DashboardWidgets::deadlines($user, $householdId, 200))
+                ->filter(fn (array $row) => $row['days'] === $days && $matches($row['entry']->title.' '.$row['collection']->name))
+                ->map(fn (array $row) => $row['entry']->title.' ('.$row['property']->name.')'),
+            'birthday' => Contact::query()->visibleTo($user, $householdId)->whereNotNull('birthday')->get()
+                ->filter(fn (Contact $contact) => $contact->nextBirthday()?->isSameDay($target))
+                ->map(fn (Contact $contact) => $contact->name.($contact->turns() ? ' ('.$contact->turns().')' : '')),
+            'expiry' => Pantry::expiring($user, $householdId, $days)->filter(fn (array $entry) => $entry['best_before']->isSameDay($target))->pluck('name'),
+            default => collect(),
+        };
+
+        if ($titles->isEmpty()) {
+            return null;
+        }
+
+        $list = $titles->unique()->take(5)->implode(', ');
+
+        return match ($trigger['type']) {
+            'waste' => __('Tomorrow: :titles', ['titles' => $list]),
+            'deadline' => __('Deadline in :days days: :titles', ['days' => $days, 'titles' => $list]),
+            'birthday' => __('Birthday in :days days: :titles', ['days' => $days, 'titles' => $list]),
+            default => __('Best before in :days days: :titles', ['days' => $days, 'titles' => $list]),
+        };
+    }
+
+    /**
+     * Today's forecast at the member's weather place: chance of rain or highest/lowest temperature.
+     */
+    private function weatherValue(Automation $automation, string $metric): ?int
+    {
+        $user = $automation->user;
+
+        if (! $user || $user->weather_latitude === null || $user->weather_longitude === null) {
+            return null;
+        }
+
+        $today = Weather::today((float) $user->weather_latitude, (float) $user->weather_longitude);
+
+        return $today ? ($today[$metric] ?? $today['rain']) : null;
+    }
+
+    /**
+     * Whether a balance of the member's own accounts (name containing the word) meets the
+     * comparison; null while no balance is known.
+     */
+    private function balanceHolds(Automation $automation): ?bool
+    {
+        $trigger = $automation->trigger;
+        $name = mb_strtolower(trim((string) ($trigger['account'] ?? '')));
+        $balances = BankAccount::where('household_id', $automation->household_id)->where('user_id', $automation->user_id)->get()
+            ->filter(fn (BankAccount $account) => $name === '' || str_contains(mb_strtolower($account->name), $name))
+            ->map(fn (BankAccount $account) => $account->currentBalance())
+            ->filter(fn (?float $balance) => $balance !== null);
+
+        if ($balances->isEmpty()) {
+            return null;
+        }
+
+        return $balances->contains(fn (float $balance) => self::compare((string) $balance, (string) ($trigger['operator'] ?? 'lt'), (string) ($trigger['value'] ?? '0')));
     }
 
     /**
@@ -277,8 +503,27 @@ class AutomationEngine
             'evcc' => ($value = $this->evccValue($automation->household_id, (string) ($trigger['metric'] ?? 'pv'), (int) ($trigger['loadpoint'] ?? 1))) === null ? null : self::compare((string) $value, (string) ($trigger['operator'] ?? 'gt'), (string) ($trigger['value'] ?? '0')),
             'budget' => $automation->user ? collect(Budgets::status($automation->user, $automation->household_id, $now))->contains(fn (array $budget) => $budget['percent'] >= (float) ($trigger['percent'] ?? 100)) : null,
             'presence' => self::presence($automation->household_id, (string) ($trigger['state'] ?? 'all_away')),
+            'entity_for' => $this->heldFor($automation->household_id, (string) ($trigger['entity_id'] ?? ''), (string) ($trigger['value'] ?? ''), (int) ($trigger['minutes'] ?? 10), $now),
+            'weather' => ($forecast = $this->weatherValue($automation, (string) ($trigger['metric'] ?? 'rain'))) === null ? null : self::compare((string) $forecast, (string) ($trigger['operator'] ?? 'gt'), (string) ($trigger['value'] ?? '0')),
+            'balance' => $this->balanceHolds($automation),
             default => null,
         };
+    }
+
+    /**
+     * Whether an entity has had the value for at least the minutes ("door open for 10 minutes").
+     */
+    private function heldFor(int $householdId, string $entityId, string $value, int $minutes, Carbon $now): ?bool
+    {
+        $state = EntityStates::get($householdId, $entityId);
+
+        if ($state === null) {
+            return null;
+        }
+
+        $since = EntityStates::since($householdId, $entityId);
+
+        return self::compare($state, 'eq', $value) && $since !== null && $since->lte($now->copy()->subMinutes(max(1, $minutes)));
     }
 
     /**
@@ -294,6 +539,8 @@ class AutomationEngine
             'sun' => $automation->user !== null && self::isDark($automation->user, $now) === (($condition['state'] ?? 'dark') === 'dark'),
             'presence' => (bool) self::presence($automation->household_id, (string) ($condition['state'] ?? 'all_away')),
             'calendar' => $automation->user !== null && CalendarMatcher::active($automation->user, $automation->household_id, (string) ($condition['keyword'] ?? ''), (array) ($condition['sources'] ?? [CalendarMatcher::CALENDAR]), $now) === (bool) ($condition['active'] ?? true),
+            'weather' => ($forecast = $this->weatherValue($automation, (string) ($condition['metric'] ?? 'rain'))) !== null && self::compare((string) $forecast, (string) ($condition['operator'] ?? 'gt'), (string) ($condition['value'] ?? '0')),
+            'any' => ($group = array_filter((array) ($condition['conditions'] ?? []), 'is_array')) === [] || collect($group)->contains(fn (array $inner) => $this->conditionHolds($automation, $inner, $now)),
             default => true,
         };
     }
@@ -301,7 +548,7 @@ class AutomationEngine
     /**
      * @param  array<string, mixed>  $action
      */
-    private function perform(Automation $automation, array $action, int $depth): ?string
+    private function perform(Automation $automation, array $action, int $depth, string $reason): ?string
     {
         $householdId = $automation->household_id;
 
@@ -347,6 +594,68 @@ class AutomationEngine
                 $task = $automation->user ? QuickCapture::task($automation->user, $householdId, (string) ($action['title'] ?? ''), $due) : null;
 
                 return $task ? '„'.$task->title.'“' : null;
+            case 'event':
+                $date = match ($action['day'] ?? 'today') {
+                    'tomorrow' => today()->addDay(),
+                    'week' => today()->addWeek(),
+                    default => today(),
+                };
+                $event = $automation->user ? QuickCapture::task($automation->user, $householdId, (string) ($action['title'] ?? ''), $date->toDateString()) : null;
+
+                if ($event && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) ($action['time'] ?? ''))) {
+                    $event->forceFill(['due_time' => $action['time']])->save();
+                }
+
+                return $event ? '„'.$event->title.'“ '.$date->format('d.m.') : null;
+            case 'shopping':
+                $list = ShoppingList::defaultFor($householdId);
+                $items = array_slice(array_values(array_filter(array_map('trim', explode(',', (string) ($action['items'] ?? ''))))), 0, 20);
+
+                foreach ($items as $item) {
+                    ShoppingLists::add($list, mb_substr($item, 0, 120), null, $automation->user_id);
+                }
+
+                return __(':item is on the list “:list”.', ['item' => implode(', ', $items), 'list' => $list->name]);
+            case 'email':
+                $recipients = ($action['to'] ?? 'me') === 'household' ? $this->members($householdId) : collect([$automation->user])->filter();
+                $subject = (string) ($action['subject'] ?? '') ?: $automation->name;
+                $recipients->each(fn (User $user) => Mail::raw((string) ($action['body'] ?? ''), fn ($message) => $message->to($user->email)->subject($subject)));
+
+                return trans_choice(':count recipient|:count recipients', $recipients->count());
+            case 'tts':
+                $this->connection($householdId, SmartHomeConnection::HOME_ASSISTANT)->homeAssistant()->callService('tts', 'speak', [
+                    'entity_id' => (string) ($action['engine'] ?? '') ?: 'tts.home_assistant_cloud',
+                    'media_player_entity_id' => (string) ($action['media_player'] ?? ''),
+                    'message' => (string) ($action['message'] ?? ''),
+                ]);
+
+                return null;
+            case 'scene_snapshot':
+                $scene = Str::slug((string) ($action['scene'] ?? ''), '_') ?: 'e11_snapshot';
+                $client = $this->connection($householdId, SmartHomeConnection::HOME_ASSISTANT)->homeAssistant();
+
+                if (($action['mode'] ?? 'save') === 'restore') {
+                    $client->callService('scene', 'turn_on', ['entity_id' => 'scene.'.$scene]);
+                } else {
+                    $client->callService('scene', 'create', ['scene_id' => $scene, 'snapshot_entities' => array_values(array_filter(array_map('trim', explode(',', (string) ($action['entities'] ?? '')))))]);
+                }
+
+                return null;
+            case 'webhook':
+                $url = (string) ($action['url'] ?? '');
+
+                if (! WebDavClient::isAllowedUrl($url)) {
+                    throw new \RuntimeException(__('This address is not allowed. Use an address in the home network that goes through the VPN, or a public address.'));
+                }
+
+                $response = Http::timeout(10)->withOptions(['allow_redirects' => false] + Vpn::httpOptions($url))
+                    ->post($url, ['automation' => $automation->name, 'reason' => $reason, 'message' => (string) ($action['body'] ?? ''), 'time' => now()->toIso8601String()]);
+
+                if (! $response->successful()) {
+                    throw new \RuntimeException(__('The webhook answered with status :status.', ['status' => $response->status()]));
+                }
+
+                return (string) $response->status();
             case 'mode':
                 $this->setMode($householdId, (string) ($action['key'] ?? ''), (bool) ($action['active'] ?? true), $depth);
 
@@ -410,13 +719,20 @@ class AutomationEngine
      */
     public static function presence(int $householdId, string $state): ?bool
     {
-        $people = SmartHomeEntity::where('household_id', $householdId)->get()->filter(fn (SmartHomeEntity $entity) => in_array($entity->domain(), ['person', 'device_tracker'], true));
+        // People from Home Assistant (person/device_tracker) and members whose app reports at home / away.
+        $people = SmartHomeEntity::where('household_id', $householdId)->get()
+            ->filter(fn (SmartHomeEntity $entity) => in_array($entity->domain(), ['person', 'device_tracker'], true))
+            ->map(fn (SmartHomeEntity $entity) => (EntityStates::get($householdId, $entity->entity_id) ?? $entity->state) === 'home')
+            ->values()
+            ->concat(User::whereIn('id', HouseholdMember::where('household_id', $householdId)->select('user_id'))
+                ->whereNotNull('presence')->where('presence_at', '>=', now()->subDays(7))->pluck('presence')
+                ->map(fn (string $presence) => $presence === 'home'));
 
         if ($people->isEmpty()) {
             return null;
         }
 
-        $home = $people->filter(fn (SmartHomeEntity $entity) => (EntityStates::get($householdId, $entity->entity_id) ?? $entity->state) === 'home')->count();
+        $home = $people->filter()->count();
 
         return match ($state) {
             'anyone_home' => $home > 0,

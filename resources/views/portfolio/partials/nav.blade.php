@@ -1,27 +1,9 @@
-{{-- Tabs of the portfolio section ($active: route name of the current tab). --}}
-<nav class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="{{ __('Portfolio') }}">
-    <div class="inline-flex min-w-max rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
-        @foreach ([
-            'portfolio.index' => '📈 '.__('Overview'),
-            'portfolio.transactions' => '🧾 '.__('Transactions'),
-            'portfolio.analysis' => '📊 '.__('Analysis'),
-            'portfolio.market' => '🧭 '.__('Market analysis'),
-            'portfolio.recommendations' => '🔎 '.__('Recommendations'),
-            'portfolio.insights' => '🕵️ '.__('Insiders & analysts'),
-            'portfolio.discover' => '🌍 '.__('Discover'),
-            'portfolio.news' => '📰 '.__('News'),
-            'portfolio.instagram' => '📸 '.__('Instagram'),
-            'portfolio.dividends' => '💰 '.__('Dividends'),
-            'portfolio.taxes' => '🧮 '.__('Taxes'),
-            'portfolio.rebalancing' => '⚖ '.__('Rebalancing'),
-            'portfolio.savings' => '💶 '.__('Savings plans'),
-            'portfolio.alerts' => '🔔 '.__('Alerts'),
-            'portfolio.watchlist' => '👀 '.__('Watchlist'),
-            'portfolio.import' => '📥 '.__('Import'),
-            'portfolio.banking' => '🏦 '.__('Bank sync'),
-            'portfolio.settings' => '⚙ '.__('Settings'),
-        ] as $routeName => $label)
-            <a href="{{ route($routeName) }}" wire:navigate @class(['rounded-md px-3 py-1.5 text-sm whitespace-nowrap', 'bg-indigo-600 text-white' => $active === $routeName, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $active !== $routeName]) aria-current="{{ $active === $routeName ? 'page' : 'false' }}">{{ $label }}</a>
-        @endforeach
-    </div>
-</nav>
+{{-- Sections of the portfolio ($active: route name of the current section). --}}
+@php
+    $section = fn (string $route, string $icon, string $label) => [$route => [$icon, $label, route($route)]];
+@endphp
+<x-section-nav :label="__('Portfolio')" :active="$active" :groups="[
+    __('Depot') => $section('portfolio.index', '📈', __('Overview')) + $section('portfolio.transactions', '🧾', __('Transactions')) + $section('portfolio.dividends', '💰', __('Dividends')) + $section('portfolio.savings', '💶', __('Savings plans')) + $section('portfolio.rebalancing', '⚖', __('Rebalancing')) + $section('portfolio.taxes', '🧮', __('Taxes')),
+    __('Research') => $section('portfolio.analysis', '📊', __('Analysis')) + $section('portfolio.market', '🧭', __('Market analysis')) + $section('portfolio.recommendations', '🔎', __('Recommendations')) + $section('portfolio.insights', '🕵️', __('Insiders & analysts')) + $section('portfolio.discover', '🌍', __('Discover')) + $section('portfolio.news', '📰', __('News')) + $section('portfolio.instagram', '📸', __('Instagram')) + $section('portfolio.watchlist', '👀', __('Watchlist')) + $section('portfolio.alerts', '🔔', __('Alerts')),
+    __('Data') => $section('portfolio.import', '📥', __('Import')) + $section('portfolio.banking', '🏦', __('Bank sync')) + $section('portfolio.settings', '⚙', __('Settings')),
+]" />

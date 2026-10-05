@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Support\Operations\AdminAlert;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -47,6 +48,9 @@ class ErrorReporter
                     fn ($message) => $message->to($to)->subject('['.config('app.name').'] '.__('Error').': '.$entry['type'].' – '.mb_substr($entry['message'], 0, 80)),
                 );
             }
+
+            // Push to the admins' phones as well (the same error at most once an hour).
+            AdminAlert::send('error:'.$fingerprint, '🐞 '.__('Error').': '.$entry['type'], $entry['message']."\n".$entry['where'], 60, mail: false);
         } catch (Throwable) {
             // Reporting must never break the request or loop.
         }

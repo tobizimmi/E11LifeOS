@@ -668,13 +668,7 @@ new class extends Component
     @endunless
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="inline-flex rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist" aria-label="{{ __('Letting') }}">
-            @foreach (['tenants' => '👥 '.__('Tenants'), 'rent' => '💶 '.__('Rent received'), 'utilities' => '🧮 '.__('Utility statement'), 'handovers' => '📋 '.__('Handovers'), 'applicants' => '📝 '.__('Applicants')] as $key => $label)
-                <button type="button" role="tab" aria-selected="{{ $section === $key ? 'true' : 'false' }}" wire:click="$set('section', '{{ $key }}')" @class(['rounded-md px-3 py-1.5 text-sm whitespace-nowrap', 'bg-indigo-600 text-white' => $section === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $section !== $key])>
-                    {{ $label }}@if ($key === 'applicants' && ($applicantCounts['new'] ?? 0) > 0) <span class="ms-1 rounded-full bg-red-500 px-1.5 text-xs text-white">{{ $applicantCounts['new'] }}</span>@endif
-                </button>
-            @endforeach
-        </div>
+        <x-section-nav class="w-full md:w-auto" tab-property="section" :label="__('Letting')" :active="$section" :groups="['' => ['tenants' => ['👥', __('Tenants')], 'rent' => ['💶', __('Rent received')], 'utilities' => ['🧮', __('Utility statement')], 'handovers' => ['📋', __('Handovers')], 'applicants' => ['📝', __('Applicants')]]]" />
         @if (in_array($section, ['rent', 'utilities'], true))
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 {{ __('Year') }}

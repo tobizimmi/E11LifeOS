@@ -27,7 +27,15 @@ class AutomationCatalog
             'budget' => ['label' => __('Budget reached'), 'icon' => '💶', 'defaults' => ['percent' => 100]],
             'presence' => ['label' => __('Coming and going'), 'icon' => '🧑', 'defaults' => ['state' => 'all_away']],
             'entity' => ['label' => __('Home Assistant value'), 'icon' => '🏠', 'defaults' => ['entity_id' => '', 'operator' => 'eq', 'value' => 'on']],
+            'entity_for' => ['label' => __('Device stays in a state (e.g. door open 10 min)'), 'icon' => '🚪', 'defaults' => ['entity_id' => '', 'value' => 'on', 'minutes' => 10]],
             'evcc' => ['label' => __('evcc value'), 'icon' => '🔌', 'defaults' => ['metric' => 'pv', 'operator' => 'gt', 'value' => '3000', 'loadpoint' => 1]],
+            'weather' => ['label' => __('Weather today'), 'icon' => '🌦️', 'defaults' => ['metric' => 'rain', 'operator' => 'gt', 'value' => '60']],
+            'waste' => ['label' => __('Waste collection tomorrow'), 'icon' => '🗑️', 'defaults' => ['keyword' => __('Waste'), 'at' => '19:00']],
+            'mail' => ['label' => __('Mail arrives (e.g. parcel notice)'), 'icon' => '📦', 'defaults' => ['keyword' => __('Parcel')]],
+            'deadline' => ['label' => __('Deadline coming up (contracts, warranties …)'), 'icon' => '📑', 'defaults' => ['keyword' => '', 'days' => 14, 'at' => '09:00']],
+            'birthday' => ['label' => __('Birthday coming up'), 'icon' => '🎂', 'defaults' => ['days' => 7, 'at' => '09:00']],
+            'expiry' => ['label' => __('Best-before date coming up'), 'icon' => '🥫', 'defaults' => ['days' => 2, 'at' => '09:00']],
+            'balance' => ['label' => __('Account balance'), 'icon' => '🏦', 'defaults' => ['account' => '', 'operator' => 'lt', 'value' => '500']],
             'manual' => ['label' => __('Only by hand'), 'icon' => '👆', 'defaults' => []],
         ];
     }
@@ -45,7 +53,19 @@ class AutomationCatalog
             'presence' => ['label' => __('Who is at home'), 'icon' => '🧑', 'defaults' => ['state' => 'anyone_home']],
             'calendar' => ['label' => __('Calendar entry today'), 'icon' => '🗓️', 'defaults' => ['keyword' => __('Holiday'), 'sources' => [CalendarMatcher::CALENDAR], 'active' => true]],
             'entity' => ['label' => __('Home Assistant value'), 'icon' => '🏠', 'defaults' => ['entity_id' => '', 'operator' => 'eq', 'value' => 'on']],
+            'weather' => ['label' => __('Weather today'), 'icon' => '🌦️', 'defaults' => ['metric' => 'rain', 'operator' => 'gt', 'value' => '60']],
+            'any' => ['label' => __('One of these (OR)'), 'icon' => '🔀', 'defaults' => ['conditions' => []]],
         ];
+    }
+
+    /**
+     * Conditions that can stand inside an "one of these" group (no nested groups).
+     *
+     * @return array<string, array{label: string, icon: string, defaults: array<string, mixed>}>
+     */
+    public static function groupConditions(): array
+    {
+        return array_diff_key(self::conditions(), ['any' => true]);
     }
 
     /**
@@ -63,7 +83,14 @@ class AutomationCatalog
             'delay' => ['label' => __('Wait'), 'icon' => '⏳', 'defaults' => ['minutes' => 15]],
             'mode' => ['label' => __('Switch mode'), 'icon' => '🏷️', 'defaults' => ['key' => 'vacation', 'active' => true]],
             'push' => ['label' => __('Send notification'), 'icon' => '🔔', 'defaults' => ['to' => 'me', 'title' => '', 'body' => '', 'urgent' => false]],
+            'ask' => ['label' => __('Ask by push (continue only on “Yes”)'), 'icon' => '❓', 'defaults' => ['to' => 'me', 'title' => '', 'body' => '', 'yes' => __('Yes'), 'no' => __('No'), 'hours' => 2]],
             'task' => ['label' => __('Create task'), 'icon' => '✅', 'defaults' => ['title' => '', 'due' => 'today']],
+            'event' => ['label' => __('Calendar entry'), 'icon' => '📅', 'defaults' => ['title' => '', 'day' => 'today', 'time' => '']],
+            'shopping' => ['label' => __('Put on the shopping list'), 'icon' => '🛒', 'defaults' => ['items' => '']],
+            'email' => ['label' => __('Send email'), 'icon' => '✉️', 'defaults' => ['to' => 'me', 'subject' => '', 'body' => '']],
+            'tts' => ['label' => __('Speak on a speaker (TTS)'), 'icon' => '🔊', 'defaults' => ['media_player' => '', 'message' => '', 'engine' => 'tts.home_assistant_cloud']],
+            'scene_snapshot' => ['label' => __('Remember or restore devices (scene snapshot)'), 'icon' => '📸', 'defaults' => ['mode' => 'save', 'scene' => 'e11_snapshot', 'entities' => '']],
+            'webhook' => ['label' => __('Call a webhook'), 'icon' => '🌐', 'defaults' => ['url' => '', 'body' => '']],
         ];
     }
 
@@ -83,6 +110,22 @@ class AutomationCatalog
             'connected' => __('Car plugged in (1/0)'),
             'charging' => __('Car charging (1/0)'),
         ];
+    }
+
+    /**
+     * Actions and triggers that need the smart home add-on.
+     */
+    public const SMART_HOME_ONLY = ['entity', 'entity_for', 'evcc', 'presence', 'ha_service', 'presence_start', 'presence_stop', 'evcc_mode', 'evcc_limit', 'evcc_plan', 'tts', 'scene_snapshot'];
+
+    /** Text fields of actions that may hold placeholders like {reason} (see Placeholders). */
+    public const TEXT_FIELDS = ['title', 'body', 'subject', 'message', 'items'];
+
+    /**
+     * @return array<string, string>
+     */
+    public static function weatherMetrics(): array
+    {
+        return ['rain' => __('Chance of rain (%)'), 'max' => __('Highest temperature (°C)'), 'min' => __('Lowest temperature (°C)')];
     }
 
     /**
@@ -149,7 +192,23 @@ class AutomationCatalog
             'evcc_mode' => __('Charge mode: :mode', ['mode' => self::evccModes()[$block['mode'] ?? ''] ?? '']),
             'evcc_limit' => __('Charge limit: :soc %', ['soc' => $block['soc'] ?? '']),
             'push' => __('Notification: :title', ['title' => $block['title'] ?? '']),
+            'ask' => __('Ask: :title', ['title' => $block['title'] ?? '']),
             'task' => __('Task: :title', ['title' => $block['title'] ?? '']),
+            'entity_for' => __(':entity is “:value” for :minutes min', ['entity' => $block['entity_id'] ?? '', 'value' => $block['value'] ?? '', 'minutes' => $block['minutes'] ?? 10]),
+            'weather' => (self::weatherMetrics()[$block['metric'] ?? ''] ?? '').' '.$operator.' '.($block['value'] ?? ''),
+            'waste' => __('At :time when “:keyword” is entered for tomorrow', ['time' => $block['at'] ?? '', 'keyword' => $block['keyword'] ?? '']),
+            'mail' => __('Mail with “:keyword”', ['keyword' => $block['keyword'] ?? '']),
+            'deadline' => __(':days days before a deadline', ['days' => $block['days'] ?? 14]).(filled($block['keyword'] ?? null) ? ' „'.$block['keyword'].'“' : ''),
+            'birthday' => __(':days days before a birthday', ['days' => $block['days'] ?? 7]),
+            'expiry' => __(':days days before the best-before date', ['days' => $block['days'] ?? 2]),
+            'balance' => __('Balance').(filled($block['account'] ?? null) ? ' „'.$block['account'].'“' : '').' '.$operator.' '.($block['value'] ?? '').' €',
+            'any' => collect((array) ($block['conditions'] ?? []))->map(fn ($condition) => is_array($condition) ? self::describe($condition) : '')->implode(' '.__('or').' ') ?: __('One of these (OR)'),
+            'event' => __('Calendar entry: :title', ['title' => $block['title'] ?? '']).(filled($block['time'] ?? null) ? ' · '.$block['time'] : ''),
+            'shopping' => __('Shopping list: :items', ['items' => $block['items'] ?? '']),
+            'email' => __('Email: :subject', ['subject' => $block['subject'] ?? '']),
+            'tts' => __('Say on :player: “:message”', ['player' => $block['media_player'] ?? '', 'message' => $block['message'] ?? '']),
+            'scene_snapshot' => ($block['mode'] ?? 'save') === 'restore' ? __('Restore snapshot :scene', ['scene' => $block['scene'] ?? '']) : __('Remember devices as :scene', ['scene' => $block['scene'] ?? '']),
+            'webhook' => __('Webhook: :host', ['host' => parse_url((string) ($block['url'] ?? ''), PHP_URL_HOST) ?: '']),
             default => (string) ($block['type'] ?? ''),
         };
     }
@@ -211,6 +270,16 @@ class AutomationCatalog
                 'conditions' => [],
                 'actions' => [['type' => 'mode', 'key' => 'away', 'active' => true]],
             ],
+            'away_ask_lights' => [
+                'name' => __('Everybody has left → ask whether to switch off the lights'), 'icon' => '❓',
+                'description' => __('When the last person leaves, you get a push with “Switch off” / “Leave on” – the lights go off only after “Switch off”.'),
+                'trigger' => ['type' => 'presence', 'state' => 'all_away'],
+                'conditions' => [],
+                'actions' => [
+                    ['type' => 'ask', 'to' => 'me', 'title' => __('Everybody is out – switch off all lights?'), 'body' => '', 'yes' => __('Switch off'), 'no' => __('Leave on'), 'hours' => 2],
+                    ['type' => 'ha_service', 'service' => 'light.turn_off', 'entity_id' => 'all', 'data' => ''],
+                ],
+            ],
             'sunset_lights' => [
                 'name' => __('Sunset while somebody is at home → lights on'), 'icon' => '🌅',
                 'description' => __('At sunset a light or scene in Home Assistant is switched on, if somebody is at home.'),
@@ -233,5 +302,124 @@ class AutomationCatalog
                 'actions' => [['type' => 'evcc_limit', 'loadpoint' => 1, 'soc' => 80], ['type' => 'evcc_mode', 'loadpoint' => 1, 'mode' => 'minpv']],
             ],
         ];
+    }
+
+    /**
+     * A block as it is stored: only the fields of its type (missing ones filled with the
+     * defaults), flags as booleans and numbers as integers; null for an unknown type.
+     *
+     * @param  array<mixed>  $block
+     * @param  'trigger'|'condition'|'group'|'action'  $kind
+     * @return array<string, mixed>|null
+     */
+    public static function clean(array $block, string $kind): ?array
+    {
+        $catalog = match ($kind) {
+            'trigger' => self::triggers(),
+            'condition' => self::conditions(),
+            'group' => self::groupConditions(),
+            default => self::actions(),
+        };
+        $type = is_string($block['type'] ?? null) ? $block['type'] : '';
+
+        if (! isset($catalog[$type])) {
+            return null;
+        }
+
+        $defaults = $catalog[$type]['defaults'];
+        $clean = ['type' => $type];
+
+        foreach ($defaults as $key => $default) {
+            $value = $block[$key] ?? $default;
+            $clean[$key] = match (true) {
+                $key === 'conditions' => array_slice(array_values(array_filter(array_map(fn ($condition) => is_array($condition) ? self::clean($condition, 'group') : null, is_array($value) ? $value : []))), 0, 10),
+                is_array($default) => is_array($value) ? array_values($value) : $default,
+                is_bool($default) => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+                is_int($default) => is_numeric($value) ? (int) $value : $default,
+                default => is_scalar($value) ? (string) $value : (string) $default,
+            };
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Sets of automations installed with one click; blocks with an empty device field are
+     * installed paused until a device is chosen.
+     *
+     * @return array<string, array{name: string, icon: string, description: string, automations: list<array{name: string, trigger: array<string, mixed>, conditions: list<array<string, mixed>>, actions: list<array<string, mixed>>}>}>
+     */
+    public static function packages(): array
+    {
+        $templates = self::templates();
+        $pick = fn (string ...$keys) => array_map(fn (string $key) => array_intersect_key($templates[$key], array_flip(['name', 'trigger', 'conditions', 'actions'])), $keys);
+        $lightsOff = ['type' => 'ha_service', 'service' => 'light.turn_off', 'entity_id' => 'all', 'data' => ''];
+
+        return [
+            'holiday' => [
+                'name' => __('Holiday'), 'icon' => '🏖️',
+                'description' => __('Holiday mode from the calendar, presence simulation in the evening and a push when it starts and ends.'),
+                'automations' => $pick('vacation_on', 'vacation_off', 'presence', 'presence_off'),
+            ],
+            'morning' => [
+                'name' => __('Morning'), 'icon' => '☀️',
+                'description' => __('Good-morning push with the weather on weekdays, a rain warning and a push before appointments.'),
+                'automations' => [
+                    ['name' => __('Good morning'), 'trigger' => ['type' => 'time', 'at' => '06:45', 'days' => [1, 2, 3, 4, 5]], 'conditions' => [], 'actions' => [['type' => 'push', 'to' => 'me', 'title' => __('☀️ Good morning'), 'body' => '{weather}', 'urgent' => false]]],
+                    ['name' => __('Rain today → take an umbrella'), 'trigger' => ['type' => 'weather', 'metric' => 'rain', 'operator' => 'gt', 'value' => '60'], 'conditions' => [['type' => 'time_window', 'from' => '06:00', 'until' => '10:00']], 'actions' => [['type' => 'push', 'to' => 'household', 'title' => __('☔ Rain today'), 'body' => '{weather}', 'urgent' => false]]],
+                    ...$pick('appointment_push'),
+                ],
+            ],
+            'night' => [
+                'name' => __('Good night'), 'icon' => '🌙',
+                'description' => __('Asks at half past ten whether all lights should go off, switches on night mode and reminds of the bins the evening before.'),
+                'automations' => [
+                    ['name' => __('Good night → lights off?'), 'trigger' => ['type' => 'time', 'at' => '22:30', 'days' => []], 'conditions' => [['type' => 'presence', 'state' => 'anyone_home']], 'actions' => [
+                        ['type' => 'ask', 'to' => 'me', 'title' => __('Good night – switch off all lights?'), 'body' => '', 'yes' => __('Switch off'), 'no' => __('Leave on'), 'hours' => 1],
+                        $lightsOff,
+                        ['type' => 'mode', 'key' => 'night', 'active' => true],
+                    ]],
+                    ['name' => __('Morning → night mode off'), 'trigger' => ['type' => 'time', 'at' => '07:00', 'days' => []], 'conditions' => [], 'actions' => [['type' => 'mode', 'key' => 'night', 'active' => false]]],
+                    ['name' => __('Bins out tonight'), 'trigger' => ['type' => 'waste', 'keyword' => __('Waste'), 'at' => '19:00'], 'conditions' => [], 'actions' => [['type' => 'push', 'to' => 'household', 'title' => __('🗑️ Put the bins out'), 'body' => '{reason}', 'urgent' => false]]],
+                ],
+            ],
+            'guests' => [
+                'name' => __('Guests'), 'icon' => '🧳',
+                'description' => __('Guest mode pauses the presence simulation and the “everybody has left” automations, and greets the household.'),
+                'automations' => [
+                    ['name' => __('Guests arrive'), 'trigger' => ['type' => 'mode', 'key' => 'guests', 'edge' => 'on'], 'conditions' => [], 'actions' => [['type' => 'presence_stop'], ['type' => 'mode', 'key' => 'away', 'active' => false], ['type' => 'push', 'to' => 'household', 'title' => __('🧳 Guest mode is on'), 'body' => __('Away automations are paused.'), 'urgent' => false]]],
+                    ['name' => __('Everybody has left (not with guests)'), 'trigger' => ['type' => 'presence', 'state' => 'all_away'], 'conditions' => [['type' => 'mode', 'key' => 'guests', 'active' => false]], 'actions' => [['type' => 'mode', 'key' => 'away', 'active' => true]]],
+                ],
+            ],
+            'energy' => [
+                'name' => __('Saving energy'), 'icon' => '⚡',
+                'description' => __('Push when there is plenty of sun power or electricity is cheap, charge the car in the evening and switch off the lights when everybody has left.'),
+                'automations' => [
+                    ...$pick('pv_surplus', 'car_night', 'away_ask_lights'),
+                    ['name' => __('Cheap electricity'), 'trigger' => ['type' => 'evcc', 'metric' => 'tariff', 'operator' => 'lt', 'value' => '0.20', 'loadpoint' => 1], 'conditions' => [], 'actions' => [['type' => 'push', 'to' => 'me', 'title' => __('⚡ Electricity is cheap now'), 'body' => '{reason}', 'urgent' => false]]],
+                ],
+            ],
+            'security' => [
+                'name' => __('Security'), 'icon' => '🛡️',
+                'description' => __('Push when a door stays open, when a window is open while it rains and when a parcel notice arrives; nobody at home switches on away mode.'),
+                'automations' => [
+                    ['name' => __('Door open for 10 minutes'), 'trigger' => ['type' => 'entity_for', 'entity_id' => '', 'value' => 'on', 'minutes' => 10], 'conditions' => [], 'actions' => [['type' => 'push', 'to' => 'household', 'title' => __('🚪 Door still open'), 'body' => '{reason}', 'urgent' => true]]],
+                    ['name' => __('Rain and a window open'), 'trigger' => ['type' => 'weather', 'metric' => 'rain', 'operator' => 'gt', 'value' => '70'], 'conditions' => [['type' => 'entity', 'entity_id' => '', 'operator' => 'eq', 'value' => 'on']], 'actions' => [['type' => 'push', 'to' => 'household', 'title' => __('🪟 Rain expected – a window is open'), 'body' => '', 'urgent' => true]]],
+                    ['name' => __('Parcel notice'), 'trigger' => ['type' => 'mail', 'keyword' => __('Parcel')], 'conditions' => [], 'actions' => [['type' => 'push', 'to' => 'household', 'title' => __('📦 Parcel on its way'), 'body' => '{reason}', 'urgent' => false]]],
+                    ...$pick('all_away'),
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Whether a block still needs a device chosen (an empty entity field).
+     *
+     * @param  array<string, mixed>  $block
+     */
+    public static function needsDevice(array $block): bool
+    {
+        return (array_key_exists('entity_id', $block) && blank($block['entity_id']) && ($block['type'] ?? '') !== 'ha_service')
+            || collect((array) ($block['conditions'] ?? []))->contains(fn ($condition) => is_array($condition) && self::needsDevice($condition));
     }
 }

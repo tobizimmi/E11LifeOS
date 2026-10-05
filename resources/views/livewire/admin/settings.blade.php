@@ -269,39 +269,6 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Reads the accounts of the old database, so that one can be chosen as source.
      */
-    /**
-     * Puts all failed background jobs back into the queue.
-     */
-    public function retryFailedJobs(): void
-    {
-        $this->authorize('admin');
-        Artisan::call('queue:retry', ['id' => ['all']]);
-        $this->dispatch('toast', message: __('Failed jobs were queued again.'));
-    }
-
-    public function deleteFailedJobs(): void
-    {
-        $this->authorize('admin');
-        Artisan::call('queue:flush');
-        $this->dispatch('toast', message: __('Failed jobs were deleted.'));
-    }
-
-    /**
-     * The latest failed jobs with the job name and the first line of the error.
-     *
-     * @return list<array{job: string, queue: string, failed_at: string, error: string}>
-     */
-    private function recentFailedJobs(): array
-    {
-        return rescue(fn () => DB::table('failed_jobs')->latest('failed_at')->limit(10)->get()
-            ->map(fn (object $job) => [
-                'job' => class_basename((string) (json_decode($job->payload, true)['displayName'] ?? '?')),
-                'queue' => (string) $job->queue,
-                'failed_at' => (string) $job->failed_at,
-                'error' => \Illuminate\Support\Str::limit(strtok((string) $job->exception, "\n"), 300),
-            ])->all(), [], false);
-    }
-
     public function loadAccounts(string $name): void
     {
         $this->authorize('admin');
@@ -363,35 +330,17 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $stored = AppSettings::stored();
-        $heartbeat = Cache::get('scheduler:heartbeat');
 
         return [
             'stored' => $stored,
             // Values in effect without a saved one (.env or built-in default), shown as placeholder.
             'current' => collect(AppSettings::FIELDS)->filter(fn (array $field, string $key) => ! isset($stored[$key]) && filled(AppSettings::current($key)))->map(fn (array $field, string $key) => (string) AppSettings::current($key))->all(),
-            'heartbeat' => $heartbeat ? Carbon::parse($heartbeat) : null,
             'mailer' => config('mail.default'),
             'imports' => ['portfolio' => Cache::get(RunAdminCommand::cacheKey('portfolio')), 'recipes' => Cache::get(RunAdminCommand::cacheKey('recipes'))],
             'users' => User::orderBy('name')->get(['id', 'name', 'email']),
-            'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
-            'recentFailedJobs' => $this->recentFailedJobs(),
-            'recentErrors' => Cache::get(\App\Support\ErrorReporter::CACHE_KEY, []),
-            'remoteBackup' => Cache::get('backup:remote-last'),
             'vpnStatus' => Vpn::status(),
             'vpnTunnel' => Vpn::isRunning() ? Vpn::tunnelState() : null,
             'vpnNetworks' => Vpn::networks(),
-            'status' => [
-                __('AI (Claude)') => StructuredAi::isConfigured(),
-                __('Sending e-mails') => config('mail.default') !== 'log' && config('mail.default') !== 'array',
-                __('Web push') => filled(config('services.webpush.public_key')) && filled(config('services.webpush.private_key')),
-                __('Bank sync (FinTS)') => filled(config('services.fints.product_id')),
-                __('Instagram analysis') => filled(config('services.instagram.apify_key')) && InstagramAi::isConfigured(),
-                __('Encrypted backup off the server') => filled(config('backup.remote_url')) && filled(config('backup.encryption_password')),
-                __('Error reports by e-mail') => filled(config('security.error_report_email')),
-                __('Two-factor authentication required') => (bool) config('security.require_two_factor'),
-                __('Virus scan of uploads') => VirusScanner::isEnabled(),
-                __('VPN connected') => Vpn::isRunning(),
-            ],
         ];
     }
 }; ?>
@@ -498,53 +447,11 @@ new #[Layout('layouts.app')] class extends Component
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('Server settings') }}</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Only visible to administrators. Values are stored encrypted and take precedence over the .env file.') }}</p>
+        <x-admin-nav />
     </x-slot>
 
     <div class="py-8">
         <div class="mx-auto max-w-4xl space-y-6 px-4 sm:px-6 lg:px-8">
-            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
-                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Status') }}</h3>
-                <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                    <li class="flex items-center gap-2">
-                        @if ($heartbeat && $heartbeat->gt(now()->subMinutes(5)))
-                            <span class="text-emerald-600">✓</span> {{ __('Scheduler (cron) runs') }} <span class="text-xs text-gray-500">({{ $heartbeat->diffForHumans() }})</span>
-                        @else
-                            <span class="text-orange-600">✗</span> <span>{{ __('Scheduler (cron) does not run') }} <span class="block text-xs text-gray-500">{{ __('Reminders, prices, news, backups and imports need the scheduler. It is set up automatically as PM2 process on the next deploy (no cron job in Plesk needed).') }}</span></span>
-                        @endif
-                    </li>
-                    @foreach ($status as $label => $ready)
-                        <li class="flex items-center gap-2"><span @class(['text-emerald-600' => $ready, 'text-gray-400' => ! $ready])>{{ $ready ? '✓' : '–' }}</span> {{ $label }}</li>
-                    @endforeach
-                </ul>
-                @if ($remoteBackup)
-                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Last copy off the server: :date', ['date' => \Illuminate\Support\Carbon::parse($remoteBackup)->diffForHumans()]) }}</p>
-                @endif
-                @if ($recentErrors !== [])
-                    <details class="mt-3 text-xs">
-                        <summary class="cursor-pointer text-orange-700 dark:text-orange-400">{{ trans_choice(':count recent error|:count recent errors', count($recentErrors)) }}</summary>
-                        <ul class="mt-2 space-y-1.5">
-                            @foreach ($recentErrors as $error)
-                                <li class="rounded-sm bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($error['at'])->format('d.m. H:i') }}</span> <strong>{{ $error['type'] }}</strong>: {{ $error['message'] }}<br><span class="text-gray-500">{{ $error['where'] }} · {{ $error['url'] }}</span></li>
-                            @endforeach
-                        </ul>
-                    </details>
-                @endif
-                @if ($failedJobs > 0)
-                    <details class="mt-3 text-xs">
-                        <summary class="cursor-pointer text-orange-700 dark:text-orange-400">{{ trans_choice(':count background job failed.|:count background jobs failed.', $failedJobs) }}</summary>
-                        <ul class="mt-2 space-y-1.5">
-                            @foreach ($recentFailedJobs as $job)
-                                <li class="rounded-sm bg-gray-50 p-2 dark:bg-gray-900"><span class="text-gray-500">{{ \Illuminate\Support\Carbon::parse($job['failed_at'])->format('d.m. H:i') }}</span> <strong>{{ $job['job'] }}</strong> <span class="text-gray-500">({{ $job['queue'] }})</span><br>{{ $job['error'] }}</li>
-                            @endforeach
-                        </ul>
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            <x-secondary-button type="button" wire:click="retryFailedJobs">↻ {{ __('Retry all') }}</x-secondary-button>
-                            <x-secondary-button type="button" wire:click="deleteFailedJobs" wire:confirm="{{ __('Delete all failed jobs?') }}">🗑 {{ __('Delete all') }}</x-secondary-button>
-                        </div>
-                    </details>
-                @endif
-            </section>
-
             <form wire:submit="save" class="space-y-6">
                 @foreach ($groups as $group => $meta)
                     <section wire:key="group-{{ $group }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">

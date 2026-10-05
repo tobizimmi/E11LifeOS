@@ -3,6 +3,132 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.40.1] – 2026-10-05
+
+### Behoben
+- „Log-Dateien: Für die App nicht beschreibbar: laravel.log“: Web-App und Hintergrundprozesse (Scheduler, Queue) laufen auf dem Server unter verschiedenen Benutzern und sperrten sich gegenseitig aus derselben Datei aus. Hintergrundprozesse schreiben jetzt in eine eigene `laravel-cli.log`; die Systemprüfung bewertet nur die eigene Datei und verschiebt eine gesperrte sofort zur Seite.
+
+## [1.40.0] – 2026-10-05
+
+### Neu
+- Roadmap: Punkte (Aufgaben, Feature-Wünsche, Bugs) direkt in einem Meilenstein oder im Backlog anlegen – zusätzlich zu den Bugs und Wünschen aus dem Support.
+- Export für Claude: die ganze Roadmap oder ein einzelner Meilenstein als Markdown zum Kopieren oder als .md-Datei – mit Beschreibungen, technischem Kontext (Seite, Version, Browser) und internen Notizen, nach Priorität sortiert. Namen, E-Mail-Adressen und Links mit Tokens der Anfragenden sind nie enthalten.
+
+### Behoben
+- Fehlermeldung „Scheduled command [] failed with exit code [1]“: Der minütliche Scheduler-Herzschlag galt als fehlgeschlagen, wenn der Datenbank-Cache beim Schreiben keine Zeile änderte. Geplante Aufgaben werten Rückgabewerte nicht mehr als Fehler.
+
+## [1.39.0] – 2026-10-05
+
+### Neu
+- Listen einfügen: In Seiten und Aufgaben-Notizen fügt „/“ → „Liste einfügen“ (oder der Link „📋 Liste einfügen“ über dem Editor) Packlisten, Checklisten, eigene Vorlagen und Einkaufslisten als abhakbare Checkliste ein – auch ohne Reise. Einkaufslisten lassen sich zusätzlich live einbetten und zeigen dann immer die aktuellen offenen Einträge.
+- Aufgaben: „Liste als Unteraufgaben einfügen“ übernimmt eine Pack-, Check- oder Einkaufsliste als Unteraufgaben (ohne Doppelte).
+
+### Behoben
+- Administration auf dem Handy: Das Bereichsmenü rutschte nach oben weg und ließ sich nicht bedienen. Auswahlblätter öffnen jetzt immer unten am Bildschirm.
+
+## [1.38.0] – 2026-10-05
+
+### Neu
+- Hilfe & Support: Über „Hilfe & Support“ in der Seitenleiste schreiben Mitglieder Anfragen (Frage, Problem, Bug, Feature-Wunsch, Konto) mit Bereich, Dringlichkeit und bis zu drei Screenshots. Sie sehen den Verlauf, antworten, markieren als gelöst und bewerten die Hilfe; neue Antworten kommen per Push, Glocke und E-Mail.
+- Administration › Support: Ticketverwaltung wie in einem Helpdesk – Ansichten (alle ungelösten, nicht zugewiesen, meine, neu, überfällig, wartend, Bugs, Feature-Wünsche, gelöst), Suche nach Betreff, #Nummer, Name oder E-Mail, Prioritätsfilter und Kennzahlen (offene Tickets, Ø erste Antwort, Zufriedenheit).
+- Tickets bearbeiten: öffentliche Antworten und interne Notizen, „Senden als“ Status, Zuweisung, Priorität, Typ, Bereich, Tags und Meilenstein – jede Änderung steht im Verlauf. Zielzeiten für die erste Antwort je Priorität (4 h bis 72 h) mit Überfällig-Hinweis; gelöste Tickets schließen sich nach 7 Tagen.
+- Administration › Roadmap: Meilensteine mit Version, Zieldatum, Status und Fortschritt; Bugs und Feature-Wünsche aus dem Support werden eingeplant, alles andere steht im Backlog. Interne Tickets für Ideen aus dem Team.
+- Datenschutz: Anhänge sehen nur die anfragende Person und Administratoren; wird ein Konto gelöscht, gehen seine Anfragen samt Dateien mit.
+
+## [1.37.1] – 2026-10-05
+
+### Behoben
+- Notizen in Aufgaben und Sammlungseinträgen: Beim Tippen im Editor (z. B. „/“ für eine Checkliste) erschien nach kurzer Pause „500 Server Error“. Das automatische Speichern ist nur noch auf Seiten aktiv, wo es hingehört; Einträge speichern weiter mit „Speichern“.
+
+## [1.37.0] – 2026-10-05
+
+### Neu
+- Administration › Nutzer: alle Konten mit Haushalten und Rolle, letzter Anmeldung, zweitem Faktor und Registrierungsdatum, mit Suche. Eigener Reiter „Administratoren“; Administratorrechte vergeben oder entziehen nur nach erneuter Passworteingabe (nie für sich selbst).
+- Rechteverwaltung: Jeder Bereich (Reisen, Gesundheit, Finanzen, Smart Home …) lässt sich pro Haushalt und pro Konto freigeben oder sperren, auf Wunsch bis zu einem Datum. Gesperrte Bereiche verschwinden aus dem Menü und sind nicht mehr aufrufbar; die Daten bleiben erhalten. Sperren gehen immer vor.
+- Administration › Module: pro Bereich „Inklusive“ oder „Lizenzpflichtig“, mit Übersicht aller aktiven Freigaben, Sperren und Lizenzen. Das Datenmodell ist für ein späteres Lizenzsystem vorbereitet (Herkunft Administrator/Lizenz/Testzeitraum, Gültigkeitszeitraum, Referenz).
+- Haushaltsseite: Vom Administrator gesperrte oder lizenzpflichtige Zusatzmodule sind gekennzeichnet.
+
+## [1.36.2] – 2026-10-05
+
+### Verbessert
+- Untermenüs überall einheitlich: Finanzen, Karriere, Reisen, Notfallordner, Haus, Journal, Wissen, Lernen, Vorsorge, Kostenteilung, Fahrzeuge, Arbeit, Vermietung, Gesundheit, Smart Home, Business, Rezept-Import und Administration nutzen dieselbe Navigation – bis vier Bereiche als Segmentschalter, mehr als Blatt auf dem Handy bzw. gruppierte Leiste auf größeren Bildschirmen.
+- Lange Bereichsnamen werden auf dem Handy sauber umbrochen statt abgeschnitten.
+
+## [1.36.1] – 2026-10-05
+
+### Verbessert
+- Untermenüs (Portfolio, Business, Immobilien): Auf dem Handy öffnet der aktuelle Bereich ein Blatt mit allen Bereichen in Gruppen – kein seitliches Scrollen mehr. Auf größeren Bildschirmen sind alle Bereiche auf einen Blick sichtbar und nach Gruppen getrennt.
+- Seitlich scrollende Leisten bleiben in sich, zeigen keinen Scrollbalken mehr und blenden an den Rändern aus.
+
+### Behoben
+- In der installierten App lud ein schräges Wischen am Seitenanfang (z. B. im Untermenü) die Seite neu: Nur ein klar senkrechtes Herunterziehen außerhalb seitlich scrollender Bereiche löst noch das Neuladen aus.
+
+## [1.36.0] – 2026-10-05
+
+### Neu
+- Administration als eigener Bereich mit Reitern: System (Systemzustand, Status, Fehler, Hintergrundaufgaben), Haushalte, Servereinstellungen und Admin-Protokoll.
+- Haushalte verwalten: neue Haushalte anlegen (mit bestehendem Konto als Inhaber/in oder per Einladungslink), umbenennen, Mitglieder hinzufügen, Rollen ändern und entfernen, Registrierungslinks erstellen.
+- Datenschutzkonform: Admins sehen nur Namen, Mitglieder und Mengen – nie Inhalte. Exporte enthalten nur die gemeinsamen Daten (keine privaten Einträge, keine Zugangsdaten), sind mit AES-256 und eigenem Passwort verschlüsselt, und die Inhaber/innen bekommen einen Hinweis.
+- Haushalt löschen: mit Namensbestätigung und erneuter Passworteingabe, inklusive aller Dateien; auf Wunsch auch die Konten von Mitgliedern, die danach zu keinem Haushalt mehr gehören.
+- Admin-Protokoll: jede Aktion von Administrator:innen mit Zeit, Gerät und IP-Adresse.
+
+### Verbessert
+- Wer sich als Erste/r mit einem Einladungslink eines von der Administration angelegten Haushalts registriert, wird Inhaber/in.
+
+## [1.35.2] – 2026-10-05
+
+### Behoben
+- Live-Verbindung zu Home Assistant: Eine halb geschlossene Verbindung kann den Prozess nicht mehr in eine Dauerschleife mit voller CPU-Last bringen – sie wird erkannt und neu aufgebaut, mit wachsender Wartezeit zwischen den Versuchen.
+
+## [1.35.1] – 2026-10-05
+
+### Behoben
+- Eine Log-Datei, die von einem anderen Benutzer neu angelegt wurde (z. B. durch die Log-Rotation), ließ geplante Aufgaben abbrechen: Schreibfehler im Log brechen nichts mehr ab, der Wächter und der Deploy legen eine nicht beschreibbare Log-Datei beiseite, und der Systemzustand zeigt das Problem an.
+- Lehnt Apify den Schlüssel ab (401/402/403), erscheint kein Fehler mehr alle sechs Stunden – Admins bekommen höchstens einmal am Tag den Hinweis, Schlüssel und Kontingent zu prüfen.
+
+## [1.35.0] – 2026-10-05
+
+### Neu
+- Automationen per KI-Entwurf: einfach beschreiben („Wenn der Letzte geht, frag, ob alle Lichter ausgehen sollen“) – die KI füllt den Editor aus, du prüfst, testest und speicherst. Lässt sich unter Admin › KI abschalten.
+- Neue Auslöser: Wetter heute (Regen, Höchst-/Tiefsttemperatur), Müllabfuhr morgen, Mail an die Haushaltsadresse (z. B. Paketankündigung), Fristen aus Sammlungen (z. B. Kündigungsfrist), Geburtstage, Mindesthaltbarkeit im Vorrat, Kontostand und „Gerät bleibt in einem Zustand“ (z. B. Tür 10 Minuten offen).
+- Neue Aktionen: Einkaufsliste, Kalendereintrag, E-Mail an dich oder den Haushalt, Sprachausgabe auf einem Lautsprecher (TTS), Szenen-Schnappschuss (Lichter merken und wiederherstellen) und Webhook.
+- ODER-Bedingungen: „Eines davon“ fasst mehrere Bedingungen zusammen.
+- Platzhalter in Texten: {reason}, {automation}, {time}, {date}, {weekday}, {weather} und {state:sensor.…}.
+- Probelauf im Editor: zeigt, was jetzt passieren würde – ohne etwas zu schalten oder zu senden.
+- Verlauf aller Ausführungen mit Grund und geprüften Bedingungen.
+- Pakete mit einem Klick: Urlaub, Morgen, Gute Nacht, Gäste, Energie sparen und Sicherheit; Automationen, die noch ein Gerät brauchen, starten pausiert.
+
+## [1.34.0] – 2026-10-05
+
+### Neu
+- Smart Home live: Eine dauerhafte Verbindung zu Home Assistant (über das VPN oder die öffentliche Adresse) liefert jede Zustandsänderung sofort – Automationen reagieren in Sekunden statt Minuten; Bereiche aus Home Assistant werden automatisch übernommen.
+- Verbindungswächter: Ist Home Assistant zweimal hintereinander nicht erreichbar, bekommen die Haushaltsbesitzer eine Push-Nachricht – und eine Entwarnung, sobald es wieder geht. Der Systemzustand zeigt zusätzlich, ob das VPN läuft.
+- Automationen fragen per Push nach: Aktion „Per Push fragen“ mit zwei Knöpfen direkt in der Benachrichtigung (z. B. „Ausschalten“ / „Anlassen“); die folgenden Aktionen laufen erst nach „Ja“. Ohne Knöpfe auf dem Handy öffnet sich eine Seite zum Antworten. Neue Vorlage: „Alle sind weg → fragen, ob das Licht ausgehen soll“.
+- Dashboards: neue Karten für Kamera (Live-Bild), Wetter, „Heute“ und Szenen; Karten lassen sich an Bedingungen knüpfen („nur zeigen, wenn …“).
+- Wandtablet-Ansicht: Dashboard im Vollbild mit Uhr, bleibt wach und dimmt nachts.
+- Ein Dashboard lässt sich auf der Übersicht anzeigen („☆ Auf Übersicht zeigen“).
+- App-Schnittstelle: Die App kann melden, ob man zu Hause oder unterwegs ist – zählt für Anwesenheits-Automationen mit.
+
+## [1.33.0] – 2026-10-05
+
+### Neu
+- Übersicht › „Mein Tag“: alles mit Datum von heute aus allen Bereichen in einer Zeitleiste (Aufgaben, Termine, Fristen, Essen, Kalender-Abos), dazu „Als Nächstes in 20 Min.“, Wetter, überfällige und heute erledigte Aufgaben. Morgens „Dein Morgen“, abends „Dein Abend“ mit Vorschau auf morgen; Aufgaben direkt abhaken (mit Rückgängig).
+- Ein Eingabefeld für alles („✨ Automatisch“ in der Schnellerfassung und in der Befehlsleiste): „Einkauf: Milch, Brot“ → Einkaufsliste, „50 € Tanken“ → Ausgabe in Finanzen, „Zahnarzt Do 10 Uhr“ → Termin, „Licht Wohnzimmer an“ → Gerät, „Urlaubsmodus an“ → Modus, alles andere → Inbox. Unter dem Feld steht vorab, was daraus wird; mit Rückgängig.
+- Menü anpassen: Module anpinnen (oben im Menü), ausblenden (bleiben über die Suche erreichbar), „Oft genutzt“ lernt mit, Schnellstart-Vorlagen (Alles, Familie & Haushalt, Schwerpunkt Geld, Minimal) – auch als erster Schritt für neue Mitglieder.
+- App-Schnittstelle: „Mein Tag“, Widgets (nächster Termin, offene Einkäufe, Energie, Wetter), das Eingabefeld für alles sowie Smart Home (Geräte, Modi, Dashboards, Energie; schalten mit Bestätigung für Schlösser).
+
+### Verbessert
+- Aufgaben verstehen kurze Wochentage („Do 10 Uhr“, „Fr.“).
+
+## [1.32.0] – 2026-10-04
+
+### Neu
+- Admin › Systemzustand: Zeitplaner, Hintergrundaufgaben, Warteschlange, Speicherplatz, tägliche Sicherung, Kopie außerhalb des Servers und Wiederherstellungstest auf einen Blick.
+- Wächter: alle zehn Minuten geprüft – Admins bekommen eine Push-Nachricht (und E-Mail), wenn etwas rot wird, und eine Entwarnung, wenn es wieder passt.
+- Serverfehler kommen zusätzlich als Push aufs Handy (derselbe Fehler höchstens einmal pro Stunde).
+- Wiederherstellungstest jede Nacht auf Sonntag: Die neueste Sicherung wird geprüft (Archiv, alle Tabellen mit allen Zeilen, alle Dateien) und in eine Testdatenbank eingespielt; jede Sicherung enthält dafür jetzt ein Inhaltsverzeichnis.
+- Langsame Seiten: jeder Aufruf wird gemessen; die langsamsten Seiten der Woche und Aufrufe über einer Sekunde (mit Anzahl der Datenbankabfragen) stehen im Systemzustand.
+
 ## [1.31.0] – 2026-10-04
 
 ### Neu

@@ -8,6 +8,8 @@ use App\Models\SmartHomeDashboard;
 use App\Models\SmartHomeDashboardCard;
 use App\Models\SmartHomeEntity;
 use App\Models\SmartHomeReading;
+use App\Support\Addons;
+use App\Support\SmartHome\EntityStates;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -82,7 +84,7 @@ class SmartHomeDashboardTest extends TestCase
         Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id])
             ->assertSee('🛋️ Wohnzimmer')->assertSee('Solar')->assertSee('21,5 °C')->assertSee('aria-pressed="false"', false);
 
-        Volt::test('smart-home.index')->assertSee('🛋️ Wohnzimmer')->call('openBoard', $dashboard->id)->assertSet('board', $dashboard->id)->assertSee('Solar');
+        Volt::test('smart-home.index')->assertSeeInOrder(['🛋️', 'Wohnzimmer'])->call('openBoard', $dashboard->id)->assertSet('board', $dashboard->id)->assertSee('Solar');
 
         $board->call('removeCard', $lightCard->id)->call('deleteDashboard')->assertDispatched('smart-home-dashboard-deleted');
         $this->assertSame(0, SmartHomeDashboardCard::count());
@@ -110,6 +112,46 @@ class SmartHomeDashboardTest extends TestCase
         [$stranger] = $this->memberWithHousehold();
         $this->actingAs($stranger);
         Volt::test('smart-home.dashboard', ['dashboardId' => $shared->id])->assertNotFound();
+    }
+
+    public function test_widgets_conditions_wall_tablet_overview_and_camera(): void
+    {
+        [$owner, $household] = $this->memberWithHousehold();
+        $household->forceFill(['addons' => [Addons::SMART_HOME => true]])->save();
+        [$light, $temperature] = $this->entities($household);
+        $camera = SmartHomeEntity::create(['household_id' => $household->id, 'smart_home_connection_id' => $light->smart_home_connection_id, 'entity_id' => 'camera.einfahrt', 'name' => 'Einfahrt']);
+        $scene = SmartHomeEntity::create(['household_id' => $household->id, 'smart_home_connection_id' => $light->smart_home_connection_id, 'entity_id' => 'scene.filmabend', 'name' => 'Filmabend']);
+        $dashboard = SmartHomeDashboard::factory()->create(['household_id' => $household->id, 'created_by' => $owner->id]);
+        $this->actingAs($owner);
+
+        $board = Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id, 'editing' => true])
+            ->call('addWidget', 'scenes')->call('addWidget', 'agenda')
+            ->set('newEntity', (string) $camera->id)->call('addEntity')
+            ->set('newEntity', (string) $temperature->id)->call('addEntity');
+        $this->assertSame(['scenes', 'agenda', 'entity', 'entity'], $dashboard->cards()->pluck('kind')->all());
+        $this->assertSame('camera', $dashboard->cards()->where('smart_home_entity_id', $camera->id)->value('display'));
+        $board->call('addWidget', 'unknown')->assertStatus(422);
+
+        // The temperature only shows while the light is on.
+        $card = $dashboard->cards()->where('smart_home_entity_id', $temperature->id)->sole();
+        Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id, 'editing' => true])
+            ->call('updateCard', $card->id, 'when_entity', 'light.sofa')->call('updateCard', $card->id, 'when_state', 'on');
+        Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id])->assertSee('Filmabend')->assertDontSee('Raumtemperatur');
+        EntityStates::remember($light->connection, 'light.sofa', 'on');
+        Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id])->assertSee('Raumtemperatur')->assertSee(route('smart-home.camera', $camera));
+
+        // Wall tablet: full screen without editing; overview card for the member.
+        $this->get(route('smart-home.wall', $dashboard))->assertOk()->assertSee('wakeLock')->assertDontSee(__('Edit'));
+        Volt::test('smart-home.dashboard', ['dashboardId' => $dashboard->id])->call('toggleOverview');
+        $this->assertSame($dashboard->id, $owner->fresh()->nav_preferences['board']);
+        Volt::test('dashboard')->call('loadWidgets')->assertSee('Filmabend');
+
+        // Camera pictures come through the server.
+        Http::fake(['ha.example.com/api/camera_proxy/camera.einfahrt' => Http::response('JPEGDATA', 200, ['Content-Type' => 'image/jpeg'])]);
+        $this->get(route('smart-home.camera', $camera))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->get(route('smart-home.camera', $light))->assertNotFound();
+        [$stranger] = $this->memberWithHousehold();
+        $this->actingAs($stranger)->get(route('smart-home.camera', $camera))->assertNotFound();
     }
 
     public function test_history_cards_show_recorded_values_and_tiles_switch_devices(): void

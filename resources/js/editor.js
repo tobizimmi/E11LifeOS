@@ -347,21 +347,21 @@ const Embed = Node.create({
     },
 
     addAttributes() {
-        return { type: { default: 'tasks' } };
+        return { type: { default: 'tasks' }, list: { default: null } };
     },
 
     parseHTML() {
-        return [{ tag: 'div[data-embed]', getAttrs: (element) => ({ type: element.getAttribute('data-embed') || 'tasks' }) }];
+        return [{ tag: 'div[data-embed]', getAttrs: (element) => ({ type: element.getAttribute('data-embed') || 'tasks', list: element.getAttribute('data-list') }) }];
     },
 
     renderHTML({ node }) {
         const t = this.options.translations;
-        const labels = { tasks: `✅ ${t.embedTasks}`, calendar: `📅 ${t.embedCalendar}`, subpages: `📄 ${t.embedSubpages}` };
+        const labels = { tasks: `✅ ${t.embedTasks}`, calendar: `📅 ${t.embedCalendar}`, subpages: `📄 ${t.embedSubpages}`, shopping: `🛒 ${t.embedShopping}` };
 
-        return ['div', { 'data-embed': node.attrs.type, class: 'editor-embed' }, `${labels[node.attrs.type] ?? node.attrs.type} – ${t.embedHint}`];
+        return ['div', { 'data-embed': node.attrs.type, 'data-list': node.attrs.list, class: 'editor-embed' }, `${labels[node.attrs.type] ?? node.attrs.type} – ${t.embedHint}`];
     },
 
-    ...createAtomBlockMarkdownSpec({ nodeName: 'embed', defaultAttributes: { type: 'tasks' }, allowedAttributes: ['type'] }),
+    ...createAtomBlockMarkdownSpec({ nodeName: 'embed', defaultAttributes: { type: 'tasks' }, allowedAttributes: ['type', 'list'] }),
 });
 
 /**
@@ -470,7 +470,7 @@ function suggestionPopup(renderItem) {
     };
 }
 
-function slashCommands(t, onPickFile) {
+function slashCommands(t, onPickFile, onPickList) {
     return [
         { title: t.text, hint: '¶', run: (c) => c.setParagraph() },
         { title: t.heading1, hint: 'H1', run: (c) => c.setHeading({ level: 1 }) },
@@ -493,6 +493,7 @@ function slashCommands(t, onPickFile) {
         { title: t.embedCalendar, hint: '📅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'calendar' } }) },
         { title: t.embedSubpages, hint: '📄', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'subpages' } }) },
         { title: t.pageLink, hint: '[[ ]]', run: (c) => c.insertContent('[[') },
+        ...(onPickList ? [{ title: t.insertList, hint: '📋', run: (c) => { onPickList(); return c; } }] : []),
         ...(onPickFile ? [{ title: t.attachment, hint: '📎', run: (c) => { onPickFile(); return c; } }] : []),
     ];
 }
@@ -501,11 +502,11 @@ const SlashMenu = Extension.create({
     name: 'slashMenu',
 
     addOptions() {
-        return { translations: {}, onPickFile: null };
+        return { translations: {}, onPickFile: null, onPickList: null };
     },
 
     addProseMirrorPlugins() {
-        const commands = slashCommands(this.options.translations, this.options.onPickFile);
+        const commands = slashCommands(this.options.translations, this.options.onPickFile, this.options.onPickList);
 
         return [
             Suggestion({
@@ -603,9 +604,9 @@ const PageLinkAutocomplete = Extension.create({
 /**
  * @param {HTMLElement} element     Mount point for the editable area.
  * @param {HTMLElement} bubbleMenu  Toolbar shown above selected text.
- * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile(), searchLinks(term) }
+ * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile(), onPickList(), searchLinks(term) }
  */
-export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile, searchLinks }) {
+export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile, onPickList, searchLinks }) {
     // The bubble menu plugin attaches the toolbar itself when text is selected
     // (and only ever hides it after having shown it), so start detached.
     bubbleMenu.remove();
@@ -632,7 +633,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             Callout.configure({ translations }),
             Toggle.configure({ translations }),
             Embed.configure({ translations }),
-            SlashMenu.configure({ translations, onPickFile }),
+            SlashMenu.configure({ translations, onPickFile, onPickList }),
             PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
         ],
         content: markdown,

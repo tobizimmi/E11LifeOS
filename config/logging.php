@@ -5,6 +5,10 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
+// Web requests and console processes (scheduler, queue, PM2) may run as different users on the
+// server: each writes its own file, so neither can lock the other out by creating it first.
+$logFile = storage_path('logs/'.(PHP_SAPI === 'cli' ? 'laravel-cli' : 'laravel').'.log');
+
 return [
 
     /*
@@ -55,27 +59,31 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
-            'ignore_exceptions' => false,
+            // An unwritable log file must not abort requests and scheduled commands; errors are
+            // still recorded in the database (ErrorReporter) and the watcher repairs the file.
+            'ignore_exceptions' => true,
         ],
 
         'single' => [
             'driver' => 'single',
-            'path' => storage_path('logs/laravel.log'),
+            'path' => $logFile,
             'level' => env('LOG_LEVEL', 'debug'),
+            'permission' => 0664,
             'replace_placeholders' => true,
         ],
 
         'daily' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/laravel.log'),
+            'path' => $logFile,
             'level' => env('LOG_LEVEL', 'debug'),
+            'permission' => 0664,
             'max_files' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
 
         'monthly' => [
             'driver' => 'monthly',
-            'path' => storage_path('logs/laravel.log'),
+            'path' => $logFile,
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => 3,
             'replace_placeholders' => true,
@@ -132,7 +140,7 @@ return [
         ],
 
         'emergency' => [
-            'path' => storage_path('logs/laravel.log'),
+            'path' => $logFile,
         ],
 
     ],

@@ -24,6 +24,8 @@ class AiFeatures
 
     public const INSTAGRAM = 'instagram';
 
+    public const AUTOMATIONS = 'automations';
+
     /**
      * @return array<string, array{label: string, text: string}>
      */
@@ -38,6 +40,7 @@ class AiFeatures
             self::RECIPES => ['label' => __('Recipe import & nutrition'), 'text' => __('Recipe texts, photos and PDFs.')],
             self::STATEMENTS => ['label' => __('Read broker statements'), 'text' => __('PDF statements imported into the portfolio.')],
             self::INSTAGRAM => ['label' => __('Instagram analysis'), 'text' => __('Posts of the configured public profile (runs automatically every six hours).')],
+            self::AUTOMATIONS => ['label' => __('Automation drafts'), 'text' => __('Sends the description of the automation, the names of the modes and devices.')],
         ];
     }
 

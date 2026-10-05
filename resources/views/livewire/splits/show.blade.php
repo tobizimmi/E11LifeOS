@@ -278,11 +278,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                    @foreach (['expenses' => '🧾 '.__('Expenses'), 'balances' => '⚖️ '.__('Balances'), 'stats' => '📊 '.__('Evaluation'), 'people' => '👥 '.__('Participants')] as $key => $label)
-                        <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
-                    @endforeach
-                </div>
+                <x-section-nav class="w-full sm:w-auto" :label="__('Cost sharing')" :active="$tab" :groups="['' => ['expenses' => ['🧾', __('Expenses')], 'balances' => ['⚖️', __('Balances')], 'stats' => ['📊', __('Evaluation')], 'people' => ['👥', __('Participants')]]]" />
                 <x-primary-button type="button" wire:click="newExpense">+ {{ __('Expense') }}</x-primary-button>
             </div>
 

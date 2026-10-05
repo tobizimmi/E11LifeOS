@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Household;
 use App\Models\HouseholdMember;
 use App\Models\User;
+use App\Support\Modules\ModuleAccess;
 
 /**
  * Optional modules a household can switch on or off, and switch off for single members
@@ -70,14 +71,14 @@ class Addons
     }
 
     /**
-     * Whether the user may use the module: switched on for their household and not switched
-     * off for them by the owner.
+     * Whether the user may use the module: released by the administrator (or licensed), switched
+     * on for their household and not switched off for them by the owner.
      */
     public static function allowed(?User $user, string $addon): bool
     {
         $household = $user?->currentHousehold();
 
-        if (! self::enabled($household, $addon)) {
+        if (! $household || ! self::switchedOn($household, $addon) || ! ModuleAccess::allows($user, $addon)) {
             return false;
         }
 
@@ -86,7 +87,18 @@ class Addons
         return (bool) $membership?->mayUse($addon);
     }
 
+    /**
+     * Switched on for the household and released for it by the administrator.
+     */
     public static function enabled(?Household $household, string $addon): bool
+    {
+        return self::switchedOn($household, $addon) && ModuleAccess::availableForHousehold($household, $addon);
+    }
+
+    /**
+     * The owner's switch on the Household page (without the administrator's release).
+     */
+    public static function switchedOn(?Household $household, string $addon): bool
     {
         if (! $household || ! array_key_exists($addon, self::all())) {
             return false;

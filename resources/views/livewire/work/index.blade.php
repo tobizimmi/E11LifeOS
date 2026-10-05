@@ -319,11 +319,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-            <div class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="tablist">
-                @foreach (['week' => '📅 '.__('Week'), 'month' => '🗓️ '.__('Month'), 'leave' => '🏖️ '.__('Leave'), 'settings' => '⚙️ '.__('Settings')] as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
-                @endforeach
-            </div>
+            <x-section-nav :label="__('Working time & leave')" :active="$tab" :groups="['' => ['week' => ['📅', __('Week')], 'month' => ['🗓️', __('Month')], 'leave' => ['🏖️', __('Leave')], 'settings' => ['⚙️', __('Settings')]]]" />
 
             @if ($tab === 'week' || $tab === 'month')
                 @php($data = $tab === 'week' ? $weekData : $monthData)

@@ -296,11 +296,7 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             @if ($profile && ! $showProfileForm)
-                <nav class="flex gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 dark:bg-gray-800" aria-label="{{ __('Sections') }}">
-                    @foreach (['card' => '🆘 '.__('Emergency card'), 'prevention' => '🩺 '.__('Prevention'), 'medications' => '💊 '.__('Medication'), 'appointments' => '📅 '.__('Appointments')] as $key => $label)
-                        <button type="button" wire:click="$set('tab', '{{ $key }}')" @class([$tabClass, 'bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-gray-100' => $tab === $key, 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100' => $tab !== $key]) aria-pressed="{{ $tab === $key ? 'true' : 'false' }}">{{ $label }}</button>
-                    @endforeach
-                </nav>
+                <x-section-nav :label="__('Health')" :active="$tab" :groups="['' => ['card' => ['🆘', __('Emergency card')], 'prevention' => ['🩺', __('Prevention')], 'medications' => ['💊', __('Medication')], 'appointments' => ['📅', __('Appointments')]]]" />
 
                 @if ($tab === 'card')
                     <section class="rounded-2xl bg-white p-5 shadow-xs ring-2 ring-rose-200 dark:bg-gray-800 dark:ring-rose-900">

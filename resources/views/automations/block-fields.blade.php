@@ -102,9 +102,69 @@
     <input type="text" wire:model="{{ $path }}.title" class="w-48 {{ $small }}" placeholder="{{ __('Title') }}">
     <input type="text" wire:model="{{ $path }}.body" class="w-56 {{ $small }}" placeholder="{{ __('Text') }}">
     <label class="flex items-center gap-1"><input type="checkbox" wire:model="{{ $path }}.urgent" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('urgent') }}</label>
+@elseif ($type === 'ask')
+    <select wire:model="{{ $path }}.to" class="{{ $small }}"><option value="me">{{ __('to me') }}</option><option value="household">{{ __('to the whole household') }}</option></select>
+    <input type="text" wire:model="{{ $path }}.title" class="w-48 {{ $small }}" placeholder="{{ __('e.g. Everybody is out – switch off the lights?') }}" aria-label="{{ __('Question') }}">
+    <input type="text" wire:model="{{ $path }}.body" class="w-48 {{ $small }}" placeholder="{{ __('Text') }}">
+    <input type="text" wire:model="{{ $path }}.yes" class="w-28 {{ $small }}" aria-label="{{ __('Button “yes”') }}">
+    <input type="text" wire:model="{{ $path }}.no" class="w-28 {{ $small }}" aria-label="{{ __('Button “no”') }}">
+    {{ __('answer within') }} <input type="number" min="1" max="48" wire:model="{{ $path }}.hours" class="w-16 {{ $small }}"> {{ __('h') }}
+    <span class="w-full text-xs text-gray-500">{{ __('The following actions run only after “yes”.') }}</span>
 @elseif ($type === 'task')
     <input type="text" wire:model="{{ $path }}.title" class="w-56 {{ $small }}" placeholder="{{ __('e.g. Water the plants') }}">
     <select wire:model="{{ $path }}.due" class="{{ $small }}"><option value="today">{{ __('due today') }}</option><option value="tomorrow">{{ __('due tomorrow') }}</option><option value="">{{ __('no date') }}</option></select>
+@elseif ($type === 'entity_for')
+    <input type="text" list="{{ $entityList }}" wire:model="{{ $path }}.entity_id" class="w-56 {{ $small }}" placeholder="binary_sensor.haustuer" aria-label="{{ __('Entity') }}">
+    {{ __('is') }} <input type="text" wire:model="{{ $path }}.value" class="w-20 {{ $small }}" placeholder="on" aria-label="{{ __('Value') }}">
+    {{ __('for') }} <input type="number" min="1" max="1440" wire:model="{{ $path }}.minutes" class="w-20 {{ $small }}" aria-label="{{ __('Minutes') }}"> {{ __('min') }}
+@elseif ($type === 'weather')
+    <select wire:model="{{ $path }}.metric" class="{{ $small }}">@foreach (\App\Support\Automation\AutomationCatalog::weatherMetrics() as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
+    <select wire:model="{{ $path }}.operator" class="{{ $small }}">@foreach (['gt' => '>', 'lt' => '<'] as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
+    <input type="number" wire:model="{{ $path }}.value" class="w-20 {{ $small }}" aria-label="{{ __('Value') }}">
+    <span class="w-full text-xs text-gray-500">{{ __('Uses the weather place from your profile.') }}</span>
+@elseif ($type === 'waste')
+    {{ __('At') }} <input type="time" wire:model="{{ $path }}.at" class="{{ $small }}" aria-label="{{ __('Time') }}">
+    {{ __('when tomorrow has an entry with') }} <input type="text" wire:model="{{ $path }}.keyword" class="w-36 {{ $small }}" aria-label="{{ __('Word in the title') }}">
+    <span class="w-full text-xs text-gray-500">{{ __('Enter the collection dates in the calendar or subscribe to the waste calendar of your town.') }}</span>
+@elseif ($type === 'mail')
+    {{ __('Subject or sender contains') }} <input type="text" wire:model="{{ $path }}.keyword" class="w-36 {{ $small }}" placeholder="{{ __('any mail') }}" aria-label="{{ __('Word in the subject') }}">
+    <span class="w-full text-xs text-gray-500">{{ __('Mails to the household address (Settings › Mail).') }}</span>
+@elseif (in_array($type, ['deadline', 'birthday', 'expiry'], true))
+    <input type="number" min="0" max="{{ $type === 'deadline' ? 30 : 365 }}" wire:model="{{ $path }}.days" class="w-20 {{ $small }}" aria-label="{{ __('Days before') }}"> {{ __('days before, at') }}
+    <input type="time" wire:model="{{ $path }}.at" class="{{ $small }}" aria-label="{{ __('Time') }}">
+    @if ($type === 'deadline')
+        <input type="text" wire:model="{{ $path }}.keyword" class="w-36 {{ $small }}" placeholder="{{ __('any entry') }}" aria-label="{{ __('Word in the entry or collection') }}">
+        <span class="w-full text-xs text-gray-500">{{ __('Date fields with a reminder in collections, e.g. the cancellation deadline of contracts (up to 30 days ahead).') }}</span>
+    @endif
+@elseif ($type === 'balance')
+    <input type="text" wire:model="{{ $path }}.account" class="w-36 {{ $small }}" placeholder="{{ __('any of my accounts') }}" aria-label="{{ __('Account') }}">
+    <select wire:model="{{ $path }}.operator" class="{{ $small }}">@foreach (['lt' => '<', 'gt' => '>'] as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>
+    <input type="number" step="0.01" wire:model="{{ $path }}.value" class="w-24 {{ $small }}" aria-label="{{ __('Amount') }}"> €
+@elseif ($type === 'event')
+    <input type="text" wire:model="{{ $path }}.title" class="w-56 {{ $small }}" placeholder="{{ __('e.g. Take out the bins') }}" aria-label="{{ __('Title') }}">
+    <select wire:model="{{ $path }}.day" class="{{ $small }}"><option value="today">{{ __('today') }}</option><option value="tomorrow">{{ __('tomorrow') }}</option><option value="week">{{ __('in a week') }}</option></select>
+    <input type="time" wire:model="{{ $path }}.time" class="{{ $small }}" aria-label="{{ __('Time') }}">
+@elseif ($type === 'shopping')
+    <input type="text" wire:model="{{ $path }}.items" class="w-64 {{ $small }}" placeholder="{{ __('e.g. Milk, bread') }}" aria-label="{{ __('Items, separated by commas') }}">
+@elseif ($type === 'email')
+    <select wire:model="{{ $path }}.to" class="{{ $small }}"><option value="me">{{ __('to me') }}</option><option value="household">{{ __('to the whole household') }}</option></select>
+    <input type="text" wire:model="{{ $path }}.subject" class="w-48 {{ $small }}" placeholder="{{ __('Subject') }}" aria-label="{{ __('Subject') }}">
+    <input type="text" wire:model="{{ $path }}.body" class="w-64 {{ $small }}" placeholder="{{ __('Text') }}" aria-label="{{ __('Text') }}">
+@elseif ($type === 'tts')
+    <input type="text" list="{{ $entityList }}" wire:model="{{ $path }}.media_player" class="w-48 {{ $small }}" placeholder="media_player.kueche" aria-label="{{ __('Speaker') }}">
+    <input type="text" wire:model="{{ $path }}.message" class="w-64 {{ $small }}" placeholder="{{ __('e.g. The washing machine is done') }}" aria-label="{{ __('Text') }}">
+    <input type="text" wire:model="{{ $path }}.engine" class="w-48 {{ $small }}" aria-label="{{ __('Speech service (tts.…)') }}">
+@elseif ($type === 'scene_snapshot')
+    <select wire:model.live="{{ $path }}.mode" class="{{ $small }}"><option value="save">{{ __('remember') }}</option><option value="restore">{{ __('restore') }}</option></select>
+    <input type="text" wire:model="{{ $path }}.scene" class="w-36 {{ $small }}" aria-label="{{ __('Name of the snapshot') }}">
+    @if (($block['mode'] ?? 'save') === 'save')
+        <input type="text" wire:model="{{ $path }}.entities" class="w-64 {{ $small }}" placeholder="light.wohnzimmer, light.flur" aria-label="{{ __('Devices, separated by commas') }}">
+    @endif
+    <span class="w-full text-xs text-gray-500">{{ __('Remember the lights before a change and restore them afterwards.') }}</span>
+@elseif ($type === 'webhook')
+    <input type="url" wire:model="{{ $path }}.url" class="w-72 {{ $small }}" placeholder="https://…" aria-label="{{ __('Address') }}">
+    <input type="text" wire:model="{{ $path }}.body" class="w-56 {{ $small }}" placeholder="{{ __('Message') }}" aria-label="{{ __('Message') }}">
+    <span class="w-full text-xs text-gray-500">{{ __('Sends a POST with JSON (automation, reason, message, time) – public addresses or the home network via VPN.') }}</span>
 @elseif ($type === 'manual')
     <span class="text-xs text-gray-500">{{ __('Runs only with “Run now”.') }}</span>
 @endif

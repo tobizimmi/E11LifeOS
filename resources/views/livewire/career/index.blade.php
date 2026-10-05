@@ -238,11 +238,9 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex gap-1 overflow-x-auto rounded-lg bg-white p-1 shadow-xs dark:bg-gray-800" role="tablist">
-                @foreach (['overview' => '🧭 '.__('Career path'), 'trainings' => '📜 '.__('Trainings & certificates'), 'contracts' => '📄 '.__('Contracts & info'), 'cv' => '🪪 '.__('CV'), 'applications' => '📨 '.__('Applications')] as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['shrink-0 rounded-md px-3 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])>{{ $label }}</button>
-                @endforeach
-            </div>
+            <x-section-nav :label="__('Career')" :active="$tab" :groups="['' => [
+                'overview' => ['🧭', __('Career path')], 'trainings' => ['📜', __('Trainings & certificates')], 'contracts' => ['📄', __('Contracts & info')], 'cv' => ['🪪', __('CV')], 'applications' => ['📨', __('Applications')],
+            ]]" />
 
             @foreach ($hints as $hint)
                 <p @class(['rounded-xl px-4 py-2.5 text-sm', 'bg-amber-50 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100' => $hint['level'] === 'warning', 'bg-sky-50 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100' => $hint['level'] !== 'warning'])>{{ $hint['icon'] }} {{ $hint['text'] }}</p>

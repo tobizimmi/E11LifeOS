@@ -85,9 +85,9 @@ class AdminSettingsTest extends TestCase
         Volt::test('admin.settings')->assertSee('Rezept-Import & Nährwerte')->assertSet('aiFeatures', array_keys(AiFeatures::all()))
             ->set('aiFeatures', ['brain', 'receipts'])->call('save')->assertHasNoErrors();
 
-        $this->assertSame(['documents', 'finance', 'paperless', 'recipes', 'statements', 'instagram'], AiFeatures::disabled());
+        $this->assertSame(['documents', 'finance', 'paperless', 'recipes', 'statements', 'instagram', 'automations'], AiFeatures::disabled());
         $this->assertTrue(AiFeatures::enabled('brain'));
-        $this->assertSame('documents,finance,paperless,recipes,statements,instagram', AppSetting::where('key', 'ai_disabled_features')->value('value'));
+        $this->assertSame('documents,finance,paperless,recipes,statements,instagram,automations', AppSetting::where('key', 'ai_disabled_features')->value('value'));
 
         Volt::test('admin.settings')->assertSet('aiFeatures', ['brain', 'receipts'])->set('aiFeatures', array_keys(AiFeatures::all()))->call('save');
         $this->assertSame([], AiFeatures::disabled());
@@ -185,7 +185,7 @@ class AdminSettingsTest extends TestCase
             'failed_at' => now(),
         ]);
 
-        Volt::test('admin.settings')
+        Volt::test('admin.system')
             ->assertSee('1 Hintergrundaufgabe fehlgeschlagen')
             ->assertSee('BroadcastEvent')
             ->assertSee('cURL error 7: Failed to connect.')

@@ -195,6 +195,27 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?string $aiFillMessage = null;
 
+    /**
+     * Packing lists, checklists and shopping lists for the editor's "Insert list".
+     *
+     * @return list<array{key: string, group: string, icon: string, name: string, count: int, live: bool}>
+     */
+    public function insertableLists(): array
+    {
+        return \App\Support\InsertableLists::options(Auth::user(), (int) $this->householdId);
+    }
+
+    /**
+     * A list as Markdown for the editor; a shopping list optionally as a live block.
+     */
+    public function listMarkdown(string $key, bool $live = false): string
+    {
+        $markdown = \App\Support\InsertableLists::markdown(Auth::user(), (int) $this->householdId, mb_substr($key, 0, 60), $live);
+        abort_if($markdown === null, 404);
+
+        return $markdown;
+    }
+
     public function mount(int $collection): void
     {
         $this->resolveHousehold();
@@ -2143,8 +2164,10 @@ new #[Layout('layouts.app')] class extends Component
                                 wire:key="entry-editor-{{ $openEntry->id }}"
                             >
                                 <div class="mb-1 flex justify-end">
+                                    <button type="button" x-show="mode === 'rich'" x-on:click="openListPicker()" class="me-3 text-xs text-gray-500 dark:text-gray-400 underline">📋 {{ __('Insert list') }}</button>
                                     <button type="button" x-show="mode !== 'loading'" x-on:click="pickFile()" class="text-xs text-gray-500 dark:text-gray-400 underline">📎 {{ __('Image or file') }}</button>
                                     <input type="file" x-ref="file" class="hidden" x-on:change="uploadFiles($event.target.files); $event.target.value = ''" accept=".{{ implode(',.', \App\Models\Attachment::EXTENSIONS) }}" />
+                                    <x-editor-list-picker />
                                 </div>
                                 <div wire:ignore x-show="mode !== 'markdown'">
                                     <div x-ref="bubble" class="editor-bubble" style="visibility: hidden" role="toolbar" aria-label="{{ __('Formatting') }}">

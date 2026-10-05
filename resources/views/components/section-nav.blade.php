@@ -51,7 +51,9 @@
             <svg class="h-5 w-5 shrink-0 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
         </button>
 
-        <div x-show="open" x-cloak class="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="{{ $label }}">
+        {{-- On <body>: an ancestor with a backdrop filter (e.g. the page header) would otherwise anchor "fixed" to itself. --}}
+        <template x-teleport="body">
+        <div x-show="open" x-cloak class="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="{{ $label }}" x-on:keydown.escape.window="open = false">
             <div class="absolute inset-0 bg-black/40" x-show="open" x-transition.opacity x-on:click="open = false"></div>
             <div x-show="open" x-trap.noscroll="open"
                 x-transition:enter="transition duration-300 ease-out motion-reduce:transition-none" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
@@ -89,6 +91,7 @@
                 {{ $slot }}
             </div>
         </div>
+        </template>
 
         {{-- Tablet and desktop: one bar, groups separated by a hairline --}}
         <div @class(['hidden flex-wrap items-center gap-1 rounded-xl p-1 shadow-xs ring-1 ring-gray-200 dark:ring-gray-700 md:flex', 'bg-white/90 backdrop-blur-sm dark:bg-gray-800/90' => $sticky, 'bg-white dark:bg-gray-800' => ! $sticky])>

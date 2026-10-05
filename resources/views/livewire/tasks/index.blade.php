@@ -608,6 +608,31 @@ new #[Layout('layouts.app')] class extends Component
         $task->save();
     }
 
+    /**
+     * Adds a packing list, checklist or shopping list as subtasks (skipping ones already there).
+     */
+    public function addListAsSubtasks(int $taskId, string $key): void
+    {
+        $task = $this->findTask($taskId);
+        $subtasks = $task->subtasks();
+        $existing = array_map(fn (array $subtask) => mb_strtolower($subtask['text']), $subtasks);
+        $added = 0;
+
+        foreach (\App\Support\InsertableLists::items($this->currentUser(), (int) $this->householdId, mb_substr($key, 0, 60)) as $text) {
+            if (count($subtasks) >= self::MAX_SUBTASKS || in_array(mb_strtolower($text), $existing, true)) {
+                continue;
+            }
+
+            $subtasks[] = ['id' => Str::random(8), 'text' => mb_substr($text, 0, 255), 'done' => false];
+            $existing[] = mb_strtolower($text);
+            $added++;
+        }
+
+        $task->setSubtasks($subtasks);
+        $task->save();
+        $this->dispatch('toast', message: trans_choice(':count item added.|:count items added.', $added));
+    }
+
     public function toggleSubtask(int $taskId, string $subtaskId): void
     {
         $task = $this->findTask($taskId);
@@ -717,6 +742,7 @@ new #[Layout('layouts.app')] class extends Component
             'members' => $members,
             'preview' => trim($this->draft) !== '' ? TaskInput::parse($this->draft, $members, Auth::id(), $this->ignoredPhrases) : null,
             'openTask' => $openTask,
+            'insertableLists' => $openTask ? \App\Support\InsertableLists::options($this->currentUser(), (int) $this->householdId) : [],
             'tags' => Tag::usedOnItemsVisibleTo($this->currentUser(), $this->householdId, Item::TYPE_TODO)->orderBy('name')->pluck('name'),
             'repeatRules' => [Recurrence::DAILY, Recurrence::WEEKLY, Recurrence::MONTHLY, Recurrence::YEARLY],
             'priorities' => [Collection::TASK_PRIORITY_HIGH, Collection::TASK_PRIORITY_MEDIUM, Collection::TASK_PRIORITY_LOW],
@@ -1275,9 +1301,22 @@ new #[Layout('layouts.app')] class extends Component
                             <input x-ref="subtask" id="new-subtask" type="text" enterkeyhint="done" placeholder="{{ __('Add a subtask') }}" class="flex-1 border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-0 py-1 text-sm focus:border-indigo-500 focus:ring-0 dark:text-gray-100" aria-label="{{ __('Add a subtask') }}" />
                             <x-voice-button for="new-subtask" class="py-0.5" />
                         </form>
-                        @if ($subtasks !== [])
-                            <button type="button" wire:click="saveAsTemplate({{ $openTask->id }})" class="mt-2 text-xs text-indigo-600 hover:underline dark:text-indigo-400">📋 {{ __('Save as checklist template') }}</button>
-                        @endif
+                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                            <label class="text-xs text-gray-500 dark:text-gray-400">
+                                <span class="sr-only">{{ __('Insert list as subtasks') }}</span>
+                                <select wire:change="addListAsSubtasks({{ $openTask->id }}, $event.target.value); $event.target.value = ''" class="rounded-md border-gray-300 py-1 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                    <option value="">📋 {{ __('Insert list as subtasks …') }}</option>
+                                    @foreach (collect($insertableLists)->groupBy('group') as $group => $options)
+                                        <optgroup label="{{ $group }}">
+                                            @foreach ($options as $option)<option value="{{ $option['key'] }}">{{ $option['icon'] }} {{ $option['name'] }} ({{ $option['count'] }})</option>@endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </label>
+                            @if ($subtasks !== [])
+                                <button type="button" wire:click="saveAsTemplate({{ $openTask->id }})" class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">📋 {{ __('Save as checklist template') }}</button>
+                            @endif
+                        </div>
                     </div>
 
                     {{-- Notes --}}

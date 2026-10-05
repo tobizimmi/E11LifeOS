@@ -112,7 +112,7 @@ document.addEventListener('alpine:init', () => {
      * The editor instance lives in the closure, not in Alpine's reactive state:
      * wrapping it in a proxy breaks ProseMirror.
      */
-    window.Alpine.data('pageEditor', ({ pageTitles, translations }) => {
+    window.Alpine.data('pageEditor', ({ pageTitles, translations, autosave = false }) => {
         let editor = null;
 
         return {
@@ -161,7 +161,9 @@ document.addEventListener('alpine:init', () => {
              * next to the save button listens to "page-autosave".
              */
             scheduleAutosave() {
-                if (!this.$wire.editingId) {
+                // Only components with an autosave() method ask for it (pages). Unknown $wire
+                // properties are callable proxies, so checking editingId alone is always true.
+                if (!autosave || typeof this.$wire.editingId !== 'number') {
                     return;
                 }
 

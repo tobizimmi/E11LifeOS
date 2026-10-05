@@ -535,6 +535,7 @@ new #[Layout('layouts.app')] class extends Component
                             x-data="pageEditor(@js([
                                 'pageTitles' => $pageTitles,
                                 'translations' => \App\Support\EditorTranslations::all(__('Content')),
+                                'autosave' => true,
                             ]))"
                             wire:key="editor-{{ $editingId ?? 'new' }}"
                         >

@@ -1220,12 +1220,10 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('cover')" class="px-5 pb-3 text-white" />
             </section>
 
-            <div class="sticky top-14 z-10 -mx-1 flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/90 p-1 shadow-xs ring-1 ring-gray-200 backdrop-blur-sm lg:top-2 dark:bg-gray-800/90 dark:ring-gray-700" role="tablist">
-                @foreach (['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'discover' => ['🔎', __('Discover')], 'bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')]] as $key => [$icon, $label])
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:text-sm', 'bg-indigo-600 text-white' => $tab === $key, 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' => $tab !== $key])><span class="text-base" aria-hidden="true">{{ $icon }}</span>{{ $label }}</button>
-                @endforeach
-                <a href="{{ route('trips.group', $trip) }}" wire:navigate class="flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 sm:flex-row sm:gap-1.5 sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700"><span class="text-base" aria-hidden="true">👥</span>{{ __('Group') }}</a>
-            </div>
+            <x-section-nav sticky :label="__('Trip')" :active="$tab" :groups="[
+                __('Plan') => ['overview' => ['🧭', __('Overview')], 'plan' => ['🗓️', __('Itinerary')], 'map' => ['🗺️', __('Map')], 'discover' => ['🔎', __('Discover')]],
+                __('Organise') => ['bookings' => ['🎫', __('Bookings')], 'costs' => ['💶', __('Costs')], 'packing' => ['🧳', __('Packing list')], 'group' => ['👥', __('Group'), route('trips.group', $trip)]],
+            ]" />
 
             @if ($tab === 'overview')
                 @if ($itinerary['next'])

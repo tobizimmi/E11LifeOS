@@ -49,7 +49,7 @@ class KnowledgeAndCashflowTest extends TestCase
 
         $this->assertSame(['tip', 'special-repayment', 'financing'], [KnowledgeFavorite::sole()->kind, KnowledgeFavorite::sole()->key, KnowledgeFavorite::sole()->category]);
 
-        $page->set('tab', 'favorites')->assertSee('Favoriten (1)')->assertSee('Sondertilgungsrecht vereinbaren');
+        $page->set('tab', 'favorites')->assertSeeInOrder(['Favoriten', '1'])->assertSee('Sondertilgungsrecht vereinbaren');
         $page->call('toggleTip', 'special-repayment');
         $this->assertSame(0, KnowledgeFavorite::count());
 

@@ -94,11 +94,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <a href="{{ route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:underline">&larr; {{ __('All recipes') }}</a>
 
-            <div class="flex flex-wrap gap-2" role="tablist" aria-label="{{ __('Import from') }}">
-                @foreach (['link' => '🔗 '.__('Link'), 'photo' => '📷 '.__('Photo / screenshot'), 'pdf' => '📄 '.__('PDF'), 'text' => '📝 '.__('Text')] as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $source === $key ? 'true' : 'false' }}" wire:click="$set('source', '{{ $key }}')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $source === $key, 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700' => $source !== $key])>{{ $label }}</button>
-                @endforeach
-            </div>
+            <x-section-nav tab-property="source" :label="__('Import from')" :active="$source" :groups="['' => ['link' => ['🔗', __('Link')], 'photo' => ['📷', __('Photo / screenshot')], 'pdf' => ['📄', __('PDF')], 'text' => ['📝', __('Text')]]]" />
 
             <form wire:submit="import" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-4">
                 @if ($source === 'link')

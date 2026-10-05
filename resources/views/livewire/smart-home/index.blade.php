@@ -363,18 +363,14 @@ new #[Layout('layouts.app')] class extends Component
 
     <div class="py-6">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap gap-2" role="tablist">
-                @php($pill = 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700')
-                <button type="button" role="tab" aria-selected="{{ $tab === 'overview' ? 'true' : 'false' }}" wire:click="$set('tab', 'overview')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === 'overview', $pill => $tab !== 'overview'])>🏠 {{ __('Overview') }}</button>
-                @foreach ($dashboards as $item)
-                    <button type="button" role="tab" wire:key="board-tab-{{ $item->id }}" aria-selected="{{ $tab === 'board' && $board === $item->id ? 'true' : 'false' }}" wire:click="openBoard({{ $item->id }})" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === 'board' && $board === $item->id, $pill => ! ($tab === 'board' && $board === $item->id)])>{{ $item->icon }} {{ $item->name }}</button>
-                @endforeach
+            <div class="flex flex-wrap items-center gap-2">
+                <x-section-nav class="w-full md:w-auto" :label="__('Smart home')" :active="$tab === 'board' ? 'board-'.$board : $tab" :groups="[
+                    __('Dashboards') => ['overview' => ['🏠', __('Overview')]] + $dashboards->mapWithKeys(fn ($item) => ['board-'.$item->id => [$item->icon ?: '📋', $item->name, null, null, 'openBoard('.$item->id.')']])->all(),
+                    __('Setup') => array_filter(['energy' => $connections->contains('type', 'evcc') ? ['⚡', __('Energy flow')] : null, 'settings' => ['🔧', __('Connections & devices')]]),
+                ]" />
                 @if ($entities->isNotEmpty())
-                    <button type="button" wire:click="addDashboard" class="rounded-full px-3 py-1.5 text-sm text-indigo-600 border border-dashed border-indigo-300 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-700 dark:hover:bg-indigo-950/40" title="{{ __('New dashboard') }}">+ {{ __('Add dashboard') }}</button>
+                    <button type="button" wire:click="addDashboard" class="rounded-full border border-dashed border-indigo-300 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/40" title="{{ __('New dashboard') }}">+ {{ __('Add dashboard') }}</button>
                 @endif
-                @foreach (array_filter(['energy' => $connections->contains('type', 'evcc') ? '⚡ '.__('Energy flow') : null, 'settings' => '🔧 '.__('Connections & devices')]) as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="$set('tab', '{{ $key }}')" @class(['rounded-full px-4 py-1.5 text-sm', 'bg-indigo-600 text-white' => $tab === $key, $pill => $tab !== $key])>{{ $label }}</button>
-                @endforeach
             </div>
 
             @if ($error)

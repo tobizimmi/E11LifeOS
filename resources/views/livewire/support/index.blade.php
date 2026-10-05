@@ -51,7 +51,7 @@ new #[Layout('layouts.app')] class extends Component
     public function submit(): void
     {
         $this->validate([
-            'type' => ['required', Rule::in(array_keys(SupportTicket::typeLabels()))],
+            'type' => ['required', Rule::in(array_keys(SupportTicket::requesterTypeLabels()))],
             'subject' => ['required', 'string', 'max:150'],
             'body' => ['required', 'string', 'max:10000'],
             'area' => ['nullable', Rule::in(array_keys(ModuleCatalog::all()))],
@@ -93,7 +93,7 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'tickets' => SupportTicket::where('user_id', $user->id)->latest('last_activity_at')->get(),
-            'types' => SupportTicket::typeLabels(),
+            'types' => SupportTicket::requesterTypeLabels(),
             'areas' => collect(ModuleCatalog::all())->filter(fn (array $module, string $key) => ModuleAccess::allows($user, $key))->all(),
         ];
     }

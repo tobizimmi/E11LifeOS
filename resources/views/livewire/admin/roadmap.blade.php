@@ -2,6 +2,7 @@
 
 use App\Models\RoadmapMilestone;
 use App\Models\SupportTicket;
+use App\Support\Helpdesk\RoadmapExport;
 use App\Support\Helpdesk\Tickets;
 use App\Support\Security\SecurityLog;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,16 @@ new #[Layout('layouts.app')] class extends Component
     public array $form = ['title' => '', 'version' => '', 'due_on' => '', 'status' => 'planned', 'description' => ''];
 
     public bool $formOpen = false;
+
+    /** @var array<int|string, array{title: string, type: string, priority: string}> new item per milestone ("backlog" for none) */
+    public array $newItem = [];
+
+    /** Markdown shown in the export window (null = closed). */
+    public ?string $export = null;
+
+    public ?int $exportMilestone = null;
+
+    public bool $exportWithDone = false;
 
     public function mount(): void
     {
@@ -93,6 +104,40 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * A roadmap item of the team, straight into a milestone or the backlog.
+     */
+    public function addItem(string $target): void
+    {
+        $this->authorize('admin');
+        $this->validate([
+            'newItem.'.$target.'.title' => ['required', 'string', 'max:150'],
+            'newItem.'.$target.'.type' => ['nullable', Rule::in(SupportTicket::ROADMAP_TYPES)],
+            'newItem.'.$target.'.priority' => ['nullable', Rule::in(SupportTicket::PRIORITIES)],
+        ], attributes: ['newItem.'.$target.'.title' => __('Title')]);
+
+        $item = $this->newItem[$target];
+        Tickets::addItem(Auth::user(), trim($item['title']), $item['type'] ?? 'task', $item['priority'] ?? 'normal', $target === 'backlog' ? null : (int) $target);
+        $this->newItem[$target] = ['title' => '', 'type' => $item['type'] ?? 'task', 'priority' => $item['priority'] ?? 'normal'];
+    }
+
+    /**
+     * The roadmap (all open milestones and the backlog, or one milestone) as Markdown for Claude.
+     */
+    public function openExport(?int $milestoneId = null): void
+    {
+        $this->authorize('admin');
+        $this->exportMilestone = $milestoneId;
+        $this->export = RoadmapExport::markdown($milestoneId, $this->exportWithDone);
+    }
+
+    public function updatedExportWithDone(): void
+    {
+        if ($this->export !== null) {
+            $this->export = RoadmapExport::markdown($this->exportMilestone, $this->exportWithDone);
+        }
+    }
+
     public function plan(int $ticketId, string $milestoneId): void
     {
         $this->authorize('admin');
@@ -110,7 +155,7 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'milestones' => $milestones,
             'allMilestones' => RoadmapMilestone::where('status', '!=', 'done')->orderBy('position')->get(['id', 'title', 'version']),
-            'backlog' => SupportTicket::whereNull('roadmap_milestone_id')->whereIn('type', ['bug', 'feature'])->unsolved()
+            'backlog' => SupportTicket::whereNull('roadmap_milestone_id')->whereIn('type', SupportTicket::ROADMAP_TYPES)->unsolved()
                 ->orderByRaw("case priority when 'urgent' then 0 when 'high' then 1 when 'normal' then 2 else 3 end")->latest()->get(),
             'statusLabels' => RoadmapMilestone::statusLabels(),
             'ticketStatus' => SupportTicket::statusLabels(),
@@ -139,6 +184,7 @@ new #[Layout('layouts.app')] class extends Component
                     @if ($doneCount)
                         <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="showDone" class="rounded-sm border-gray-300 text-indigo-600"> {{ trans_choice(':count finished milestone|:count finished milestones', $doneCount) }}</label>
                     @endif
+                    <x-secondary-button type="button" wire:click="openExport">📤 {{ __('Export for Claude') }}</x-secondary-button>
                     <x-primary-button type="button" wire:click="startCreate">+ {{ __('Milestone') }}</x-primary-button>
                 </div>
             </div>
@@ -178,6 +224,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="flex items-center gap-1 text-sm">
                             <button type="button" wire:click="move({{ $milestone->id }}, -1)" class="rounded-sm px-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Move up') }}">↑</button>
                             <button type="button" wire:click="move({{ $milestone->id }}, 1)" class="rounded-sm px-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="{{ __('Move down') }}">↓</button>
+                            <button type="button" wire:click="openExport({{ $milestone->id }})" class="rounded-sm px-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ __('Export for Claude') }}" aria-label="{{ __('Export for Claude') }}">📤</button>
                             <button type="button" wire:click="startEdit({{ $milestone->id }})" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Edit') }}</button>
                         </div>
                     </header>
@@ -188,15 +235,16 @@ new #[Layout('layouts.app')] class extends Component
                         @forelse ($milestone->tickets as $ticket)
                             @include('livewire.admin.partials.roadmap-ticket', ['ticket' => $ticket])
                         @empty
-                            <li class="px-5 py-2 text-gray-500 dark:text-gray-400">{{ __('Nothing planned yet – choose a milestone for tickets in the backlog.') }}</li>
+                            <li class="px-5 py-2 text-gray-500 dark:text-gray-400">{{ __('Nothing planned yet – add an item below or choose a milestone for tickets in the backlog.') }}</li>
                         @endforelse
                     </ul>
+                    @include('livewire.admin.partials.roadmap-add', ['target' => (string) $milestone->id])
                 </section>
             @endforeach
 
             <section class="rounded-2xl bg-white shadow-xs dark:bg-gray-800">
                 <h3 class="px-5 pt-5 font-semibold text-gray-900 dark:text-gray-100">📦 {{ __('Backlog') }} <span class="text-sm font-normal text-gray-500">({{ $backlog->count() }})</span></h3>
-                <p class="px-5 text-xs text-gray-500 dark:text-gray-400">{{ __('Unsolved bugs and feature requests without a milestone.') }}</p>
+                <p class="px-5 text-xs text-gray-500 dark:text-gray-400">{{ __('Unsolved bugs, feature requests and items without a milestone.') }}</p>
                 <ul class="mt-3 divide-y divide-gray-100 pb-2 text-sm dark:divide-gray-700">
                     @forelse ($backlog as $ticket)
                         @include('livewire.admin.partials.roadmap-ticket', ['ticket' => $ticket])
@@ -204,7 +252,28 @@ new #[Layout('layouts.app')] class extends Component
                         <li class="px-5 py-2 text-gray-500 dark:text-gray-400">{{ __('The backlog is empty.') }}</li>
                     @endforelse
                 </ul>
+                @include('livewire.admin.partials.roadmap-add', ['target' => 'backlog'])
             </section>
         </div>
     </div>
+
+    @if ($export !== null)
+        <div class="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/40 sm:items-center sm:p-4" x-data="{ copied: false }" x-on:keydown.escape.window="$wire.set('export', null)" role="dialog" aria-modal="true" aria-label="{{ __('Export for Claude') }}">
+            <div class="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-2xl dark:bg-gray-800" x-trap.noscroll="true">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3 dark:border-gray-700">
+                    <p class="font-semibold text-gray-900 dark:text-gray-100">📤 {{ __('Export for Claude') }}</p>
+                    <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" wire:model.live="exportWithDone" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Include solved items') }}</label>
+                </div>
+                <p class="px-5 pt-3 text-xs text-gray-500 dark:text-gray-400">{{ __('Markdown with milestones, items, descriptions, technical context and internal notes – without names or e-mail addresses of requesters. Paste it into Claude or save it as a file in the project.') }}</p>
+                <textarea x-ref="markdown" readonly class="m-5 min-h-[40vh] flex-1 rounded-lg border-gray-300 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Export') }}">{{ $export }}</textarea>
+                <div class="flex flex-wrap justify-end gap-2 border-t border-gray-100 px-5 py-3 dark:border-gray-700">
+                    <x-secondary-button type="button" wire:click="$set('export', null)">{{ __('Close') }}</x-secondary-button>
+                    <a href="{{ route('admin.roadmap.export', array_filter(['milestone' => $exportMilestone, 'done' => $exportWithDone ? 1 : null], fn ($value) => $value !== null)) }}" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-500 dark:bg-gray-800 dark:text-gray-300">⬇ {{ __('Download .md') }}</a>
+                    <x-primary-button type="button" x-on:click="navigator.clipboard.writeText($refs.markdown.value).then(() => { copied = true; setTimeout(() => copied = false, 2000) })">
+                        <span x-show="! copied">📋 {{ __('Copy') }}</span><span x-show="copied" x-cloak>✓ {{ __('Copied') }}</span>
+                    </x-primary-button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

@@ -39,7 +39,10 @@ class SupportTicket extends Model
 
     public const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
-    public const TYPES = ['question', 'problem', 'bug', 'feature', 'account'];
+    public const TYPES = ['question', 'problem', 'bug', 'feature', 'account', 'task'];
+
+    /** Types that are planned in the roadmap. */
+    public const ROADMAP_TYPES = ['bug', 'feature', 'task'];
 
     /** Hours until the first answer, by priority. */
     public const FIRST_RESPONSE_HOURS = ['urgent' => 4, 'high' => 8, 'normal' => 24, 'low' => 72];
@@ -107,7 +110,18 @@ class SupportTicket extends Model
             'bug' => ['label' => __('Bug'), 'icon' => '🐞'],
             'feature' => ['label' => __('Feature request'), 'icon' => '💡'],
             'account' => ['label' => __('Account & access'), 'icon' => '🔑'],
+            'task' => ['label' => __('Roadmap item'), 'icon' => '📌'],
         ];
+    }
+
+    /**
+     * What members can choose when they write a request (roadmap items are for the team).
+     *
+     * @return array<string, array{label: string, icon: string}>
+     */
+    public static function requesterTypeLabels(): array
+    {
+        return array_diff_key(self::typeLabels(), ['task' => true]);
     }
 
     /**

@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'addon' => EnsureAddonEnabled::class,
+            'module' => EnsureModuleAllowed::class,
             'auth.token' => AuthenticateApiToken::class,
             'sensitive.log' => LogSensitiveAccess::class,
         ]);

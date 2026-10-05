@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApiToken;
 use App\Models\ModuleEntitlement;
 use App\Models\SecurityEvent;
+use App\Models\Trip;
 use App\Models\User;
 use App\Support\Addons;
 use App\Support\Admin\ModuleRights;
+use App\Support\CalendarEvents;
+use App\Support\DashboardWidgets;
 use App\Support\Modules\ModuleAccess;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -126,5 +130,32 @@ class AdminUsersAndModulesTest extends TestCase
 
         Volt::test('admin.modules')->call('setPlan', 'vehicles', 'included')->call('setPlan', 'unknown', 'licensed')->assertStatus(422);
         $this->assertSame([Addons::PORTFOLIO => 'licensed'], ModuleAccess::plans());
+    }
+
+    public function test_locked_areas_disappear_from_search_calendar_widgets_and_the_app_api(): void
+    {
+        [$owner, $household] = $this->memberWithHousehold();
+        $admin = $this->admin();
+        Trip::factory()->create(['household_id' => $household->id, 'created_by' => $owner->id, 'title' => 'Wienreise', 'destination' => 'Wien', 'starts_on' => now()->addDays(3)->toDateString(), 'ends_on' => now()->addDays(5)->toDateString()]);
+        $owner->forceFill(['dashboard_widgets' => ['tasks', 'habits', 'shopping']])->save();
+        $token = ApiToken::issue($owner, 'iPhone');
+        $this->actingAs($owner);
+
+        $events = fn () => collect(CalendarEvents::between($owner, $household->id, now()->startOfDay(), now()->addDays(10), array_keys(CalendarEvents::sources($owner))))->pluck('title')->implode(' ');
+        Volt::test('search-palette')->set('query', 'Wienreise')->assertSee('🧳 Wienreise');
+        $this->assertStringContainsString('Wien', $events());
+        $this->withToken($token)->getJson('/api/v1/shopping')->assertOk();
+
+        ModuleRights::set($admin, 'household', $household->id, 'trips', 'blocked');
+        ModuleRights::set($admin, 'household', $household->id, 'journal', 'blocked');
+        ModuleRights::set($admin, 'household', $household->id, 'shopping', 'blocked');
+
+        Volt::test('search-palette')->set('query', 'Wienreise')->assertDontSee('🧳 Wienreise');
+        Volt::test('search-palette')->set('query', 'reise')->assertDontSee(route('trips.index'), false);
+        $this->assertStringNotContainsString('Wien', $events());
+        $this->assertSame(['tasks'], array_values(array_filter(DashboardWidgets::forUser($owner->fresh()), fn (string $key) => DashboardWidgets::allowedFor($owner, $key))));
+        Volt::test('dashboard')->call('sortWidget', 'habits', 0)->assertNotFound();
+        $this->withToken($token)->getJson('/api/v1/shopping')->assertNotFound();
+        $this->withToken($token)->getJson('/api/v1/tasks')->assertOk();
     }
 }

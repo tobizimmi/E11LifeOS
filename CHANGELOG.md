@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.41.0] – 2026-10-05
+
+### Verbessert
+- Rechteverwaltung lückenlos: Gesperrte oder nicht lizenzierte Bereiche tauchen auch nicht mehr in der Suche, im Kalender, in den Kacheln der Übersicht und in der App (API) auf.
+
 ## [1.40.1] – 2026-10-05
 
 ### Behoben

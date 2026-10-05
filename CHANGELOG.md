@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.45.0] – 2026-10-05
+
+### Verbessert
+- Immobilien-Wirtschaftlichkeit professioneller bewertet: Das Urteil richtet sich jetzt nach der Gesamtrendite (IRR inkl. Tilgung, Steuer, Wertzuwachs) statt allein nach dem Cashflow. Ein negativer Cashflow wird als Zuzahlung erklärt, deren Tilgungsanteil ins eigene Vermögen fließt.
+- Neue Kennzahlen: operativer Cashflow (deckt die Miete Kosten und Zinsen?), Rendite pro Jahr (IRR) und der Tilgungsanteil der monatlichen Rate.
+
 ## [1.44.0] – 2026-10-05
 
 ### Neu

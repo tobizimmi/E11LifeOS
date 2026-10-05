@@ -126,6 +126,9 @@ class ProfitabilityAnalysis
             'equity_return' => $equity > 0 && $first ? round(($first['cashflow_after_tax'] + $first['principal']) / $equity * 100, 1) : null,
             'dscr' => $annuity > 0 ? round($noi / $annuity, 2) : null,
             'break_even_rent' => (1 - $n('vacancy_rate') / 100) > 0 ? round(($annuity + $costs) / 12 / (1 - $n('vacancy_rate') / 100), 2) : null,
+            // Operating cash flow: does the rent cover running costs and interest (before repayment)?
+            'operating_cashflow' => $first ? round($noi - $first['interest'], 2) : round($noi, 2),
+            'principal_first' => $first ? $first['principal'] : 0.0,
             'remaining_debt' => round($remainingDebt, 2),
             'follow_up_rate' => round($followUpRate, 2),
             'subsidy' => round($subsidy, 2),
@@ -293,21 +296,33 @@ class ProfitabilityAnalysis
     private static function verdict(array $result): array
     {
         $factor = $result['price_factor'];
-        $monthly = $result['cashflow_after_tax'] / 12;
 
         if ($factor === null) {
             return ['level' => 'unknown', 'text' => __('Enter the rent to judge the property.')];
         }
 
-        if ($factor <= 22 && $monthly >= 0) {
-            return ['level' => 'green', 'text' => __('Looks solid: the property carries itself after tax and the price is reasonable for the rent.')];
+        $irr = $result['irr'];
+        $operating = $result['operating_cashflow'];
+        $monthly = $result['cashflow_after_tax'] / 12;
+        $principal = $result['principal_first'] / 12;
+        $euro = fn (float $value) => number_format($value, 0, ',', '.').' €';
+        // A negative cash flow is a top-up; the repayment part of it builds your own equity.
+        $topUp = $monthly < 0
+            ? __('You add :amount per month after tax, of which :principal goes into repayment (your own equity).', ['amount' => $euro(-$monthly), 'principal' => $euro(min(-$monthly, $principal))])
+            : __('The property carries itself: :amount per month are left after tax.', ['amount' => $euro($monthly)]);
+
+        // The total return (incl. repayment, tax and value growth) decides, not the cash flow alone.
+        if ($irr !== null && $irr >= 4.5 && $operating >= 0 && $factor <= 27) {
+            return ['level' => 'green', 'text' => __('Attractive overall: about :irr % return per year incl. repayment, tax and value growth. The rent covers running costs and interest. :topup', ['irr' => number_format($irr, 1, ',', '.'), 'topup' => $topUp])];
         }
 
-        if ($factor <= 28 && $monthly >= -250) {
-            return ['level' => 'yellow', 'text' => __('Possible, but you add :amount per month after tax – check price, equity and rent again.', ['amount' => number_format(max(0, -$monthly), 0, ',', '.').' €'])];
+        if ($irr !== null && $irr >= 2.5 && $factor <= 32) {
+            return ['level' => 'yellow', 'text' => __('Borderline: about :irr % return per year. :topup Check price, equity and rent, and watch the interest after the fixed period.', ['irr' => number_format($irr, 1, ',', '.'), 'topup' => $topUp])];
         }
 
-        return ['level' => 'red', 'text' => __('Critical: price factor :factor and :amount per month after tax – the property does not pay for itself.', ['factor' => number_format($factor, 1, ',', '.'), 'amount' => number_format(-$monthly, 0, ',', '.').' €'])];
+        $irrText = $irr !== null ? __('only about :irr % return per year', ['irr' => number_format($irr, 1, ',', '.')]) : __('the equity is not earning a return');
+
+        return ['level' => 'red', 'text' => __('Critical: price factor :factor and :irrtext. :topup That is little for the risk – compare it with a simpler investment.', ['factor' => number_format($factor, 1, ',', '.'), 'irrtext' => $irrText, 'topup' => $topUp])];
     }
 
     /**

@@ -31,6 +31,7 @@ use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
 use App\Http\Controllers\SmartHomeCameraController;
+use App\Http\Controllers\SupportFileController;
 use App\Http\Controllers\TripCoverController;
 use App\Http\Controllers\TripExportController;
 use App\Http\Controllers\TripPlaceImageController;
@@ -65,6 +66,9 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');
     Volt::route('inbox', 'inbox.index')->name('inbox.index');
     Volt::route('notifications', 'notifications.index')->name('notifications.index');
+    Volt::route('support', 'support.index')->name('support.index');
+    Volt::route('support/{ticket}', 'support.show')->whereNumber('ticket')->name('support.show');
+    Route::get('support/files/{message}/{index}', SupportFileController::class)->whereNumber(['message', 'index'])->name('support.file')->middleware('throttle:120,1');
     Volt::route('calendar', 'calendar.index')->name('calendar.index');
     Volt::route('net-worth', 'net-worth.index')->name('net-worth.index');
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
@@ -266,6 +270,9 @@ Volt::route('admin', 'admin.system')->middleware(['auth', 'can:admin'])->name('a
 Volt::route('admin/households', 'admin.households')->middleware(['auth', 'can:admin'])->name('admin.households');
 Volt::route('admin/users', 'admin.users')->middleware(['auth', 'can:admin'])->name('admin.users');
 Volt::route('admin/modules', 'admin.modules')->middleware(['auth', 'can:admin'])->name('admin.modules');
+Volt::route('admin/support', 'admin.support')->middleware(['auth', 'can:admin'])->name('admin.support');
+Volt::route('admin/support/{ticket}', 'admin.support-ticket')->whereNumber('ticket')->middleware(['auth', 'can:admin'])->name('admin.support.ticket');
+Volt::route('admin/roadmap', 'admin.roadmap')->middleware(['auth', 'can:admin'])->name('admin.roadmap');
 Volt::route('admin/log', 'admin.audit')->middleware(['auth', 'can:admin'])->name('admin.audit');
 Volt::route('admin/settings', 'admin.settings')->middleware(['auth', 'can:admin'])->name('admin.settings');
 

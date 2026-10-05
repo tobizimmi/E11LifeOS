@@ -279,6 +279,12 @@ new class extends Component
                 <span>{{ \App\Support\AppVersion::label() }}</span>
                 <span x-show="fresh" x-cloak class="font-medium text-indigo-600 dark:text-indigo-400">{{ __('New') }}</span>
             </a>
+            <a href="{{ route('support.index', ['from' => request()->fullUrl()]) }}" wire:navigate @class(['mb-1 flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700/60', 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-700/60 dark:text-gray-100' => request()->routeIs('support.*'), 'text-gray-700 dark:text-gray-300' => ! request()->routeIs('support.*')])>
+                <span class="flex items-center gap-2"><span aria-hidden="true">💬</span> {{ __('Help & support') }}</span>
+                @if ($supportUnread = \App\Models\SupportTicket::where('user_id', auth()->id())->where('requester_unread', true)->count())
+                    <span class="rounded-full bg-indigo-600 px-1.5 text-[11px] font-semibold text-white" aria-label="{{ trans_choice(':count new answer|:count new answers', $supportUnread) }}">{{ $supportUnread }}</span>
+                @endif
+            </a>
             <button type="button" x-on:click="menuOpen = ! menuOpen" class="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60" :aria-expanded="menuOpen">
                 <span class="min-w-0 text-start">
                     <span class="block truncate font-medium" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></span>

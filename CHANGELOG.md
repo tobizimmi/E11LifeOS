@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.44.0] – 2026-10-05
+
+### Neu
+- Immobilien-Wirtschaftlichkeit als Komplettbild: Verkaufsszenario am Ende der Haltedauer (Verkaufspreis, Verkaufskosten, Restschuld, Spekulationssteuer bei Verkauf innerhalb von zehn Jahren, Netto-Verkaufserlös), Gesamtrendite inkl. interner Zinsfuß (IRR) und Vergleich mit einer Alternativanlage.
+- Förderungen fließen in die Kalkulation ein: einmaliger Zuschuss senkt den Kapitalbedarf, ein günstiger Förderkredit (z. B. KfW) wird mit dem Bankdarlehen zu einem Mischzins verrechnet.
+- Detaillierte Renovierungskalkulation: Einzelposten (Dach, Heizung, Bad …) werden zur Renovierungssumme addiert und mit der Berechnung gespeichert.
+- Kauf-Checkliste „Vor dem Kauf: worauf achten“ (Lage, Gebäude, Unterlagen, Geld, Vertrag) direkt in der Wirtschaftlichkeitsprüfung.
+
 ## [1.43.0] – 2026-10-05
 
 ### Neu

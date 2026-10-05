@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\User;
 use App\Support\Backup\BackupVerifier;
 use App\Support\ErrorReporter;
+use App\Support\Operations\LogFiles;
 use App\Support\Operations\SystemHealth;
 use App\Support\WebPush;
 use Illuminate\Console\Scheduling\Schedule;
@@ -121,5 +122,33 @@ class OperationsWatchTest extends TestCase
         $heartbeat->run(app());
 
         $this->assertSame(0, $heartbeat->exitCode);
+    }
+
+    public function test_only_the_own_log_file_counts_and_an_unwritable_one_is_moved_aside(): void
+    {
+        $dir = storage_path('logs');
+        $own = config('logging.channels.single.path');
+        $other = $dir.'/laravel-test-other.log';
+        $this->assertStringEndsWith('laravel-cli.log', $own);
+
+        File::put($own.'.tmp', '');
+        File::put($other, '');
+        chmod($other, 0444);
+        File::move($own.'.tmp', $dir.'/laravel-cli-2026-10-05.log');
+        chmod($dir.'/laravel-cli-2026-10-05.log', 0444);
+
+        try {
+            if (is_writable($dir.'/laravel-cli-2026-10-05.log')) {
+                $this->markTestSkipped('Running as root: file permissions are not enforced.');
+            }
+
+            $this->assertSame([$dir.'/laravel-cli-2026-10-05.log'], LogFiles::unwritable());
+            $this->assertSame([], LogFiles::repair());
+            $this->assertFileDoesNotExist($dir.'/laravel-cli-2026-10-05.log');
+            $this->assertFileExists($other);
+        } finally {
+            @chmod($other, 0644);
+            File::delete([$other, $dir.'/laravel-cli-2026-10-05.log', ...File::glob($dir.'/laravel-cli-2026-10-05.log.unwritable-*')]);
+        }
     }
 }

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.40.1] – 2026-10-05
+
+### Behoben
+- „Log-Dateien: Für die App nicht beschreibbar: laravel.log“: Web-App und Hintergrundprozesse (Scheduler, Queue) laufen auf dem Server unter verschiedenen Benutzern und sperrten sich gegenseitig aus derselben Datei aus. Hintergrundprozesse schreiben jetzt in eine eigene `laravel-cli.log`; die Systemprüfung bewertet nur die eigene Datei und verschiebt eine gesperrte sofort zur Seite.
+
 ## [1.40.0] – 2026-10-05
 
 ### Neu

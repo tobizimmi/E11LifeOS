@@ -108,6 +108,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->authorize('admin');
 
         $this->validate([
+            'form.ai_provider' => ['nullable', 'in:anthropic,bedrock'],
             'form.mail_port' => ['nullable', 'integer', 'between:1,65535'],
             'form.mail_scheme' => ['nullable', 'in:smtp,smtps'],
             'form.inbound_mail_encryption' => ['nullable', 'in:ssl,tls,none'],
@@ -347,7 +348,7 @@ new #[Layout('layouts.app')] class extends Component
 
 @php
     $groups = [
-        'ai' => ['title' => __('AI (Claude)'), 'text' => __('For recipe import, reading contracts and bank statements, tag suggestions, “Ask your Second Brain” and the Instagram analysis. Key from console.anthropic.com → API Keys.')],
+        'ai' => ['title' => __('AI (Claude)'), 'text' => __('For recipe import, reading contracts and bank statements, tag suggestions, “Ask your Second Brain” and the Instagram analysis. Provider “Anthropic API” uses the key from console.anthropic.com; “AWS Bedrock” runs Claude in your chosen AWS region (e.g. Frankfurt) so the data stays in the EU – then enter the Bedrock region and model id, and AWS keys only if the server has none of its own.')],
         'mail' => ['title' => __('E-mail'), 'text' => __('For daily reminders, “Forgot password” and sending invoices, quotes and reminders. Use the SMTP data of your mailbox (e.g. created in Plesk under “Mail”).')],
         'push' => ['title' => __('Web push'), 'text' => __('Key pair for push notifications. Create it once with the button and never change it afterwards, otherwise every device has to switch notifications on again.')],
         'portfolio' => ['title' => __('Portfolio'), 'text' => __('Keys for bank sync, Instagram analysis and optional data sources.')],
@@ -364,8 +365,13 @@ new #[Layout('layouts.app')] class extends Component
         'import_recipes' => ['title' => __('Import: RezepteApp2'), 'text' => __('Access to the MySQL database of RezepteApp2. Only needed for the one-time import; remove the values afterwards.')],
     ];
     $labels = [
+        'ai_provider' => [__('AI provider'), ''],
         'anthropic_api_key' => [__('API key'), 'sk-ant-…'],
         'anthropic_model' => [__('Model (optional)'), 'claude-opus-5'],
+        'bedrock_region' => [__('Bedrock region'), 'eu-central-1'],
+        'bedrock_model' => [__('Bedrock model id'), 'eu.anthropic.claude-sonnet-5'],
+        'bedrock_access_key' => [__('AWS access key (optional)'), 'AKIA…'],
+        'bedrock_secret_key' => [__('AWS secret key (optional)'), ''],
         'ai_disabled_features' => [__('AI functions in use'), ''],
         'mail_host' => [__('SMTP server'), 'zimmimail.de'],
         'mail_port' => [__('Port'), '587'],
@@ -434,6 +440,7 @@ new #[Layout('layouts.app')] class extends Component
     ];
     $importNames = ['import_portfolio' => 'portfolio', 'import_recipes' => 'recipes'];
     $selectOptions = [
+        'ai_provider' => ['anthropic' => __('Anthropic API (USA)'), 'bedrock' => __('AWS Bedrock (e.g. EU)')],
         'mail_scheme' => ['' => __('STARTTLS (port 587)'), 'smtps' => __('SSL/TLS (port 465)')],
         'inbound_mail_encryption' => ['' => __('Default (:value)', ['value' => (string) AppSettings::current('inbound_mail_encryption')]), 'ssl' => __('SSL/TLS (port 993)'), 'tls' => __('STARTTLS (port 143)'), 'none' => __('None (only on this server)')],
         'session_driver' => ['' => isset($stored['session_driver']) ? __('Default (.env)') : __('Default (:value)', ['value' => ['database' => __('Database'), 'file' => __('Files')][AppSettings::current('session_driver')] ?? (string) AppSettings::current('session_driver')]), 'database' => __('Database (sessions visible in the profile)'), 'file' => __('Files')],

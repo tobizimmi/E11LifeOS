@@ -3,6 +3,43 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.49.2] – 2026-10-06
+
+### Behoben
+- Rezept-Detailseite: Das „⋯"-Menü öffnete am Smartphone an einer ungünstigen Stelle (zu weit am Rand). Die Aktionsleiste ist auf kleinen Displays jetzt rechtsbündig, der „⋯"-Button sitzt rechts und das Menü klappt vollständig im sichtbaren Bereich auf.
+
+## [1.49.1] – 2026-10-06
+
+### Behoben
+- Rezept-Detailseite: Das „⋯"-Menü wurde am Smartphone von der abgerundeten Karte abgeschnitten und war nicht sichtbar. Das Menü klappt jetzt vollständig auf.
+
+## [1.49.0] – 2026-10-06
+
+### Neu
+- Rezepte **mehrfach auswählen**: In der Rezeptliste (Karten, Liste, Tabelle) lassen sich mehrere Rezepte antippen; eine schwebende Leiste macht daraus gezielt ein **Kochbuch (PDF)** oder einen **ZIP-Export** – genau die ausgewählten, unabhängig vom Filter.
+- **Wochenplan als PDF**: Der Essensplan einer Woche lässt sich als übersichtliches PDF herunterladen (Wochenplan → „Woche als PDF").
+
+## [1.48.0] – 2026-10-06
+
+### Neu
+- Rezepte aus Dateien importieren – ohne KI: schema.org-Rezept-JSON (eigener Export, Mealie u. v. a.), eine Liste mehrerer Rezepte oder ein **Paprika-Archiv** (`.paprikarecipes`). Eine Datei öffnet das Rezept zur Kontrolle, mehrere werden auf einmal importiert (Rezepte → Import → „Rezept-Datei").
+- Sammel-Export: Alle Rezepte des aktuellen Filters als **ZIP** (ein schema.org-JSON je Rezept inkl. Foto) – ideal für Backup oder Umzug in eine andere App (Rezepte-Liste → „Als ZIP exportieren").
+
+## [1.47.0] – 2026-10-05
+
+### Neu
+- Rezepte teilen & mitnehmen: Jedes Rezept lässt sich als **Rezept-Datei (JSON im schema.org-Standard)** oder als **Text (Markdown)** exportieren (Rezept → ⋯ → Exportieren) – so wandert es in andere Koch-Apps oder in eine Nachricht.
+- Geteilte Rezeptseiten enthalten jetzt strukturierte schema.org-Daten (JSON-LD). Dadurch erkennt Google das Rezept und andere Rezept-Apps können es direkt importieren.
+
+### Verbessert
+- Geteilte Rezeptseite neu gestaltet (einfacher bedienbar beim Mitkochen): Zutaten und Schritte lassen sich per Tippen abhaken (bleibt auf dem Gerät gespeichert), eine schwebende Kopfleiste mit „Drucken", sauberes Druck-Layout, größere Tippflächen mit sofortigem Feedback und bessere Lesbarkeit.
+- Rezept-Menü (⋯) aufgeräumt: Export-Aktionen gruppiert, destruktive Aktionen abgesetzt, mit ruhiger Einblend-Animation.
+
+## [1.46.0] – 2026-10-05
+
+### Neu
+- Datenschutz: KI-Anbieter wählbar (Admin → Server-Einstellungen → KI). „Anthropic API (USA)" wie bisher oder „AWS Bedrock" – damit läuft Claude in einer AWS-Region deiner Wahl (z. B. Frankfurt), sodass die Daten in der EU bleiben. Umschaltbar ohne Code-Änderung; AWS-Zugangsdaten nur nötig, wenn der Server keine eigenen hat.
+
 ## [1.45.0] – 2026-10-05
 
 ### Verbessert

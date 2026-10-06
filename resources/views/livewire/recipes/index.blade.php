@@ -172,7 +172,15 @@ new #[Layout('layouts.app')] class extends Component
     </x-slot>
 
     <div class="py-6 sm:py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+        <div
+            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4"
+            x-data="{
+                selected: [],
+                toggle(id) { this.selected.includes(id) ? this.selected.splice(this.selected.indexOf(id), 1) : this.selected.push(id) },
+                has(id) { return this.selected.includes(id) },
+                open(base) { if (this.selected.length) window.location = base + (base.includes('?') ? '&' : '?') + 'ids=' + this.selected.join(',') },
+            }"
+        >
             <div class="flex flex-wrap items-center gap-3">
                 <x-text-input wire:model.live.debounce.300ms="search" type="search" class="block flex-1 min-w-[14rem]" placeholder="{{ __('Search recipes or ingredients...') }}" aria-label="{{ __('Search recipes') }}" />
                 <select wire:model.live="sort" aria-label="{{ __('Sort') }}" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-xs text-sm">
@@ -266,6 +274,7 @@ new #[Layout('layouts.app')] class extends Component
                     {{ trans_choice(':count recipe|:count recipes', $recipes->count()) }}
                     @if ($recipes->isNotEmpty() && ! $archived)
                         <a href="{{ route('recipes.cookbook', array_filter(['category' => $category, 'tag' => $tag, 'favorites' => $favorites ? 1 : null])) }}" class="text-indigo-600 hover:underline dark:text-indigo-400" title="{{ __('All recipes of this filter as one PDF (max. :count)', ['count' => \App\Http\Controllers\RecipeCookbookController::MAX_RECIPES]) }}">📕 {{ __('Cookbook as PDF') }}</a>
+                        <a href="{{ route('recipes.archive', array_filter(['category' => $category, 'tag' => $tag, 'favorites' => $favorites ? 1 : null])) }}" class="text-indigo-600 hover:underline dark:text-indigo-400" title="{{ __('All recipes of this filter as a ZIP of recipe files, for backup or moving to another app (max. :count)', ['count' => \App\Http\Controllers\RecipeArchiveController::MAX_RECIPES]) }}">🗂️ {{ __('Export as ZIP') }}</a>
                     @endif
                 </p>
                 <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-sm dark:bg-gray-800" role="group" aria-label="{{ __('View') }}">
@@ -278,7 +287,8 @@ new #[Layout('layouts.app')] class extends Component
             @if ($view === 'list')
                 <ul class="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white shadow-xs ring-1 ring-gray-200/60 dark:divide-gray-700 dark:bg-gray-800 dark:ring-gray-700" wire:loading.class="opacity-50">
                     @forelse ($recipes as $recipe)
-                        <li wire:key="recipe-list-{{ $recipe->id }}" class="flex items-center gap-3 px-3 py-2">
+                        <li wire:key="recipe-list-{{ $recipe->id }}" class="flex items-center gap-3 px-3 py-2" :class="has({{ $recipe->id }}) && 'bg-indigo-50 dark:bg-indigo-900/20'">
+                            <button type="button" x-on:click="toggle({{ $recipe->id }})" :aria-pressed="has({{ $recipe->id }})" aria-label="{{ __('Select') }}" class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs transition active:scale-90" :class="has({{ $recipe->id }}) ? 'bg-indigo-600 text-white' : 'text-gray-400 ring-1 ring-gray-300 dark:ring-gray-600'"><span x-show="has({{ $recipe->id }})">✓</span></button>
                             <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3">
                                 <span class="h-12 w-16 shrink-0 overflow-hidden rounded-sm bg-gray-100 dark:bg-gray-700">
                                     @if ($recipe->imageUrl())
@@ -310,6 +320,7 @@ new #[Layout('layouts.app')] class extends Component
                     <table class="min-w-full text-sm">
                         <thead class="bg-gray-50 text-start text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
                             <tr>
+                                <th class="px-3 py-2"><span class="sr-only">{{ __('Select') }}</span></th>
                                 <th class="px-3 py-2 text-start font-medium">{{ __('Title') }}</th>
                                 <th class="px-3 py-2 text-start font-medium">{{ __('Categories') }}</th>
                                 <th class="px-3 py-2 text-end font-medium">{{ __('Total time') }}</th>
@@ -322,7 +333,8 @@ new #[Layout('layouts.app')] class extends Component
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($recipes as $recipe)
-                                <tr wire:key="recipe-row-{{ $recipe->id }}" class="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                                <tr wire:key="recipe-row-{{ $recipe->id }}" class="hover:bg-gray-50 dark:hover:bg-gray-700/40" :class="has({{ $recipe->id }}) && 'bg-indigo-50 dark:bg-indigo-900/20'">
+                                    <td class="px-3 py-2"><button type="button" x-on:click="toggle({{ $recipe->id }})" :aria-pressed="has({{ $recipe->id }})" aria-label="{{ __('Select') }}" class="flex h-6 w-6 items-center justify-center rounded-full text-xs transition active:scale-90" :class="has({{ $recipe->id }}) ? 'bg-indigo-600 text-white' : 'text-gray-400 ring-1 ring-gray-300 dark:ring-gray-600'"><span x-show="has({{ $recipe->id }})">✓</span></button></td>
                                     <td class="max-w-xs px-3 py-2"><a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="block truncate font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $recipe->title }}</a></td>
                                     <td class="max-w-[14rem] truncate px-3 py-2 text-gray-600 dark:text-gray-400">{{ $recipe->categories->map(fn ($c) => trim($c->icon.' '.$c->name))->implode(' · ') }}</td>
                                     <td class="whitespace-nowrap px-3 py-2 text-end tabular-nums text-gray-600 dark:text-gray-400">{{ $recipe->totalTime() ? $recipe->totalTime().' '.__('min') : '–' }}</td>
@@ -333,7 +345,7 @@ new #[Layout('layouts.app')] class extends Component
                                     <td class="px-3 py-2 text-end"><button type="button" wire:click="toggleFavorite({{ $recipe->id }})" class="text-lg leading-none" aria-pressed="{{ $recipe->favoritedBy->isNotEmpty() ? 'true' : 'false' }}" aria-label="{{ __('Favorite') }}">{{ $recipe->favoritedBy->isNotEmpty() ? '♥' : '♡' }}</button></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="8" class="p-8 text-center text-gray-500 dark:text-gray-400">{{ $filtered ? __('No recipes match your filter.') : ($archived ? __('The archive is empty.') : __('No recipes yet – add your first one!')) }}</td></tr>
+                                <tr><td colspan="9" class="p-8 text-center text-gray-500 dark:text-gray-400">{{ $filtered ? __('No recipes match your filter.') : ($archived ? __('The archive is empty.') : __('No recipes yet – add your first one!')) }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -341,7 +353,8 @@ new #[Layout('layouts.app')] class extends Component
             @else
             <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" wire:loading.class="opacity-50">
                 @forelse ($recipes as $recipe)
-                    <li wire:key="recipe-{{ $recipe->id }}" class="group relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xs ring-1 ring-gray-200/60 dark:ring-gray-700 hover:ring-indigo-300">
+                    <li wire:key="recipe-{{ $recipe->id }}" class="group relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xs ring-1 ring-gray-200/60 dark:ring-gray-700 hover:ring-indigo-300" :class="has({{ $recipe->id }}) && 'ring-2 ring-indigo-500 dark:ring-indigo-400'">
+                        <button type="button" x-on:click="toggle({{ $recipe->id }})" :aria-pressed="has({{ $recipe->id }})" aria-label="{{ __('Select') }}" class="absolute start-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full text-sm shadow-sm transition active:scale-90" :class="has({{ $recipe->id }}) ? 'bg-indigo-600 text-white' : 'bg-white/90 text-gray-400 dark:bg-gray-900/80'"><span x-show="has({{ $recipe->id }})">✓</span><span x-show="!has({{ $recipe->id }})" aria-hidden="true">○</span></button>
                         <a href="{{ route('recipes.show', $recipe) }}" wire:navigate class="block">
                             <div class="aspect-[4/3] bg-gray-100 dark:bg-gray-700">
                                 @if ($recipe->imageUrl())
@@ -391,6 +404,26 @@ new #[Layout('layouts.app')] class extends Component
                 @endforelse
             </ul>
             @endif
+
+            {{-- Selection action bar: appears when recipes are picked (cookbook/ZIP of exactly those). --}}
+            <div
+                x-show="selected.length"
+                x-cloak
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-4"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-4"
+                class="fixed inset-x-0 bottom-4 z-40 mx-auto flex w-fit max-w-[calc(100vw-2rem)] flex-wrap items-center gap-2 rounded-2xl border border-gray-200/60 bg-white/85 px-3 py-2 shadow-lg backdrop-blur-xl dark:border-gray-700/60 dark:bg-gray-800/85"
+                role="region"
+                aria-label="{{ __('Selection') }}"
+            >
+                <span class="px-1 text-sm font-medium text-gray-700 dark:text-gray-200"><span x-text="selected.length"></span> {{ __('selected') }}</span>
+                <button type="button" x-on:click="open(@js(route('recipes.cookbook')))" class="rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500 active:scale-95">📕 {{ __('Cookbook') }}</button>
+                <button type="button" x-on:click="open(@js(route('recipes.archive')))" class="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-gray-300 transition hover:bg-gray-50 active:scale-95 dark:bg-gray-700 dark:text-gray-200 dark:ring-gray-600">🗂️ {{ __('Export as ZIP') }}</button>
+                <button type="button" x-on:click="selected = []" class="rounded-full px-2.5 py-1.5 text-sm text-gray-500 transition hover:text-gray-800 active:scale-95 dark:text-gray-400 dark:hover:text-gray-100" aria-label="{{ __('Clear selection') }}">✕</button>
+            </div>
         </div>
     </div>
 </div>

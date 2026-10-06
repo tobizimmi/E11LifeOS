@@ -2,11 +2,13 @@
 
 namespace App\Support;
 
+use Anthropic\Bedrock\MantleClient;
 use Anthropic\Client;
 use Throwable;
 
 /**
- * Base for Claude API calls whose answers are forced into a JSON schema.
+ * Base for Claude API calls whose answers are forced into a JSON schema. Runs either against the
+ * Anthropic API (USA) or AWS Bedrock (e.g. an EU region) depending on services.anthropic.provider.
  */
 abstract class StructuredAi
 {
@@ -16,11 +18,33 @@ abstract class StructuredAi
     public function __construct(private ?Client $client = null) {}
 
     /**
-     * Whether the API key is set and the function of the subclass is not switched off.
+     * Whether a provider is set up and the function of the subclass is not switched off.
      */
     public static function isConfigured(): bool
     {
-        return filled(config('services.anthropic.key')) && (static::FEATURE === '' || AiFeatures::enabled(static::FEATURE));
+        if (static::FEATURE !== '' && ! AiFeatures::enabled(static::FEATURE)) {
+            return false;
+        }
+
+        return self::providerConfigured();
+    }
+
+    /**
+     * Whether the chosen provider has the credentials it needs: an Anthropic key, or – for
+     * Bedrock – a region and model (the AWS credentials may come from the environment).
+     */
+    public static function providerConfigured(): bool
+    {
+        if (self::usesBedrock()) {
+            return filled(config('services.anthropic.bedrock.region')) && filled(config('services.anthropic.bedrock.model'));
+        }
+
+        return filled(config('services.anthropic.key'));
+    }
+
+    private static function usesBedrock(): bool
+    {
+        return config('services.anthropic.provider') === 'bedrock';
     }
 
     /**
@@ -30,7 +54,7 @@ abstract class StructuredAi
      */
     protected function ask(array $content, array $schema, int $maxTokens, ?string $system = null): array
     {
-        if (! filled(config('services.anthropic.key'))) {
+        if (! self::providerConfigured()) {
             $this->fail(__('The AI is not set up on this server (ANTHROPIC_API_KEY).'));
         }
 
@@ -42,18 +66,23 @@ abstract class StructuredAi
             $arguments = [
                 'maxTokens' => $maxTokens,
                 'messages' => [['role' => 'user', 'content' => $content]],
-                'model' => (string) config('services.anthropic.model'),
                 'outputConfig' => ['effort' => 'low', 'format' => ['type' => 'json_schema', 'schema' => $schema]],
-                // Server-side retry on a substitute model if the request is declined.
-                'fallbacks' => 'default',
-                'betas' => ['server-side-fallback-2026-07-01'],
             ];
 
             if ($system !== null) {
                 $arguments['system'] = $system;
             }
 
-            $message = $this->client()->beta->messages->create(...$arguments);
+            if (self::usesBedrock()) {
+                $arguments['model'] = (string) config('services.anthropic.bedrock.model');
+                $message = $this->bedrockClient()->messages->create(...$arguments);
+            } else {
+                $arguments['model'] = (string) config('services.anthropic.model');
+                // Server-side retry on a substitute model if the request is declined (Anthropic API only).
+                $arguments['fallbacks'] = 'default';
+                $arguments['betas'] = ['server-side-fallback-2026-07-01'];
+                $message = $this->anthropicClient()->beta->messages->create(...$arguments);
+            }
         } catch (Throwable $exception) {
             report($exception);
 
@@ -82,8 +111,24 @@ abstract class StructuredAi
         throw new AiException($message, previous: $previous);
     }
 
-    private function client(): Client
+    private function anthropicClient(): Client
     {
         return $this->client ??= new Client(apiKey: (string) config('services.anthropic.key'));
+    }
+
+    /**
+     * Bedrock Mantle client; empty access keys fall back to the server's AWS credentials.
+     */
+    private function bedrockClient(): MantleClient
+    {
+        $access = (string) config('services.anthropic.bedrock.access_key');
+        $secret = (string) config('services.anthropic.bedrock.secret_key');
+        $region = (string) config('services.anthropic.bedrock.region');
+
+        return new MantleClient(
+            awsAccessKey: $access !== '' ? $access : null,
+            awsSecretAccessKey: $secret !== '' ? $secret : null,
+            awsRegion: $region !== '' ? $region : null,
+        );
     }
 }

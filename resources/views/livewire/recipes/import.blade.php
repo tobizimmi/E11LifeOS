@@ -3,7 +3,10 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Support\RecipeAi;
 use App\Support\RecipeAiException;
+use App\Support\RecipeFileImporter;
+use App\Support\RecipeFileImportException;
 use App\Support\RecipeImporter;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -15,7 +18,7 @@ new #[Layout('layouts.app')] class extends Component
     use WithFileUploads;
 
     /**
-     * "link", "photo", "pdf" or "text".
+     * "link", "file", "photo", "pdf" or "text".
      */
     #[Url(except: 'link')]
     public string $source = 'link';
@@ -30,7 +33,13 @@ new #[Layout('layouts.app')] class extends Component
 
     public $pdf = null;
 
+    /** A schema.org/Paprika/Mealie recipe file. */
+    public $recipeFile = null;
+
     public string $text = '';
+
+    /** Success message after importing one or more recipe files. */
+    public ?string $imported = null;
 
     /** Optional caption for Instagram links (Instagram itself often gives out a shortened one). */
     public string $caption = '';
@@ -40,9 +49,16 @@ new #[Layout('layouts.app')] class extends Component
     /**
      * Reads the chosen source and opens the recipe form pre-filled with the result.
      */
-    public function import(RecipeImporter $importer): void
+    public function import(RecipeImporter $importer, RecipeFileImporter $fileImporter): void
     {
         $this->failure = null;
+        $this->imported = null;
+
+        if ($this->source === 'file') {
+            $this->importFile($fileImporter);
+
+            return;
+        }
 
         $this->validate(match ($this->source) {
             'photo' => ['photos' => ['required', 'array', 'min:1', 'max:'.RecipeAi::MAX_IMAGES], 'photos.*' => ['image', 'max:15360']],
@@ -75,6 +91,40 @@ new #[Layout('layouts.app')] class extends Component
         $this->redirectRoute('recipes.create', navigate: true);
     }
 
+    /**
+     * Imports a schema.org, Paprika or Mealie recipe file (no AI). One recipe opens its page;
+     * several are imported into the household at once.
+     */
+    private function importFile(RecipeFileImporter $fileImporter): void
+    {
+        $this->validate(['recipeFile' => ['required', 'file', 'max:20480']]);
+
+        try {
+            $drafts = $fileImporter->drafts($this->recipeFile);
+        } catch (RecipeFileImportException $exception) {
+            $this->failure = $exception->getMessage();
+
+            return;
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->failure = __('This file could not be read.');
+
+            return;
+        }
+
+        $household = Auth::user()->currentHousehold();
+        $recipes = collect($drafts)->map(fn (array $draft) => $fileImporter->persist($draft, $household, Auth::user()));
+
+        if ($recipes->count() === 1) {
+            $this->redirectRoute('recipes.show', ['recipe' => $recipes->first()->id], navigate: true);
+
+            return;
+        }
+
+        $this->reset('recipeFile');
+        $this->imported = trans_choice(':count recipe imported|:count recipes imported', $recipes->count());
+    }
+
     public function with(): array
     {
         return [
@@ -94,7 +144,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <a href="{{ route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:underline">&larr; {{ __('All recipes') }}</a>
 
-            <x-section-nav tab-property="source" :label="__('Import from')" :active="$source" :groups="['' => ['link' => ['🔗', __('Link')], 'photo' => ['📷', __('Photo / screenshot')], 'pdf' => ['📄', __('PDF')], 'text' => ['📝', __('Text')]]]" />
+            <x-section-nav tab-property="source" :label="__('Import from')" :active="$source" :groups="['' => ['link' => ['🔗', __('Link')], 'file' => ['🗂️', __('Recipe file')], 'photo' => ['📷', __('Photo / screenshot')], 'pdf' => ['📄', __('PDF')], 'text' => ['📝', __('Text')]]]" />
 
             <form wire:submit="import" class="rounded-lg bg-white dark:bg-gray-800 p-5 shadow-xs space-y-4">
                 @if ($source === 'link')
@@ -117,6 +167,14 @@ new #[Layout('layouts.app')] class extends Component
                         <textarea wire:model="caption" id="caption" rows="5" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs" placeholder="{{ __('In Instagram: tap “…” › “Copy” or hold the post text, copy it and paste it here.') }}"></textarea>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">💡 {{ __('Without the text, amounts are often missing, because Instagram shortens it.') }}</p>
                         <x-input-error :messages="$errors->get('caption')" class="mt-1" />
+                    </div>
+                @elseif ($source === 'file')
+                    <div>
+                        <x-input-label for="recipeFile" :value="__('Recipe file')" />
+                        <input type="file" wire:model="recipeFile" id="recipeFile" accept=".json,.paprikarecipes,.zip,application/json,application/zip" class="mt-1 block text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-indigo-700" />
+                        <p wire:loading wire:target="recipeFile" class="mt-1 text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('A recipe file (schema.org JSON), a list of recipes, or a Paprika archive (.paprikarecipes). From Mealie, Tandoor, Paprika and others, or an export from this app. No AI needed.') }}</p>
+                        <x-input-error :messages="$errors->get('recipeFile')" class="mt-1" />
                     </div>
                 @elseif (! $aiAvailable)
                     <p class="rounded-md bg-amber-50 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-200">{{ __('Importing photos, PDFs and text needs the AI, which is not set up on this server (ANTHROPIC_API_KEY).') }}</p>
@@ -154,9 +212,16 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="rounded-md bg-red-50 dark:bg-red-900/30 p-3 text-sm text-red-700 dark:text-red-300" role="alert">{{ $failure }}</p>
                 @endif
 
-                @if ($source === 'link' || $aiAvailable)
+                @if ($imported)
+                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200" role="status">
+                        <span>✓ {{ $imported }}</span>
+                        <a href="{{ route('recipes.index') }}" wire:navigate class="font-medium underline">{{ __('Show recipes') }}</a>
+                    </div>
+                @endif
+
+                @if ($source === 'link' || $source === 'file' || $aiAvailable)
                     <div class="flex flex-wrap items-center gap-3">
-                        <x-primary-button wire:loading.attr="disabled" wire:target="import,photos,pdf">{{ __('Import') }}</x-primary-button>
+                        <x-primary-button wire:loading.attr="disabled" wire:target="import,photos,pdf,recipeFile">{{ __('Import') }}</x-primary-button>
                         <span wire:loading wire:target="import" class="text-sm text-gray-500 dark:text-gray-400">{{ __('Reading the recipe … this can take a moment.') }}</span>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">

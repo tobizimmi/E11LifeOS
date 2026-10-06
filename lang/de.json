@@ -6613,5 +6613,18 @@
     "Borderline: about :irr % return per year. :topup Check price, equity and rent, and watch the interest after the fixed period.": "Grenzwertig: rund :irr % Rendite pro Jahr. :topup Prüfe Preis, Eigenkapital und Miete und achte auf den Zins nach der Zinsbindung.",
     "only about :irr % return per year": "nur rund :irr % Rendite pro Jahr",
     "the equity is not earning a return": "das Eigenkapital erwirtschaftet keine Rendite",
-    "Critical: price factor :factor and :irrtext. :topup That is little for the risk – compare it with a simpler investment.": "Kritisch: Kaufpreisfaktor :factor und :irrtext. :topup Das ist wenig für das Risiko – vergleiche es mit einer einfacheren Geldanlage."
+    "Critical: price factor :factor and :irrtext. :topup That is little for the risk – compare it with a simpler investment.": "Kritisch: Kaufpreisfaktor :factor und :irrtext. :topup Das ist wenig für das Risiko – vergleiche es mit einer einfacheren Geldanlage.",
+    "AI provider": "KI-Anbieter",
+    "Anthropic API (USA)": "Anthropic API (USA)",
+    "AWS Bedrock (e.g. EU)": "AWS Bedrock (z. B. EU)",
+    "Bedrock region": "Bedrock-Region",
+    "Bedrock model id": "Bedrock-Modell-ID",
+    "AWS access key (optional)": "AWS Access Key (optional)",
+    "AWS secret key (optional)": "AWS Secret Key (optional)",
+    "For recipe import, reading contracts and bank statements, tag suggestions, “Ask your Second Brain” and the Instagram analysis. Provider “Anthropic API” uses the key from console.anthropic.com; “AWS Bedrock” runs Claude in your chosen AWS region (e.g. Frankfurt) so the data stays in the EU – then enter the Bedrock region and model id, and AWS keys only if the server has none of its own.": "Für Rezept-Import, das Auslesen von Verträgen und Kontoauszügen, Tag-Vorschläge, „Frag dein Second Brain“ und die Instagram-Analyse. Anbieter „Anthropic API“ nutzt den Schlüssel von console.anthropic.com; „AWS Bedrock“ führt Claude in deiner gewählten AWS-Region aus (z. B. Frankfurt), sodass die Daten in der EU bleiben – dann Bedrock-Region und Modell-ID eintragen, AWS-Schlüssel nur, wenn der Server keine eigenen hat.",
+    "Export as recipe file (JSON)": "Als Rezept-Datei exportieren (JSON)",
+    "Export as text (Markdown)": "Als Text exportieren (Markdown)",
+    "Recipe file (JSON)": "Rezept-Datei (JSON)",
+    "Print": "Drucken",
+    "Tap to check off": "Zum Abhaken tippen"
 }

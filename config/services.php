@@ -22,6 +22,16 @@ return [
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-5'),
+        // Where the AI runs: "anthropic" (Anthropic API, USA) or "bedrock" (AWS Bedrock, e.g. EU).
+        'provider' => env('AI_PROVIDER', 'anthropic'),
+        'bedrock' => [
+            'region' => env('AWS_BEDROCK_REGION', 'eu-central-1'),
+            // Bedrock model/inference-profile id, e.g. "eu.anthropic.claude-sonnet-5".
+            'model' => env('AWS_BEDROCK_MODEL', ''),
+            // Leave empty to use the server's AWS credentials (env vars or instance role).
+            'access_key' => env('AWS_BEDROCK_ACCESS_KEY'),
+            'secret_key' => env('AWS_BEDROCK_SECRET_KEY'),
+        ],
         // Comma-separated AI functions that are switched off (see App\Support\AiFeatures).
         'disabled_features' => env('AI_DISABLED_FEATURES', ''),
     ],

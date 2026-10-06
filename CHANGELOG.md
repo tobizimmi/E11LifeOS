@@ -3,6 +3,21 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.47.0] – 2026-10-05
+
+### Neu
+- Rezepte teilen & mitnehmen: Jedes Rezept lässt sich als **Rezept-Datei (JSON im schema.org-Standard)** oder als **Text (Markdown)** exportieren (Rezept → ⋯ → Exportieren) – so wandert es in andere Koch-Apps oder in eine Nachricht.
+- Geteilte Rezeptseiten enthalten jetzt strukturierte schema.org-Daten (JSON-LD). Dadurch erkennt Google das Rezept und andere Rezept-Apps können es direkt importieren.
+
+### Verbessert
+- Geteilte Rezeptseite neu gestaltet (einfacher bedienbar beim Mitkochen): Zutaten und Schritte lassen sich per Tippen abhaken (bleibt auf dem Gerät gespeichert), eine schwebende Kopfleiste mit „Drucken", sauberes Druck-Layout, größere Tippflächen mit sofortigem Feedback und bessere Lesbarkeit.
+- Rezept-Menü (⋯) aufgeräumt: Export-Aktionen gruppiert, destruktive Aktionen abgesetzt, mit ruhiger Einblend-Animation.
+
+## [1.46.0] – 2026-10-05
+
+### Neu
+- Datenschutz: KI-Anbieter wählbar (Admin → Server-Einstellungen → KI). „Anthropic API (USA)" wie bisher oder „AWS Bedrock" – damit läuft Claude in einer AWS-Region deiner Wahl (z. B. Frankfurt), sodass die Daten in der EU bleiben. Umschaltbar ohne Code-Änderung; AWS-Zugangsdaten nur nötig, wenn der Server keine eigenen hat.
+
 ## [1.45.0] – 2026-10-05
 
 ### Verbessert

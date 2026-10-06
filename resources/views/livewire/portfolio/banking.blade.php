@@ -3,8 +3,11 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
 use App\Models\BankConnection;
+use App\Models\BankLink;
 use App\Support\Banking\BankAlerts;
+use App\Support\Banking\BankLinkSync;
 use App\Support\Banking\BankSync;
+use App\Support\Banking\GoCardlessClient;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -45,6 +48,11 @@ new #[Layout('layouts.app')] class extends Component
      * @var array{salary: bool, large_debit: string, low_balance: string, forecast: bool}
      */
     public array $alerts = [];
+
+    /** PSD2 connect panel (GoCardless) */
+    public bool $showConnect = false;
+
+    public string $bankSearch = '';
 
     public function mount(): void
     {
@@ -284,9 +292,53 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: $result['message']);
     }
 
-    public function with(BankSync $sync): array
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<BankLink>
+     */
+    private function bankLinks()
+    {
+        return BankLink::where('user_id', $this->currentUser()->id);
+    }
+
+    public function syncBankLink(int $linkId, BankLinkSync $sync): void
+    {
+        $link = $this->bankLinks()->findOrFail($linkId);
+
+        try {
+            $result = $sync->sync($link);
+            $this->dispatch('toast', message: trim(
+                trans_choice(':count new booking imported into Finances.|:count new bookings imported into Finances.', $result['imported'])
+            ));
+        } catch (\Throwable) {
+            $this->dispatch('toast', message: __('The bank sync failed. Please try again later.'));
+        }
+    }
+
+    public function toggleBankLinkAutoSync(int $linkId): void
+    {
+        $link = $this->bankLinks()->findOrFail($linkId);
+        $link->update(['auto_sync' => ! $link->auto_sync]);
+    }
+
+    public function deleteBankLink(int $linkId): void
+    {
+        $this->bankLinks()->findOrFail($linkId)->delete();
+    }
+
+    public function with(BankSync $sync, GoCardlessClient $gocardless): array
     {
         $connections = $this->connections()->with(['portfolio', 'depotPositions'])->orderBy('bank_name')->get();
+
+        $institutions = [];
+
+        if ($this->showConnect && $gocardless->configured()) {
+            $search = trim(mb_strtolower($this->bankSearch));
+            $institutions = collect($gocardless->institutions('DE'))
+                ->when($search !== '', fn ($banks) => $banks->filter(fn (array $bank) => str_contains(mb_strtolower($bank['name']), $search)))
+                ->take(60)
+                ->values()
+                ->all();
+        }
 
         return [
             'connections' => $connections,
@@ -295,6 +347,9 @@ new #[Layout('layouts.app')] class extends Component
             'portfolioList' => $this->portfolios()->orderBy('id')->get(),
             'banks' => BankSync::BANKS,
             'productConfigured' => filled(config('services.fints.product_id')),
+            'bankLinks' => $this->bankLinks()->orderBy('institution_name')->get(),
+            'gocardlessConfigured' => $gocardless->configured(),
+            'institutions' => $institutions,
         ];
     }
 }; ?>
@@ -317,6 +372,66 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.banking'])
+
+            @if (session('bankLinkStatus'))
+                <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ session('bankLinkStatus') }}</div>
+            @endif
+
+            @if ($gocardlessConfigured)
+                <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔗 {{ __('Connect bank (without FinTS)') }}</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-400">{{ __('Connect your bank securely via the official PSD2 interface – also for banks that dropped FinTS. You confirm once at your bank; balances and bookings then land in Finances. Note: this covers payment accounts, not securities depots.') }}</p>
+                        </div>
+                        <x-primary-button type="button" wire:click="$toggle('showConnect')">＋ {{ __('Connect bank') }}</x-primary-button>
+                    </div>
+
+                    @if ($showConnect)
+                        <div class="mt-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-900/40">
+                            <input type="text" wire:model.live.debounce.400ms="bankSearch" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('Search your bank (e.g. Sparkasse Köln, N26, DKB) …') }}" aria-label="{{ __('Search bank') }}">
+                            <div class="mt-3 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+                                @forelse ($institutions as $bank)
+                                    <a href="{{ route('portfolio.banking.link.connect', ['institution' => $bank['id']]) }}" wire:key="inst-{{ $bank['id'] }}" class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-gray-800 ring-1 ring-gray-200 transition hover:ring-indigo-300 active:scale-[0.99] dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-700">
+                                        @if (! empty($bank['logo']))<img src="{{ $bank['logo'] }}" alt="" class="h-6 w-6 rounded object-contain">@else<span class="flex h-6 w-6 items-center justify-center rounded bg-gray-100 text-xs dark:bg-gray-700">🏦</span>@endif
+                                        <span class="truncate">{{ $bank['name'] }}</span>
+                                    </a>
+                                @empty
+                                    <p class="col-span-full py-4 text-center text-sm text-gray-500 dark:text-gray-400">{{ $bankSearch === '' ? __('Start typing to find your bank.') : __('No bank found.') }}</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($bankLinks->isNotEmpty())
+                        <ul class="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
+                            @foreach ($bankLinks as $link)
+                                <li wire:key="link-{{ $link->id }}" class="flex flex-wrap items-center gap-3 py-3 text-sm">
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $link->institution_name }}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                                            @if ($link->isExpired())
+                                                <span class="text-red-600 dark:text-red-400">{{ __('Expired – please reconnect') }}</span>
+                                            @elseif ($link->status === 'linked')
+                                                {{ __('Active') }}@if ($link->last_synced_at) · {{ __('last sync :date', ['date' => $link->last_synced_at->format('d.m.Y H:i')]) }}@endif@if ($link->consent_expires_at) · {{ __('valid until :date', ['date' => $link->consent_expires_at->format('d.m.Y')]) }}@endif
+                                            @else
+                                                {{ __('Not confirmed yet') }}
+                                            @endif
+                                        </span>
+                                    </span>
+                                    @if ($link->isExpired())
+                                        <a href="{{ route('portfolio.banking.link.connect', ['institution' => $link->institution_id]) }}" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">↻ {{ __('Reconnect') }}</a>
+                                    @elseif ($link->status === 'linked')
+                                        <button type="button" wire:click="syncBankLink({{ $link->id }})" wire:loading.attr="disabled" wire:target="syncBankLink" class="rounded-lg px-3 py-1.5 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">💶 {{ __('Sync now') }}</button>
+                                        <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" @checked($link->auto_sync) wire:click="toggleBankLinkAutoSync({{ $link->id }})" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Daily') }}</label>
+                                    @endif
+                                    <button type="button" wire:click="deleteBankLink({{ $link->id }})" wire:confirm="{{ __('Remove this bank connection?') }}" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </section>
+            @endif
 
             <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                 <div class="flex flex-wrap items-start justify-between gap-3">

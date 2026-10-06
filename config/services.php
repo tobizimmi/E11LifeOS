@@ -132,4 +132,13 @@ return [
         ],
     ],
 
+    // GoCardless Bank Account Data (formerly Nordigen): PSD2 account aggregation for banks that
+    // dropped FinTS. Sign up for free at bankaccountdata.gocardless.com and put the keys in the
+    // environment. Without them the "connect bank" feature stays hidden.
+    'gocardless' => [
+        'secret_id' => env('GOCARDLESS_SECRET_ID'),
+        'secret_key' => env('GOCARDLESS_SECRET_KEY'),
+        'base_url' => env('GOCARDLESS_BASE_URL', 'https://bankaccountdata.gocardless.com/api/v2'),
+    ],
+
 ];

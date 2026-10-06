@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\RoadmapExportController;
 use App\Http\Controllers\Admin\RoadmapImageController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\Banking\BankLinkCallbackController;
+use App\Http\Controllers\Banking\BankLinkConnectController;
 use App\Http\Controllers\BookkeepingReceiptController;
 use App\Http\Controllers\BusinessReportController;
 use App\Http\Controllers\CalendarFeedController;
@@ -234,6 +236,8 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
     Volt::route('alerts', 'portfolio.alerts')->name('alerts');
     Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');
     Volt::route('banking', 'portfolio.banking')->middleware([Security::SENSITIVE, 'sensitive.log:banking'])->name('banking');
+    Route::get('banking/link/connect', BankLinkConnectController::class)->middleware([Security::SENSITIVE, 'sensitive.log:banking'])->name('banking.link.connect');
+    Route::get('banking/link/callback', BankLinkCallbackController::class)->middleware([Security::SENSITIVE, 'sensitive.log:banking'])->name('banking.link.callback');
     Volt::route('instagram', 'portfolio.instagram')->name('instagram');
     Volt::route('import', 'portfolio.import')->name('import');
     Volt::route('settings', 'portfolio.settings')->name('settings');

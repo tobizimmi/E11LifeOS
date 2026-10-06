@@ -144,6 +144,48 @@ class PortfolioAnalysisTest extends TestCase
         $this->assertNull(PriceAlert::sole()->triggered_at);
     }
 
+    public function test_one_button_sets_up_profit_alerts_above_the_buy_price_and_notifies(): void
+    {
+        [$user, $portfolio] = $this->investor();
+        $sap = $this->security('SAP.DE', 100);
+        PortfolioTransaction::factory()->for($portfolio)->create(['symbol' => 'SAP.DE', 'name' => 'SAP SE', 'quantity' => 10, 'price' => 100, 'fees' => 0]);
+        Positions::recalculate($portfolio);
+        $position = $portfolio->positions()->sole();
+        $this->assertSame(100.0, $position->avg_buy_price);
+
+        // The edit sheet offers the button with the computed target prices.
+        Volt::test('portfolio.index')->call('editPosition', $position->id)
+            ->assertSee(__('Set up profit alerts'))
+            ->assertSee('130,00');
+
+        Volt::test('portfolio.index')->call('setupGainAlerts', $position->id);
+
+        $alerts = PriceAlert::where('user_id', $user->id)->orderBy('gain_percent')->get();
+        $this->assertSame([5, 10, 20, 30], $alerts->pluck('gain_percent')->all());
+        $this->assertSame([105.0, 110.0, 120.0, 130.0], $alerts->pluck('target_price')->all());
+        $this->assertTrue($alerts->every(fn (PriceAlert $alert) => $alert->condition === 'above' && $alert->symbol === 'SAP.DE'));
+
+        // The button is idempotent: a second press adds nothing.
+        Volt::test('portfolio.index')->call('setupGainAlerts', $position->id);
+        $this->assertSame(4, PriceAlert::where('user_id', $user->id)->count());
+
+        // At +12 % only the 5 % and 10 % alerts trigger, each once.
+        $sap->update(['last_price' => 112, 'previous_close' => 112]);
+        $this->artisan('portfolio:check-alerts')->expectsOutputToContain('Notifications sent: 2');
+        $this->assertSame(2, PriceAlert::whereNotNull('triggered_at')->count());
+        $this->artisan('portfolio:check-alerts')->expectsOutputToContain('Notifications sent: 0');
+    }
+
+    public function test_profit_alerts_are_not_offered_without_an_average_buy_price(): void
+    {
+        [$user, $portfolio] = $this->investor();
+        $this->security('MANUAL.DE', 50);
+        $position = $portfolio->positions()->create(['symbol' => 'MANUAL.DE', 'name' => 'Manual AG', 'quantity' => 1, 'avg_buy_price' => 0, 'currency' => 'EUR', 'manual' => true]);
+
+        Volt::test('portfolio.index')->call('setupGainAlerts', $position->id);
+        $this->assertSame(0, PriceAlert::where('user_id', $user->id)->count());
+    }
+
     public function test_rebalancing_suggests_trades_towards_the_target_weights(): void
     {
         $analytics = app(Analytics::class);

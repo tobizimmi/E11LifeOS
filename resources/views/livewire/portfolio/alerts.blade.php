@@ -124,7 +124,12 @@ new #[Layout('layouts.app')] class extends Component
                         @foreach ($alerts as $alert)
                             <li wire:key="alert-{{ $alert->id }}" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
                                 <span class="min-w-0 flex-1">
-                                    <a href="{{ route('portfolio.security', ['symbol' => $alert->symbol]) }}" wire:navigate class="block truncate font-medium text-gray-900 hover:underline dark:text-gray-100">{{ $alert->name ?: $alert->symbol }}</a>
+                                    <a href="{{ route('portfolio.security', ['symbol' => $alert->symbol]) }}" wire:navigate class="flex items-center gap-1.5 truncate font-medium text-gray-900 hover:underline dark:text-gray-100">
+                                        <span class="truncate">{{ $alert->name ?: $alert->symbol }}</span>
+                                        @if ($alert->gain_percent)
+                                            <span class="shrink-0 rounded-full bg-emerald-50 px-1.5 text-xs text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">📈 +{{ $alert->gain_percent }} %</span>
+                                        @endif
+                                    </a>
                                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ $alert->condition === 'above' ? __('rises above') : __('falls below') }} {{ number_format($alert->target_price, 2, ',', '.') }} {{ $alert->currency }} · {{ __('now') }} {{ $euro($price($alert->symbol)) }}</span>
                                 </span>
                                 @if ($alert->triggered_at)

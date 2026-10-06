@@ -26,12 +26,14 @@ class RecipeCookbookController extends Controller
 
         $category = ctype_digit((string) $request->query('category')) ? RecipeCategory::where('household_id', $household->id)->find((int) $request->query('category')) : null;
         $tag = trim((string) $request->query('tag', ''));
+        $ids = $this->selectedIds($request);
 
         $recipes = Recipe::query()->visibleTo($user, $household->id)->whereNull('archived_at')
             ->with('categories', 'tags')
-            ->when($category, fn ($query) => $query->whereHas('categories', fn ($categories) => $categories->whereKey($category->id)))
-            ->when($tag !== '', fn ($query) => $query->whereHas('tags', fn ($tags) => $tags->where('name', $tag)))
-            ->when($request->boolean('favorites'), fn ($query) => $query->whereHas('favoritedBy', fn ($users) => $users->whereKey($user->id)))
+            ->when($ids !== [], fn ($query) => $query->whereIn('recipes.id', $ids))
+            ->when($ids === [] && $category, fn ($query) => $query->whereHas('categories', fn ($categories) => $categories->whereKey($category->id)))
+            ->when($ids === [] && $tag !== '', fn ($query) => $query->whereHas('tags', fn ($tags) => $tags->where('name', $tag)))
+            ->when($ids === [] && $request->boolean('favorites'), fn ($query) => $query->whereHas('favoritedBy', fn ($users) => $users->whereKey($user->id)))
             ->orderBy('title')
             ->limit(self::MAX_RECIPES)
             ->get();
@@ -42,7 +44,7 @@ class RecipeCookbookController extends Controller
         $layout = PdfTheme::for($household->id, 'recipe');
         // Small square photos keep a book of many recipes light.
         $layout['photo'] = $layout['photo'] === 'none' ? 'none' : 'small';
-        $title = trim((string) $request->query('title', '')) ?: ($category->name ?? ($tag !== '' ? '#'.$tag : ($request->boolean('favorites') ? __('Favorites') : __('Our recipes'))));
+        $title = trim((string) $request->query('title', '')) ?: ($ids !== [] ? __('Selected recipes') : ($category->name ?? ($tag !== '' ? '#'.$tag : ($request->boolean('favorites') ? __('Favorites') : __('Our recipes')))));
         $title = mb_substr($title, 0, 80);
 
         $html = view('recipes.cookbook', [
@@ -67,5 +69,21 @@ class RecipeCookbookController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.(Str::slug(__('Cookbook').' '.$title, '-', 'de') ?: 'kochbuch').'.pdf"',
         ]);
+    }
+
+    /**
+     * Explicitly selected recipe ids ("ids=1,2,3"); empty when the current filter should be used.
+     *
+     * @return array<int, int>
+     */
+    private function selectedIds(Request $request): array
+    {
+        return collect(explode(',', (string) $request->query('ids', '')))
+            ->map(fn ($id) => (int) trim((string) $id))
+            ->filter()
+            ->unique()
+            ->take(self::MAX_RECIPES)
+            ->values()
+            ->all();
     }
 }

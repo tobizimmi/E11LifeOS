@@ -28,12 +28,15 @@ class RecipeArchiveController extends Controller
 
         $category = ctype_digit((string) $request->query('category')) ? RecipeCategory::where('household_id', $household->id)->find((int) $request->query('category')) : null;
         $tag = trim((string) $request->query('tag', ''));
+        $ids = collect(explode(',', (string) $request->query('ids', '')))
+            ->map(fn ($id) => (int) trim((string) $id))->filter()->unique()->take(self::MAX_RECIPES)->values()->all();
 
         $recipes = Recipe::query()->visibleTo($user, $household->id)->whereNull('archived_at')
             ->with('categories', 'tags')
-            ->when($category, fn ($query) => $query->whereHas('categories', fn ($categories) => $categories->whereKey($category->id)))
-            ->when($tag !== '', fn ($query) => $query->whereHas('tags', fn ($tags) => $tags->where('name', $tag)))
-            ->when($request->boolean('favorites'), fn ($query) => $query->whereHas('favoritedBy', fn ($users) => $users->whereKey($user->id)))
+            ->when($ids !== [], fn ($query) => $query->whereIn('recipes.id', $ids))
+            ->when($ids === [] && $category, fn ($query) => $query->whereHas('categories', fn ($categories) => $categories->whereKey($category->id)))
+            ->when($ids === [] && $tag !== '', fn ($query) => $query->whereHas('tags', fn ($tags) => $tags->where('name', $tag)))
+            ->when($ids === [] && $request->boolean('favorites'), fn ($query) => $query->whereHas('favoritedBy', fn ($users) => $users->whereKey($user->id)))
             ->orderBy('title')
             ->limit(self::MAX_RECIPES)
             ->get();
@@ -58,7 +61,7 @@ class RecipeArchiveController extends Controller
 
         $zip->close();
 
-        $label = $category->name ?? ($tag !== '' ? $tag : ($request->boolean('favorites') ? __('Favorites') : __('Our recipes')));
+        $label = $ids !== [] ? __('Selected recipes') : ($category->name ?? ($tag !== '' ? $tag : ($request->boolean('favorites') ? __('Favorites') : __('Our recipes'))));
         $filename = (Str::slug(__('Recipes').' '.$label, '-', 'de') ?: 'rezepte').'-'.now()->format('Y-m-d').'.zip';
 
         return response()->download($path, $filename, ['Content-Type' => 'application/zip'])->deleteFileAfterSend();

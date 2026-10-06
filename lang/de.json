@@ -6637,5 +6637,11 @@
     "This archive could not be opened.": "Dieses Archiv konnte nicht geöffnet werden.",
     "A recipe file (schema.org JSON), a list of recipes, or a Paprika archive (.paprikarecipes). From Mealie, Tandoor, Paprika and others, or an export from this app. No AI needed.": "Eine Rezept-Datei (schema.org-JSON), eine Liste von Rezepten oder ein Paprika-Archiv (.paprikarecipes). Aus Mealie, Tandoor, Paprika u. a. oder ein Export aus dieser App. Ohne KI.",
     "Export as ZIP": "Als ZIP exportieren",
-    "All recipes of this filter as a ZIP of recipe files, for backup or moving to another app (max. :count)": "Alle Rezepte dieses Filters als ZIP von Rezept-Dateien – für Backup oder Umzug in eine andere App (max. :count)"
+    "All recipes of this filter as a ZIP of recipe files, for backup or moving to another app (max. :count)": "Alle Rezepte dieses Filters als ZIP von Rezept-Dateien – für Backup oder Umzug in eine andere App (max. :count)",
+    "selected": "ausgewählt",
+    "Clear selection": "Auswahl aufheben",
+    "Selection": "Auswahl",
+    "Selected recipes": "Ausgewählte Rezepte",
+    "Week as PDF": "Woche als PDF",
+    "Nothing planned": "Nichts geplant"
 }

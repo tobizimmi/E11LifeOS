@@ -19,6 +19,7 @@ use App\Http\Controllers\InstagramPushController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\ItemLinkController;
 use App\Http\Controllers\JournalPhotoController;
+use App\Http\Controllers\MealPlanPdfController;
 use App\Http\Controllers\NetworkDriveController;
 use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicCollectionController;
@@ -203,6 +204,7 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Volt::route('recipes/import', 'recipes.import')->name('recipes.import');
     Volt::route('recipes/categories', 'recipes.categories')->name('recipes.categories');
     Volt::route('recipes/plan', 'recipes.plan')->name('recipes.plan');
+    Route::get('recipes/plan.pdf', MealPlanPdfController::class)->name('recipes.plan.pdf');
     Volt::route('recipes/{recipe}', 'recipes.show')->whereNumber('recipe')->name('recipes.show');
     Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');
     Volt::route('recipes/{recipe}/cook', 'recipes.cook')->whereNumber('recipe')->name('recipes.cook');

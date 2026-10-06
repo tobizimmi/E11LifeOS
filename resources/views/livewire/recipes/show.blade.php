@@ -366,7 +366,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @endforeach
                             </div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                        <div class="flex w-full flex-wrap items-center justify-end gap-2 text-sm sm:w-auto">
                             @if ($steps !== [])
                                 <a href="{{ route('recipes.cook', ['recipe' => $recipe, 'servings' => $servings]) }}" wire:navigate class="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700">👩‍🍳 {{ __('Cooking mode') }}</a>
                             @endif
@@ -388,7 +388,7 @@ new #[Layout('layouts.app')] class extends Component
                                     x-transition:leave="transition ease-in duration-100"
                                     x-transition:leave-start="opacity-100 scale-100"
                                     x-transition:leave-end="opacity-0 scale-95"
-                                    class="absolute end-0 z-10 mt-1.5 w-56 origin-top-right rounded-xl bg-white py-1.5 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
+                                    class="absolute end-0 z-10 mt-1.5 w-56 max-w-[calc(100vw-2rem)] origin-top-right rounded-xl bg-white py-1.5 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
                                 >
                                     @php
                                         $menuItem = 'flex w-full items-center gap-2.5 px-3.5 py-2 text-start transition active:bg-gray-100 hover:bg-gray-100 dark:active:bg-gray-700 dark:hover:bg-gray-700';

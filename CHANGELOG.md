@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.49.2] – 2026-10-06
+
+### Behoben
+- Rezept-Detailseite: Das „⋯"-Menü öffnete am Smartphone an einer ungünstigen Stelle (zu weit am Rand). Die Aktionsleiste ist auf kleinen Displays jetzt rechtsbündig, der „⋯"-Button sitzt rechts und das Menü klappt vollständig im sichtbaren Bereich auf.
+
 ## [1.49.1] – 2026-10-06
 
 ### Behoben

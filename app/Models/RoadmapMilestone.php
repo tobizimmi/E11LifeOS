@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  *
  * @property Carbon|null $due_on
  */
-#[Fillable(['title', 'version', 'description', 'status', 'due_on', 'position'])]
+#[Fillable(['title', 'version', 'description', 'details', 'status', 'due_on', 'position'])]
 class RoadmapMilestone extends Model
 {
     /** @use HasFactory<RoadmapMilestoneFactory> */
@@ -44,5 +44,13 @@ class RoadmapMilestone extends Model
     public function tickets(): HasMany
     {
         return $this->hasMany(SupportTicket::class);
+    }
+
+    /**
+     * @return HasMany<RoadmapMilestoneImage, $this>
+     */
+    public function images(): HasMany
+    {
+        return $this->hasMany(RoadmapMilestoneImage::class)->orderBy('position')->orderBy('id');
     }
 }

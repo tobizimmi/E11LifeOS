@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.51.0] – 2026-10-06
+
+### Neu
+- **Meilenstein-Planung mit ausführlichen Texten und Bildern** (Administration → Roadmap): Jeder Meilenstein hat jetzt neben der Kurzbeschreibung ein Feld für eine **ausführliche Erklärung** (Hintergrund, Anforderungen, Akzeptanzkriterien, offene Fragen) und kann **Bilder** (Mockups, Screenshots, Skizzen) mit Bildunterschrift bekommen. Beides erscheint auf der Roadmap-Seite und wird **beim Export für Claude mitgenommen**: Hat ein Meilenstein Bilder, ist der Download ein **ZIP**, das das Markdown (inkl. ausführlicher Texte und Bildverweise) zusammen mit den Bildern bündelt.
+
 ## [1.50.0] – 2026-10-06
 
 ### Neu

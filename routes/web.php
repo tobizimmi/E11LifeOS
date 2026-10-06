@@ -27,6 +27,7 @@ use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RealEstateReceiptController;
+use App\Http\Controllers\RecipeArchiveController;
 use App\Http\Controllers\RecipeCookbookController;
 use App\Http\Controllers\RecipeExportController;
 use App\Http\Controllers\RecipeImageController;
@@ -206,6 +207,7 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');
     Volt::route('recipes/{recipe}/cook', 'recipes.cook')->whereNumber('recipe')->name('recipes.cook');
     Route::get('recipes/cookbook.pdf', RecipeCookbookController::class)->name('recipes.cookbook');
+    Route::get('recipes/archive.zip', RecipeArchiveController::class)->name('recipes.archive');
     Route::get('recipes/{recipe}/pdf', RecipePdfController::class)->whereNumber('recipe')->name('recipes.pdf');
     Route::get('recipes/{recipe}/export', RecipeExportController::class)->whereNumber('recipe')->name('recipes.export');
     Route::get('recipes/{recipe}/image', RecipeImageController::class)->whereNumber('recipe')->name('recipes.image');

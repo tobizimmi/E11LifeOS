@@ -266,6 +266,7 @@ new #[Layout('layouts.app')] class extends Component
                     {{ trans_choice(':count recipe|:count recipes', $recipes->count()) }}
                     @if ($recipes->isNotEmpty() && ! $archived)
                         <a href="{{ route('recipes.cookbook', array_filter(['category' => $category, 'tag' => $tag, 'favorites' => $favorites ? 1 : null])) }}" class="text-indigo-600 hover:underline dark:text-indigo-400" title="{{ __('All recipes of this filter as one PDF (max. :count)', ['count' => \App\Http\Controllers\RecipeCookbookController::MAX_RECIPES]) }}">📕 {{ __('Cookbook as PDF') }}</a>
+                        <a href="{{ route('recipes.archive', array_filter(['category' => $category, 'tag' => $tag, 'favorites' => $favorites ? 1 : null])) }}" class="text-indigo-600 hover:underline dark:text-indigo-400" title="{{ __('All recipes of this filter as a ZIP of recipe files, for backup or moving to another app (max. :count)', ['count' => \App\Http\Controllers\RecipeArchiveController::MAX_RECIPES]) }}">🗂️ {{ __('Export as ZIP') }}</a>
                     @endif
                 </p>
                 <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-sm dark:bg-gray-800" role="group" aria-label="{{ __('View') }}">

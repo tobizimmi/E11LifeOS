@@ -44,7 +44,7 @@ class RecipeImporter
         $html = $this->fetch($url)->body();
 
         $schema = $this->jsonLdRecipe($html) ?? $this->microdataRecipe($html);
-        $draft = $schema ? $this->fromSchema($schema) : $this->normalize($this->ai->extractFromText($this->pageText($html)));
+        $draft = $schema ? $this->draftFromSchema($schema) : $this->normalize($this->ai->extractFromText($this->pageText($html)));
 
         $draft['imageUrl'] ??= $this->metaContent($html, 'og:image');
         $draft['imageUrl'] = $draft['imageUrl'] ? $this->absoluteUrl($draft['imageUrl'], $url) : null;
@@ -310,7 +310,7 @@ class RecipeImporter
      * @param  array<string, mixed>  $schema  schema.org Recipe (JSON-LD or microdata)
      * @return array<string, mixed>
      */
-    private function fromSchema(array $schema): array
+    public function draftFromSchema(array $schema): array
     {
         $steps = [];
         $collectSteps = function (mixed $instruction) use (&$collectSteps, &$steps) {

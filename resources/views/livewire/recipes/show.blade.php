@@ -376,18 +376,37 @@ new #[Layout('layouts.app')] class extends Component
                                 <a href="{{ route('recipes.edit', $recipe) }}" wire:navigate class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200">✎ {{ __('Edit') }}</a>
                             @endunless
                             <div x-data="{ open: false }" class="relative">
-                                <button type="button" x-on:click="open = ! open" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="{{ __('More') }}">⋯</button>
-                                <div x-show="open" x-cloak x-on:click.outside="open = false" class="absolute end-0 z-10 mt-1 w-48 rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
-                                    <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📄 {{ __('Download as PDF') }}</a>
-                                    <a href="{{ route('recipes.export', ['recipe' => $recipe]) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🗂️ {{ __('Export as recipe file (JSON)') }}</a>
-                                    <a href="{{ route('recipes.export', ['recipe' => $recipe, 'format' => 'md']) }}" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">📝 {{ __('Export as text (Markdown)') }}</a>
+                                <button type="button" x-on:click="open = ! open" :aria-expanded="open" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 transition active:scale-95 dark:border-gray-600 dark:text-gray-200" aria-label="{{ __('More') }}">⋯</button>
+                                <div
+                                    x-show="open"
+                                    x-cloak
+                                    x-on:click.outside="open = false"
+                                    x-on:keydown.escape.window="open = false"
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-100"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    class="absolute end-0 z-10 mt-1.5 w-56 origin-top-right rounded-xl bg-white py-1.5 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
+                                >
+                                    @php
+                                        $menuItem = 'flex w-full items-center gap-2.5 px-3.5 py-2 text-start transition active:bg-gray-100 hover:bg-gray-100 dark:active:bg-gray-700 dark:hover:bg-gray-700';
+                                    @endphp
+                                    <p class="px-3.5 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ __('Export') }}</p>
+                                    <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="{{ $menuItem }}"><span class="w-5 text-center">📄</span> {{ __('Download as PDF') }}</a>
+                                    <a href="{{ route('recipes.export', ['recipe' => $recipe]) }}" class="{{ $menuItem }}"><span class="w-5 text-center">🗂️</span> {{ __('Recipe file (JSON)') }}</a>
+                                    <a href="{{ route('recipes.export', ['recipe' => $recipe, 'format' => 'md']) }}" class="{{ $menuItem }}"><span class="w-5 text-center">📝</span> {{ __('Text (Markdown)') }}</a>
                                     @if ($foreign)
-                                        <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Save a copy to my recipes') }}</button>
+                                        <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                                        <button type="button" wire:click="duplicate" class="{{ $menuItem }}"><span class="w-5 text-center">📥</span> {{ __('Save a copy to my recipes') }}</button>
                                     @else
-                                        <button type="button" wire:click="$toggle('sharing')" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">🔗 {{ __('Public link') }}</button>
-                                        <button type="button" wire:click="duplicate" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Duplicate') }}</button>
-                                        <button type="button" wire:click="toggleArchive" class="block w-full px-3 py-1.5 text-start hover:bg-gray-100 dark:hover:bg-gray-700">{{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
-                                        <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="block w-full px-3 py-1.5 text-start text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Delete') }}</button>
+                                        <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                                        <button type="button" wire:click="$toggle('sharing')" class="{{ $menuItem }}"><span class="w-5 text-center">🔗</span> {{ __('Public link') }}</button>
+                                        <button type="button" wire:click="duplicate" class="{{ $menuItem }}"><span class="w-5 text-center">⧉</span> {{ __('Duplicate') }}</button>
+                                        <button type="button" wire:click="toggleArchive" class="{{ $menuItem }}"><span class="w-5 text-center">🗄️</span> {{ $recipe->isArchived() ? __('Restore from archive') : __('Move to archive') }}</button>
+                                        <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                                        <button type="button" wire:click="delete" wire:confirm="{{ __('Delete this recipe?') }}" class="{{ $menuItem }} text-red-600 dark:text-red-400"><span class="w-5 text-center">🗑️</span> {{ __('Delete') }}</button>
                                     @endif
                                 </div>
                             </div>

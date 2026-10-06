@@ -6623,5 +6623,8 @@
     "AWS secret key (optional)": "AWS Secret Key (optional)",
     "For recipe import, reading contracts and bank statements, tag suggestions, “Ask your Second Brain” and the Instagram analysis. Provider “Anthropic API” uses the key from console.anthropic.com; “AWS Bedrock” runs Claude in your chosen AWS region (e.g. Frankfurt) so the data stays in the EU – then enter the Bedrock region and model id, and AWS keys only if the server has none of its own.": "Für Rezept-Import, das Auslesen von Verträgen und Kontoauszügen, Tag-Vorschläge, „Frag dein Second Brain“ und die Instagram-Analyse. Anbieter „Anthropic API“ nutzt den Schlüssel von console.anthropic.com; „AWS Bedrock“ führt Claude in deiner gewählten AWS-Region aus (z. B. Frankfurt), sodass die Daten in der EU bleiben – dann Bedrock-Region und Modell-ID eintragen, AWS-Schlüssel nur, wenn der Server keine eigenen hat.",
     "Export as recipe file (JSON)": "Als Rezept-Datei exportieren (JSON)",
-    "Export as text (Markdown)": "Als Text exportieren (Markdown)"
+    "Export as text (Markdown)": "Als Text exportieren (Markdown)",
+    "Recipe file (JSON)": "Rezept-Datei (JSON)",
+    "Print": "Drucken",
+    "Tap to check off": "Zum Abhaken tippen"
 }

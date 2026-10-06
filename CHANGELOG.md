@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.48.0] – 2026-10-06
+
+### Neu
+- Rezepte aus Dateien importieren – ohne KI: schema.org-Rezept-JSON (eigener Export, Mealie u. v. a.), eine Liste mehrerer Rezepte oder ein **Paprika-Archiv** (`.paprikarecipes`). Eine Datei öffnet das Rezept zur Kontrolle, mehrere werden auf einmal importiert (Rezepte → Import → „Rezept-Datei").
+- Sammel-Export: Alle Rezepte des aktuellen Filters als **ZIP** (ein schema.org-JSON je Rezept inkl. Foto) – ideal für Backup oder Umzug in eine andere App (Rezepte-Liste → „Als ZIP exportieren").
+
 ## [1.47.0] – 2026-10-05
 
 ### Neu

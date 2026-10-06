@@ -419,6 +419,7 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($hasRecipes)
                     <button type="button" wire:click="chooseShopping" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">🛒 {{ __('Ingredients of the week to shopping list') }}</button>
                 @endif
+                <a href="{{ route('recipes.plan.pdf', ['week' => $start->toDateString()]) }}" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📄 {{ __('Week as PDF') }}</a>
             </div>
 
             @if ($suggestions !== [])

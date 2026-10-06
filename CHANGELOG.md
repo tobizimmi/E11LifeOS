@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.49.0] – 2026-10-06
+
+### Neu
+- Rezepte **mehrfach auswählen**: In der Rezeptliste (Karten, Liste, Tabelle) lassen sich mehrere Rezepte antippen; eine schwebende Leiste macht daraus gezielt ein **Kochbuch (PDF)** oder einen **ZIP-Export** – genau die ausgewählten, unabhängig vom Filter.
+- **Wochenplan als PDF**: Der Essensplan einer Woche lässt sich als übersichtliches PDF herunterladen (Wochenplan → „Woche als PDF").
+
 ## [1.48.0] – 2026-10-06
 
 ### Neu

@@ -338,9 +338,9 @@ new #[Layout('layouts.app')] class extends Component
         <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <a href="{{ route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:underline">&larr; {{ __('All recipes') }}</a>
 
-            <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xs">
+            <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs">
                 @if ($recipe->imageUrl())
-                    <img src="{{ $recipe->imageUrl() }}" alt="{{ $recipe->title }}" class="max-h-[26rem] w-full object-cover" />
+                    <img src="{{ $recipe->imageUrl() }}" alt="{{ $recipe->title }}" class="max-h-[26rem] w-full rounded-t-lg object-cover" />
                 @endif
 
                 <div class="p-5 sm:p-6 space-y-4">

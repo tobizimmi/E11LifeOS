@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.49.1] – 2026-10-06
+
+### Behoben
+- Rezept-Detailseite: Das „⋯"-Menü wurde am Smartphone von der abgerundeten Karte abgeschnitten und war nicht sichtbar. Das Menü klappt jetzt vollständig auf.
+
 ## [1.49.0] – 2026-10-06
 
 ### Neu

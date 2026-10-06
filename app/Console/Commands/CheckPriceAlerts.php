@@ -35,18 +35,27 @@ class CheckPriceAlerts extends Command
 
             if ($hit) {
                 $alert->update(['triggered_at' => now()]);
-                $notifier->send(
-                    $alert->user,
-                    ($alert->condition === 'above' ? '📈 ' : '📉 ').($alert->name ?: $security->name),
-                    __(':name is at :price (alert :condition :target)', [
-                        'name' => $alert->name ?: $security->name,
-                        'price' => number_format($price, 2, ',', '.').' '.$alert->currency,
+                $name = $alert->name ?: $security->name;
+                $priceText = number_format($price, 2, ',', '.').' '.$alert->currency;
+
+                if ($alert->gain_percent) {
+                    $title = '📈 +'.$alert->gain_percent.' % '.__('profit').': '.$name;
+                    $body = __(':name has reached +:percent % above your buy price and is at :price.', [
+                        'name' => $name,
+                        'percent' => $alert->gain_percent,
+                        'price' => $priceText,
+                    ]);
+                } else {
+                    $title = ($alert->condition === 'above' ? '📈 ' : '📉 ').$name;
+                    $body = __(':name is at :price (alert :condition :target)', [
+                        'name' => $name,
+                        'price' => $priceText,
                         'condition' => $alert->condition === 'above' ? __('above') : __('below'),
                         'target' => number_format($alert->target_price, 2, ',', '.').' '.$alert->currency,
-                    ]),
-                    route('portfolio.security', ['symbol' => $alert->symbol]),
-                    important: true,
-                );
+                    ]);
+                }
+
+                $notifier->send($alert->user, $title, $body, route('portfolio.security', ['symbol' => $alert->symbol]), important: true);
                 $sent++;
             }
         }

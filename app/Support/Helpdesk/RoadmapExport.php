@@ -3,12 +3,15 @@
 namespace App\Support\Helpdesk;
 
 use App\Models\RoadmapMilestone;
+use App\Models\RoadmapMilestoneImage;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Support\AppVersion;
 use App\Support\Modules\ModuleCatalog;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use ZipArchive;
 
 /**
  * The roadmap as Markdown to paste into Claude (or Claude Code): milestones with their items,
@@ -22,13 +25,66 @@ class RoadmapExport
      */
     public static function markdown(?int $milestoneId = null, bool $withDone = false): string
     {
-        $milestones = match ($milestoneId) {
-            0 => new Collection,
-            null => RoadmapMilestone::where('status', '!=', 'done')->orderBy('position')->orderBy('id')->get(),
-            default => RoadmapMilestone::whereKey($milestoneId)->get(),
-        };
+        return self::render(self::milestones($milestoneId), $milestoneId === null || $milestoneId === 0, $withDone);
+    }
 
-        return self::render($milestones, $milestoneId === null || $milestoneId === 0, $withDone);
+    /**
+     * The scope's milestones with their images eager-loaded.
+     *
+     * @return Collection<int, RoadmapMilestone>
+     */
+    private static function milestones(?int $milestoneId): Collection
+    {
+        return match ($milestoneId) {
+            0 => new Collection,
+            null => RoadmapMilestone::with('images')->where('status', '!=', 'done')->orderBy('position')->orderBy('id')->get(),
+            default => RoadmapMilestone::with('images')->whereKey($milestoneId)->get(),
+        };
+    }
+
+    /**
+     * True when any milestone in the scope has an image, so the export must become a ZIP.
+     */
+    public static function hasImages(?int $milestoneId = null): bool
+    {
+        return self::milestones($milestoneId)->contains(fn (RoadmapMilestone $milestone) => $milestone->images->isNotEmpty());
+    }
+
+    /**
+     * The roadmap plus every attached image as a ZIP: `roadmap.md` references the images under
+     * `bilder/`. Returns the path of a temporary file the caller must send and delete.
+     */
+    public static function archive(?int $milestoneId = null, bool $withDone = false): string
+    {
+        $milestones = self::milestones($milestoneId);
+        $path = tempnam(sys_get_temp_dir(), 'roadmap');
+        $zip = new ZipArchive;
+
+        if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Could not create the roadmap archive.');
+        }
+
+        $zip->addFromString('roadmap.md', self::render($milestones, $milestoneId === null || $milestoneId === 0, $withDone));
+
+        foreach ($milestones as $milestone) {
+            foreach ($milestone->images as $index => $image) {
+                if (Storage::disk(RoadmapMilestoneImage::DISK)->exists($image->path)) {
+                    $zip->addFromString(self::imageName($milestone, $index), (string) Storage::disk(RoadmapMilestoneImage::DISK)->get($image->path));
+                }
+            }
+        }
+
+        $zip->close();
+
+        return $path;
+    }
+
+    /**
+     * Relative path of a milestone image inside the archive (and in the Markdown references).
+     */
+    private static function imageName(RoadmapMilestone $milestone, int $index): string
+    {
+        return 'bilder/m'.$milestone->id.'-'.($index + 1).'.jpg';
     }
 
     /**
@@ -56,6 +112,25 @@ class RoadmapExport
             if ($milestone->description) {
                 $lines[] = '';
                 $lines[] = trim($milestone->description);
+            }
+
+            if ($milestone->details) {
+                $lines[] = '';
+                $lines[] = trim($milestone->details);
+            }
+
+            if ($milestone->images->isNotEmpty()) {
+                $lines[] = '';
+                $lines[] = '**'.__('Images').':**';
+                $lines[] = '';
+
+                foreach ($milestone->images as $index => $image) {
+                    $name = self::imageName($milestone, $index);
+                    $caption = $image->caption ?: __('Image :number', ['number' => $index + 1]);
+                    $lines[] = '!['.$caption.']('.$name.')';
+                    $lines[] = '_'.$caption.'_';
+                    $lines[] = '';
+                }
             }
 
             $lines = [...$lines, ...self::items(self::tickets($milestone->id, $withDone))];

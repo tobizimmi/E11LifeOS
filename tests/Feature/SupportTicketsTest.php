@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\RoadmapMilestone;
+use App\Models\RoadmapMilestoneImage;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Notifications\SupportTicketUpdated;
 use App\Support\Admin\AdminOverview;
 use App\Support\ErrorReporter;
 use App\Support\Helpdesk\Macros;
+use App\Support\Helpdesk\RoadmapExport;
 use App\Support\Helpdesk\SupportMail;
 use App\Support\Helpdesk\Tickets;
 use App\Support\Security\SecurityLog;
@@ -215,6 +217,63 @@ class SupportTicketsTest extends TestCase
 
         // Members can't pick the team's item type.
         Volt::test('support.index')->set('type', 'task')->set('subject', 'x')->set('body', 'y')->call('submit')->assertHasErrors('type');
+    }
+
+    public function test_milestones_carry_a_detailed_text_and_images_that_are_included_in_the_export(): void
+    {
+        Storage::fake('local');
+        [$member] = $this->memberWithHousehold();
+        $admin = $this->admin();
+        $this->actingAs($admin);
+
+        Volt::test('admin.roadmap')
+            ->call('startCreate')
+            ->set('form.title', 'Shop & Lizenzen')
+            ->set('form.version', '1.40')
+            ->set('form.details', 'Ausführliche Beschreibung mit Akzeptanzkriterien.')
+            ->set('newImages', [UploadedFile::fake()->image('mockup.png', 20, 20)])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $milestone = RoadmapMilestone::with('images')->sole();
+        $this->assertSame('Ausführliche Beschreibung mit Akzeptanzkriterien.', $milestone->details);
+        $image = $milestone->images->sole();
+        Storage::disk('local')->assertExists($image->path);
+
+        // The image is served to admins only.
+        $this->get(route('admin.roadmap.image', $image))->assertOk();
+        $this->actingAs($member)->get(route('admin.roadmap.image', $image))->assertForbidden();
+        $this->actingAs($admin);
+
+        // Captions are editable and saved with the milestone.
+        Volt::test('admin.roadmap')->call('startEdit', $milestone->id)
+            ->set('imageCaptions.'.$image->id, 'Startbildschirm')
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame('Startbildschirm', $image->fresh()->caption);
+
+        // The Markdown export carries the detailed text and references the image with its caption.
+        $markdown = RoadmapExport::markdown();
+        $this->assertStringContainsString('Ausführliche Beschreibung mit Akzeptanzkriterien.', $markdown);
+        $this->assertStringContainsString('bilder/m'.$milestone->id.'-1.jpg', $markdown);
+        $this->assertStringContainsString('Startbildschirm', $markdown);
+
+        // The download becomes a ZIP that bundles the Markdown with the images.
+        $this->assertTrue(RoadmapExport::hasImages());
+        $zipPath = RoadmapExport::archive();
+        $zip = new \ZipArchive;
+        $zip->open($zipPath);
+        $this->assertNotFalse($zip->locateName('roadmap.md'));
+        $this->assertNotFalse($zip->locateName('bilder/m'.$milestone->id.'-1.jpg'));
+        $zip->close();
+        @unlink($zipPath);
+
+        $this->get(route('admin.roadmap.export'))->assertOk()->assertHeader('Content-Type', 'application/zip');
+
+        // Deleting the image removes the row and the stored file.
+        Volt::test('admin.roadmap')->call('deleteImage', $image->id);
+        $this->assertSame(0, RoadmapMilestoneImage::count());
+        Storage::disk('local')->assertMissing($image->path);
+        $this->assertFalse(RoadmapExport::hasImages());
     }
 
     public function test_requesters_answer_the_support_mail_and_the_answer_lands_in_the_ticket(): void

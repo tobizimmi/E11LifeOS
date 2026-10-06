@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.52.0] – 2026-10-06
+
+### Neu
+- **Bank verbinden ohne FinTS** (Portfolio → Banking): Konten lassen sich jetzt zusätzlich über die offizielle **PSD2-Schnittstelle** (GoCardless Bank Account Data) verbinden – auch für Banken, die FinTS abgeschaltet haben. Bank suchen, einmal bei der Bank bestätigen, danach landen **Salden und Umsätze automatisch in den Finanzen** (täglicher Abruf; manuell per „Jetzt abrufen"). Die 90-Tage-Zustimmung wird überwacht; läuft sie ab, kommt eine Erinnerung zum Neu-Verbinden.
+- Hinweis: PSD2 deckt **Zahlungskonten** ab (Giro/Karte), **keine Wertpapierdepots** – Depots laufen weiter über FinTS. Die Funktion erscheint nur, wenn die GoCardless-Zugangsdaten als Umgebungs-Secrets hinterlegt sind.
+
 ## [1.51.0] – 2026-10-06
 
 ### Neu

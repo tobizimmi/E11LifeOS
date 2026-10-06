@@ -3,7 +3,9 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Portfolio;
+use App\Models\PortfolioPosition;
 use App\Models\PortfolioSetting;
+use App\Models\PriceAlert;
 use App\Models\WatchlistItem;
 use App\Support\Finance\BankCsvImporter;
 use App\Support\Portfolio\MarketData;
@@ -50,6 +52,47 @@ trait InteractsWithPortfolio
         $task = PortfolioLink::createTask($this->currentUser(), (int) $this->householdId, mb_substr($symbol, 0, 32), mb_substr(trim($title), 0, 200));
 
         $this->dispatch('toast', message: $task ? __('Task created: :title', ['title' => $task->title]) : __('The task could not be created.'));
+    }
+
+    /**
+     * One-click profit alerts for a holding: a price alert at each step of PriceAlert::GAIN_STEPS
+     * above the average buy price (in the security's own currency). Steps already set up are kept.
+     *
+     * @return int the number of newly created alerts
+     */
+    protected function createGainAlerts(PortfolioPosition $position): int
+    {
+        if ($position->avg_buy_price <= 0) {
+            return 0;
+        }
+
+        $existing = PriceAlert::where('user_id', $this->currentUser()->id)
+            ->where('symbol', $position->symbol)
+            ->whereNotNull('gain_percent')
+            ->pluck('gain_percent')
+            ->all();
+
+        $created = 0;
+
+        foreach (PriceAlert::GAIN_STEPS as $percent) {
+            if (in_array($percent, $existing, true)) {
+                continue;
+            }
+
+            PriceAlert::create([
+                'user_id' => $this->currentUser()->id,
+                'symbol' => $position->symbol,
+                'name' => $position->name ?: $position->symbol,
+                'condition' => 'above',
+                'target_price' => round($position->avg_buy_price * (1 + $percent / 100), 2),
+                'gain_percent' => $percent,
+                'currency' => $position->currency ?: 'EUR',
+                'active' => true,
+            ]);
+            $created++;
+        }
+
+        return $created;
     }
 
     /**

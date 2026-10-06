@@ -6643,5 +6643,13 @@
     "Selection": "Auswahl",
     "Selected recipes": "Ausgewählte Rezepte",
     "Week as PDF": "Woche als PDF",
-    "Nothing planned": "Nichts geplant"
+    "Nothing planned": "Nichts geplant",
+    "Profit alerts": "Gewinn-Alarme",
+    "Get notified when this security rises :steps above your average buy price of :price.": "Werde benachrichtigt, wenn dieser Wert :steps über deinem durchschnittlichen Kaufpreis von :price steigt.",
+    "Set up profit alerts": "Gewinn-Alarme einrichten",
+    "Manage alerts": "Alarme verwalten",
+    ":count profit alert set up.|:count profit alerts set up.": ":count Gewinn-Alarm eingerichtet.|:count Gewinn-Alarme eingerichtet.",
+    "Profit alerts are already set up for this security.": "Für diesen Wert sind bereits Gewinn-Alarme eingerichtet.",
+    "profit": "Gewinn",
+    ":name has reached +:percent % above your buy price and is at :price.": ":name hat +:percent % über deinem Kaufpreis erreicht und steht bei :price."
 }

@@ -236,7 +236,7 @@ class DataExportController extends Controller
                 ]),
                 'watchlist' => WatchlistItem::where('user_id', $user->id)->orderBy('symbol')->get()->map->only(['symbol', 'name', 'notes']),
                 'target_allocations' => TargetAllocation::where('user_id', $user->id)->get()->map->only(['symbol', 'name', 'target_percent']),
-                'price_alerts' => PriceAlert::where('user_id', $user->id)->get()->map->only(['symbol', 'name', 'condition', 'target_price', 'currency', 'triggered_at', 'active']),
+                'price_alerts' => PriceAlert::where('user_id', $user->id)->get()->map->only(['symbol', 'name', 'condition', 'target_price', 'gain_percent', 'currency', 'triggered_at', 'active']),
                 'settings' => PortfolioSetting::where('user_id', $user->id)->first()?->makeHidden(['id', 'user_id', 'default_portfolio_id', 'pushover_app_token']),
             ],
             'business' => [

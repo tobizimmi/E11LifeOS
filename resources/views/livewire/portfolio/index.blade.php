@@ -196,6 +196,15 @@ new #[Layout('layouts.app')] class extends Component
         $this->showPositionForm = false;
     }
 
+    public function setupGainAlerts(int $positionId): void
+    {
+        $created = $this->createGainAlerts($this->findPosition($positionId));
+
+        $this->dispatch('toast', message: $created > 0
+            ? trans_choice(':count profit alert set up.|:count profit alerts set up.', $created, ['count' => $created])
+            : __('Profit alerts are already set up for this security.'));
+    }
+
     public function deletePosition(int $positionId): void
     {
         $position = $this->findPosition($positionId);
@@ -514,6 +523,24 @@ new #[Layout('layouts.app')] class extends Component
                     <x-text-input id="position-target" wire:model="positionForm.take_profit_price" inputmode="decimal" class="mt-1 block w-full" />
                     <x-input-error :messages="$errors->get('positionForm.take_profit_price')" class="mt-1" />
                 </div>
+                @if ($editingPosition && $editingPosition->avg_buy_price > 0)
+                    @php
+                        $gainCurrency = $editingPosition->currency ?: 'EUR';
+                    @endphp
+                    <div class="sm:col-span-2 rounded-xl bg-emerald-50/60 p-3 dark:bg-emerald-900/20">
+                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Profit alerts') }}</p>
+                        <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">{{ __('Get notified when this security rises :steps above your average buy price of :price.', ['steps' => '+5 / 10 / 20 / 30 %', 'price' => number_format($editingPosition->avg_buy_price, 2, ',', '.').' '.$gainCurrency]) }}</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            @foreach (\App\Models\PriceAlert::GAIN_STEPS as $step)
+                                <span class="rounded-full bg-white px-2 py-0.5 text-xs tabular-nums text-emerald-800 ring-1 ring-emerald-200 dark:bg-gray-800 dark:text-emerald-200 dark:ring-emerald-800">+{{ $step }} % · {{ number_format(round($editingPosition->avg_buy_price * (1 + $step / 100), 2), 2, ',', '.') }} {{ $gainCurrency }}</span>
+                            @endforeach
+                        </div>
+                        <button type="button" wire:click="setupGainAlerts({{ $editingPositionId }})" wire:loading.attr="disabled" wire:target="setupGainAlerts" class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-60 dark:bg-emerald-500 dark:hover:bg-emerald-600">
+                            📈 {{ __('Set up profit alerts') }}
+                        </button>
+                        <a href="{{ route('portfolio.alerts') }}" wire:navigate class="ms-2 text-xs text-indigo-600 hover:underline dark:text-indigo-300">{{ __('Manage alerts') }}</a>
+                    </div>
+                @endif
                 <div class="sm:col-span-2">
                     <x-input-label for="position-notes" :value="__('Notes')" />
                     <textarea id="position-notes" wire:model="positionForm.notes" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"></textarea>

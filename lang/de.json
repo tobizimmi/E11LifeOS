@@ -6744,5 +6744,12 @@
     "Live in it": "Selbst nutzen",
     "incl. saved rent (:amount/year)": "inkl. gesparter Miete (:amount/Jahr)",
     "Letting out comes out :amount ahead here.": "Vermieten liegt hier um :amount vorn.",
-    "Living in it yourself comes out :amount ahead here.": "Selbst nutzen liegt hier um :amount vorn."
+    "Living in it yourself comes out :amount ahead here.": "Selbst nutzen liegt hier um :amount vorn.",
+    "Dictated text": "Diktierter Text",
+    "Added to the shopping list.": "Zur Einkaufsliste hinzugefügt.",
+    "Ready-made shortcut": "Fertiger Kurzbefehl",
+    "Download the ready-made shortcut, open it and tap “Add Shortcut” – the access token is already filled in.": "Lade den fertigen Kurzbefehl herunter, öffne ihn und tippe auf „Kurzbefehl hinzufügen“ – der Zugangs-Token ist schon eingetragen.",
+    "Download shortcut": "Kurzbefehl herunterladen",
+    "On the iPhone/iPad open the file in Safari. If import is blocked, allow it once under Settings → Shortcuts → “Allow Untrusted Shortcuts”. Each download creates a new access token.": "Öffne die Datei auf dem iPhone/iPad in Safari. Falls der Import blockiert wird, erlaube ihn einmalig unter Einstellungen → Kurzbefehle → „Nicht vertrauenswürdige Kurzbefehle erlauben“. Jeder Download erzeugt einen neuen Zugangs-Token.",
+    "Prefer to set it up by hand?": "Lieber manuell einrichten?"
 }

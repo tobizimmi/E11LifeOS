@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.54.2] – 2026-10-10
+
+### Geändert
+- **Siri-Kurzbefehle überarbeitet** (Profil → Mobile App): Der herunterladbare Kurzbefehl funktionierte auf iPhones nicht („kann nicht ausgeführt werden"), weil Apple seit iOS 15 Kurzbefehle signiert und selbst erzeugte Dateien nicht zuverlässig importiert werden. Der Download wurde daher entfernt und durch eine klare Ein-Minuten-Anleitung mit **vorausgefülltem Zugangs-Token** ersetzt. Neu: Du kannst das **Ziel wählen** – Einkaufsliste, Aufgabe oder Inbox (die Inbox ordnet die Notiz automatisch ein). Die passende API-URL wird je Ziel angezeigt.
+
 ## [1.54.1] – 2026-10-10
 
 ### Neu

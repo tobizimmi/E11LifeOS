@@ -6751,5 +6751,16 @@
     "Download the ready-made shortcut, open it and tap “Add Shortcut” – the access token is already filled in.": "Lade den fertigen Kurzbefehl herunter, öffne ihn und tippe auf „Kurzbefehl hinzufügen“ – der Zugangs-Token ist schon eingetragen.",
     "Download shortcut": "Kurzbefehl herunterladen",
     "On the iPhone/iPad open the file in Safari. If import is blocked, allow it once under Settings → Shortcuts → “Allow Untrusted Shortcuts”. Each download creates a new access token.": "Öffne die Datei auf dem iPhone/iPad in Safari. Falls der Import blockiert wird, erlaube ihn einmalig unter Einstellungen → Kurzbefehle → „Nicht vertrauenswürdige Kurzbefehle erlauben“. Jeder Download erzeugt einen neuen Zugangs-Token.",
-    "Prefer to set it up by hand?": "Lieber manuell einrichten?"
+    "Prefer to set it up by hand?": "Lieber manuell einrichten?",
+    "Set up an iOS shortcut that dictates to your household – also hands-free via Siri. Several items at once work too, e.g. “2 litres of milk, butter and 6 eggs”.": "Richte einen iOS-Kurzbefehl ein, der Diktiertes an deinen Haushalt schickt – auch freihändig über Siri. Mehrere Artikel auf einmal funktionieren ebenfalls, z. B. „2 Liter Milch, Butter und 6 Eier“.",
+    "Since iOS 15 Apple signs shortcuts, so a ready-made file cannot be imported reliably – the one-minute setup below works on every iPhone. The token is already created for you.": "Seit iOS 15 signiert Apple Kurzbefehle, daher lässt sich eine fertige Datei nicht zuverlässig importieren – die Ein-Minuten-Einrichtung unten funktioniert auf jedem iPhone. Den Token erzeugen wir dir vorab.",
+    "Create access token": "Zugangs-Token erstellen",
+    "What should Siri add?": "Was soll Siri hinzufügen?",
+    "The Inbox sorts the note automatically (task, appointment, shopping or note).": "Die Inbox ordnet die Notiz automatisch ein (Aufgabe, Termin, Einkauf oder Notiz).",
+    "Open the Shortcuts app → “+” → add the action “Dictate Text”.": "Öffne die App „Kurzbefehle“ → „+“ → füge die Aktion „Text diktieren“ hinzu.",
+    "Add “Get Contents of URL” below it.": "Füge darunter „Inhalte von URL abrufen“ hinzu.",
+    "Method: POST · Request body: JSON · add one field “text” and set it to the “Dictated Text” variable.": "Methode: POST · Anfrage-Text: JSON · ein Feld „text“ hinzufügen und auf die Variable „Diktierter Text“ setzen.",
+    "Name the shortcut, e.g. “Add to shopping list” – then say “Hey Siri, Add to shopping list”.": "Benenne den Kurzbefehl, z. B. „Zur Einkaufsliste hinzufügen“ – dann sag „Hey Siri, Zur Einkaufsliste hinzufügen“.",
+    "The token stays valid as long as it is used; an unused token expires on its own. You can set up one shortcut per target.": "Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab. Du kannst je Ziel einen eigenen Kurzbefehl einrichten.",
+    "Siri shortcuts": "Siri-Kurzbefehle"
 }

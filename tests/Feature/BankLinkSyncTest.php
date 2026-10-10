@@ -82,6 +82,23 @@ class BankLinkSyncTest extends TestCase
         $this->assertSame(2, Transaction::where('bank_account_id', $account->id)->count());
     }
 
+    public function test_invalid_gocardless_credentials_show_a_hint_instead_of_crashing(): void
+    {
+        // GoCardless rejects the secret pair when minting the token (401).
+        Http::fake(fn (Request $request) => str_contains($request->url(), '/token/new/')
+            ? Http::response(['summary' => 'Authentication failed', 'detail' => 'No active account found with the given credentials'], 401)
+            : Http::response([], 404));
+
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // Opening the connect panel loads the bank list – it must not throw a 500.
+        Volt::test('portfolio.banking')
+            ->set('showConnect', true)
+            ->assertOk()
+            ->assertSee('GoCardless-Zugangsdaten');
+    }
+
     public function test_an_expired_consent_is_flagged_and_not_synced(): void
     {
         $this->fakeGoCardless();

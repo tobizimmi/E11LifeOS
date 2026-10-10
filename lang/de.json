@@ -6729,5 +6729,6 @@
     "Trade utilisation": "Gewerke-Auslastung",
     "How much of each trade’s budget is already invoiced and paid.": "Wie viel vom Budget jedes Gewerks bereits in Rechnung gestellt und bezahlt ist.",
     "Running costs by month": "Laufende Kosten pro Monat",
-    "Add budget lines and record your equity contributions and loan draws to watch the financing come together.": "Lege Budgetposten an und erfasse Eigenkapital-Einsätze und Darlehensabrufe, um die Finanzierung zusammenwachsen zu sehen."
+    "Add budget lines and record your equity contributions and loan draws to watch the financing come together.": "Lege Budgetposten an und erfasse Eigenkapital-Einsätze und Darlehensabrufe, um die Finanzierung zusammenwachsen zu sehen.",
+    "The bank list could not be loaded. Please check the GoCardless access data (Secret ID / key) in the server settings and try again.": "Die Bankliste konnte nicht geladen werden. Bitte prüfe die GoCardless-Zugangsdaten (Secret-ID / Key) in den Servereinstellungen und versuche es erneut."
 }

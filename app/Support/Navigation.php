@@ -47,6 +47,7 @@ class Navigation
             'dashboard' => ['start', __('Dashboard'), 'home', 'dashboard', ['dashboard']],
             'inbox' => ['start', __('Inbox'), 'inbox', 'inbox.index', ['inbox.index']],
             'brain' => ['start', __('Ask your Second Brain'), 'sparkles', 'brain.ask', ['brain.ask']],
+            'notes' => ['start', __('Notes'), 'pencil', 'notes.index', ['notes.index']],
             'learnings' => ['start', __('Lessons learned'), 'academic-cap', 'learnings.index', ['learnings.*']],
             'tasks' => ['everyday', __('To-Do'), 'check-circle', 'tasks.index', ['tasks.index']],
             'calendar' => ['everyday', __('Calendar'), 'calendar-days', 'calendar.index', ['calendar.*']],
@@ -185,9 +186,9 @@ class Navigation
     {
         return [
             'everything' => ['label' => __('Everything'), 'description' => __('All modules in the menu.'), 'modules' => null],
-            'family' => ['label' => __('Family & household'), 'description' => __('Tasks, calendar, shopping, recipes, home, health, people, trips.'), 'modules' => ['dashboard', 'inbox', 'tasks', 'calendar', 'journal', 'shopping', 'pantry', 'recipes', 'house', 'smart_home', 'automations', 'vehicles', 'health', 'people', 'kids', 'trips', 'places', 'splits', 'household']],
-            'money' => ['label' => __('Money focus'), 'description' => __('Finances, portfolio, contracts, net worth plus the everyday basics.'), 'modules' => ['dashboard', 'inbox', 'tasks', 'calendar', 'shopping', 'finance', 'portfolio', 'business', 'net_worth', 'cashflow', 'contracts', 'quotes', 'wishlist', 'knowledge', 'real_estate', 'emergency', 'provision']],
-            'minimal' => ['label' => __('Minimal'), 'description' => __('Just tasks, calendar, shopping list and notes.'), 'modules' => ['dashboard', 'inbox', 'tasks', 'calendar', 'shopping']],
+            'family' => ['label' => __('Family & household'), 'description' => __('Tasks, calendar, shopping, recipes, home, health, people, trips.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'journal', 'shopping', 'pantry', 'recipes', 'house', 'smart_home', 'automations', 'vehicles', 'health', 'people', 'kids', 'trips', 'places', 'splits', 'household']],
+            'money' => ['label' => __('Money focus'), 'description' => __('Finances, portfolio, contracts, net worth plus the everyday basics.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'shopping', 'finance', 'portfolio', 'business', 'net_worth', 'cashflow', 'contracts', 'quotes', 'wishlist', 'knowledge', 'real_estate', 'emergency', 'provision']],
+            'minimal' => ['label' => __('Minimal'), 'description' => __('Just tasks, calendar, shopping list and notes.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'shopping']],
         ];
     }
 

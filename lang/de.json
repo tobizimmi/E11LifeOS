@@ -6762,5 +6762,12 @@
     "Method: POST · Request body: JSON · add one field “text” and set it to the “Dictated Text” variable.": "Methode: POST · Anfrage-Text: JSON · ein Feld „text“ hinzufügen und auf die Variable „Diktierter Text“ setzen.",
     "Name the shortcut, e.g. “Add to shopping list” – then say “Hey Siri, Add to shopping list”.": "Benenne den Kurzbefehl, z. B. „Zur Einkaufsliste hinzufügen“ – dann sag „Hey Siri, Zur Einkaufsliste hinzufügen“.",
     "The token stays valid as long as it is used; an unused token expires on its own. You can set up one shortcut per target.": "Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab. Du kannst je Ziel einen eigenen Kurzbefehl einrichten.",
-    "Siri shortcuts": "Siri-Kurzbefehle"
+    "Siri shortcuts": "Siri-Kurzbefehle",
+    "To the pages": "Zu den Seiten",
+    "New note": "Neue Notiz",
+    "Jot something down … the first line becomes the title.": "Schreib etwas auf … die erste Zeile wird zur Überschrift.",
+    "Notes are built like pages and can be filed into the page tree.": "Notizen sind wie Seiten aufgebaut und lassen sich in den Seitenbaum einordnen.",
+    "File into pages": "In Seiten einordnen",
+    "File this note into the pages?": "Diese Notiz in die Seiten einordnen?",
+    "No notes yet – jot your first one above.": "Noch keine Notizen – schreib oben deine erste auf."
 }

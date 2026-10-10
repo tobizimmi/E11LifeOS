@@ -4,9 +4,13 @@ namespace App\Support\RealEstate;
 
 use App\Models\RealEstate;
 use App\Models\RealEstateBudgetItem;
+use App\Models\RealEstateDraw;
 use App\Models\RealEstateInvoice;
 use App\Models\RealEstateLoan;
 use App\Models\RealEstateSubsidy;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Figures of a property: purchase costs, budget against invoices, financing and monthly burden.
@@ -104,6 +108,57 @@ class RealEstatePlan
                 : null,
             'price_per_sqm' => $realEstate->purchase_price > 0 && $realEstate->living_area > 0 ? round($realEstate->purchase_price / $realEstate->living_area) : null,
             'progress' => $items->isEmpty() ? null : (int) round($items->filter(fn (array $row) => $row['item']->status === 'done')->count() / $items->count() * 100),
+        ];
+    }
+
+    /**
+     * Financing controlling: the funds drawn so far against the planned amount, split into equity
+     * and loan draws, plus the running renovation costs by month.
+     *
+     * @param  array<string, mixed>  $summary  the result of self::summary()
+     * @return array{cost: float, planned_total: float, actual_total: float, remaining: float, coverage_gap: float, sources: array<string, array{planned: float, actual: float, rows: Collection<int, RealEstateDraw>}>, renovation_by_month: list<array{month: string, label: string, amount: float}>}
+     */
+    public static function controlling(RealEstate $realEstate, array $summary): array
+    {
+        $realEstate->loadMissing(['draws', 'invoices']);
+
+        $sources = [];
+
+        foreach (RealEstateDraw::SOURCES as $source) {
+            $rows = $realEstate->draws->where('source', $source)->values();
+            $sources[$source] = [
+                'planned' => round((float) $rows->sum('planned_amount'), 2),
+                'actual' => round((float) $rows->sum('actual_amount'), 2),
+                'rows' => $rows,
+            ];
+        }
+
+        $plannedTotal = round((float) $realEstate->draws->sum('planned_amount'), 2);
+        $actualTotal = round((float) $realEstate->draws->sum('actual_amount'), 2);
+        $cost = (float) $summary['expected_total'];
+
+        $byMonth = DB::table('real_estate_invoices')
+            ->where('real_estate_id', $realEstate->id)
+            ->where('amount', '>', 0)
+            ->get(['invoice_date', 'amount'])
+            ->groupBy(fn (object $row) => Carbon::parse((string) $row->invoice_date)->format('Y-m'))
+            ->map(fn (Collection $group, string $month) => [
+                'month' => $month,
+                'label' => Carbon::createFromFormat('Y-m-d', $month.'-01')->translatedFormat('M Y'),
+                'amount' => round((float) $group->sum('amount'), 2),
+            ])
+            ->sortKeys()
+            ->values()
+            ->all();
+
+        return [
+            'cost' => $cost,
+            'planned_total' => $plannedTotal,
+            'actual_total' => $actualTotal,
+            'remaining' => round($plannedTotal - $actualTotal, 2),
+            'coverage_gap' => round($cost - $plannedTotal, 2),
+            'sources' => $sources,
+            'renovation_by_month' => $byMonth,
         ];
     }
 

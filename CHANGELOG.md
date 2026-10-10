@@ -3,6 +3,39 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.54.1] – 2026-10-10
+
+### Neu
+- **Fertiger Siri-Kurzbefehl zum Herunterladen** (Profil → Mobile App): Statt der manuellen Anleitung gibt es jetzt einen Button, der einen **fertigen iOS-Kurzbefehl** (mit bereits eingetragenem Zugangs-Token) herunterlädt – öffnen, „Kurzbefehl hinzufügen" tippen, fertig. Die manuelle Einrichtung bleibt als einklappbarer Fallback erhalten.
+
+### Behoben
+- Rezepte: Downloads (Kochbuch-PDF, ZIP-Export, Rezept-PDF/JSON/Markdown, Wochenplan-PDF) wurden in der installierten Web-App nur angezeigt, aber nicht gespeichert. Sie öffnen jetzt zum Herunterladen (neuer Tab / `download`), sodass die Datei auch in der Web-App sicher gespeichert werden kann.
+
+## [1.54.0] – 2026-10-10
+
+### Neu
+- **Diagramme & Vermieten-vs-selbst-Vergleich im Immobilien-Rechner** (Immobilien → Wirtschaftlichkeit): Die Prognose wird jetzt zusätzlich grafisch dargestellt – ein **Vermögensaufbau-Chart** (Immobilienwert und Eigenkapital im Objekt über die Jahre, die Lücke ist die Restschuld) und ein **Miete-&-Cashflow-Chart** (Jahresmiete gegen Cashflow nach Steuern). Dazu ein **„Vermieten vs. selbst nutzen"-Vergleich**: Vermieten (Miete, AfA, Steuer) gegen Selbstnutzen (gesparte Kaltmiete steuerfrei, Verkauf ohne Spekulationssteuer) mit Gesamtergebnis und Hinweis, welche Variante vorn liegt.
+
+## [1.53.1] – 2026-10-10
+
+### Behoben
+- Bank verbinden (PSD2/GoCardless): Beim Öffnen von „Bank verbinden" kam es zu einem Server-Fehler (500), wenn die GoCardless-Zugangsdaten fehlten oder ungültig waren (die Bank-Schnittstelle antwortete mit 401). Statt eines Absturzes erscheint jetzt ein verständlicher Hinweis, die Secret-ID/den Key in den Servereinstellungen zu prüfen.
+
+## [1.53.0] – 2026-10-10
+
+### Neu
+- **Finanzierungs-Controlling für Immobilien** (Objekt → Controlling): Neuer Reiter, der die Finanzierung begleitet. KPI-Kacheln zeigen Gesamtkosten, geplante Finanzierung (inkl. Hinweis auf eine Deckungslücke), bereits Abgerufenes und die Renovierung bisher. **Eigenkapital-Einsätze und Darlehensabrufe** lassen sich je Darlehen erfassen – geplant/„beantragt" gegen das, was die Bank tatsächlich ausgezahlt hat, mit Fortschrittsbalken pro Abruf. Dazu eine **Gewerke-Auslastung** (geplant vs. in Rechnung gestellt vs. bezahlt je Gewerk) und die **laufenden Kosten pro Monat** als Balkengrafik.
+
+## [1.52.3] – 2026-10-10
+
+### Neu
+- **Per Siri zur Einkaufsliste hinzufügen** (Profil → Mobile App): Anleitung und ein per Knopfdruck erzeugter Zugangs-Token für einen iOS-Kurzbefehl, der Diktiertes an die Einkaufsliste schickt – auch freihändig über „Hey Siri". Mehrere Artikel auf einmal funktionieren ebenfalls, z. B. „2 Liter Milch, Butter und 6 Eier"; eine führende Menge je Artikel wird erkannt und doppelte Einträge werden wie beim manuellen Hinzufügen zusammengefasst. Neuer API-Endpunkt `POST /api/v1/shopping/quick`.
+
+## [1.52.2] – 2026-10-10
+
+### Behoben
+- Einkaufsliste: Der Barcode-Scanner zeigte auf dem iPhone nur ein schwarzes Bild. Die Kamera wird jetzt erst gestartet, nachdem das Scanner-Fenster sichtbar ist (iOS zeigte sonst ein eingefrorenes Standbild). Zusätzlich `autoplay`/`webkit-playsinline` gesetzt.
+
 ## [1.52.1] – 2026-10-10
 
 ### Behoben

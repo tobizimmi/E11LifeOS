@@ -278,4 +278,45 @@ class RealEstateTest extends TestCase
 
         Volt::test('real-estate.show', ['realEstate' => $realEstate->id])->set('tab', 'invoices')->assertSee('📄 2');
     }
+
+    public function test_financing_controlling_tracks_equity_and_loan_draws(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id, 'purchase_price' => 300000, 'state' => 'BY', 'equity' => 80000]);
+        $loan = $realEstate->loans()->create(['lender' => 'Sparkasse', 'kind' => 'annuity', 'amount' => 250000, 'interest_rate' => 3.6, 'repayment_rate' => 2]);
+
+        $component = Volt::test('real-estate.show', ['realEstate' => $realEstate->id])
+            ->set('tab', 'controlling')
+            // Equity contribution: fully paid.
+            ->set('draw.source', 'equity')->set('draw.label', 'Eigenkapital Notar')->set('draw.planned_amount', '80000')->set('draw.actual_amount', '80000')->set('draw.actual_on', '2026-03-01')
+            ->call('saveDraw')->assertHasNoErrors()
+            // First loan draw: requested 100,000, only 60,000 disbursed so far.
+            ->set('draw.source', 'loan')->set('draw.loan_id', (string) $loan->id)->set('draw.label', '1. Abruf Rohbau')->set('draw.planned_amount', '100000')->set('draw.actual_amount', '60000')
+            ->call('saveDraw')->assertHasNoErrors();
+
+        $equity = $realEstate->draws()->where('source', 'equity')->sole();
+        $loanDraw = $realEstate->draws()->where('source', 'loan')->sole();
+        $this->assertSame($loan->id, $loanDraw->loan_id);
+        $this->assertSame(100, $equity->utilisation());
+        $this->assertSame(60, $loanDraw->utilisation());
+
+        // A running renovation invoice feeds the by-month costs.
+        $realEstate->invoices()->create(['vendor' => 'Rohbau GmbH', 'invoice_date' => '2026-04-15', 'amount' => 40000]);
+
+        $controlling = RealEstatePlan::controlling($realEstate->fresh()->load(['draws', 'invoices', 'budgetItems.invoices', 'loans', 'subsidies']), RealEstatePlan::summary($realEstate->fresh()));
+        $this->assertSame(180000.0, $controlling['planned_total']);
+        $this->assertSame(140000.0, $controlling['actual_total']);
+        $this->assertSame(40000.0, $controlling['remaining']);
+        $this->assertSame(60000.0, $controlling['sources']['loan']['actual']);
+        $this->assertSame(80000.0, $controlling['sources']['equity']['actual']);
+        $this->assertCount(1, $controlling['renovation_by_month']);
+        $this->assertSame(40000.0, $controlling['renovation_by_month'][0]['amount']);
+
+        // Marking the loan draw done tops it up to the requested amount.
+        $component->call('markDrawDone', $loanDraw->id);
+        $this->assertSame(100000.0, $loanDraw->fresh()->actual_amount);
+
+        Volt::test('real-estate.show', ['realEstate' => $realEstate->id])->set('tab', 'controlling')->assertSee('1. Abruf Rohbau')->assertSee('Eigenkapital Notar');
+    }
 }

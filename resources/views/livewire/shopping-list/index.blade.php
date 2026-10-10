@@ -580,7 +580,7 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="button" x-on:click="close()" class="text-2xl" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                     </div>
                     <div class="relative flex-1 overflow-hidden">
-                        <video x-ref="video" x-show="supported && ! failed" playsinline muted class="h-full w-full object-cover"></video>
+                        <video x-ref="video" x-show="supported && ! failed" playsinline webkit-playsinline muted autoplay class="h-full w-full object-cover"></video>
                         <div x-show="supported && ! failed" class="pointer-events-none absolute inset-0 flex items-center justify-center">
                             <div class="h-28 w-64 rounded-lg border-4 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
                         </div>

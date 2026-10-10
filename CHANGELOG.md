@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.53.1] – 2026-10-10
+
+### Behoben
+- Bank verbinden (PSD2/GoCardless): Beim Öffnen von „Bank verbinden" kam es zu einem Server-Fehler (500), wenn die GoCardless-Zugangsdaten fehlten oder ungültig waren (die Bank-Schnittstelle antwortete mit 401). Statt eines Absturzes erscheint jetzt ein verständlicher Hinweis, die Secret-ID/den Key in den Servereinstellungen zu prüfen.
+
 ## [1.53.0] – 2026-10-10
 
 ### Neu

@@ -330,18 +330,26 @@ new #[Layout('layouts.app')] class extends Component
         $connections = $this->connections()->with(['portfolio', 'depotPositions'])->orderBy('bank_name')->get();
 
         $institutions = [];
+        $connectError = null;
 
         if ($this->showConnect && $gocardless->configured()) {
-            $search = trim(mb_strtolower($this->bankSearch));
-            $institutions = collect($gocardless->institutions('DE'))
-                ->when($search !== '', fn ($banks) => $banks->filter(fn (array $bank) => str_contains(mb_strtolower($bank['name']), $search)))
-                ->take(60)
-                ->values()
-                ->all();
+            try {
+                $search = trim(mb_strtolower($this->bankSearch));
+                $institutions = collect($gocardless->institutions('DE'))
+                    ->when($search !== '', fn ($banks) => $banks->filter(fn (array $bank) => str_contains(mb_strtolower($bank['name']), $search)))
+                    ->take(60)
+                    ->values()
+                    ->all();
+            } catch (\Throwable $exception) {
+                report($exception);
+                // Usually wrong or missing GoCardless credentials (401) – show a hint instead of a 500.
+                $connectError = __('The bank list could not be loaded. Please check the GoCardless access data (Secret ID / key) in the server settings and try again.');
+            }
         }
 
         return [
             'connections' => $connections,
+            'connectError' => $connectError,
             'comparisons' => $connections->filter(fn (BankConnection $connection) => $connection->depotPositions->isNotEmpty())
                 ->mapWithKeys(fn (BankConnection $connection) => [$connection->id => $sync->compare($connection)]),
             'portfolioList' => $this->portfolios()->orderBy('id')->get(),
@@ -389,6 +397,9 @@ new #[Layout('layouts.app')] class extends Component
 
                     @if ($showConnect)
                         <div class="mt-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-900/40">
+                            @if ($connectError)
+                                <div class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-200">⚠️ {{ $connectError }}</div>
+                            @endif
                             <input type="text" wire:model.live.debounce.400ms="bankSearch" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('Search your bank (e.g. Sparkasse Köln, N26, DKB) …') }}" aria-label="{{ __('Search bank') }}">
                             <div class="mt-3 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
                                 @forelse ($institutions as $bank)

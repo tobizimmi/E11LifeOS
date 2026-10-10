@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.52.2] – 2026-10-10
+
+### Behoben
+- Einkaufsliste: Der Barcode-Scanner zeigte auf dem iPhone nur ein schwarzes Bild. Die Kamera wird jetzt erst gestartet, nachdem das Scanner-Fenster sichtbar ist (iOS zeigte sonst ein eingefrorenes Standbild). Zusätzlich `autoplay`/`webkit-playsinline` gesetzt.
+
 ## [1.52.1] – 2026-10-10
 
 ### Behoben

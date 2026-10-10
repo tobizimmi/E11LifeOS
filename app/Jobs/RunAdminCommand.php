@@ -2,10 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Support\AppSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -35,6 +37,15 @@ class RunAdminCommand implements ShouldQueue
 
     public function handle(): void
     {
+        // A long-running queue worker keeps the configuration from its boot. Re-apply the admin
+        // settings and drop the legacy import connections so freshly entered values (e.g. the
+        // RezepteApp2 / portfolio database credentials) take effect for this run.
+        AppSettings::apply();
+
+        foreach (['rezepteapp', 'portfolio_legacy'] as $connection) {
+            DB::purge($connection);
+        }
+
         Cache::forever(self::cacheKey($this->name), ['status' => 'running', 'at' => now()->toIso8601String(), 'output' => '']);
 
         try {

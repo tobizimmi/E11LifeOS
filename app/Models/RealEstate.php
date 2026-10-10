@@ -184,6 +184,14 @@ class RealEstate extends Model
         return $this->hasMany(RealEstateSubsidy::class)->orderBy('id');
     }
 
+    /**
+     * @return HasMany<RealEstateDraw, $this>
+     */
+    public function draws(): HasMany
+    {
+        return $this->hasMany(RealEstateDraw::class)->orderBy('source')->orderBy('position')->orderBy('id');
+    }
+
     public function isPrivate(): bool
     {
         return $this->visibility === Item::VISIBILITY_PRIVATE;

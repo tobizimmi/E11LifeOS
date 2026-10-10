@@ -5,6 +5,7 @@ use App\Models\Collection;
 use App\Models\Item;
 use App\Models\RealEstate;
 use App\Models\RealEstateBudgetItem;
+use App\Models\RealEstateDraw;
 use App\Models\RealEstateInvoice;
 use App\Models\RealEstateLoan;
 use App\Models\RealEstateSubsidy;
@@ -29,7 +30,7 @@ new #[Layout('layouts.app')] class extends Component
     use InteractsWithHousehold;
     use WithFileUploads;
 
-    public const TABS = ['overview', 'purchase', 'budget', 'invoices', 'subsidies', 'rental', 'value', 'tax'];
+    public const TABS = ['overview', 'purchase', 'budget', 'controlling', 'invoices', 'subsidies', 'rental', 'value', 'tax'];
 
     #[Locked]
     public int $realEstateId;
@@ -82,6 +83,13 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $subsidy = [];
 
+    public ?int $editingDrawId = null;
+
+    /**
+     * @var array<string, mixed>
+     */
+    public array $draw = [];
+
     public function mount(int $realEstate): void
     {
         $this->resolveHousehold();
@@ -93,6 +101,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->resetItem();
         $this->resetInvoice();
         $this->resetSubsidy();
+        $this->resetDraw();
     }
 
     private function findRealEstate(?int $id = null): RealEstate
@@ -603,6 +612,85 @@ new #[Layout('layouts.app')] class extends Component
         $this->resetSubsidy();
     }
 
+    // ── Financing controlling (draws) ─────────────────────────────────────
+
+    private function resetDraw(): void
+    {
+        $this->editingDrawId = null;
+        $this->draw = ['source' => 'loan', 'loan_id' => '', 'label' => '', 'planned_amount' => '', 'planned_on' => '', 'actual_amount' => '', 'actual_on' => '', 'notes' => ''];
+    }
+
+    public function editDraw(int $id): void
+    {
+        $draw = $this->findRealEstate()->draws()->findOrFail($id);
+        $this->editingDrawId = $draw->id;
+        $this->draw = [
+            'source' => $draw->source,
+            'loan_id' => (string) $draw->loan_id,
+            'label' => (string) $draw->label,
+            'planned_amount' => $draw->planned_amount > 0 ? (string) $draw->planned_amount : '',
+            'planned_on' => (string) $draw->planned_on?->toDateString(),
+            'actual_amount' => $draw->actual_amount > 0 ? (string) $draw->actual_amount : '',
+            'actual_on' => (string) $draw->actual_on?->toDateString(),
+            'notes' => (string) $draw->notes,
+        ];
+    }
+
+    public function cancelDraw(): void
+    {
+        $this->resetDraw();
+    }
+
+    public function saveDraw(): void
+    {
+        $model = $this->findRealEstate();
+        $data = $this->validate([
+            'draw.source' => ['required', Rule::in(RealEstateDraw::SOURCES)],
+            'draw.loan_id' => ['nullable', Rule::in($model->loans()->pluck('id')->map(fn ($id) => (string) $id)->all())],
+            'draw.label' => ['required', 'string', 'max:255'],
+            'draw.planned_amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
+            'draw.planned_on' => ['nullable', 'date'],
+            'draw.actual_amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
+            'draw.actual_on' => ['nullable', 'date'],
+            'draw.notes' => ['nullable', 'string', 'max:2000'],
+        ], attributes: ['draw.label' => __('Purpose')])['draw'];
+
+        $attributes = collect($data)->map(fn ($value) => $value === '' ? null : $value)->all();
+        $attributes['planned_amount'] = (float) ($attributes['planned_amount'] ?? 0);
+        $attributes['actual_amount'] = (float) ($attributes['actual_amount'] ?? 0);
+
+        // Equity is not tied to a loan.
+        if ($attributes['source'] === 'equity') {
+            $attributes['loan_id'] = null;
+        }
+
+        if ($this->editingDrawId) {
+            $model->draws()->findOrFail($this->editingDrawId)->update($attributes);
+        } else {
+            $model->draws()->create($attributes + ['position' => (int) $model->draws()->max('position') + 1]);
+        }
+
+        $this->resetDraw();
+    }
+
+    /**
+     * Marks the whole planned amount as disbursed today (or clears it again).
+     */
+    public function markDrawDone(int $id): void
+    {
+        $draw = $this->findRealEstate()->draws()->findOrFail($id);
+        $done = $draw->actual_amount >= $draw->planned_amount && $draw->actual_amount > 0;
+        $draw->update($done
+            ? ['actual_amount' => 0, 'actual_on' => null]
+            : ['actual_amount' => $draw->planned_amount, 'actual_on' => $draw->actual_on ?? today()]);
+    }
+
+    public function deleteDraw(int $id): void
+    {
+        $this->findRealEstate()->draws()->findOrFail($id)->delete();
+        $this->resetDraw();
+    }
+
     public function deleteRealEstate(): void
     {
         $model = $this->findRealEstate();
@@ -614,13 +702,14 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $model = $this->findRealEstate()->load(['budgetItems.invoices', 'invoices.budgetItem', 'invoices.transaction', 'loans', 'subsidies.budgetItem']);
+        $model = $this->findRealEstate()->load(['budgetItems.invoices', 'invoices.budgetItem', 'invoices.transaction', 'loans', 'subsidies.budgetItem', 'draws.loan']);
         $summary = RealEstatePlan::summary($model);
         $firstYear = $model->purchase_date?->year ?? (int) now()->year;
 
         return [
             'model' => $model,
             'summary' => $summary,
+            'controlling' => $this->tab === 'controlling' ? RealEstatePlan::controlling($model, $summary) : null,
             'tax' => in_array($this->tab, ['overview', 'tax'], true) ? RealEstateTax::forYear($model, $this->taxYear) : null,
             'taxYears' => range(min($firstYear, (int) now()->year), (int) now()->year + 3),
             'suggestions' => $this->tab === 'subsidies' ? SubsidyPrograms::suggestionsFor($model) : [],
@@ -661,7 +750,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             <x-section-nav :label="__('Sections')" :active="$tab" :groups="[
-                __('Purchase') => ['overview' => ['📊', __('Overview'), null], 'purchase' => ['🏷', __('Purchase & financing'), null], 'budget' => ['🧱', __('Budget & trades'), null], 'invoices' => ['🧾', __('Invoices'), null], 'subsidies' => ['🎁', __('Subsidies'), null]],
+                __('Purchase') => ['overview' => ['📊', __('Overview'), null], 'purchase' => ['🏷', __('Purchase & financing'), null], 'budget' => ['🧱', __('Budget & trades'), null], 'controlling' => ['🏦', __('Controlling'), null], 'invoices' => ['🧾', __('Invoices'), null], 'subsidies' => ['🎁', __('Subsidies'), null]],
                 __('Ownership') => ['rental' => ['🔑', __('Letting'), null], 'value' => ['📈', __('Value development'), null], 'tax' => ['🏛', __('Tax'), null]],
             ]" />
 

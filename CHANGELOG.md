@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.53.0] – 2026-10-10
+
+### Neu
+- **Finanzierungs-Controlling für Immobilien** (Objekt → Controlling): Neuer Reiter, der die Finanzierung begleitet. KPI-Kacheln zeigen Gesamtkosten, geplante Finanzierung (inkl. Hinweis auf eine Deckungslücke), bereits Abgerufenes und die Renovierung bisher. **Eigenkapital-Einsätze und Darlehensabrufe** lassen sich je Darlehen erfassen – geplant/„beantragt" gegen das, was die Bank tatsächlich ausgezahlt hat, mit Fortschrittsbalken pro Abruf. Dazu eine **Gewerke-Auslastung** (geplant vs. in Rechnung gestellt vs. bezahlt je Gewerk) und die **laufenden Kosten pro Monat** als Balkengrafik.
+
 ## [1.52.3] – 2026-10-10
 
 ### Neu

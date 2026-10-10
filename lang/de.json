@@ -6686,5 +6686,18 @@
     "The bank connection could not be started. Please try again.": "Die Bankverbindung konnte nicht gestartet werden. Bitte versuche es erneut.",
     "The bank connection has expired – please reconnect.": "Die Bankverbindung ist abgelaufen – bitte neu verbinden.",
     "Bank connection expired": "Bankverbindung abgelaufen",
-    ":bank needs to be reconnected (the 90-day consent has run out).": ":bank muss neu verbunden werden (die 90-Tage-Zustimmung ist abgelaufen)."
+    ":bank needs to be reconnected (the 90-day consent has run out).": ":bank muss neu verbunden werden (die 90-Tage-Zustimmung ist abgelaufen).",
+    "Add to the shopping list with Siri": "Per Siri zur Einkaufsliste hinzufügen",
+    "Create an iOS shortcut that dictates to the shopping list – also hands-free via Siri. Several items at once work too, e.g. “2 litres of milk, butter and 6 eggs”.": "Richte einen iOS-Kurzbefehl ein, der Diktiertes an die Einkaufsliste schickt – auch freihändig über Siri. Mehrere Artikel auf einmal funktionieren ebenfalls, z. B. „2 Liter Milch, Butter und 6 Eier“.",
+    "Your token (shown only once – copy it now):": "Dein Token (wird nur einmal angezeigt – jetzt kopieren):",
+    "Create token for the shortcut": "Token für den Kurzbefehl erstellen",
+    "Set up the shortcut (iPhone/iPad):": "Kurzbefehl einrichten (iPhone/iPad):",
+    "Open the Shortcuts app → “+” → add the action “Get Contents of URL”.": "Öffne die App „Kurzbefehle“ → „+“ → füge die Aktion „Inhalte von URL abrufen“ hinzu.",
+    "URL:": "URL:",
+    "Method: POST · Request body: JSON with one field “text”.": "Methode: POST · Anfrage-Text: JSON mit einem Feld „text“.",
+    "Headers: “Authorization” = “Bearer <your token>” and “Accept” = “application/json”.": "Header: „Authorization“ = „Bearer <dein Token>“ und „Accept“ = „application/json“.",
+    "For “text”, use the shortcut input or an “Ask for Text” / “Dictate Text” action.": "Nutze für „text“ die Eingabe des Kurzbefehls oder eine Aktion „Nach Text fragen“ / „Text diktieren“.",
+    "Name the shortcut e.g. “Add to shopping list” – then say “Hey Siri, Add to shopping list”.": "Benenne den Kurzbefehl z. B. „Zur Einkaufsliste hinzufügen“ – dann sag „Hey Siri, Zur Einkaufsliste hinzufügen“.",
+    "The items land in your household’s default shopping list. The token stays valid as long as it is used; an unused token expires on its own.": "Die Artikel landen in der Standard-Einkaufsliste deines Haushalts. Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab.",
+    "Shortcut": "Kurzbefehl"
 }

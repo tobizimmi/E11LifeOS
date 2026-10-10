@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.52.3] – 2026-10-10
+
+### Neu
+- **Per Siri zur Einkaufsliste hinzufügen** (Profil → Mobile App): Anleitung und ein per Knopfdruck erzeugter Zugangs-Token für einen iOS-Kurzbefehl, der Diktiertes an die Einkaufsliste schickt – auch freihändig über „Hey Siri". Mehrere Artikel auf einmal funktionieren ebenfalls, z. B. „2 Liter Milch, Butter und 6 Eier"; eine führende Menge je Artikel wird erkannt und doppelte Einträge werden wie beim manuellen Hinzufügen zusammengefasst. Neuer API-Endpunkt `POST /api/v1/shopping/quick`.
+
 ## [1.52.2] – 2026-10-10
 
 ### Behoben

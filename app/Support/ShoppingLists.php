@@ -113,6 +113,46 @@ class ShoppingLists
     }
 
     /**
+     * Adds one or more items from a free-text line, e.g. dictated via Siri:
+     * "2 Liter Milch, Butter und 6 Eier". Splits on commas, semicolons, line breaks and the word
+     * "und", takes a leading quantity per item, and de-duplicates like add().
+     *
+     * @return list<ShoppingListEntry>
+     */
+    public static function addFromText(ShoppingList $list, string $text, ?int $userId): array
+    {
+        $parts = preg_split('/\s*(?:,|;|\n|\r|&|\bund\b)\s*/iu', trim($text)) ?: [];
+        $entries = [];
+
+        foreach ($parts as $part) {
+            [$quantity, $label] = self::splitLine(trim($part));
+
+            if ($label === '') {
+                continue;
+            }
+
+            $entries[] = self::add($list, $label, $quantity, $userId);
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Splits a single spoken item into a leading quantity and the item name
+     * ("500 g Mehl" → ["500 g", "Mehl"], "2 Milch" → ["2", "Milch"], "Butter" → [null, "Butter"]).
+     *
+     * @return array{0: ?string, 1: string}
+     */
+    private static function splitLine(string $text): array
+    {
+        if (preg_match('/^([\d.,\/]+(?:\s*[a-zA-Zäöüß]{1,5}\.?)?)\s+(.+)$/u', $text, $match) && preg_match('/\d/', $match[1])) {
+            return [trim($match[1]), trim($match[2])];
+        }
+
+        return [null, $text];
+    }
+
+    /**
      * Labels for the autocomplete of the add field.
      *
      * @return list<string>

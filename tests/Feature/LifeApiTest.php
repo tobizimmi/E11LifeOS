@@ -76,4 +76,24 @@ class LifeApiTest extends TestCase
         $this->getJson('/api/v1/net-worth', $headers)->assertOk()->assertJsonPath('data.net', 0);
         $this->getJson('/api/v1/tasks')->assertUnauthorized();
     }
+
+    public function test_a_dictated_line_adds_several_items_to_the_shopping_list(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        $this->postJson('/api/v1/shopping/quick', ['text' => '2 Liter Milch, Butter und 6 Eier'], $headers)
+            ->assertCreated()
+            ->assertJsonPath('data.added', 3);
+
+        $items = collect($this->getJson('/api/v1/shopping', $headers)->assertOk()->json('data.items'));
+        $this->assertEqualsCanonicalizing(['Milch', 'Butter', 'Eier'], $items->pluck('label')->all());
+        $this->assertSame('2 Liter', $items->firstWhere('label', 'Milch')['quantity']);
+
+        // The same item again combines instead of adding a duplicate.
+        $this->postJson('/api/v1/shopping/quick', ['text' => 'Butter'], $headers)->assertCreated();
+        $this->getJson('/api/v1/shopping', $headers)->assertJsonCount(3, 'data.items');
+
+        $this->postJson('/api/v1/shopping/quick', ['text' => ''], $headers)->assertStatus(422);
+    }
 }

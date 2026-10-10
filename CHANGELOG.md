@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.54.0] – 2026-10-10
+
+### Neu
+- **Diagramme & Vermieten-vs-selbst-Vergleich im Immobilien-Rechner** (Immobilien → Wirtschaftlichkeit): Die Prognose wird jetzt zusätzlich grafisch dargestellt – ein **Vermögensaufbau-Chart** (Immobilienwert und Eigenkapital im Objekt über die Jahre, die Lücke ist die Restschuld) und ein **Miete-&-Cashflow-Chart** (Jahresmiete gegen Cashflow nach Steuern). Dazu ein **„Vermieten vs. selbst nutzen"-Vergleich**: Vermieten (Miete, AfA, Steuer) gegen Selbstnutzen (gesparte Kaltmiete steuerfrei, Verkauf ohne Spekulationssteuer) mit Gesamtergebnis und Hinweis, welche Variante vorn liegt.
+
 ## [1.53.1] – 2026-10-10
 
 ### Behoben

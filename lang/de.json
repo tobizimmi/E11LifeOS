@@ -6730,5 +6730,19 @@
     "How much of each trade’s budget is already invoiced and paid.": "Wie viel vom Budget jedes Gewerks bereits in Rechnung gestellt und bezahlt ist.",
     "Running costs by month": "Laufende Kosten pro Monat",
     "Add budget lines and record your equity contributions and loan draws to watch the financing come together.": "Lege Budgetposten an und erfasse Eigenkapital-Einsätze und Darlehensabrufe, um die Finanzierung zusammenwachsen zu sehen.",
-    "The bank list could not be loaded. Please check the GoCardless access data (Secret ID / key) in the server settings and try again.": "Die Bankliste konnte nicht geladen werden. Bitte prüfe die GoCardless-Zugangsdaten (Secret-ID / Key) in den Servereinstellungen und versuche es erneut."
+    "The bank list could not be loaded. Please check the GoCardless access data (Secret ID / key) in the server settings and try again.": "Die Bankliste konnte nicht geladen werden. Bitte prüfe die GoCardless-Zugangsdaten (Secret-ID / Key) in den Servereinstellungen und versuche es erneut.",
+    "Wealth build-up": "Vermögensaufbau",
+    "Property value and your equity in it; the gap is the remaining debt.": "Immobilienwert und dein Eigenkapital darin; die Lücke ist die Restschuld.",
+    "Property value": "Immobilienwert",
+    "Rent & cashflow": "Miete & Cashflow",
+    "Yearly rent against the cashflow after tax per year.": "Jahresmiete gegen den Cashflow nach Steuern pro Jahr.",
+    "Rent per year": "Miete pro Jahr",
+    "Year :year": "Jahr :year",
+    "Let out vs. live in it": "Vermieten vs. selbst nutzen",
+    "Over :years years – letting (rent, depreciation, tax) against living in it yourself (saved cold rent tax-free, sale free of speculation tax). Simplified comparison.": "Über :years Jahre – Vermieten (Miete, AfA, Steuer) gegen Selbstnutzen (gesparte Kaltmiete steuerfrei, Verkauf ohne Spekulationssteuer). Vereinfachter Vergleich.",
+    "Let out": "Vermieten",
+    "Live in it": "Selbst nutzen",
+    "incl. saved rent (:amount/year)": "inkl. gesparter Miete (:amount/Jahr)",
+    "Letting out comes out :amount ahead here.": "Vermieten liegt hier um :amount vorn.",
+    "Living in it yourself comes out :amount ahead here.": "Selbst nutzen liegt hier um :amount vorn."
 }

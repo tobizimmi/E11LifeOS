@@ -56,6 +56,21 @@ class RealEstateAnalysisTest extends TestCase
         $this->assertGreaterThan(0, $early['speculation_tax']);
     }
 
+    public function test_the_let_vs_own_use_comparison_is_calculated(): void
+    {
+        $result = ProfitabilityAnalysis::calculate(['purchase_price' => 200000, 'rent' => 1000, 'equity' => 80000, 'years' => 15] + ProfitabilityAnalysis::defaults());
+        $ownUse = $result['own_use'];
+
+        // Saved cold rent in year one = 12 × 1,000 €.
+        $this->assertSame(12000.0, $ownUse['saved_rent_first']);
+        // Letting is the baseline total profit.
+        $this->assertSame($result['total_profit'], $ownUse['let_total']);
+        // The owner-occupier pays no speculation tax, so its exit matches the pre-tax proceeds.
+        $this->assertGreaterThan(0, $ownUse['own_total']);
+        $this->assertContains($ownUse['better'], ['let', 'own']);
+        $this->assertSame(round(abs($ownUse['own_total'] - $ownUse['let_total']), 2), $ownUse['difference']);
+    }
+
     public function test_a_subsidy_and_a_cheaper_loan_lower_the_financing(): void
     {
         $plain = ProfitabilityAnalysis::calculate(ProfitabilityAnalysis::defaults());

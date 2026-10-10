@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.55.1] – 2026-10-10
+
+### Behoben
+- **Siri-Kurzbefehl funktioniert jetzt zuverlässig**: Die bisherige Anleitung mit JSON-Body + „Authorization"-Header war fehleranfällig (es landete nichts in der Liste). Neu gibt es einen schlanken Endpunkt, bei dem **Token und Text in der Web-Adresse** stehen (`…/api/v1/quick/shopping?token=…&text=…`). Der Kurzbefehl braucht damit nur **eine Aktion** („Inhalte von URL abrufen", GET) ohne Header/Body. In Profil → Mobile App wird die fertige Adresse (mit eingetragenem Token) je Ziel – Einkaufsliste, Aufgabe, Inbox – zum Kopieren angezeigt.
+
 ## [1.55.0] – 2026-10-10
 
 ### Neu

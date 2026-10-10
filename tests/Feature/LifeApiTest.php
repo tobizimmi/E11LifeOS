@@ -96,4 +96,26 @@ class LifeApiTest extends TestCase
 
         $this->postJson('/api/v1/shopping/quick', ['text' => ''], $headers)->assertStatus(422);
     }
+
+    public function test_the_token_in_url_quick_add_works_for_shopping_task_and_inbox(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $token = $this->tokenFor($user);
+
+        // Shopping: a dictated line adds the items.
+        $this->getJson('/api/v1/quick/shopping?token='.$token.'&text='.urlencode('2 Liter Milch und Butter'))
+            ->assertCreated()->assertJsonPath('data.added', 2);
+        $this->assertSame(2, ShoppingListEntry::count());
+
+        // Task: natural language becomes a to-do.
+        $this->getJson('/api/v1/quick/task?token='.$token.'&text='.urlencode('Müll rausbringen'))
+            ->assertCreated()->assertJsonPath('data.message', 'Task added: Müll rausbringen');
+
+        // Inbox: the universal capture returns a message.
+        $this->getJson('/api/v1/quick/inbox?token='.$token.'&text='.urlencode('Idee notieren'))->assertCreated();
+
+        // A wrong token is rejected and an unknown type is a 404.
+        $this->getJson('/api/v1/quick/shopping?token=nope&text=Brot')->assertUnauthorized();
+        $this->getJson('/api/v1/quick/calendar?token='.$token.'&text=Brot')->assertNotFound();
+    }
 }

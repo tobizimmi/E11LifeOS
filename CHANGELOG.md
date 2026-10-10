@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.52.1] – 2026-10-10
+
+### Behoben
+- Rezepte-Import (und Portfolio-Altdaten-Import) aus der Admin-Seite schlug mit „Access denied … (using password: NO)" fehl, obwohl die Zugangsdaten unter Einstellungen hinterlegt waren. Ursache: Der Hintergrund-Job eines langlaufenden Queue-Workers nutzte die Konfiguration vom Start-Zeitpunkt. Der Job wendet die gespeicherten Einstellungen jetzt vor jedem Lauf frisch an und baut die Alt-Datenbankverbindungen neu auf.
+
 ## [1.52.0] – 2026-10-06
 
 ### Neu

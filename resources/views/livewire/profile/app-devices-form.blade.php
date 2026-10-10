@@ -62,12 +62,18 @@ new class extends Component
     @endif
 
     <div class="mt-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/40"
-         x-data="{
+
+        x-data="{
             target: 'shopping',
-            token: @js($newToken),
+            token: $wire.entangle('newToken'),
             copied: false,
-            get url() { return '{{ $apiUrl }}/quick/' + this.target + '?token=' + (this.token || '<TOKEN>') + '&text=' },
-         }">
+            get url() {
+            return '{{ $apiUrl }}/quick/' + this.target
+                + '?token=' + encodeURIComponent(this.token || '')
+                + '&text=';
+            },
+        }"
+
         <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">🗣️ {{ __('Siri shortcuts') }}</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Set up an iOS shortcut that dictates to your household – also hands-free via Siri. Several items at once work too, e.g. “2 litres of milk, butter and 6 eggs”.') }}</p>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Since iOS 15 Apple signs shortcuts, so a ready-made file cannot be imported reliably – this one-action setup works on every iPhone and needs no headers.') }}</p>

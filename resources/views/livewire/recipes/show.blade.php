@@ -394,9 +394,9 @@ new #[Layout('layouts.app')] class extends Component
                                         $menuItem = 'flex w-full items-center gap-2.5 px-3.5 py-2 text-start transition active:bg-gray-100 hover:bg-gray-100 dark:active:bg-gray-700 dark:hover:bg-gray-700';
                                     @endphp
                                     <p class="px-3.5 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ __('Export') }}</p>
-                                    <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" class="{{ $menuItem }}"><span class="w-5 text-center">📄</span> {{ __('Download as PDF') }}</a>
-                                    <a href="{{ route('recipes.export', ['recipe' => $recipe]) }}" class="{{ $menuItem }}"><span class="w-5 text-center">🗂️</span> {{ __('Recipe file (JSON)') }}</a>
-                                    <a href="{{ route('recipes.export', ['recipe' => $recipe, 'format' => 'md']) }}" class="{{ $menuItem }}"><span class="w-5 text-center">📝</span> {{ __('Text (Markdown)') }}</a>
+                                    <a href="{{ route('recipes.pdf', ['recipe' => $recipe, 'servings' => $servings]) }}" download target="_blank" rel="noopener" class="{{ $menuItem }}"><span class="w-5 text-center">📄</span> {{ __('Download as PDF') }}</a>
+                                    <a href="{{ route('recipes.export', ['recipe' => $recipe]) }}" download target="_blank" rel="noopener" class="{{ $menuItem }}"><span class="w-5 text-center">🗂️</span> {{ __('Recipe file (JSON)') }}</a>
+                                    <a href="{{ route('recipes.export', ['recipe' => $recipe, 'format' => 'md']) }}" download target="_blank" rel="noopener" class="{{ $menuItem }}"><span class="w-5 text-center">📝</span> {{ __('Text (Markdown)') }}</a>
                                     @if ($foreign)
                                         <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
                                         <button type="button" wire:click="duplicate" class="{{ $menuItem }}"><span class="w-5 text-center">📥</span> {{ __('Save a copy to my recipes') }}</button>

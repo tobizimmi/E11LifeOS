@@ -65,6 +65,16 @@ new class extends Component
         <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">🗣️ {{ __('Add to the shopping list with Siri') }}</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Create an iOS shortcut that dictates to the shopping list – also hands-free via Siri. Several items at once work too, e.g. “2 litres of milk, butter and 6 eggs”.') }}</p>
 
+        <div class="mt-3 rounded-md border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-800 dark:bg-indigo-900/30">
+            <p class="text-sm font-medium text-indigo-900 dark:text-indigo-200">⚡️ {{ __('Ready-made shortcut') }}</p>
+            <p class="mt-0.5 text-sm text-indigo-800 dark:text-indigo-300">{{ __('Download the ready-made shortcut, open it and tap “Add Shortcut” – the access token is already filled in.') }}</p>
+            <a href="{{ route('profile.siri-shortcut') }}" download target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">⬇️ {{ __('Download shortcut') }}</a>
+            <p class="mt-2 text-xs text-indigo-700/80 dark:text-indigo-300/80">{{ __('On the iPhone/iPad open the file in Safari. If import is blocked, allow it once under Settings → Shortcuts → “Allow Untrusted Shortcuts”. Each download creates a new access token.') }}</p>
+        </div>
+
+        <details class="mt-3 text-sm">
+            <summary class="cursor-pointer text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">{{ __('Prefer to set it up by hand?') }}</summary>
+            <div class="mt-3">
         @if ($newToken)
             <div class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-900/30" x-data="{ copied: false }">
                 <p class="font-medium text-amber-900 dark:text-amber-200">{{ __('Your token (shown only once – copy it now):') }}</p>
@@ -89,5 +99,7 @@ new class extends Component
             </ol>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('The items land in your household’s default shopping list. The token stays valid as long as it is used; an unused token expires on its own.') }}</p>
         </div>
+            </div>
+        </details>
     </div>
 </section>

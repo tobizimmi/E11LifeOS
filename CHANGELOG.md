@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.54.1] – 2026-10-10
+
+### Neu
+- **Fertiger Siri-Kurzbefehl zum Herunterladen** (Profil → Mobile App): Statt der manuellen Anleitung gibt es jetzt einen Button, der einen **fertigen iOS-Kurzbefehl** (mit bereits eingetragenem Zugangs-Token) herunterlädt – öffnen, „Kurzbefehl hinzufügen" tippen, fertig. Die manuelle Einrichtung bleibt als einklappbarer Fallback erhalten.
+
+### Behoben
+- Rezepte: Downloads (Kochbuch-PDF, ZIP-Export, Rezept-PDF/JSON/Markdown, Wochenplan-PDF) wurden in der installierten Web-App nur angezeigt, aber nicht gespeichert. Sie öffnen jetzt zum Herunterladen (neuer Tab / `download`), sodass die Datei auch in der Web-App sicher gespeichert werden kann.
+
 ## [1.54.0] – 2026-10-10
 
 ### Neu

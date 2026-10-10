@@ -51,6 +51,7 @@ Schedule::command('portfolio:execute-savings-plans')->dailyAt('09:15');
 Schedule::command('portfolio:market-scan')->dailyAt('06:10')->withoutOverlapping();
 Schedule::command('portfolio:fetch-news')->hourly()->between('06:00', '23:00')->withoutOverlapping();
 Schedule::command('banking:sync')->dailyAt('05:40')->withoutOverlapping();
+Schedule::command('banking:sync-links')->dailyAt('05:50')->withoutOverlapping();
 Schedule::command('portfolio:instagram')->everySixHours()->withoutOverlapping();
 
 // Heartbeat for the admin page (shows whether the cron job runs) and the queue for imports started there.

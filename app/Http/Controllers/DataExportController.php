@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attachment;
 use App\Models\Automation;
 use App\Models\BankAccount;
+use App\Models\BankLink;
 use App\Models\BookkeepingEntry;
 use App\Models\BusinessProfile;
 use App\Models\CalendarSubscription;
@@ -165,6 +166,8 @@ class DataExportController extends Controller
                 ->map(fn (BankAccount $account) => $account->only(['id', 'name', 'iban', 'balance', 'balance_on', 'created_at']) + [
                     'transactions' => $account->transactions->map->only(['booked_on', 'amount', 'counterparty', 'purpose', 'category', 'tax_category', 'tax_amount'])->all(),
                 ]),
+            'bank_links' => BankLink::where('user_id', $user->id)->orderBy('id')->get()
+                ->map->only(['institution_name', 'status', 'consent_expires_at', 'last_synced_at', 'created_at']),
             'calendar_subscriptions' => CalendarSubscription::where('user_id', $user->id)->orderBy('name')->get()->map->only(['name', 'fetched_at']),
             'net_worth' => [
                 'items' => NetWorthItem::where('user_id', $user->id)->orderBy('position')->get()->map->only(['name', 'kind', 'value']),

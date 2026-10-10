@@ -138,10 +138,49 @@ class ProfitabilityAnalysis
             'projection' => $projection,
         ];
         $result = array_merge($result, $exit, $equityReturn);
+        $result['own_use'] = self::ownUse($in, $result, $area, $annuity);
         $result['verdict'] = self::verdict($result);
         $result['hints'] = self::hints($in, $result);
 
         return $result;
+    }
+
+    /**
+     * Living in the property instead of letting it: you earn no rent (and get no depreciation or
+     * rental tax effect), but you save the cold rent you would otherwise pay – tax-free – and a
+     * later owner-occupied sale is free of speculation tax. A simplified, clearly-bounded
+     * comparison of the total result over the holding period against letting it out.
+     *
+     * @param  array<string, float|int|string>  $in
+     * @param  array<string, mixed>  $result
+     * @return array{saved_rent_first: float, own_total: float, let_total: float, difference: float, better: string}
+     */
+    private static function ownUse(array $in, array $result, float $area, float $annuity): array
+    {
+        $n = fn (string $key) => (float) ($in[$key] ?? 0);
+        $years = max(1, min(40, (int) $in['years']));
+        $maintenance = $n('maintenance_per_sqm') * $area;
+        $savedRentYear = $n('rent') * 12;
+        $benefitSum = 0.0;
+
+        for ($year = 1; $year <= $years; $year++) {
+            $growth = (1 + $n('rent_increase') / 100) ** ($year - 1);
+            // Saved cold rent minus the running maintenance and the loan instalment.
+            $benefitSum += $savedRentYear * $growth - $maintenance * $growth - $annuity;
+        }
+
+        // Same sale, but an owner-occupied home is exempt from speculation tax.
+        $ownProceeds = (float) $result['sale_price'] - (float) $result['sale_costs'] - (float) $result['exit_debt'];
+        $ownTotal = $benefitSum + $ownProceeds - (float) $result['equity'];
+        $letTotal = (float) $result['total_profit'];
+
+        return [
+            'saved_rent_first' => round($savedRentYear, 2),
+            'own_total' => round($ownTotal, 2),
+            'let_total' => round($letTotal, 2),
+            'difference' => round(abs($ownTotal - $letTotal), 2),
+            'better' => $letTotal >= $ownTotal ? 'let' : 'own',
+        ];
     }
 
     /**

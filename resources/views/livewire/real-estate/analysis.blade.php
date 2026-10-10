@@ -425,6 +425,55 @@ new #[Layout('layouts.app')] class extends Component
                         </section>
                     @endif
 
+                    @php
+                        $chartPoints = collect($result['projection']);
+                    @endphp
+                    @if ($chartPoints->count() > 1)
+                        <section class="grid gap-4 sm:grid-cols-2">
+                            <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                                <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏗 {{ __('Wealth build-up') }}</h3>
+                                <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Property value and your equity in it; the gap is the remaining debt.') }}</p>
+                                <x-line-chart
+                                    :points="$chartPoints->map(fn ($row) => ['label' => __('Year :year', ['year' => $row['year']]), 'value' => $row['value'], 'compare' => $row['net_equity']])->all()"
+                                    :value-label="__('Property value')"
+                                    :compare-label="__('Equity in property')"
+                                    :height="200" />
+                            </div>
+                            <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                                <h3 class="font-semibold text-gray-900 dark:text-gray-100">💶 {{ __('Rent & cashflow') }}</h3>
+                                <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Yearly rent against the cashflow after tax per year.') }}</p>
+                                <x-line-chart
+                                    :points="$chartPoints->map(fn ($row) => ['label' => __('Year :year', ['year' => $row['year']]), 'value' => $row['rent'], 'compare' => $row['cashflow_after_tax']])->all()"
+                                    :value-label="__('Rent per year')"
+                                    :compare-label="__('Cashflow after tax')"
+                                    :height="200" />
+                            </div>
+                        </section>
+                    @endif
+
+                    @php
+                        $ownUse = $result['own_use'];
+                    @endphp
+                    @if ($ownUse['saved_rent_first'] > 0)
+                        <section class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">⚖️ {{ __('Let out vs. live in it') }}</h3>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Over :years years – letting (rent, depreciation, tax) against living in it yourself (saved cold rent tax-free, sale free of speculation tax). Simplified comparison.', ['years' => (int) ($in['years'] ?? 0)]) }}</p>
+                            <div class="mt-3 grid grid-cols-2 gap-3">
+                                <div @class(['rounded-xl p-3 ring-1', 'bg-emerald-50 ring-emerald-200 dark:bg-emerald-900/40 dark:ring-emerald-800' => $ownUse['better'] === 'let', 'bg-gray-50 ring-gray-200 dark:bg-gray-900/40 dark:ring-gray-700' => $ownUse['better'] !== 'let'])>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">🔑 {{ __('Let out') }}</p>
+                                    <p class="mt-1 font-semibold tabular-nums {{ $ownUse['let_total'] >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-700 dark:text-red-300' }}">{{ $euro($ownUse['let_total']) }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Total profit after tax') }}</p>
+                                </div>
+                                <div @class(['rounded-xl p-3 ring-1', 'bg-emerald-50 ring-emerald-200 dark:bg-emerald-900/40 dark:ring-emerald-800' => $ownUse['better'] === 'own', 'bg-gray-50 ring-gray-200 dark:bg-gray-900/40 dark:ring-gray-700' => $ownUse['better'] !== 'own'])>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">🏡 {{ __('Live in it') }}</p>
+                                    <p class="mt-1 font-semibold tabular-nums {{ $ownUse['own_total'] >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-700 dark:text-red-300' }}">{{ $euro($ownUse['own_total']) }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('incl. saved rent (:amount/year)', ['amount' => $euro($ownUse['saved_rent_first'])]) }}</p>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $ownUse['better'] === 'let' ? __('Letting out comes out :amount ahead here.', ['amount' => $euro($ownUse['difference'])]) : __('Living in it yourself comes out :amount ahead here.', ['amount' => $euro($ownUse['difference'])]) }}</p>
+                        </section>
+                    @endif
+
                     <section class="overflow-x-auto rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100">📈 {{ __('Projection') }}</h3>
                         <table class="mt-2 w-full whitespace-nowrap text-right text-xs tabular-nums [&_td]:px-1 [&_th]:px-1">

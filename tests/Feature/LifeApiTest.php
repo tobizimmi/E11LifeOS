@@ -109,7 +109,7 @@ class LifeApiTest extends TestCase
 
         // Task: natural language becomes a to-do.
         $this->getJson('/api/v1/quick/task?token='.$token.'&text='.urlencode('Müll rausbringen'))
-            ->assertCreated()->assertJsonPath('data.message', 'Task added: Müll rausbringen');
+            ->assertCreated()->assertJsonPath('data.message', __('Task added: :title', ['title' => 'Müll rausbringen']));
 
         // Inbox: the universal capture returns a message.
         $this->getJson('/api/v1/quick/inbox?token='.$token.'&text='.urlencode('Idee notieren'))->assertCreated();

@@ -147,6 +147,23 @@ class LifeController extends ApiController
         return $this->ok($this->entryData($entry), 201);
     }
 
+    /**
+     * One dictated line to the shopping list, e.g. from a Siri shortcut: "2 Liter Milch, Butter
+     * und 6 Eier". Several items at once, each with an optional leading quantity.
+     */
+    public function quickShopping(Request $request): JsonResponse
+    {
+        $data = $request->validate(['text' => ['required', 'string', 'max:500']]);
+        $list = ShoppingList::defaultFor($this->household()->id);
+        $entries = ShoppingLists::addFromText($list, $data['text'], $this->user()->id);
+
+        return $this->ok([
+            'added' => count($entries),
+            'list' => $list->name,
+            'items' => array_map(fn (ShoppingListEntry $entry) => $this->entryData($entry), $entries),
+        ], 201);
+    }
+
     public function toggleShopping(int $entry): JsonResponse
     {
         $item = ShoppingListEntry::where('household_id', $this->household()->id)->findOrFail($entry);

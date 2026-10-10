@@ -37,7 +37,6 @@ use App\Http\Controllers\RecipeExportController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
-use App\Http\Controllers\SiriShortcutController;
 use App\Http\Controllers\SmartHomeCameraController;
 use App\Http\Controllers\SupportFileController;
 use App\Http\Controllers\TripCoverController;
@@ -65,10 +64,6 @@ Route::view('profile', 'profile')
 Route::get('profile/export', DataExportController::class)
     ->middleware(['auth', Security::SENSITIVE])
     ->name('profile.export');
-
-Route::get('profile/siri-shortcut', SiriShortcutController::class)
-    ->middleware(['auth', 'throttle:12,1'])
-    ->name('profile.siri-shortcut');
 
 Route::post('profile/export', [DataExportController::class, 'encrypted'])
     ->middleware(['auth', 'throttle:6,1'])
@@ -141,14 +136,8 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('share', 'share.target')->name('share.target');
     Volt::route('ask', 'brain.ask')->name('brain.ask');
     Volt::route('pages/{item?}', 'pages.index')->whereNumber('item')->name('pages.index');
-    // Notes became pages: keep old bookmarks (/notes?note=ID) working.
-    Route::get('notes', function (Request $request) {
-        $noteId = $request->query('note');
-
-        return is_string($noteId) && ctype_digit($noteId)
-            ? redirect()->route('pages.index', ['item' => (int) $noteId])
-            : redirect()->route('pages.index', $request->only(['new', 'tag', 'q']));
-    })->name('notes.index');
+    // Quick notes area; legacy deep links (/notes?note=ID) are redirected to the page by the component.
+    Volt::route('notes', 'notes.index')->name('notes.index');
     Route::get('items/{item}', ItemLinkController::class)->whereNumber('item')->name('items.show');
     Route::post('push/subscriptions', [PushController::class, 'store'])->name('push.subscribe');
     Route::delete('push/subscriptions', [PushController::class, 'destroy'])->name('push.unsubscribe');

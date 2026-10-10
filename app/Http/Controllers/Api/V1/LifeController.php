@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Models\ApiToken;
 use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
+use App\Models\User;
 use App\Support\CalendarEvents;
 use App\Support\Finance\NetWorth;
 use App\Support\InAppNotifications;
 use App\Support\QuickCapture;
 use App\Support\ShoppingLists;
+use App\Support\SmartCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Mobile API for the everyday modules: tasks, calendar, notifications, shopping list and net worth.
@@ -162,6 +166,49 @@ class LifeController extends ApiController
             'list' => $list->name,
             'items' => array_map(fn (ShoppingListEntry $entry) => $this->entryData($entry), $entries),
         ], 201);
+    }
+
+    /**
+     * One dictated line, authenticated by a token in the query, so an iOS shortcut only needs a
+     * single "Get Contents of URL" action (no headers, no JSON body). ?type = shopping|task|inbox.
+     */
+    public function quickViaToken(Request $request, string $type): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:128'],
+            'text' => ['required', 'string', 'max:500'],
+        ]);
+
+        $token = ApiToken::findByPlain($data['token']);
+
+        if ($token?->isExpired()) {
+            $token->delete();
+            $token = null;
+        }
+
+        $user = $token?->user;
+        abort_unless($user instanceof User, 401, __('Please sign in again.'));
+
+        $token->forceFill(['last_used_at' => now()])->saveQuietly();
+        Auth::setUser($user);
+        $household = $user->currentHousehold() ?? abort(404, __('You are not a member of a household yet.'));
+        $text = trim($data['text']);
+
+        return match ($type) {
+            'shopping' => $this->ok((function () use ($household, $text, $user) {
+                $entries = ShoppingLists::addFromText(ShoppingList::defaultFor($household->id), $text, $user->id);
+
+                return ['added' => count($entries), 'message' => trans_choice(':count item added to the shopping list.|:count items added to the shopping list.', count($entries))];
+            })(), 201),
+            'task' => $this->ok((function () use ($household, $text, $user) {
+                $task = QuickCapture::task($user, $household->id, $text);
+                abort_if($task === null, 422, __('Please enter a title.'));
+
+                return ['message' => __('Task added: :title', ['title' => $task->title])];
+            })(), 201),
+            'inbox' => $this->ok(['message' => SmartCapture::capture($user, $household->id, $text) ?? __('Captured.')], 201),
+            default => abort(404),
+        };
     }
 
     public function toggleShopping(int $entry): JsonResponse

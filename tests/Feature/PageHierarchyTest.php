@@ -145,16 +145,17 @@ class PageHierarchyTest extends TestCase
         $this->actingAs($partner)->get('/pages/abc')->assertNotFound();
     }
 
-    public function test_old_note_links_redirect_to_pages(): void
+    public function test_old_note_deep_links_redirect_to_the_page_and_notes_area_opens(): void
     {
         [$user, $household] = $this->memberWithHousehold();
         $page = Item::factory()->note()->for($household)->create();
 
         $this->actingAs($user);
 
+        // A legacy deep link to a specific note still opens that page.
         $this->get('/notes?note='.$page->id)->assertRedirect(route('pages.index', ['item' => $page->id]));
-        $this->get('/notes?new=Idee')->assertRedirect(route('pages.index', ['new' => 'Idee']));
-        $this->get('/notes')->assertRedirect(route('pages.index'));
+        // The bare /notes is now the quick-notes area.
+        $this->get('/notes')->assertOk()->assertSee('Notizen');
     }
 
     public function test_the_sidebar_shows_shared_and_own_private_pages_as_trees(): void

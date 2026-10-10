@@ -3,6 +3,21 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.55.1] – 2026-10-10
+
+### Behoben
+- **Siri-Kurzbefehl funktioniert jetzt zuverlässig**: Die bisherige Anleitung mit JSON-Body + „Authorization"-Header war fehleranfällig (es landete nichts in der Liste). Neu gibt es einen schlanken Endpunkt, bei dem **Token und Text in der Web-Adresse** stehen (`…/api/v1/quick/shopping?token=…&text=…`). Der Kurzbefehl braucht damit nur **eine Aktion** („Inhalte von URL abrufen", GET) ohne Header/Body. In Profil → Mobile App wird die fertige Adresse (mit eingetragenem Token) je Ziel – Einkaufsliste, Aufgabe, Inbox – zum Kopieren angezeigt.
+
+## [1.55.0] – 2026-10-10
+
+### Neu
+- **Notizen-Bereich** (Menü → Notizen): Schnelle Notizen, aufgebaut wie Seiten – einfach lostippen, die erste Zeile wird zur Überschrift. Notizen liegen in einer eigenen „Notizen"-Ablage und tauchen nicht zwischen den Seiten auf, bis du sie per **„In Seiten einordnen"** in den Seitenbaum übernimmst (dann sind sie eine normale Seite mit allen Blöcken). Bearbeiten und Löschen direkt in der Liste.
+
+## [1.54.2] – 2026-10-10
+
+### Geändert
+- **Siri-Kurzbefehle überarbeitet** (Profil → Mobile App): Der herunterladbare Kurzbefehl funktionierte auf iPhones nicht („kann nicht ausgeführt werden"), weil Apple seit iOS 15 Kurzbefehle signiert und selbst erzeugte Dateien nicht zuverlässig importiert werden. Der Download wurde daher entfernt und durch eine klare Ein-Minuten-Anleitung mit **vorausgefülltem Zugangs-Token** ersetzt. Neu: Du kannst das **Ziel wählen** – Einkaufsliste, Aufgabe oder Inbox (die Inbox ordnet die Notiz automatisch ein). Die passende API-URL wird je Ziel angezeigt.
+
 ## [1.54.1] – 2026-10-10
 
 ### Neu

@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Route;
  */
 Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
+    // Siri/Shortcut one-action quick-add: token + text in the query, no header or JSON body needed.
+    Route::get('quick/{type}', [LifeController::class, 'quickViaToken'])->where('type', 'shopping|task|inbox')->middleware('throttle:60,1')->name('quick');
     // Home Assistant reports state changes here (secret in the address, see Smart home › Settings).
     Route::post('smart-home/webhook/{secret}', SmartHomeWebhookController::class)->middleware('throttle:240,1')->where('secret', '[A-Za-z0-9]{32,64}')->name('smart-home.webhook');
 

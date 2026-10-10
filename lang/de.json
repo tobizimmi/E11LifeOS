@@ -6769,5 +6769,13 @@
     "Notes are built like pages and can be filed into the page tree.": "Notizen sind wie Seiten aufgebaut und lassen sich in den Seitenbaum einordnen.",
     "File into pages": "In Seiten einordnen",
     "File this note into the pages?": "Diese Notiz in die Seiten einordnen?",
-    "No notes yet – jot your first one above.": "Noch keine Notizen – schreib oben deine erste auf."
+    "No notes yet – jot your first one above.": "Noch keine Notizen – schreib oben deine erste auf.",
+    "Task added: :title": "Aufgabe hinzugefügt: :title",
+    "Captured.": "Erfasst.",
+    "Since iOS 15 Apple signs shortcuts, so a ready-made file cannot be imported reliably – this one-action setup works on every iPhone and needs no headers.": "Seit iOS 15 signiert Apple Kurzbefehle, daher lässt sich eine fertige Datei nicht zuverlässig importieren – diese Ein-Aktion-Einrichtung funktioniert auf jedem iPhone und braucht keine Header.",
+    "Create access token & web address": "Zugangs-Token & Web-Adresse erstellen",
+    "Your web address (shown only once – copy it now):": "Deine Web-Adresse (wird nur einmal angezeigt – jetzt kopieren):",
+    "Add “Get Contents of URL” below it and leave the method on GET.": "Füge darunter „Inhalte von URL abrufen“ hinzu und lass die Methode auf GET.",
+    "Paste the copied web address into the URL field and insert the “Dictated Text” variable right at the end (after text=).": "Füge die kopierte Web-Adresse in das URL-Feld ein und setze die Variable „Diktierter Text“ ganz ans Ende (nach text=).",
+    "No headers or request body needed. The token stays valid as long as it is used; an unused token expires on its own. Keep the address private – anyone with it can add to your household.": "Keine Header und kein Anfrage-Text nötig. Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab. Halte die Adresse geheim – wer sie hat, kann in deinem Haushalt etwas hinzufügen."
 }

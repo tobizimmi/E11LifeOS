@@ -3,6 +3,7 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Item;
+use App\Models\Space;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -74,7 +75,10 @@ trait InteractsWithHousehold
         return Item::query()
             ->forHousehold((int) $this->householdId)
             ->visibleTo($this->currentUser())
-            ->ofType($type);
+            ->ofType($type)
+            // Quick notes live in the hidden "Notes" inbox space and stay out of the normal lists.
+            ->where(fn (Builder $query) => $query->whereNull('space_id')
+                ->orWhereNotIn('space_id', Space::query()->where('household_id', (int) $this->householdId)->where('system', true)->select('id')));
     }
 
     /**

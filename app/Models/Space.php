@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $color
  * @property int $position
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'name', 'icon', 'color', 'position'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'name', 'icon', 'color', 'position', 'system'])]
 class Space extends Model
 {
     /** @use HasFactory<SpaceFactory> */
@@ -30,6 +30,23 @@ class Space extends Model
     public const ICONS = ['🗂️', '🏠', '💼', '👨‍👩‍👧', '⚽', '🎓', '💰', '✈️', '🏡', '🎨', '🛠️', '❤️'];
 
     public const COLORS = ['indigo', 'blue', 'green', 'amber', 'red', 'purple', 'pink', 'gray'];
+
+    protected function casts(): array
+    {
+        return ['system' => 'boolean'];
+    }
+
+    /**
+     * The household's "Notes" inbox: a hidden system space that holds quick notes until they are
+     * filed into the page tree. Created on first use.
+     */
+    public static function notesInboxFor(int $householdId): self
+    {
+        return static::firstOrCreate(
+            ['household_id' => $householdId, 'system' => true, 'name' => 'Notizen'],
+            ['icon' => '🗒️', 'color' => 'amber', 'position' => 0],
+        );
+    }
 
     /**
      * @return HasMany<Item, $this>
@@ -52,6 +69,7 @@ class Space extends Model
     public function scopeVisibleTo(Builder $query, User $user, int $householdId): void
     {
         $query->where('household_id', $householdId)
+            ->where('system', false)
             ->where(fn (Builder $query) => $query->where('visibility', Item::VISIBILITY_SHARED)->orWhere('created_by', $user->id))
             ->orderBy('position')->orderBy('name');
     }

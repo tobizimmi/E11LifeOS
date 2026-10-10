@@ -424,6 +424,15 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
+                // Wait until Alpine has shown the dialog, so the <video> is laid out before we
+                // attach the camera. On iOS Safari, starting playback while the element is still
+                // display:none leaves a frozen black frame even after it becomes visible.
+                await this.$nextTick();
+
+                if (!this.visible) {
+                    return;
+                }
+
                 try {
                     if ('BarcodeDetector' in window) {
                         await this.scanWithDetector();
@@ -438,7 +447,15 @@ document.addEventListener('alpine:init', () => {
 
             async scanWithDetector() {
                 const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+
+                if (!this.visible) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    stream = null;
+
+                    return;
+                }
+
                 this.$refs.video.srcObject = stream;
                 await this.$refs.video.play();
 

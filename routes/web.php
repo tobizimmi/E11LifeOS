@@ -37,7 +37,6 @@ use App\Http\Controllers\RecipeExportController;
 use App\Http\Controllers\RecipeImageController;
 use App\Http\Controllers\RecipePdfController;
 use App\Http\Controllers\RentalDocumentController;
-use App\Http\Controllers\SiriShortcutController;
 use App\Http\Controllers\SmartHomeCameraController;
 use App\Http\Controllers\SupportFileController;
 use App\Http\Controllers\TripCoverController;
@@ -65,10 +64,6 @@ Route::view('profile', 'profile')
 Route::get('profile/export', DataExportController::class)
     ->middleware(['auth', Security::SENSITIVE])
     ->name('profile.export');
-
-Route::get('profile/siri-shortcut', SiriShortcutController::class)
-    ->middleware(['auth', 'throttle:12,1'])
-    ->name('profile.siri-shortcut');
 
 Route::post('profile/export', [DataExportController::class, 'encrypted'])
     ->middleware(['auth', 'throttle:6,1'])

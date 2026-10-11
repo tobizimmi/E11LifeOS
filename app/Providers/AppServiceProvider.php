@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureAddonEnabled;
+use App\Http\Middleware\EnsureModuleAllowed;
+use App\Http\Middleware\LogSensitiveAccess;
 use App\Models\User;
 use App\Support\AppSettings;
 use App\Support\Life\MapHttp;
@@ -67,8 +69,9 @@ class AppServiceProvider extends ServiceProvider
             ? Password::min(12)->letters()->numbers()->uncompromised()
             : Password::min(12)->letters()->numbers());
 
-        // Addon checks also apply to the Livewire requests of pages behind "addon:…".
-        Livewire::addPersistentMiddleware([EnsureAddonEnabled::class]);
+        // Addon, module and sensitive-area checks also apply to the Livewire requests of pages
+        // behind "addon:…", "module" and "sensitive.log:…" – not just their initial page load.
+        Livewire::addPersistentMiddleware([EnsureAddonEnabled::class, EnsureModuleAllowed::class, LogSensitiveAccess::class]);
 
         // In production this app is reached through a reverse proxy that maps a
         // URL path (e.g. https://zimmimail.de/E11LifeOS) onto an unprefixed

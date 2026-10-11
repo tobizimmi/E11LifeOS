@@ -24,7 +24,7 @@ class WatchSystem extends Command
         $smartHome->check();
 
         $checks = SystemHealth::checks();
-        $before = Cache::get(SystemHealth::STATE_KEY, []);
+        $before = Cache::store('monitoring')->get(SystemHealth::STATE_KEY, []);
 
         foreach ($checks as $key => $check) {
             $wasOk = $before[$key] ?? true;
@@ -36,7 +36,7 @@ class WatchSystem extends Command
             }
         }
 
-        Cache::forever(SystemHealth::STATE_KEY, array_map(fn (array $check) => $check['ok'], $checks));
+        Cache::store('monitoring')->forever(SystemHealth::STATE_KEY, array_map(fn (array $check) => $check['ok'], $checks));
         $this->info(collect($checks)->map(fn (array $check, string $key) => $key.'='.($check['ok'] ? 'ok' : 'FAIL'))->implode(' '));
 
         return self::SUCCESS;

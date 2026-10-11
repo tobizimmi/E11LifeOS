@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
@@ -10,9 +11,13 @@ use Illuminate\Support\Carbon;
 /**
  * Upcoming dates of the life areas: expiring documents, inspections, maintenance, check-ups, birthdays.
  */
-class LifeReminder extends Notification
+class LifeReminder extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     /**
      * @param  list<array{date: string, title: string, url: string, kind: string, remind_days: int}>  $events

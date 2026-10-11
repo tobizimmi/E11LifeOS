@@ -399,7 +399,7 @@ new #[Layout('layouts.app')] class extends Component
                             <h5 class="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $incomeGroups[$kind] ?? $kind }}</h5>
                             <ul class="mt-1 space-y-1.5 text-sm">
                                 @foreach ($rows as $row)
-                                    <li class="flex items-center justify-between gap-3">
+                                    <li wire:key="income-{{ $kind }}-{{ $row['id'] ?? $row['label'] }}" class="flex items-center justify-between gap-3">
                                         <span class="text-gray-700 dark:text-gray-200">{{ $row['label'] }}</span>
                                         <span class="flex items-center gap-2">
                                             <span class="tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($row['value']) }}</span>
@@ -488,7 +488,7 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                         <ul class="mt-3 space-y-2 text-sm">
                             @foreach ($statement['doodads']['rows'] as $row)
-                                <li class="flex items-center justify-between gap-3">
+                                <li wire:key="doodad-{{ $row['id'] ?? $row['label'] }}" class="flex items-center justify-between gap-3">
                                     @if ($row['url'])
                                         <a href="{{ $row['url'] }}" wire:navigate class="text-gray-700 hover:underline dark:text-gray-200">{{ $row['label'] }}</a>
                                     @else

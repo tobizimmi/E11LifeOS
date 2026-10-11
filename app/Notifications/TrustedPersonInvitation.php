@@ -3,15 +3,20 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * Tells a trusted person that they may open someone's emergency folder in an emergency, with their personal link.
  */
-class TrustedPersonInvitation extends Notification
+class TrustedPersonInvitation extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     public function __construct(public string $ownerName, public string $personName, public string $url, public int $waitDays) {}
 

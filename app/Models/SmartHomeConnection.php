@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use App\Support\SmartHome\EvccClient;
 use App\Support\SmartHome\HomeAssistantClient;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,9 +20,11 @@ use Illuminate\Support\Str;
  * VPN, or through an external address (Nabu Casa) when the VPN is down.
  */
 #[Fillable(['household_id', 'type', 'name', 'url', 'external_url', 'token', 'webhook_secret', 'last_contact_at', 'last_route', 'last_error', 'vehicle_map'])]
-#[Hidden(['token', 'webhook_secret'])]
+#[Hidden(['token', 'webhook_secret', 'webhook_secret_encrypted'])]
 class SmartHomeConnection extends Model
 {
+    use HasShareTokens;
+
     public const HOME_ASSISTANT = 'homeassistant';
 
     public const EVCC = 'evcc';
@@ -40,6 +43,14 @@ class SmartHomeConnection extends Model
         static::creating(function (SmartHomeConnection $connection) {
             $connection->webhook_secret ??= Str::random(48);
         });
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['webhook_secret'];
     }
 
     /**

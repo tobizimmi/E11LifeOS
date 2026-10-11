@@ -1786,6 +1786,8 @@
     "Recommendations": "Empfehlungen",
     "Discover": "Entdecken",
     "Please enter your PIN.": "Bitte gib deine PIN ein.",
+    "The bank could not be reached.": "Die Bank war nicht erreichbar.",
+    "This FinTS address is not allowed.": "Diese FinTS-Adresse ist nicht erlaubt.",
     "The TAN request has expired. Please start again.": "Die TAN-Anfrage ist abgelaufen. Bitte starte erneut.",
     ":count holding received.|:count holdings received.": ":count Depotposition empfangen.|:count Depotpositionen empfangen.",
     ":count new booking imported into Finances.|:count new bookings imported into Finances.": ":count neue Buchung in Finanzen importiert.|:count neue Buchungen in Finanzen importiert.",

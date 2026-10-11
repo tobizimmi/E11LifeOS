@@ -37,13 +37,13 @@ class ErrorReporter
                 'type' => class_basename($exception),
                 'message' => mb_substr($exception->getMessage(), 0, 300),
                 'where' => str_replace(base_path().'/', '', $exception->getFile()).':'.$exception->getLine(),
-                'url' => app()->runningInConsole() ? 'console' : mb_substr(request()->fullUrl(), 0, 200),
+                'url' => app()->runningInConsole() ? 'console' : mb_substr(request()->url(), 0, 200),
             ];
 
-            $recent = array_slice([$entry, ...Cache::get(self::CACHE_KEY, [])], 0, 20);
-            Cache::put(self::CACHE_KEY, $recent, now()->addDays(14));
-            Cache::add(self::DAY_KEY.now()->toDateString(), 0, now()->addDays(31));
-            Cache::increment(self::DAY_KEY.now()->toDateString());
+            $recent = array_slice([$entry, ...Cache::store('monitoring')->get(self::CACHE_KEY, [])], 0, 20);
+            Cache::store('monitoring')->put(self::CACHE_KEY, $recent, now()->addDays(14));
+            Cache::store('monitoring')->add(self::DAY_KEY.now()->toDateString(), 0, now()->addDays(31));
+            Cache::store('monitoring')->increment(self::DAY_KEY.now()->toDateString());
 
             $to = config('security.error_report_email');
 
@@ -72,7 +72,7 @@ class ErrorReporter
 
         for ($offset = $days - 1; $offset >= 0; $offset--) {
             $day = now()->subDays($offset)->toDateString();
-            $counts[$day] = (int) Cache::get(self::DAY_KEY.$day, 0);
+            $counts[$day] = (int) Cache::store('monitoring')->get(self::DAY_KEY.$day, 0);
         }
 
         return $counts;

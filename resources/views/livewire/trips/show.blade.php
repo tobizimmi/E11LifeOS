@@ -1850,7 +1850,7 @@ new #[Layout('layouts.app')] class extends Component
                         <div wire:key="inbound-{{ $inboundMail->id }}" class="mt-3 rounded-xl bg-indigo-50/60 p-3 ring-1 ring-indigo-100 dark:bg-indigo-900/20 dark:ring-indigo-900">
                             <p class="text-xs text-gray-600 dark:text-gray-300">📬 {{ __('Received by mail') }} · {{ $inboundMail->created_at->translatedFormat('j. M, H:i') }} · {{ $inboundMail->subject }}</p>
                             @foreach ($inboundMail->drafts as $index => $draft)
-                                <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                                <div wire:key="inbound-{{ $inboundMail->id }}-draft-{{ $index }}" class="mt-2 flex flex-wrap items-center gap-3 text-sm">
                                     <span class="text-xl" aria-hidden="true">{{ $kinds[$draft['kind']]['icon'] ?? '📌' }}</span>
                                     <span class="min-w-0 flex-1">
                                         <span class="block font-medium text-gray-900 dark:text-gray-100">{{ $draft['title'] }}</span>

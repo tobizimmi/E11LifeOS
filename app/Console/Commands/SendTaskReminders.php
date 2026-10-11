@@ -24,28 +24,30 @@ class SendTaskReminders extends Command
         User::query()
             ->where(fn ($query) => $query->where('reminder_emails', true)->orWhereHas('pushSubscriptions'))
             ->each(function (User $user) use (&$sent, &$pushed, $webPush) {
-                $household = $user->currentHousehold();
+                rescue(function () use ($user, &$sent, &$pushed, $webPush) {
+                    $household = $user->currentHousehold();
 
-                if (! $household) {
-                    return;
-                }
+                    if (! $household) {
+                        return;
+                    }
 
-                $collection = Collection::tasksFor($household->id);
-                $tasks = $this->dueTasksFor($user, $collection);
-                $dates = $this->dateRemindersFor($user, $household->id);
+                    $collection = Collection::tasksFor($household->id);
+                    $tasks = $this->dueTasksFor($user, $collection);
+                    $dates = $this->dateRemindersFor($user, $household->id);
 
-                if ($tasks->isEmpty() && $dates->isEmpty()) {
-                    return;
-                }
+                    if ($tasks->isEmpty() && $dates->isEmpty()) {
+                        return;
+                    }
 
-                if ($user->reminder_emails) {
-                    $user->notify(new TaskReminder($tasks, $collection, $dates));
-                    $sent++;
-                }
+                    if ($user->reminder_emails) {
+                        $user->notify(new TaskReminder($tasks, $collection, $dates));
+                        $sent++;
+                    }
 
-                if ($webPush->send($user, ...$this->pushText($tasks, $dates, $collection)) > 0) {
-                    $pushed++;
-                }
+                    if ($webPush->send($user, ...$this->pushText($tasks, $dates, $collection)) > 0) {
+                        $pushed++;
+                    }
+                }, report: true);
             });
 
         $this->info("Reminders sent: {$sent}, pushed: {$pushed}");

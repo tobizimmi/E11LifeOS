@@ -7,8 +7,10 @@ use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\User;
+use App\Support\Concerns\AssignsNextPosition;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The household's pantry (the "Pantry" collection) together with recipes and the shopping list:
@@ -16,6 +18,8 @@ use Illuminate\Support\Collection as SupportCollection;
  */
 class Pantry
 {
+    use AssignsNextPosition;
+
     public const SYSTEM_KEY = 'pantry';
 
     /** Names of the pantry fields in German and English (collections made from the template before). */
@@ -287,13 +291,15 @@ class Pantry
         }
 
         if (! self::fieldFor($collection, 'kind')) {
-            $collection->properties()->create([
-                'name' => __('Kind'),
-                'type' => CollectionProperty::TYPE_SELECT,
-                'system_key' => 'kind',
-                'position' => (int) $collection->properties()->max('position') + 1,
-                'options' => self::kindOptions(),
-            ]);
+            DB::transaction(function () use ($collection) {
+                $collection->properties()->create([
+                    'name' => __('Kind'),
+                    'type' => CollectionProperty::TYPE_SELECT,
+                    'system_key' => 'kind',
+                    'position' => self::nextPosition($collection->properties()),
+                    'options' => self::kindOptions(),
+                ]);
+            });
         }
 
         return $collection->load('properties');
@@ -354,53 +360,59 @@ class Pantry
     public static function add(User $user, int $householdId, array $data): Item
     {
         $collection = self::ensure($user, $householdId);
-        $key = IngredientUnits::nameKey($data['name']);
-        $item = self::stock($user, $householdId)->first(fn (array $entry) => $entry['key'] === $key)['item'] ?? null;
-        $quantityField = self::fieldFor($collection, 'quantity');
 
-        if ($item) {
-            if ($quantityField && $data['quantity'] !== null) {
-                $item->setPropertyValue($quantityField, (float) $item->propertyValue($quantityField) + $data['quantity']);
+        // The position read (for a genuinely new entry) and the insert that makes it visible to
+        // the next caller's own position read must commit together, or two concurrent adds of
+        // different new ingredients can still both land on the same position.
+        return DB::transaction(function () use ($user, $householdId, $data, $collection) {
+            $key = IngredientUnits::nameKey($data['name']);
+            $item = self::stock($user, $householdId)->first(fn (array $entry) => $entry['key'] === $key)['item'] ?? null;
+            $quantityField = self::fieldFor($collection, 'quantity');
+
+            if ($item) {
+                if ($quantityField && $data['quantity'] !== null) {
+                    $item->setPropertyValue($quantityField, (float) $item->propertyValue($quantityField) + $data['quantity']);
+                }
+            } else {
+                $item = new Item([
+                    'household_id' => $householdId,
+                    'collection_id' => $collection->id,
+                    'type' => Item::TYPE_ENTRY,
+                    'visibility' => $collection->entryVisibility(),
+                    'title' => mb_substr(trim($data['name']), 0, 255),
+                    'created_by' => $user->id,
+                    'position' => self::nextPosition(Item::where('collection_id', $collection->id)),
+                ]);
+
+                if ($quantityField && $data['quantity'] !== null) {
+                    $item->setPropertyValue($quantityField, $data['quantity']);
+                }
+
+                if (($field = self::fieldFor($collection, 'unit')) && $data['unit'] !== '') {
+                    $item->setPropertyValue($field, $data['unit']);
+                }
+
+                if ($field = self::fieldFor($collection, 'kind')) {
+                    $item->setPropertyValue($field, self::kindOptionId($field, $data['kind']));
+                }
             }
-        } else {
-            $item = new Item([
-                'household_id' => $householdId,
-                'collection_id' => $collection->id,
-                'type' => Item::TYPE_ENTRY,
-                'visibility' => $collection->entryVisibility(),
-                'title' => mb_substr(trim($data['name']), 0, 255),
-                'created_by' => $user->id,
-                'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
-            ]);
 
-            if ($quantityField && $data['quantity'] !== null) {
-                $item->setPropertyValue($quantityField, $data['quantity']);
+            if (($field = self::fieldFor($collection, 'minimum')) && $data['minimum'] !== null) {
+                $item->setPropertyValue($field, $data['minimum']);
             }
 
-            if (($field = self::fieldFor($collection, 'unit')) && $data['unit'] !== '') {
-                $item->setPropertyValue($field, $data['unit']);
+            if (($field = self::fieldFor($collection, 'best_before')) && $data['best_before']) {
+                $item->setPropertyValue($field, $data['best_before']);
             }
 
-            if ($field = self::fieldFor($collection, 'kind')) {
-                $item->setPropertyValue($field, self::kindOptionId($field, $data['kind']));
+            if (($field = self::fieldFor($collection, 'place')) && $data['place'] !== '' && $field->option($data['place'])) {
+                $item->setPropertyValue($field, $data['place']);
             }
-        }
 
-        if (($field = self::fieldFor($collection, 'minimum')) && $data['minimum'] !== null) {
-            $item->setPropertyValue($field, $data['minimum']);
-        }
+            $item->save();
 
-        if (($field = self::fieldFor($collection, 'best_before')) && $data['best_before']) {
-            $item->setPropertyValue($field, $data['best_before']);
-        }
-
-        if (($field = self::fieldFor($collection, 'place')) && $data['place'] !== '' && $field->option($data['place'])) {
-            $item->setPropertyValue($field, $data['place']);
-        }
-
-        $item->save();
-
-        return $item;
+            return $item;
+        });
     }
 
     /**

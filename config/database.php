@@ -77,6 +77,10 @@ return [
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'strict' => true,
+            // Host/credentials are admin-editable at runtime (Einstellungen → Import); block
+            // local_infile so a malicious or misconfigured host can't read server files via
+            // LOAD DATA LOCAL.
+            'options' => extension_loaded('pdo_mysql') ? [Mysql::ATTR_LOCAL_INFILE => false] : [],
         ],
 
         // Database of the old portfolio manager, only used by `php artisan portfolio:import-legacy`.
@@ -91,6 +95,8 @@ return [
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'strict' => false,
+            // See the same option on the `rezepteapp` connection above.
+            'options' => extension_loaded('pdo_mysql') ? [Mysql::ATTR_LOCAL_INFILE => false] : [],
         ],
 
         'mariadb' => [

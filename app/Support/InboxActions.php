@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Item;
 use App\Models\ShoppingListEntry;
+use App\Support\Concerns\AssignsNextPosition;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -12,19 +13,21 @@ use Illuminate\Support\Facades\DB;
  */
 class InboxActions
 {
+    use AssignsNextPosition;
+
     /**
      * Turns the entry into an open task at the end of the list.
      */
     public static function toTask(Item $item): void
     {
-        $maxPosition = (int) Item::query()->forHousehold($item->household_id)->ofType(Item::TYPE_TODO)->max('position');
-
-        $item->update([
-            'type' => Item::TYPE_TODO,
-            'content' => null,
-            'done' => false,
-            'position' => $maxPosition + 1,
-        ]);
+        DB::transaction(function () use ($item) {
+            $item->update([
+                'type' => Item::TYPE_TODO,
+                'content' => null,
+                'done' => false,
+                'position' => self::nextPosition(Item::query()->forHousehold($item->household_id)->ofType(Item::TYPE_TODO)),
+            ]);
+        });
     }
 
     /**

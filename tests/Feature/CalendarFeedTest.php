@@ -66,7 +66,11 @@ class CalendarFeedTest extends TestCase
 
         $this->assertStringStartsWith("BEGIN:VCALENDAR\r\n", $ics);
         $this->assertStringContainsString("SUMMARY:Müll\\, Papier\\; Glas\r\n", $ics);
-        $this->assertStringContainsString("DTSTART;VALUE=DATE:20260929\r\nDTEND;VALUE=DATE:20260930\r\nRRULE:FREQ=WEEKLY", $ics);
+        // No RRULE: the app only ever materialises one concrete next due date per completion,
+        // not an infinite series (see CalendarFeed::event()), so the feed must not claim one
+        // either — a repeating task still exports as a single, ordinary VEVENT.
+        $this->assertStringContainsString("DTSTART;VALUE=DATE:20260929\r\nDTEND;VALUE=DATE:20260930\r\n", $ics);
+        $this->assertStringNotContainsString('RRULE', $ics);
         $this->assertStringContainsString("DTSTART:20260930T173000Z\r\nDTEND:20260930T180000Z", $ics);
         $this->assertStringContainsString('Handyvertrag – Kündigen bis', $ics);
         $this->assertStringContainsString('DTSTART;VALUE=DATE:20261025', $ics);

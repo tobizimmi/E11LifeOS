@@ -3,7 +3,32 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
-## [1.55.3] – 2026-10-11
+## [1.56.0] – 2026-10-11
+
+### Neu
+- **Wochenplan-Einträge bearbeiten.** Ein Stift-Button neben dem Löschen-Button öffnet den bekannten Dialog vorausgefüllt – Tippfehler bei Freitext-Einträgen oder die Portionsgröße lassen sich jetzt korrigieren, ohne den Eintrag neu anzulegen.
+
+### Sicherheit
+- **Zwei-Faktor-Pflicht gilt jetzt auch für die Mobile-App-Anmeldung** (vorher nur im Browser erzwungen).
+- **Bank-Zugangsadresse (FinTS) wird geprüft:** nur noch öffentlich erreichbare Server erlaubt, wie schon bei Paperless und Netzlaufwerken.
+- Die Bank-PIN bleibt nach dem Speichern/Abbrechen nicht mehr im Formular stehen.
+- Der Zugangs-Token für Siri-Kurzbefehle landet nicht mehr in Fehlerberichten.
+- CSV-Exporte (Steuer, EÜR, Kostenaufteilung) sind jetzt gegen präparierte Bank-Buchungen abgesichert, die beim Öffnen in Excel Formeln ausführen könnten.
+- Geteilte paperless-ngx-Dokumente: nur noch tatsächlich verlinkte Dokumente abrufbar.
+- Smart-Home-Webhook-Adressen werden jetzt wie Freigabelinks gehasht statt im Klartext gespeichert.
+- Login, Registrierung und Reise-Ordner-Passwörter sperren jetzt zusätzlich nach wiederholten Fehlversuchen.
+- `.env.example` setzt produktionstaugliche Standardwerte (Debug aus, 2FA-Pflicht an).
+
+### Behoben
+- **Monatlich wiederkehrende Aufgaben** (z. B. „zum 31.“) behalten bei pünktlichem Abhaken dauerhaft ihren Tag, statt über kurze Monate langsam auf einen früheren Tag abzudriften; manuelles Verschieben per Drag & Drop übernimmt den neuen Tag korrekt.
+- Gleichzeitiges Abhaken desselben Einkaufslisten-Artikels durch zwei Haushaltsmitglieder führte zu einem Serverfehler.
+- Ein Fehler beim Bank-Depot-Abgleich konnte die gespeicherten Positionen unwiederbringlich löschen.
+- Echte Bank-Duplikate (gleicher Tag/Betrag/Empfänger, z. B. zwei Abhebungen) wurden beim Import fälschlich als „bereits vorhanden“ übersprungen.
+- Live-Updates (Reverb) synchronisieren nach einer kurzen Verbindungsunterbrechung jetzt wieder korrekt, statt veraltete Daten stehen zu lassen.
+- Benachrichtigungen (Erinnerungen, Wochenrückblick) laufen jetzt über die Warteschlange mit Wiederholung – ein einzelner Fehler (z. B. ein E-Mail-Timeout) lässt nicht mehr alle folgenden Mitglieder leer ausgehen.
+
+### Geändert
+- Die interne Systemprüfung (Admin → System) erkennt jetzt auch eine gestörte Datenbank- oder Live-Verbindung.
 
 ### Neu
 - **Siri: Notizen als Ziel + ein Kurzbefehl für alles.** Die Schnellerfassung per Token-Adresse kennt jetzt auch **Notizen** (`…/quick/note`) – die erste Zeile wird zum Titel, der Rest zum Text, abgelegt im Notizen-Bereich. Zusätzlich gibt es die Adresse **`…/quick/auto`**: Beginnt das Diktat mit einem Schlüsselwort – „Aufgabe …“, „Notiz …“, „Inbox …“ (sonst Einkaufsliste) – wird das passende Ziel automatisch gewählt. So reicht **ein einziger Kurzbefehl** statt vier. In Profil → Mobile App ist „Automatisch (per Schlüsselwort)“ als neues Standard-Ziel wählbar.

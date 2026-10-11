@@ -90,7 +90,7 @@ class RunBackup extends Command
             BackupEncryption::encrypt($zipPath, $encrypted, (string) config('backup.encryption_password'));
             $target->upload($encrypted, $name.'.enc');
             $pruned = $target->prune(max(1, (int) config('backup.remote_keep')));
-            Cache::forever('backup:remote-last', now()->toIso8601String());
+            Cache::store('monitoring')->forever('backup:remote-last', now()->toIso8601String());
             $this->info("Encrypted copy uploaded; {$pruned} old copy/copies removed there.");
 
             return true;

@@ -10,6 +10,7 @@ use App\Models\TripParticipant;
 use App\Models\TripStop;
 use App\Support\Life\ExpenseSplitter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
@@ -89,6 +90,26 @@ class GroupTripTest extends TestCase
 
         $trip->fresh()->update(['share_expires_at' => now()->subDay()]);
         $this->get(route('trips.folder', $token))->assertNotFound();
+    }
+
+    public function test_repeated_wrong_folder_passwords_lock_the_trip_out(): void
+    {
+        // The route's own throttle (10/min, by IP) is wide enough to allow more than 10 guesses
+        // over time (one per minute, indefinitely); the per-trip lockout must catch that
+        // independently, so the route throttle is disabled here to isolate it.
+        $this->withoutMiddleware(ThrottleRequests::class);
+
+        $trip = Trip::factory()->create(['share_token' => 'foldertoken1234567890', 'share_password' => 'Bodensee2026']);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->post(route('trips.folder.unlock', 'foldertoken1234567890'), ['password' => 'falsch'])
+                ->assertSessionHasErrors('password');
+        }
+
+        // The 11th attempt is locked out even with the CORRECT password now.
+        $this->post(route('trips.folder.unlock', 'foldertoken1234567890'), ['password' => 'Bodensee2026'])
+            ->assertSessionHasErrors('password');
+        $this->assertNull(session('trip_folder.'.$trip->id));
     }
 
     public function test_the_trip_folder_shows_the_day_plan_ideas_pages_and_links(): void

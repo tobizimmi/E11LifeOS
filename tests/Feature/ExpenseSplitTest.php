@@ -97,6 +97,19 @@ class ExpenseSplitTest extends TestCase
         $this->get(route('splits.export', [$private, 'csv']))->assertNotFound();
     }
 
+    public function test_a_title_that_looks_like_a_spreadsheet_formula_is_defused_in_the_csv_export(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $group = ExpenseGroup::factory()->create(['household_id' => $household->id, 'created_by' => $user->id, 'title' => 'WG-Kasse']);
+        $a = $group->members()->create(['name' => 'Anna']);
+        $expense = $group->expenses()->create(['paid_by' => $a->id, 'title' => '=cmd|\'/c calc\'!A1', 'amount' => 8, 'spent_on' => today(), 'split_mode' => 'equal']);
+        ExpenseSplitter::saveShares($expense, [$a->id => 1]);
+
+        $csv = $this->actingAs($user)->get(route('splits.export', [$group, 'csv']))->assertOk()->getContent();
+        $this->assertStringContainsString("'=cmd|'/c calc'!A1", $csv);
+        $this->assertStringNotContainsString(';=cmd', $csv);
+    }
+
     public function test_a_trip_offers_to_split_its_costs(): void
     {
         [$user, $household] = $this->memberWithHousehold();

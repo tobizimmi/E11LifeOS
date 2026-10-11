@@ -13,6 +13,7 @@ use App\Support\Portfolio\Positions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
+use Spatie\LaravelPasskeys\Models\Passkey;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
 
@@ -133,5 +134,29 @@ class MobileApiTest extends TestCase
 
         $this->withToken($plain)->getJson('/api/v1/portfolios')->assertNotFound();
         $this->withToken($plain)->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('data.user.portfolio_enabled', false);
+    }
+
+    public function test_login_requires_two_factor_setup_when_globally_enforced(): void
+    {
+        config(['security.require_two_factor' => true]);
+        [$user] = $this->memberWithHousehold();
+
+        $this->postJson('/api/v1/auth/login', ['username' => $user->email, 'password' => 'password'])
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('setup_required', true);
+        $this->assertSame(0, ApiToken::count());
+    }
+
+    public function test_login_requires_two_factor_setup_when_only_a_passkey_is_registered(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        Passkey::factory()->create(['authenticatable_id' => $user->id]);
+
+        $this->postJson('/api/v1/auth/login', ['username' => $user->email, 'password' => 'password'])
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('setup_required', true);
+        $this->assertSame(0, ApiToken::count());
     }
 }

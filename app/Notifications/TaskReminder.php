@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Collection;
 use App\Models\Item;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
@@ -14,9 +15,13 @@ use Illuminate\Support\Collection as SupportCollection;
  * Daily e-mail: the recipient's tasks that are due today or overdue, plus date
  * reminders from collections (e.g. a contract's cancellation deadline).
  */
-class TaskReminder extends Notification
+class TaskReminder extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     /**
      * @param  SupportCollection<int, array{task: Item, due: string}>  $tasks

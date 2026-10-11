@@ -120,6 +120,46 @@ class FinanceAnalysisTest extends TestCase
         $this->assertSame('Stadtwerke München', $account->transactions()->where('amount', -89)->value('counterparty'));
     }
 
+    public function test_two_identical_bookings_in_one_file_both_import_with_a_valid_hash_length(): void
+    {
+        $account = BankAccount::factory()->create();
+
+        // Two genuinely separate bookings (e.g. two cash withdrawals, same day/amount/purpose) –
+        // a CSV has no bank reference to tell them apart, so the second gets a discriminated
+        // hash. That hash must still fit the import_hash column (a fixed-width char(40)).
+        $csv = "Datum;Betrag;Verwendungszweck\n01.03.2026;-50,00;Geldautomat\n01.03.2026;-50,00;Geldautomat";
+
+        $result = (new BankCsvImporter)->import($account, $csv, new Categorizer($account->user_id));
+
+        $this->assertSame(['imported' => 2, 'skipped' => 0, 'errors' => 0], $result);
+        $hashes = $account->transactions()->pluck('import_hash');
+        $this->assertCount(2, $hashes->unique());
+        $hashes->each(fn (string $hash) => $this->assertLessThanOrEqual(40, strlen($hash)));
+
+        // A second import of the same file must recognise both as already known, not just one.
+        $second = (new BankCsvImporter)->import($account, $csv, new Categorizer($account->user_id));
+        $this->assertSame(['imported' => 0, 'skipped' => 2, 'errors' => 0], $second);
+    }
+
+    public function test_a_fints_booking_already_imported_under_the_old_shorter_hash_is_not_duplicated(): void
+    {
+        $account = BankAccount::factory()->create();
+
+        // Simulates a transaction imported before the end-to-end reference was added to the
+        // FinTS hash: stored under the old, shorter hash (no reference in the input).
+        $legacyHash = sha1(implode('|', ['2026-03-01', '-50.00', 'rewe', 'einkauf']));
+        Transaction::factory()->for($account, 'account')->create(['import_hash' => $legacyHash, 'booked_on' => '2026-03-01', 'amount' => -50]);
+
+        $result = (new BankCsvImporter)->importBookings($account, [
+            ['date' => '2026-03-01', 'amount' => -50.00, 'counterparty' => 'REWE', 'purpose' => 'Einkauf', 'reference' => 'EREF-12345'],
+        ], new Categorizer($account->user_id));
+
+        // Must be recognised via the legacy hash, not re-imported as a "new" booking just
+        // because this sync run now also knows the end-to-end reference.
+        $this->assertSame(['imported' => 0, 'skipped' => 1, 'errors' => 0], ['imported' => $result['imported'], 'skipped' => $result['skipped'], 'errors' => $result['errors']]);
+        $this->assertSame(1, $account->transactions()->count());
+    }
+
     public function test_files_without_date_and_amount_columns_are_rejected(): void
     {
         $this->expectException(RuntimeException::class);

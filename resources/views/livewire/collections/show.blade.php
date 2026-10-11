@@ -1249,7 +1249,7 @@ new #[Layout('layouts.app')] class extends Component
                 $date = (string) $entry->propertyValue($dateProperty);
 
                 if ($rule && $date !== '' && ! $entry->done) {
-                    foreach (Recurrence::occurrencesBetween($date, $rule, $day, $end) as $upcoming) {
+                    foreach (Recurrence::occurrencesBetween($date, $rule, $day, $end, anchorDay: $entry->repeatAnchorDay()) as $upcoming) {
                         $previews[$upcoming][] = $entry;
                     }
                 }

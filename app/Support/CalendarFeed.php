@@ -136,12 +136,11 @@ class CalendarFeed
             $lines[] = 'DTEND;VALUE=DATE:'.$day->copy()->addDay()->format('Ymd');
         }
 
-        $repeat = $isTask && ($property = $collection->systemProperty('repeat')) ? $item->propertyValue($property) : null;
-        $frequency = ['daily' => 'DAILY', 'weekly' => 'WEEKLY', 'monthly' => 'MONTHLY', 'yearly' => 'YEARLY'][$repeat] ?? null;
-
-        if ($frequency) {
-            $lines[] = 'RRULE:FREQ='.$frequency;
-        }
+        // No RRULE line at all, even for a repeating task: per RFC 5545, COUNT counts the
+        // DTSTART instance itself, so "COUNT=1" produces exactly zero further occurrences —
+        // the same result as omitting RRULE, except some calendar clients still show a repeat
+        // icon for it. The app itself only ever materialises one concrete next due date per
+        // completion (not an infinite series), so the feed must not claim one either.
 
         if ($details && trim($item->body()) !== '') {
             $lines[] = 'DESCRIPTION:'.self::text(mb_substr(trim($item->body()), 0, 1000));

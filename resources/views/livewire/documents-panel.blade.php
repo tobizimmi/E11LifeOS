@@ -173,6 +173,18 @@ new class extends Component
 
         $instance = $this->instance();
 
+        // The household-scoping check below (ExternalLink/household_id) only protects documents
+        // that are ALREADY linked; a document id that was never linked here would otherwise be
+        // accepted and written with the caller's own household_id without ever checking it
+        // actually exists on this Paperless instance.
+        try {
+            $exists = ($this->client($instance->id)->document($documentId)['id'] ?? null) === $documentId;
+        } catch (Throwable $exception) {
+            $exists = false;
+        }
+
+        abort_unless($exists, 404);
+
         if (! $this->links()->where('paperless_instance_id', $instance->id)->where('paperless_document_id', $documentId)->exists()) {
             $this->create(['kind' => ExternalLink::PAPERLESS, 'paperless_instance_id' => $instance->id, 'paperless_document_id' => $documentId, 'title' => mb_substr($title ?: '#'.$documentId, 0, 255)]);
         }

@@ -427,7 +427,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </ul>
                                 <ul class="mt-2 flex flex-wrap gap-2">
                                     @foreach ($gauge->readings->sortByDesc('read_on') as $entry)
-                                        <li class="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ $entry->read_on->format('d.m.Y') }}: {{ $amount($entry->value, $unit) }}<button type="button" wire:click="deleteReading({{ $gauge->id }}, {{ $entry->id }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-3 w-3" stroke-width="2" /></button></li>
+                                        <li wire:key="reading-{{ $entry->id }}" class="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ $entry->read_on->format('d.m.Y') }}: {{ $amount($entry->value, $unit) }}<button type="button" wire:click="deleteReading({{ $gauge->id }}, {{ $entry->id }})" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-3 w-3" stroke-width="2" /></button></li>
                                     @endforeach
                                 </ul>
                             </details>

@@ -4,11 +4,14 @@ use App\Models\Household;
 use App\Models\HouseholdInvite;
 use App\Models\HouseholdMember;
 use App\Models\User;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -38,6 +41,22 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function register(): void
     {
+        // Volt pages carry no route-level throttle middleware (the actual submit is a Livewire
+        // update, not the GET /register route), so the limit lives here instead.
+        $throttleKey = 'register:'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            event(new Lockout(request()));
+
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw ValidationException::withMessages([
+                'email' => trans('auth.throttle', ['seconds' => $seconds, 'minutes' => ceil($seconds / 60)]),
+            ]);
+        }
+
+        RateLimiter::hit($throttleKey, 60);
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],

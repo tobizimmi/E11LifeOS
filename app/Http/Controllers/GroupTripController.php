@@ -10,6 +10,7 @@ use App\Support\Life\TripFeedbackBox;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -36,10 +37,25 @@ class GroupTripController extends Controller
     {
         $trip = $this->sharedTrip($token);
 
+        // Per-trip lockout on top of the route's per-IP throttle: the share password is
+        // short and human-chosen, so the route limit alone (10/min, unbounded per day) still
+        // allows thousands of guesses against one trip from many source IPs or over time.
+        $lockoutKey = 'trip-unlock:'.$trip->id;
+
+        if (RateLimiter::tooManyAttempts($lockoutKey, 10)) {
+            return back()->withErrors(['password' => __('Too many attempts. Please try again later.')]);
+        }
+
         if (! $trip->share_password || ! Hash::check((string) $request->input('password'), $trip->share_password)) {
+            // A literal number of seconds, not now()->diffInSeconds(...): Carbon's diff is signed
+            // and "now() -> 15 minutes from now" is negative, which RateLimiter::hit() silently
+            // treats as "already expired" and never stores anything.
+            RateLimiter::hit($lockoutKey, 15 * 60);
+
             return back()->withErrors(['password' => __('The password is not correct.')]);
         }
 
+        RateLimiter::clear($lockoutKey);
         $request->session()->put('trip_folder.'.$trip->id, true);
 
         return redirect()->route('trips.folder', $token);

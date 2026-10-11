@@ -105,6 +105,7 @@ class BankCsvImporter
     private function importRows(array $rows, array $columns, callable $accountFor, Categorizer $categorizer): array
     {
         $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0];
+        $seen = [];
 
         foreach ($rows as $row) {
             if (count(array_filter($row, fn ($cell) => trim((string) $cell) !== '')) < 2) {
@@ -121,7 +122,19 @@ class BankCsvImporter
 
             $account = $accountFor($row);
 
-            $hash = sha1(implode('|', [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')]));
+            $base = [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')];
+            $hash = sha1(implode('|', $base));
+
+            // A CSV has no bank reference to tell two real bookings with the same date, amount,
+            // counterparty and purpose apart – so only a duplicate hash WITHIN this import gets a
+            // running number, baked into the hash INPUT (not appended to the output: import_hash
+            // is a fixed-width char(40) column, and sha1(...).'#2' would overflow it on MySQL).
+            // The first occurrence keeps matching previously imported files.
+            $seen[$hash] = ($seen[$hash] ?? 0) + 1;
+
+            if ($seen[$hash] > 1) {
+                $hash = sha1(implode('|', [...$base, $seen[$hash]]));
+            }
 
             $transaction = Transaction::firstOrNew(['bank_account_id' => $account->id, 'import_hash' => $hash]);
 
@@ -150,7 +163,7 @@ class BankCsvImporter
     /**
      * Bookings from another source (e.g. FinTS) with the same duplicate check as the CSV import.
      *
-     * @param  list<array{date: string, amount: float, counterparty: ?string, purpose: ?string}>  $bookings
+     * @param  list<array{date: string, amount: float, counterparty: ?string, purpose: ?string, reference?: string}>  $bookings
      * @return array{imported: int, skipped: int, errors: int, transactions: list<Transaction>}
      */
     public function importBookings(BankAccount $account, array $bookings, Categorizer $categorizer): array
@@ -158,8 +171,19 @@ class BankCsvImporter
         $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0, 'transactions' => []];
 
         foreach ($bookings as $booking) {
-            $hash = sha1(implode('|', [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')]));
-            $transaction = Transaction::firstOrNew(['bank_account_id' => $account->id, 'import_hash' => $hash]);
+            $base = [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')];
+
+            // FinTS carries an end-to-end reference, so two otherwise identical bookings (same
+            // date, amount, counterparty and purpose) still get different hashes with it.
+            $hash = sha1(implode('|', [...$base, $booking['reference'] ?? '']));
+
+            // Transactions imported before the reference was added to the hash are stored under
+            // the OLD (shorter) hash — check that first, or every one of them would re-import as
+            // "new" the next time this account syncs. Only once neither hash matches is this
+            // genuinely a new booking, stored from now on under the new, more precise hash.
+            $legacyHash = sha1(implode('|', $base));
+            $transaction = Transaction::where('bank_account_id', $account->id)->where('import_hash', $legacyHash)->first()
+                ?? Transaction::firstOrNew(['bank_account_id' => $account->id, 'import_hash' => $hash]);
 
             if ($transaction->exists) {
                 $result['skipped']++;

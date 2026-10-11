@@ -9,6 +9,7 @@ use App\Support\Helpdesk\Tickets;
 use App\Support\Security\SecurityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -206,6 +207,18 @@ new #[Layout('layouts.app')] class extends Component
             'doneCount' => RoadmapMilestone::where('status', 'done')->count(),
         ];
     }
+
+    /**
+     * Images of the milestone currently being edited (lazily evaluated and cached per
+     * request, instead of running straight in the template body on every update).
+     *
+     * @return \Illuminate\Support\Collection<int, RoadmapMilestoneImage>
+     */
+    #[Computed]
+    public function editImages(): \Illuminate\Support\Collection
+    {
+        return $this->editingId ? (RoadmapMilestone::with('images')->find($this->editingId)?->images ?? collect()) : collect();
+    }
 }; ?>
 
 @php
@@ -250,12 +263,11 @@ new #[Layout('layouts.app')] class extends Component
                     </label>
                     <x-input-error :messages="$errors->get('form.details')" />
 
-                    @php($editImages = $editingId ? (\App\Models\RoadmapMilestone::with('images')->find($editingId)?->images ?? collect()) : collect())
                     <div class="space-y-2">
                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Images') }}</p>
-                        @if ($editImages->isNotEmpty())
+                        @if ($this->editImages->isNotEmpty())
                             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                @foreach ($editImages as $image)
+                                @foreach ($this->editImages as $image)
                                     <div wire:key="milestone-image-{{ $image->id }}" class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
                                         <img src="{{ route('admin.roadmap.image', $image) }}" alt="{{ $image->caption }}" class="h-32 w-full bg-gray-50 object-cover dark:bg-gray-900">
                                         <div class="flex items-center gap-1 p-2">

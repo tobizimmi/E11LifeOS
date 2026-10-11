@@ -3,6 +3,7 @@
 namespace App\Support\Banking;
 
 use App\Models\BankConnection;
+use App\Support\Security\UrlGuard;
 use Fhp\Action\GetBalance;
 use Fhp\Action\GetDepotAufstellung;
 use Fhp\Action\GetSEPAAccounts;
@@ -117,6 +118,12 @@ class FinTsClient
 
     private function client(BankConnection $connection, string $pin, ?string $persisted = null): FinTs
     {
+        // Defense in depth: the connection's address is validated when it is saved, but this
+        // guards every caller against a FinTS URL that reaches the server's own network.
+        if (! UrlGuard::hasValidShape((string) $connection->fints_url) || ! UrlGuard::isPublicHost((string) parse_url((string) $connection->fints_url, PHP_URL_HOST))) {
+            throw new RuntimeException(__('This FinTS address is not allowed.'));
+        }
+
         $options = new FinTsOptions;
         $options->url = $connection->fints_url;
         $options->bankCode = $connection->blz;
@@ -566,6 +573,8 @@ class FinTsClient
                     'amount' => round($amount, 2),
                     'counterparty' => trim($transaction->getName()) ?: null,
                     'purpose' => trim($transaction->getMainDescription() ?: $transaction->getBookingText()) ?: null,
+                    // End-to-end reference (EREF): tells apart two otherwise identical bookings.
+                    'reference' => $transaction->getEndToEndID() ?: '',
                 ];
             }
         }

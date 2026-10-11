@@ -13,6 +13,7 @@ use App\Support\Finance\Categorizer;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\Positions;
 use Fhp\CurlException;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
@@ -132,8 +133,14 @@ class BankSync
                 $result = $call();
             }
         } catch (Throwable $exception) {
-            if ($exception instanceof CurlException) {
-                $exception = new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url, self::knownUrl($connection)), previous: $exception);
+            // A detailed connection error (host, HTTP status, the bank's raw response) is useful in the
+            // logs, but shown to the user it turns a user-chosen FinTS URL into a port-scan oracle –
+            // the member only sees that the bank could not be reached.
+            $isConnectionError = $exception instanceof CurlException;
+
+            if ($isConnectionError) {
+                report(new RuntimeException(FinTsClient::describeConnectionError($exception, (string) $connection->fints_url, self::knownUrl($connection)), previous: $exception));
+                $exception = new RuntimeException(__('The bank could not be reached.'), previous: $exception);
             }
 
             $connection->update(['sync_status' => 'error', 'sync_message' => mb_substr($exception->getMessage(), 0, 1000), 'pending_state' => null, 'pending_until' => null]);
@@ -195,19 +202,22 @@ class BankSync
         }
 
         if ($operation === 'depot') {
-            $connection->depotPositions()->delete();
+            DB::transaction(function () use ($connection, $result) {
+                $connection->depotPositions()->delete();
 
-            foreach ($result['holdings'] as $holding) {
-                $connection->depotPositions()->create($holding);
-            }
+                foreach ($result['holdings'] ?? [] as $holding) {
+                    $connection->depotPositions()->create($holding);
+                }
+            });
 
-            return ['message' => trim(trans_choice(':count holding received.|:count holdings received.', count($result['holdings'])).' '.$errors), 'holdings' => count($result['holdings'])];
+            return ['message' => trim(trans_choice(':count holding received.|:count holdings received.', count($result['holdings'] ?? [])).' '.$errors), 'holdings' => count($result['holdings'] ?? [])];
         }
 
         if ($operation === 'statement') {
             $importer = app(BankCsvImporter::class);
             $categorizer = new Categorizer($connection->user_id);
             $imported = 0;
+            $skipped = 0;
             $newTransactions = [];
             $products = collect($connection->accounts ?? [])->pluck('product', 'iban');
 
@@ -218,12 +228,19 @@ class BankSync
                 );
                 $import = $importer->importBookings($account, $bookings, $categorizer);
                 $imported += $import['imported'];
+                $skipped += $import['skipped'];
                 $newTransactions = [...$newTransactions, ...$import['transactions']];
             }
 
             $this->alert($connection, $newTransactions, $balanceChanges);
 
-            return ['message' => trim(trans_choice(':count new booking imported into Finances.|:count new bookings imported into Finances.', $imported).' '.$errors), 'imported' => $imported];
+            $message = trans_choice(':count new booking imported into Finances.|:count new bookings imported into Finances.', $imported);
+
+            if ($skipped > 0) {
+                $message .= ' '.trans_choice(':count booking was already there|:count bookings were already there', $skipped);
+            }
+
+            return ['message' => trim($message.' '.$errors), 'imported' => $imported];
         }
 
         return ['message' => __('Connection works.')];

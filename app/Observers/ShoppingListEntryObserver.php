@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Events\HouseholdItemsChanged;
 use App\Models\ShoppingListEntry;
 use App\Support\ShoppingLists;
+use Throwable;
 
 class ShoppingListEntryObserver
 {
@@ -15,9 +16,14 @@ class ShoppingListEntryObserver
 
     public function updated(ShoppingListEntry $entry): void
     {
-        // Ticking an item off counts as buying it (for "bought often").
+        // Ticking an item off counts as buying it (for "bought often") – a failure here
+        // must never block the actual checkbox toggle.
         if ($entry->wasChanged('checked') && $entry->checked) {
-            ShoppingLists::recordPurchase($entry);
+            try {
+                ShoppingLists::recordPurchase($entry);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
         }
 
         $this->broadcast($entry);

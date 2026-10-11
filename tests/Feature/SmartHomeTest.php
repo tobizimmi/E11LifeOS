@@ -135,4 +135,35 @@ class SmartHomeTest extends TestCase
         $this->assertSame(1, Item::where('title', 'Fenster schließen')->count());
         $this->assertSame('webhook', $connection->fresh()->last_route);
     }
+
+    /**
+     * Simulates a connection created before the webhook_secret rehash migration (plaintext
+     * secret, no encrypted copy) and checks that running the migration keeps the webhook working
+     * with the original plaintext secret while no longer storing it in the clear.
+     */
+    public function test_existing_webhook_secrets_keep_working_after_the_rehash_migration(): void
+    {
+        [, $household] = $this->memberWithHousehold();
+        $plain = str_repeat('a', 48);
+        $id = DB::table('smart_home_connections')->insertGetId([
+            'household_id' => $household->id, 'type' => 'homeassistant', 'name' => 'Altbestand',
+            'webhook_secret' => $plain, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $migration = include database_path('migrations/2026_10_11_152233_rehash_smart_home_connection_webhook_secrets.php');
+        $migration->up();
+
+        $row = DB::table('smart_home_connections')->where('id', $id)->first();
+        $this->assertNotSame($plain, $row->webhook_secret);
+        $this->assertSame(64, strlen($row->webhook_secret));
+        $this->assertNotNull($row->webhook_secret_encrypted);
+        $this->assertStringNotContainsString($plain, json_encode($row));
+
+        $connection = SmartHomeConnection::find($id);
+        $this->assertSame($plain, $connection->webhook_secret);
+
+        $this->postJson(route('api.v1.smart-home.webhook', $plain), ['entity_id' => 'binary_sensor.fenster', 'state' => 'on'])
+            ->assertOk()->assertJson(['accepted' => 1]);
+        $this->assertSame('webhook', $connection->fresh()->last_route);
+    }
 }

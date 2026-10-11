@@ -23,14 +23,16 @@ class SendMedicationReminders extends Command
                     return;
                 }
 
-                $webPush->send(
-                    $medication->profile->user,
-                    '💊 '.__('Time for :medication', ['medication' => $medication->title]),
-                    trim($medication->profile->name.($medication->dosage ? ' · '.$medication->dosage : '')),
-                    route('health.index', ['profile' => $medication->health_profile_id, 'tab' => 'medications']),
-                    urgent: true,
-                );
-                $sent++;
+                rescue(function () use ($medication, $webPush, &$sent) {
+                    $webPush->send(
+                        $medication->profile->user,
+                        '💊 '.__('Time for :medication', ['medication' => $medication->title]),
+                        trim($medication->profile->name.($medication->dosage ? ' · '.$medication->dosage : '')),
+                        route('health.index', ['profile' => $medication->health_profile_id, 'tab' => 'medications']),
+                        urgent: true,
+                    );
+                    $sent++;
+                }, report: true);
             });
 
         $this->info("Medication reminders: {$sent}");

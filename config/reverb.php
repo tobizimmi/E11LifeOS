@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Browser-Facing Host
+    |--------------------------------------------------------------------------
+    |
+    | What the BROWSER actually connects to (baked into the built JS via Vite,
+    | see resources/js/echo.js) – used to scope the CSP connect-src directive
+    | (SecurityHeaders middleware) to the same host. Can legitimately differ
+    | from "servers.reverb.hostname" below, which is only Reverb's own listen
+    | configuration on the server.
+    |
+    */
+
+    'browser_hostname' => env('VITE_REVERB_HOST'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Reverb Servers
     |--------------------------------------------------------------------------
     |

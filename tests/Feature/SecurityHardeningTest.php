@@ -66,6 +66,17 @@ class SecurityHardeningTest extends TestCase
         $this->assertStringNotContainsString(' onclick="', $response->getContent());
     }
 
+    public function test_the_csp_only_allows_connections_to_this_apps_own_host(): void
+    {
+        [$user] = $this->memberWithHousehold();
+
+        $response = $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $policy = (string) $response->headers->get('Content-Security-Policy');
+
+        $this->assertMatchesRegularExpression('/connect-src \'self\' wss:\/\/[^ ]+:\* ws:\/\/[^ ]+:\*/', $policy);
+        $this->assertStringNotContainsString("connect-src 'self' ws: wss:", $policy);
+    }
+
     public function test_what_a_health_entry_is_about_is_stored_encrypted(): void
     {
         [$user] = $this->memberWithHousehold();

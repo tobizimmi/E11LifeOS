@@ -8,6 +8,7 @@ use App\Support\Banking\BankAlerts;
 use App\Support\Banking\BankLinkSync;
 use App\Support\Banking\BankSync;
 use App\Support\Banking\GoCardlessClient;
+use App\Support\Security\UrlGuard;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -124,51 +125,59 @@ new #[Layout('layouts.app')] class extends Component
 
     public function closeForm(): void
     {
+        $this->form['pin'] = '';
         $this->showForm = false;
     }
 
     public function saveConnection(): void
     {
-        $data = $this->validate([
-            'form.bank' => ['required', 'in:'.implode(',', array_keys(BankSync::BANKS))],
-            'form.bank_name' => ['required', 'string', 'max:100'],
-            'form.blz' => ['required', 'digits:8'],
-            'form.fints_url' => ['required', 'url:https', 'max:255'],
-            'form.login_name' => ['required', 'string', 'max:150'],
-            'form.pin' => ['nullable', 'string', 'max:64'],
-            'form.save_pin' => ['boolean'],
-            'form.portfolio_id' => ['nullable', 'integer'],
-            'form.auto_sync' => ['boolean'],
-        ], attributes: ['form.blz' => __('Bank code (BLZ)'), 'form.fints_url' => __('FinTS URL'), 'form.login_name' => __('Access ID')])['form'];
+        try {
+            $data = $this->validate([
+                'form.bank' => ['required', 'in:'.implode(',', array_keys(BankSync::BANKS))],
+                'form.bank_name' => ['required', 'string', 'max:100'],
+                'form.blz' => ['required', 'digits:8'],
+                'form.fints_url' => ['required', 'url:https', 'max:255', fn ($attribute, $value, $fail) => UrlGuard::isPublicHost((string) parse_url((string) $value, PHP_URL_HOST)) ? null : $fail(__('This FinTS address is not allowed.'))],
+                'form.login_name' => ['required', 'string', 'max:150'],
+                'form.pin' => ['nullable', 'string', 'max:64'],
+                'form.save_pin' => ['boolean'],
+                'form.portfolio_id' => ['nullable', 'integer'],
+                'form.auto_sync' => ['boolean'],
+            ], attributes: ['form.blz' => __('Bank code (BLZ)'), 'form.fints_url' => __('FinTS URL'), 'form.login_name' => __('Access ID')])['form'];
 
-        $connection = $this->editingId ? $this->findConnection($this->editingId) : new BankConnection(['user_id' => $this->currentUser()->id, 'household_id' => $this->householdId]);
-        $portfolioId = $data['portfolio_id'] && $this->portfolios()->whereKey($data['portfolio_id'])->exists() ? (int) $data['portfolio_id'] : null;
+            $connection = $this->editingId ? $this->findConnection($this->editingId) : new BankConnection(['user_id' => $this->currentUser()->id, 'household_id' => $this->householdId]);
+            $portfolioId = $data['portfolio_id'] && $this->portfolios()->whereKey($data['portfolio_id'])->exists() ? (int) $data['portfolio_id'] : null;
 
-        $connection->fill([
-            'bank' => $data['bank'],
-            'bank_name' => $data['bank_name'],
-            'blz' => $data['blz'],
-            'fints_url' => $data['fints_url'],
-            'login_name' => $data['login_name'],
-            'tan_mode' => BankSync::BANKS[$data['bank']]['tan_mode'],
-            'portfolio_id' => $portfolioId,
-        ]);
+            $connection->fill([
+                'bank' => $data['bank'],
+                'bank_name' => $data['bank_name'],
+                'blz' => $data['blz'],
+                'fints_url' => $data['fints_url'],
+                'login_name' => $data['login_name'],
+                'tan_mode' => BankSync::BANKS[$data['bank']]['tan_mode'],
+                'portfolio_id' => $portfolioId,
+            ]);
 
-        // The PIN is only kept when the user allows it; automatic sync needs it.
-        if (! $data['save_pin']) {
-            $connection->pin = null;
-        } elseif (filled($data['pin'])) {
-            $connection->pin = $data['pin'];
+            // The PIN is only kept when the user allows it; automatic sync needs it.
+            if (! $data['save_pin']) {
+                $connection->pin = null;
+            } elseif (filled($data['pin'])) {
+                $connection->pin = $data['pin'];
+            }
+
+            $connection->auto_sync = $data['auto_sync'] && $connection->pin !== null;
+            $connection->save();
+            $this->showForm = false;
+        } finally {
+            // Runs on a validation failure too (e.g. a FinTS URL the new SSRF guard rejects):
+            // the plain-text PIN must not linger in the Livewire snapshot either way.
+            $this->form['pin'] = '';
         }
-
-        $connection->auto_sync = $data['auto_sync'] && $connection->pin !== null;
-        $connection->save();
-        $this->showForm = false;
     }
 
     public function deleteConnection(int $connectionId): void
     {
         $this->findConnection($connectionId)->delete();
+        $this->form['pin'] = '';
         $this->showForm = false;
     }
 

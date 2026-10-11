@@ -23,6 +23,15 @@ class ExternalDocumentController extends Controller
     {
         $client = PaperlessClient::for($instance, $request->user());
 
+        // Being allowed to use the instance is not enough: the document itself must be linked
+        // into the viewer's household, otherwise any document id on a shared instance would be
+        // readable (IDOR).
+        abort_unless(ExternalLink::query()
+            ->where('paperless_instance_id', $instance->id)
+            ->where('paperless_document_id', $document)
+            ->where('household_id', $request->user()->currentHousehold()?->id)
+            ->exists(), 404);
+
         try {
             $response = $client->file($document, $variant);
         } catch (Throwable $exception) {

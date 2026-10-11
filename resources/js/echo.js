@@ -23,6 +23,18 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
             forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
             enabledTransports: ['ws', 'wss'],
         });
+
+        // A reconnect (network hiccup, Reverb restart on a deploy) can miss broadcasts sent while
+        // disconnected – refresh every live Livewire component once the socket is back so its
+        // state matches the server again, instead of silently showing stale data. This calls
+        // each component's own $refresh() directly (Livewire.all()), not a '$refresh' browser
+        // event dispatch: no component listens for an event literally named "$refresh" — that
+        // name is only ever used as an action/method reference in wire:* attributes.
+        if (window.Echo?.connector?.pusher?.connection) {
+            window.Echo.connector.pusher.connection.bind('connected', () => {
+                window.Livewire?.all?.().forEach((component) => component.$refresh());
+            });
+        }
     } catch (error) {
         console.error('Realtime updates unavailable:', error);
     }

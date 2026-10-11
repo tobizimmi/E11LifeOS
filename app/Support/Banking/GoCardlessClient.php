@@ -190,7 +190,13 @@ class GoCardlessClient
                 ->post('/token/new/', ['secret_id' => $this->secretId, 'secret_key' => $this->secretKey])
                 ->throw()->json();
 
-            return (string) ($response['access'] ?? '');
+            // Throwing here (instead of returning '') keeps Cache::remember from caching
+            // an empty token for 23 hours when the response is missing "access".
+            if (empty($response['access'])) {
+                throw new RuntimeException('GoCardless did not return an access token.');
+            }
+
+            return (string) $response['access'];
         });
     }
 }

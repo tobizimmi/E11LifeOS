@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -10,9 +11,13 @@ use Illuminate\Notifications\Notification;
  * E-mail about a security-relevant event on the account (new device, repeated failed sign-ins).
  * Always sent, independent of the reminder settings.
  */
-class SecurityAlert extends Notification
+class SecurityAlert extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     /**
      * @param  list<string>  $lines

@@ -16,7 +16,7 @@ class SmartHomeWebhookController extends Controller
 {
     public function __invoke(Request $request, string $secret, AutomationEngine $engine): JsonResponse
     {
-        $connection = SmartHomeConnection::where('webhook_secret', $secret)->first();
+        $connection = SmartHomeConnection::query()->whereShareToken('webhook_secret', $secret)->first();
         abort_if($connection === null || strlen($secret) < 32, 404);
 
         $payload = json_decode($request->getContent(), true);

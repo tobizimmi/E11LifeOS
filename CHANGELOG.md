@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.57.0] – 2026-10-12
+
+### Neu
+- **Tabellenspalten in Seiten lassen sich jetzt per Ziehen verbreitern/verschmälern** – wie bei Notion. Die Breite wird beim Speichern gemerkt und beim nächsten Öffnen der Seite wieder hergestellt.
+- **Sammlungen in Seiten einbetten** („Linked Database“): über „📋 Liste einfügen“ lässt sich jede eigene Sammlung – optional mit einer ihrer gespeicherten Ansichten (Filter/Sortierung) – live in eine Seite einfügen. Die Einträge sind direkt verlinkt, ein nicht mehr sichtbares oder gelöschtes Sammlung-Embed zeigt einen Hinweis statt eines Fehlers.
+- **Einträge einer Sammlung in eine Aufgabe umwandeln**: Button „✅ Task“ in der Detailansicht eines Eintrags verschiebt ihn in die Aufgabenliste, Titel und Notiz bleiben erhalten.
+- **Ganze Seiten in eine Aufgabe oder auf die Einkaufsliste übernehmen**: neue Buttons im Seitenkopf. Seiten mit Unterseiten lassen sich (noch) nicht in eine Aufgabe umwandeln, um Unterseiten nicht verwaist zurückzulassen.
+- **Checklisten-Zeilen in Seiten auf die Einkaufsliste übernehmen**: zweiter Button neben dem bestehenden „→ Aufgabe“-Button an jeder Checklisten-Zeile.
+
 ## [1.56.0] – 2026-10-11
 
 ### Neu

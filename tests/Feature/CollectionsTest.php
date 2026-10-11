@@ -255,6 +255,37 @@ class CollectionsTest extends TestCase
         $this->assertSame("- [ ] Leiter holen\n- [x] Eimer", $todo->fresh()->body());
     }
 
+    public function test_an_entry_can_be_turned_into_a_task(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $collection = Collection::factory()->for($household)->create(['name' => 'Verträge']);
+        $kind = $collection->properties()->create(['name' => 'Art', 'type' => CollectionProperty::TYPE_SELECT, 'options' => [['id' => 'a', 'name' => 'Strom', 'color' => 'blue']], 'position' => 0]);
+        $entry = Item::factory()->for($collection)->for($household)->create(['type' => Item::TYPE_ENTRY, 'title' => 'Stromvertrag kündigen']);
+        $entry->setPropertyValue($kind, 'a');
+        $entry->update(['content' => ['body' => 'Kündigungsfrist beachten']]);
+
+        Volt::test('collections.show', ['collection' => $collection->id])
+            ->call('openEntry', $entry->id)
+            ->assertSet('openEntryId', (string) $entry->id)
+            ->call('convertEntryToTask', $entry->id)
+            ->assertSet('openEntryId', '');
+
+        $fresh = $entry->fresh();
+        $tasks = Collection::tasksFor($household->id);
+        $this->assertSame(Item::TYPE_TODO, $fresh->type);
+        $this->assertSame($tasks->id, $fresh->collection_id);
+        $this->assertFalse((bool) $fresh->done);
+        $this->assertNull($fresh->propertyValue($kind));
+        // The entry's body becomes the task's notes, read back the same way (Item::body()).
+        $this->assertSame('Kündigungsfrist beachten', $fresh->body());
+        $this->assertSame('Stromvertrag kündigen', $fresh->title);
+
+        // It no longer shows in the source collection.
+        Volt::test('collections.show', ['collection' => $collection->id])->assertDontSee('Stromvertrag kündigen');
+    }
+
     public function test_the_table_can_be_sorted_by_a_property_with_empty_values_last(): void
     {
         [$user, $household] = $this->memberWithHousehold();

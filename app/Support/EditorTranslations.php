@@ -42,6 +42,7 @@ class EditorTranslations
             'embedCalendar' => __('Calendar: next 14 days'),
             'embedSubpages' => __('List of subpages'),
             'embedShopping' => __('Shopping list (live)'),
+            'embedCollection' => __('Collection (live)'),
             'insertList' => __('Insert list (packing, checklist, shopping)'),
             'embedHint' => __('shown live when the page is read'),
             'uploading' => __('Uploading …'),

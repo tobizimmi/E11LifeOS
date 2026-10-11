@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Collection;
+use App\Models\CollectionProperty;
+use App\Models\CollectionView;
 use App\Models\Item;
 use App\Support\NoteMarkdown;
 use App\Support\TaskPages;
@@ -65,5 +68,50 @@ class PageBlocksTest extends TestCase
             ->call('togglePageTask', $task->id);
 
         $this->assertTrue($task->fresh()->done);
+    }
+
+    public function test_a_collection_can_be_embedded_in_a_page(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $collection = Collection::factory()->for($household)->create(['name' => 'Verträge', 'icon' => '📑']);
+        $status = $collection->properties()->create(['name' => 'Status', 'type' => CollectionProperty::TYPE_SELECT, 'options' => [['id' => 'open', 'name' => 'Offen', 'color' => 'blue'], ['id' => 'done', 'name' => 'Erledigt', 'color' => 'green']], 'position' => 0]);
+        $open = Item::factory()->for($collection)->for($household)->create(['type' => Item::TYPE_ENTRY, 'title' => 'Stromvertrag']);
+        $open->setPropertyValue($status, 'open');
+        $open->save();
+        $closed = Item::factory()->for($collection)->for($household)->create(['type' => Item::TYPE_ENTRY, 'title' => 'Gasvertrag']);
+        $closed->setPropertyValue($status, 'done');
+        $closed->save();
+
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => ':::embed {type="collection" collection="'.$collection->id.'"} :::']]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        $this->assertStringContainsString('Verträge', $html);
+        $this->assertStringContainsString('Stromvertrag', $html);
+        $this->assertStringContainsString('Gasvertrag', $html);
+        $this->assertStringContainsString(route('collections.show', ['collection' => $collection->id, 'entry' => $open->id]), $html);
+        $this->assertStringContainsString(route('collections.show', $collection->id), $html);
+
+        // A saved view's filter and sort are applied the same way they are in the full collection.
+        $view = CollectionView::create(['collection_id' => $collection->id, 'name' => 'Offene', 'settings' => [
+            'filters' => [['property' => (string) $status->id, 'operator' => 'is', 'value' => 'open']],
+        ]]);
+        $filteredPage = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => ':::embed {type="collection" collection="'.$collection->id.'" view="'.$view->id.'"} :::']]);
+
+        $filteredHtml = NoteMarkdown::toHtml($filteredPage, $user);
+
+        $this->assertStringContainsString('Stromvertrag', $filteredHtml);
+        $this->assertStringNotContainsString('Gasvertrag', $filteredHtml);
+
+        // A collection the viewer cannot see degrades gracefully instead of leaking data or erroring.
+        [$stranger, $strangerHousehold] = $this->memberWithHousehold();
+        $foreignCollection = Collection::factory()->for($strangerHousehold)->create(['name' => 'Geheim']);
+        $foreignPage = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => ':::embed {type="collection" collection="'.$foreignCollection->id.'"} :::']]);
+
+        $foreignHtml = NoteMarkdown::toHtml($foreignPage, $user);
+
+        $this->assertStringContainsString('Diese Sammlung ist nicht mehr verfügbar.', $foreignHtml);
+        $this->assertStringNotContainsString('Geheim', $foreignHtml);
     }
 }

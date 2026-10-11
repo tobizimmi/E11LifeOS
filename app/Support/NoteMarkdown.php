@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\Collection;
+use App\Models\CollectionProperty;
+use App\Models\CollectionView;
 use App\Models\Item;
 use App\Models\ShoppingList;
 use App\Models\User;
@@ -105,6 +108,7 @@ class NoteMarkdown
                     // morphing it (a prevented click leaves the old checked state on screen).
                     $button = $taskButtons
                         ? sprintf('<button type="button" class="checklist-to-task" wire:click="checklistToTask(%d)" title="%s" aria-label="%s">↗</button>', $index, e(__('Make it a task')), e(__('Make it a task')))
+                            .sprintf('<button type="button" class="checklist-to-shopping" wire:click="checklistToShopping(%d)" title="%s" aria-label="%s">🛒</button>', $index, e(__('Add to shopping list')), e(__('Add to shopping list')))
                         : '';
 
                     return sprintf(
@@ -424,8 +428,9 @@ class NoteMarkdown
     }
 
     /**
-     * Live content embedded in a page: its linked tasks, the next two weeks, its subpages or a
-     * shopping list of the household.
+     * Live content embedded in a page: its linked tasks, the next two weeks, its subpages, a
+     * shopping list, or a collection (optionally through one of its saved views) of the
+     * household.
      *
      * @param  array<string, string>  $attributes
      */
@@ -436,8 +441,64 @@ class NoteMarkdown
             'calendar' => self::embedCalendar($page, $viewer),
             'subpages' => self::embedSubpages($page, $viewer),
             'shopping' => self::embedShopping($page, (int) ($attributes['list'] ?? 0)),
+            'collection' => self::embedCollection($page, $viewer, (int) ($attributes['collection'] ?? 0), isset($attributes['view']) ? (int) $attributes['view'] : null),
             default => '',
         };
+    }
+
+    /**
+     * Up to 15 entries of a collection, live — through one of its saved views when given (same
+     * filter, hidden-done and sort it has in the full collection), otherwise unfiltered. A
+     * private collection, or one from another household, renders as "no longer available"
+     * rather than a 404: the embed must degrade gracefully for every other viewer of the page.
+     */
+    private static function embedCollection(Item $page, User $viewer, int $collectionId, ?int $viewId): string
+    {
+        $collection = self::visibleCollection($viewer, $page->household_id, $collectionId);
+
+        if (! $collection) {
+            return self::embedFrame('🗂️ '.__('Collection'), '<p class="page-embed-empty">'.e(__('This collection is no longer available.')).'</p>');
+        }
+
+        // A direct query, not the $collection->properties relation: Collection::properties() has
+        // no generic return-type annotation, so the relation would type as a bare Model here.
+        $properties = CollectionProperty::where('collection_id', $collection->id)->orderBy('position')->orderBy('id')->get();
+        $entries = Item::query()->forHousehold($page->household_id)->visibleTo($viewer)
+            ->where('collection_id', $collection->id)->orderBy('position')->orderBy('id')->get();
+
+        $view = $viewId ? self::collectionView($collection->id, $viewId) : null;
+        $settings = $view ? $view->settings : [];
+
+        if (! empty($settings['filters'])) {
+            $entries = EntryFilters::apply($entries, EntryFilters::sanitize($settings['filters'], $properties), $properties, $viewer->id);
+        }
+
+        if (! empty($settings['hideDone']) && $collection->isTasks()) {
+            $entries = $entries->reject(fn (Item $entry) => $entry->done);
+        }
+
+        if (! empty($settings['sort'])) {
+            // Scoped to this collection: a view's sort setting must not resolve to a property of
+            // another collection (or household) just because the numeric id happens to exist.
+            $sortProperty = CollectionProperty::where('collection_id', $collection->id)->find((int) $settings['sort']);
+            $key = fn (Item $entry) => $sortProperty ? $entry->propertyValue($sortProperty) : mb_strtolower($entry->title);
+            $entries = (($settings['direction'] ?? 'asc') === 'desc' ? $entries->sortByDesc($key) : $entries->sortBy($key))->values();
+        }
+
+        $rows = $entries->take(15)->map(fn (Item $entry) => sprintf(
+            '<li><a href="%s"%s>%s</a></li>',
+            e(route('collections.show', ['collection' => $collection->id, 'entry' => $entry->id])),
+            $collection->isTasks() && $entry->done ? ' class="is-done"' : '',
+            e($entry->title),
+        ));
+
+        $label = ($collection->icon ?: '🗂️').' '.$collection->name.($view ? ' – '.$view->name : '');
+        $link = sprintf('<p class="page-embed-empty"><a href="%s">%s</a></p>', e(route('collections.show', $collection->id)), e(__('Open collection')));
+        $more = $entries->count() > 15 ? sprintf('<p class="page-embed-empty">%s</p>', e(__(':count more …', ['count' => $entries->count() - 15]))) : '';
+
+        return self::embedFrame($label, ($rows->isEmpty()
+            ? '<p class="page-embed-empty">'.e(__('No entries here (yet).')).'</p>'
+            : '<ul class="page-embed-subpages">'.$rows->implode('').'</ul>'.$more).$link);
     }
 
     /**
@@ -507,6 +568,16 @@ class NoteMarkdown
     private static function embedFrame(string $title, string $body): string
     {
         return sprintf('<section class="page-embed"><p class="page-embed-title">%s</p>%s</section>', e($title), $body);
+    }
+
+    private static function visibleCollection(User $viewer, int $householdId, int $id): ?Collection
+    {
+        return Collection::query()->visibleTo($viewer, $householdId)->with('properties')->whereKey($id)->first();
+    }
+
+    private static function collectionView(int $collectionId, int $viewId): ?CollectionView
+    {
+        return CollectionView::where('collection_id', $collectionId)->find($viewId);
     }
 
     /**

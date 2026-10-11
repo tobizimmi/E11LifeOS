@@ -347,21 +347,29 @@ const Embed = Node.create({
     },
 
     addAttributes() {
-        return { type: { default: 'tasks' }, list: { default: null } };
+        return { type: { default: 'tasks' }, list: { default: null }, collection: { default: null }, view: { default: null } };
     },
 
     parseHTML() {
-        return [{ tag: 'div[data-embed]', getAttrs: (element) => ({ type: element.getAttribute('data-embed') || 'tasks', list: element.getAttribute('data-list') }) }];
+        return [{
+            tag: 'div[data-embed]',
+            getAttrs: (element) => ({
+                type: element.getAttribute('data-embed') || 'tasks',
+                list: element.getAttribute('data-list'),
+                collection: element.getAttribute('data-collection'),
+                view: element.getAttribute('data-view'),
+            }),
+        }];
     },
 
     renderHTML({ node }) {
         const t = this.options.translations;
-        const labels = { tasks: `✅ ${t.embedTasks}`, calendar: `📅 ${t.embedCalendar}`, subpages: `📄 ${t.embedSubpages}`, shopping: `🛒 ${t.embedShopping}` };
+        const labels = { tasks: `✅ ${t.embedTasks}`, calendar: `📅 ${t.embedCalendar}`, subpages: `📄 ${t.embedSubpages}`, shopping: `🛒 ${t.embedShopping}`, collection: `🗂️ ${t.embedCollection}` };
 
-        return ['div', { 'data-embed': node.attrs.type, 'data-list': node.attrs.list, class: 'editor-embed' }, `${labels[node.attrs.type] ?? node.attrs.type} – ${t.embedHint}`];
+        return ['div', { 'data-embed': node.attrs.type, 'data-list': node.attrs.list, 'data-collection': node.attrs.collection, 'data-view': node.attrs.view, class: 'editor-embed' }, `${labels[node.attrs.type] ?? node.attrs.type} – ${t.embedHint}`];
     },
 
-    ...createAtomBlockMarkdownSpec({ nodeName: 'embed', defaultAttributes: { type: 'tasks' }, allowedAttributes: ['type', 'list'] }),
+    ...createAtomBlockMarkdownSpec({ nodeName: 'embed', defaultAttributes: { type: 'tasks' }, allowedAttributes: ['type', 'list', 'collection', 'view'] }),
 });
 
 /**
@@ -602,16 +610,146 @@ const PageLinkAutocomplete = Extension.create({
 });
 
 /**
+ * Column widths of resizable tables: GFM/CommonMark tables have no syntax for a column's width,
+ * so a plain pipe table round-tripped through Markdown would always lose a resize. Each table's
+ * widths (one per column, 0 for "not resized") are instead carried in an HTML comment right
+ * after it — inert in both CommonMark (a raw HTML comment) and in this editor's own renderer
+ * (NoteMarkdown strips the same pattern before turning the page into HTML).
+ */
+const COLWIDTHS_COMMENT = /\n?<!--colwidths:([\d,]*)-->/g;
+
+/**
+ * Pulls every "<!--colwidths:…-->" comment out of the raw Markdown (in document order) before
+ * it reaches the parser — otherwise it would show up as a literal HTML comment node in the
+ * editor. Returns the cleaned Markdown and one width-array per table, in the same order the
+ * tables themselves appear.
+ *
+ * @returns {{ markdown: string, widthsByTable: number[][] }}
+ */
+export function extractColwidthHints(markdown) {
+    const widthsByTable = [];
+    const cleaned = markdown.replace(COLWIDTHS_COMMENT, (_match, list) => {
+        widthsByTable.push(list.length ? list.split(',').map(Number) : []);
+
+        return '';
+    });
+
+    return { markdown: cleaned, widthsByTable };
+}
+
+/**
+ * Applies previously extracted column widths to the tables now in the document, in order. Cells
+ * are addressed by column index (accounting for colspan), not by position, since every cell in a
+ * column carries the same colwidth once resized.
+ */
+function applyColwidthHints(editor, widthsByTable) {
+    if (!widthsByTable.length) {
+        return;
+    }
+
+    const { tr } = editor.state;
+    let tableIndex = 0;
+
+    editor.state.doc.descendants((table, tablePos) => {
+        if (table.type.name !== 'table') {
+            return true;
+        }
+
+        const widths = widthsByTable[tableIndex++] ?? [];
+
+        if (widths.length) {
+            table.descendants((cell, relativePos) => {
+                if (cell.type.name !== 'tableCell' && cell.type.name !== 'tableHeader') {
+                    return true;
+                }
+
+                // Column index of this cell within its row (cells before it may span &gt; 1).
+                const row = table.resolve(relativePos).parent;
+                let column = 0;
+
+                for (let i = 0; i < row.childCount && row.child(i) !== cell; i++) {
+                    column += row.child(i).attrs.colspan ?? 1;
+                }
+
+                const width = widths[column];
+
+                if (width) {
+                    tr.setNodeAttribute(tablePos + 1 + relativePos, 'colwidth', [width]);
+                }
+
+                return false;
+            });
+        }
+
+        return false;
+    });
+
+    if (tr.docChanged) {
+        editor.view.dispatch(tr);
+    }
+}
+
+/**
+ * Reads the column widths of every resized table in the current document, in order — null for a
+ * table nobody has resized (so it keeps auto-sizing instead of being pinned to its last render).
+ *
+ * @returns {number[][]}
+ */
+function readColwidthHints(editor) {
+    const widthsByTable = [];
+
+    editor.state.doc.descendants((table) => {
+        if (table.type.name !== 'table') {
+            return true;
+        }
+
+        const columns = [];
+        const firstRow = table.firstChild;
+
+        firstRow?.forEach((cell) => {
+            const [width] = cell.attrs.colwidth ?? [];
+            columns.push(width || 0, ...Array((cell.attrs.colspan ?? 1) - 1).fill(0));
+        });
+
+        widthsByTable.push(columns.some(Boolean) ? columns : []);
+
+        return false;
+    });
+
+    return widthsByTable;
+}
+
+/**
+ * Re-inserts a "<!--colwidths:…-->" comment after each table in freshly serialised Markdown, in
+ * the same order extractColwidthHints() reads them back out.
+ */
+function injectColwidthHints(markdown, widthsByTable) {
+    if (!widthsByTable.some((widths) => widths.length)) {
+        return markdown;
+    }
+
+    let tableIndex = 0;
+
+    // A pipe-table block: a header row, its "|---|---|" separator, then zero or more data rows.
+    return markdown.replace(/^(\|.*\|\n\|[-:| ]+\|\n(?:\|.*\|\n?)*)/gm, (block) => {
+        const widths = widthsByTable[tableIndex++] ?? [];
+
+        return widths.length ? `${block.replace(/\n$/, '')}\n<!--colwidths:${widths.join(',')}-->\n` : block;
+    });
+}
+
+/**
  * @param {HTMLElement} element     Mount point for the editable area.
  * @param {HTMLElement} bubbleMenu  Toolbar shown above selected text.
  * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile(), onPickList(), searchLinks(term) }
  */
 export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile, onPickList, searchLinks }) {
+    const { markdown: cleanedMarkdown, widthsByTable } = extractColwidthHints(markdown);
     // The bubble menu plugin attaches the toolbar itself when text is selected
     // (and only ever hides it after having shown it), so start detached.
     bubbleMenu.remove();
 
-    return new Editor({
+    const editor = new Editor({
         element,
         extensions: [
             StarterKit.configure({
@@ -621,7 +759,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             }),
             TaskList,
             TaskItem.configure({ nested: true }),
-            TableKit.configure({ table: { resizable: false } }),
+            TableKit.configure({ table: { resizable: true, lastColumnResizable: true } }),
             Placeholder.configure({ placeholder: translations.placeholder }),
             Markdown,
             // Stays inside the Alpine component (moving it to <body> would detach its
@@ -636,7 +774,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             SlashMenu.configure({ translations, onPickFile, onPickList }),
             PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
         ],
-        content: markdown,
+        content: cleanedMarkdown,
         contentType: 'markdown',
         editorProps: {
             attributes: { class: 'note-content note-editor', 'aria-label': translations.editorLabel },
@@ -671,6 +809,10 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
                 return true;
             },
         },
-        onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
+        onUpdate: ({ editor }) => onChange(injectColwidthHints(editor.getMarkdown(), readColwidthHints(editor))),
     });
+
+    applyColwidthHints(editor, widthsByTable);
+
+    return editor;
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Collection;
 use App\Models\Item;
+use App\Models\ShoppingList;
 use App\Models\Tag;
 use App\Support\NoteMarkdown;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -291,6 +292,89 @@ class PagesIndexTest extends TestCase
 
         // Checklists in collections have no task button (the action exists only on pages).
         $this->assertStringNotContainsString('checklistToTask', NoteMarkdown::toHtml($page->fresh(), $user, interactiveTasks: true));
+    }
+
+    public function test_checklist_items_can_be_added_to_the_shopping_list(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Item::factory()->note()->for($household)->create([
+            'content' => ['body' => "- [ ] 2 Liter Milch //15.10.2026 @Anna\n- [ ] Butter, Eier"],
+        ]);
+
+        Volt::test('pages.index', ['item' => $page->id])
+            ->assertSeeHtml('wire:click="checklistToShopping(0)"')
+            ->call('checklistToShopping', 0)
+            ->call('checklistToShopping', 1);
+
+        $entries = ShoppingList::defaultFor($household->id)->entries()->orderBy('position')->get();
+        // Date and person tokens are stripped (they do not mean anything on a shopping list);
+        // the second line's comma-separated items are split like a dictated Siri line.
+        $this->assertSame(['Milch', 'Butter', 'Eier'], $entries->pluck('label')->all());
+        $this->assertSame('2 Liter', $entries->first()->quantity);
+        $this->assertSame("- [x] 2 Liter Milch //15.10.2026 @Anna\n- [x] Butter, Eier", $page->fresh()->body());
+
+        // Already-linked tasks are left alone (nothing to add, no state change).
+        $linked = Item::factory()->note()->for($household)->create(['content' => ['body' => '- [ ] Auto zur Inspektion {task:999}']]);
+        Volt::test('pages.index', ['item' => $linked->id])
+            ->call('checklistToShopping', 0)
+            ->assertDispatched('toast', message: 'Dieser Punkt ist schon eine Aufgabe.');
+        $this->assertSame('- [ ] Auto zur Inspektion {task:999}', $linked->fresh()->body());
+    }
+
+    public function test_a_page_without_subpages_can_be_turned_into_a_task(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Item::factory()->note()->for($household)->create([
+            'title' => 'Steuererklärung einreichen',
+            'content' => ['body' => 'Belege liegen im Ordner "Steuer 2026"'],
+        ]);
+
+        Volt::test('pages.index', ['item' => $page->id])
+            ->assertSeeHtml('wire:click="convertToTask('.$page->id.')"')
+            ->call('convertToTask', $page->id)
+            ->assertRedirect(route('pages.index'));
+
+        $fresh = $page->fresh();
+        $tasks = Collection::tasksFor($household->id);
+        $this->assertSame(Item::TYPE_TODO, $fresh->type);
+        $this->assertSame($tasks->id, $fresh->collection_id);
+        $this->assertNull($fresh->parent_id);
+        $this->assertSame('Belege liegen im Ordner "Steuer 2026"', $fresh->body());
+        $this->assertSame('Steuererklärung einreichen', $fresh->title);
+    }
+
+    public function test_a_page_with_subpages_cannot_be_turned_into_a_task(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $parent = Item::factory()->note()->for($household)->create(['title' => 'Umzug']);
+        Item::factory()->note()->for($household)->create(['title' => 'Packliste', 'parent_id' => $parent->id]);
+
+        Volt::test('pages.index', ['item' => $parent->id])
+            ->assertDontSeeHtml('wire:click="convertToTask('.$parent->id.')"')
+            ->call('convertToTask', $parent->id)
+            ->assertDispatched('toast', message: 'Diese Seite hat noch Unterseiten – erst verschieben oder löschen.');
+
+        $this->assertSame(Item::TYPE_NOTE, $parent->fresh()->type);
+    }
+
+    public function test_a_page_can_be_added_to_the_shopping_list_and_stays_a_page(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Item::factory()->note()->for($household)->create(['title' => 'Schrauben besorgen']);
+
+        Volt::test('pages.index', ['item' => $page->id])->call('addPageToShoppingList', $page->id);
+
+        $entries = ShoppingList::defaultFor($household->id)->entries;
+        $this->assertSame(['Schrauben besorgen'], $entries->pluck('label')->all());
+        $this->assertSame(Item::TYPE_NOTE, $page->fresh()->type);
     }
 
     public function test_ticking_a_checklist_item_that_does_not_exist_changes_nothing(): void

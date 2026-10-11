@@ -8,14 +8,17 @@ use App\Models\Attachment;
 use App\Models\ChecklistTemplate;
 use App\Models\Item;
 use App\Models\PageRevision;
+use App\Models\ShoppingList;
 use App\Models\Space;
 use App\Models\Tag;
 use App\Support\BrainAi;
+use App\Support\ConvertsToTask;
 use App\Support\NoteMarkdown;
 use App\Support\PageMover;
 use App\Support\PageRevisions;
 use App\Support\PageTemplates;
 use App\Support\PageTree;
+use App\Support\ShoppingLists;
 use App\Support\TaskPages;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -330,6 +333,46 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Turns the page into an open task: its text becomes the task's notes, see
+     * App\Support\ConvertsToTask. Refused while it still has subpages — they would be left
+     * pointing at an item that is no longer a page.
+     */
+    public function convertToTask(int $id): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, $id);
+
+        if ($this->visibleItems(Item::TYPE_NOTE)->where('parent_id', $page->id)->exists()) {
+            $this->dispatch('toast', message: __('This page still has subpages – move or delete them first.'));
+
+            return;
+        }
+
+        $parentId = $page->parent_id;
+        $title = $page->title;
+        ConvertsToTask::convert($page);
+
+        $this->dispatch('toast', message: __(':name is now a task.', ['name' => $title]));
+        $parentStillVisible = $parentId && $this->visibleItems(Item::TYPE_NOTE)->whereKey($parentId)->exists();
+        $this->redirectRoute('pages.index', $parentStillVisible ? ['item' => $parentId] : [], navigate: true);
+    }
+
+    /**
+     * Adds the page to the household's shopping list (its title only — the text stays on the
+     * page) and keeps the page as-is, unlike convertToTask().
+     */
+    public function addPageToShoppingList(int $id): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, $id);
+        $entries = ShoppingLists::addFromText(ShoppingList::defaultFor((int) $this->householdId), $page->title, Auth::id());
+
+        if ($entries === []) {
+            return;
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count entry added to the shopping list.|:count entries added to the shopping list.', count($entries)));
+    }
+
+    /**
      * Ticks or unticks the n-th checklist item of the open page (read view).
      */
     public function toggleTask(int $index): void
@@ -376,6 +419,38 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->dispatch('toast', message: __('Task created and linked.'));
+    }
+
+    /**
+     * Adds a checklist item to the household's shopping list and ticks it off on the page
+     * (there is nothing to link back to, unlike checklistToTask() — a shopping entry is bought
+     * and removed, not kept in sync with the page).
+     */
+    public function checklistToShopping(int $index): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+        $item = NoteMarkdown::taskLine($page->body(), $index) ?? abort(404);
+
+        if (preg_match(NoteMarkdown::TASK_LINK_PATTERN, $item['text'])) {
+            $this->dispatch('toast', message: __('This item is already a task.'));
+
+            return;
+        }
+
+        $text = (string) preg_replace(NoteMarkdown::DUE_PATTERN, '', $item['text']);
+        $text = (string) preg_replace(NoteMarkdown::PERSON_PATTERN, '', $text);
+        $entries = ShoppingLists::addFromText(ShoppingList::defaultFor((int) $this->householdId), trim($text), Auth::id());
+
+        if ($entries === []) {
+            return;
+        }
+
+        if (! $item['done'] && ($body = NoteMarkdown::toggleTask($page->body(), $index))) {
+            PageRevisions::record($page, Auth::user(), (string) $page->title, $body);
+            $page->update(['content' => ['body' => $body] + ($page->content ?? [])]);
+        }
+
+        $this->dispatch('toast', message: trans_choice(':count entry added to the shopping list.|:count entries added to the shopping list.', count($entries)));
     }
 
     /**
@@ -683,6 +758,10 @@ new #[Layout('layouts.app')] class extends Component
                                 @php($revisionCount = \App\Models\PageRevision::where('item_id', $selectedPage->id)->count())
                                 @if ($revisionCount > 0)
                                     <button type="button" wire:click="showHistory({{ $selectedPage->id }})" class="text-gray-600 dark:text-gray-300 underline" aria-expanded="{{ $historyFor === $selectedPage->id ? 'true' : 'false' }}">🕓 {{ trans_choice(':count version|:count versions', $revisionCount) }}</button>
+                                @endif
+                                <button type="button" wire:click="addPageToShoppingList({{ $selectedPage->id }})" class="text-gray-600 dark:text-gray-300 underline" title="{{ __('Add to shopping list') }}">🛒 {{ __('Shopping list') }}</button>
+                                @if (empty($subpages))
+                                    <button type="button" wire:click="convertToTask({{ $selectedPage->id }})" wire:confirm="{{ __('Turn this page into a task?') }}" class="text-gray-600 dark:text-gray-300 underline" title="{{ __('Turn into a task') }}">✅ {{ __('Task') }}</button>
                                 @endif
                                 <button type="button" wire:click="delete({{ $selectedPage->id }})" wire:confirm="{{ __('Delete this page? Its subpages move up one level.') }}" class="text-red-600 dark:text-red-400 underline">{{ __('Delete') }}</button>
                             </div>

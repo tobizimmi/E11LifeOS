@@ -16,6 +16,7 @@ use App\Models\CollectionView;
 use App\Support\BrainAi;
 use App\Support\ContractAssistant;
 use App\Support\AiException;
+use App\Support\ConvertsToTask;
 use App\Support\EntryAi;
 use App\Support\EntryFilters;
 use App\Support\Links;
@@ -488,6 +489,22 @@ new #[Layout('layouts.app')] class extends Component
         ]);
 
         $this->dispatch('toast', message: __(':name is on the shopping list.', ['name' => $entry->title]));
+    }
+
+    /**
+     * Turns the entry into an open task: it leaves this collection (its properties do not
+     * belong to a task's schema), see App\Support\ConvertsToTask.
+     */
+    public function convertEntryToTask(int $entryId): void
+    {
+        $entry = $this->findEntry($entryId);
+        ConvertsToTask::convert($entry);
+
+        if ((int) $this->openEntryId === $entryId) {
+            $this->closeEntry();
+        }
+
+        $this->dispatch('toast', message: __(':name is now a task.', ['name' => $entry->title]));
     }
 
     public function deleteEntry(int $entryId): void
@@ -2217,6 +2234,7 @@ new #[Layout('layouts.app')] class extends Component
             <x-slot:footer>
                 <x-primary-button type="button" wire:click="editEntry({{ $openEntry->id }})">✎ {{ __('Edit') }}</x-primary-button>
                 <x-secondary-button type="button" wire:click="addToShoppingList({{ $openEntry->id }})" title="{{ __('Add to shopping list') }}">🛒 <span class="hidden sm:inline ms-1">{{ __('Shopping list') }}</span></x-secondary-button>
+                <x-secondary-button type="button" wire:click="convertEntryToTask({{ $openEntry->id }})" wire:confirm="{{ __('Turn this entry into a task? It leaves this collection.') }}" title="{{ __('Turn into a task') }}">✅ <span class="hidden sm:inline ms-1">{{ __('Task') }}</span></x-secondary-button>
                 <button type="button" wire:click="deleteEntry({{ $openEntry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="ms-auto rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">🗑 {{ __('Delete') }}</button>
             </x-slot:footer>
         </x-sheet>

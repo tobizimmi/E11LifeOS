@@ -124,7 +124,7 @@ document.addEventListener('alpine:init', () => {
 
             async init() {
                 try {
-                    const { createPageEditor } = await import('./editor');
+                    const { createPageEditor, extractColwidthHints } = await import('./editor');
 
                     editor = createPageEditor(this.$refs.editor, this.$refs.bubble, {
                         markdown: this.$wire.body ?? '',
@@ -141,7 +141,10 @@ document.addEventListener('alpine:init', () => {
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
                     editor.on('transaction', () => this.selectionTick++);
-                    this.hasUnsupportedContent = /<[a-z!/]/i.test(this.$wire.body ?? '');
+                    // Column-width comments are the editor's own markup, stripped before the
+                    // rich editor ever sees them — they must not trip the raw-HTML fallback below.
+                    const { markdown: withoutColwidthHints } = extractColwidthHints(this.$wire.body ?? '');
+                    this.hasUnsupportedContent = /<[a-z!/]/i.test(withoutColwidthHints);
                     this.mode = this.hasUnsupportedContent ? 'markdown' : 'rich';
                 } catch (error) {
                     console.error(error);

@@ -195,18 +195,29 @@
     }
 
     .note-content li:has(> input[type='checkbox']) {
-        @apply relative pe-8;
+        @apply relative pe-14;
+    }
+
+    .note-content .checklist-to-task,
+    .note-content .checklist-to-shopping {
+        @apply absolute top-0 rounded-sm px-1.5 text-sm text-gray-500 no-underline dark:text-gray-400 opacity-0 transition hover:bg-indigo-50 hover:text-indigo-600 focus:opacity-100 dark:hover:bg-gray-700 pointer-coarse:opacity-60;
     }
 
     .note-content .checklist-to-task {
-        @apply absolute end-0 top-0 rounded-sm px-1.5 text-sm text-gray-500 no-underline dark:text-gray-400 opacity-0 transition hover:bg-indigo-50 hover:text-indigo-600 focus:opacity-100 dark:hover:bg-gray-700 pointer-coarse:opacity-60;
+        @apply end-0;
     }
 
-    .note-content li:hover > .checklist-to-task {
+    .note-content .checklist-to-shopping {
+        @apply end-7;
+    }
+
+    .note-content li:hover > .checklist-to-task,
+    .note-content li:hover > .checklist-to-shopping {
         @apply opacity-100;
     }
 
-    .note-content li:has(> .checklist-task) > .checklist-to-task {
+    .note-content li:has(> .checklist-task) > .checklist-to-task,
+    .note-content li:has(> .checklist-task) > .checklist-to-shopping {
         @apply hidden;
     }
 

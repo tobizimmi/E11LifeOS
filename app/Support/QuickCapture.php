@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Models\Collection;
 use App\Models\HouseholdMember;
 use App\Models\Item;
+use App\Models\Space;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 /**
  * Creates inbox entries and tasks from one line of text – used by the forms and by the
@@ -34,6 +36,37 @@ class QuickCapture
         $item->syncTagNames($tags);
 
         return $item;
+    }
+
+    /**
+     * A quick note in the household's "Notes" inbox space. Like in the notes area, the first line
+     * becomes the title and the rest the body; null when no title is left.
+     */
+    public static function note(User $user, int $householdId, string $text): ?Item
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return null;
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $text) ?: [$text];
+        $title = Str::limit(trim((string) array_shift($lines)), 252);
+
+        if ($title === '') {
+            return null;
+        }
+
+        return Item::create([
+            'household_id' => $householdId,
+            'space_id' => Space::notesInboxFor($householdId)->id,
+            'type' => Item::TYPE_NOTE,
+            'visibility' => Item::VISIBILITY_SHARED,
+            'title' => $title,
+            'content' => ['body' => trim(implode("\n", $lines))],
+            'created_by' => $user->id,
+            'position' => PageMover::positionForNewChild($householdId, null),
+        ]);
     }
 
     /**

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.55.2] – 2026-10-11
+
+### Behoben
+- **Profilseite lud nicht mehr**: In der Siri-Karte (Profil → Mobile App) fehlte das schließende `>` des umschließenden `<div>`-Tags, wodurch das HTML/Alpine-Markup brach und die Seite hängen blieb. Tag wieder korrekt geschlossen; der Token wird weiterhin per `$wire.entangle` live übernommen und in der Web-Adresse URL-codiert.
+
 ## [1.55.1] – 2026-10-10
 
 ### Behoben

@@ -31,6 +31,10 @@
         <env name="MAPS_REMEMBER_DNS" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- .env.example now defaults this to true for production installs (see composer.json
+             "setup" script); tests that specifically cover enforcement turn it on themselves
+             with config(['security.require_two_factor' => true]). -->
+        <env name="SECURITY_REQUIRE_TWO_FACTOR" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

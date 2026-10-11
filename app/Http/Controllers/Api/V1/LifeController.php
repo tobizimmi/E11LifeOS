@@ -170,7 +170,9 @@ class LifeController extends ApiController
 
     /**
      * One dictated line, authenticated by a token in the query, so an iOS shortcut only needs a
-     * single "Get Contents of URL" action (no headers, no JSON body). ?type = shopping|task|inbox.
+     * single "Get Contents of URL" action (no headers, no JSON body). ?type =
+     * shopping|task|note|inbox, or "auto" to pick the target from a leading keyword ("Aufgabe …",
+     * "Notiz …", "Einkauf …") so a single shortcut can reach every target.
      */
     public function quickViaToken(Request $request, string $type): JsonResponse
     {
@@ -194,6 +196,10 @@ class LifeController extends ApiController
         $household = $user->currentHousehold() ?? abort(404, __('You are not a member of a household yet.'));
         $text = trim($data['text']);
 
+        if ($type === 'auto') {
+            [$type, $text] = $this->routeByKeyword($text);
+        }
+
         return match ($type) {
             'shopping' => $this->ok((function () use ($household, $text, $user) {
                 $entries = ShoppingLists::addFromText(ShoppingList::defaultFor($household->id), $text, $user->id);
@@ -206,9 +212,37 @@ class LifeController extends ApiController
 
                 return ['message' => __('Task added: :title', ['title' => $task->title])];
             })(), 201),
+            'note' => $this->ok((function () use ($household, $text, $user) {
+                $note = QuickCapture::note($user, $household->id, $text);
+                abort_if($note === null, 422, __('Please enter a title.'));
+
+                return ['message' => __('Note added: :title', ['title' => $note->title])];
+            })(), 201),
             'inbox' => $this->ok(['message' => SmartCapture::capture($user, $household->id, $text) ?? __('Captured.')], 201),
             default => abort(404),
         };
+    }
+
+    /**
+     * Picks the target from a leading keyword and strips it from the text. Without a keyword the
+     * dictation goes to the shopping list (the most common everyday case).
+     *
+     * @return array{0: string, 1: string} The resolved type and the remaining text.
+     */
+    private function routeByKeyword(string $text): array
+    {
+        if (preg_match('/^\s*(?<keyword>aufgabe|todo|to-?do|task|notiz(?:en)?|note|idee|inbox|merken?|einkauf(?:en|sliste)?|kaufen|shopping)\b\s*[:\-]?\s*(?<rest>.*)$/isu', $text, $match)) {
+            $type = match (mb_strtolower($match['keyword'])) {
+                'aufgabe', 'todo', 'to-do', 'task' => 'task',
+                'notiz', 'notizen', 'note' => 'note',
+                'idee', 'inbox', 'merke', 'merken' => 'inbox',
+                default => 'shopping',
+            };
+
+            return [$type, trim($match['rest'])];
+        }
+
+        return ['shopping', $text];
     }
 
     public function toggleShopping(int $entry): JsonResponse

@@ -6777,5 +6777,8 @@
     "Your web address (shown only once – copy it now):": "Deine Web-Adresse (wird nur einmal angezeigt – jetzt kopieren):",
     "Add “Get Contents of URL” below it and leave the method on GET.": "Füge darunter „Inhalte von URL abrufen“ hinzu und lass die Methode auf GET.",
     "Paste the copied web address into the URL field and insert the “Dictated Text” variable right at the end (after text=).": "Füge die kopierte Web-Adresse in das URL-Feld ein und setze die Variable „Diktierter Text“ ganz ans Ende (nach text=).",
-    "No headers or request body needed. The token stays valid as long as it is used; an unused token expires on its own. Keep the address private – anyone with it can add to your household.": "Keine Header und kein Anfrage-Text nötig. Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab. Halte die Adresse geheim – wer sie hat, kann in deinem Haushalt etwas hinzufügen."
+    "No headers or request body needed. The token stays valid as long as it is used; an unused token expires on its own. Keep the address private – anyone with it can add to your household.": "Keine Header und kein Anfrage-Text nötig. Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab. Halte die Adresse geheim – wer sie hat, kann in deinem Haushalt etwas hinzufügen.",
+    "Note added: :title": "Notiz hinzugefügt: :title",
+    "Automatic (by keyword)": "Automatisch (per Schlüsselwort)",
+    "One shortcut for everything: start the dictation with a keyword – “Task …”, “Note …”, “Inbox …” – otherwise it goes to the shopping list. So you only need a single shortcut.": "Ein Kurzbefehl für alles: Beginne das Diktat mit einem Schlüsselwort – „Aufgabe …“, „Notiz …“, „Inbox …“ – sonst landet es in der Einkaufsliste. So brauchst du nur einen einzigen Kurzbefehl."
 }

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.55.3] – 2026-10-11
+
+### Neu
+- **Siri: Notizen als Ziel + ein Kurzbefehl für alles.** Die Schnellerfassung per Token-Adresse kennt jetzt auch **Notizen** (`…/quick/note`) – die erste Zeile wird zum Titel, der Rest zum Text, abgelegt im Notizen-Bereich. Zusätzlich gibt es die Adresse **`…/quick/auto`**: Beginnt das Diktat mit einem Schlüsselwort – „Aufgabe …“, „Notiz …“, „Inbox …“ (sonst Einkaufsliste) – wird das passende Ziel automatisch gewählt. So reicht **ein einziger Kurzbefehl** statt vier. In Profil → Mobile App ist „Automatisch (per Schlüsselwort)“ als neues Standard-Ziel wählbar.
+- Mehrere Artikel in einem Diktat (z. B. „2 Liter Milch, Butter und 6 Eier“) werden – wie bei der Einkaufsliste schon bisher – als **einzelne Einträge** erkannt; das gilt jetzt auch über `…/quick/auto`.
+
 ## [1.55.2] – 2026-10-11
 
 ### Behoben

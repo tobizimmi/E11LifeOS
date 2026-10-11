@@ -118,4 +118,26 @@ class LifeApiTest extends TestCase
         $this->getJson('/api/v1/quick/shopping?token=nope&text=Brot')->assertUnauthorized();
         $this->getJson('/api/v1/quick/calendar?token='.$token.'&text=Brot')->assertNotFound();
     }
+
+    public function test_the_quick_add_creates_notes_and_routes_by_keyword(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $token = $this->tokenFor($user);
+
+        // A note keeps the first line as the title.
+        $this->getJson('/api/v1/quick/note?token='.$token.'&text='.urlencode("Idee für den Urlaub\nSizilien im Mai"))
+            ->assertCreated()->assertJsonPath('data.message', __('Note added: :title', ['title' => 'Idee für den Urlaub']));
+        $this->assertSame(1, Item::where('type', Item::TYPE_NOTE)->where('title', 'Idee für den Urlaub')->count());
+
+        // Auto: a leading keyword picks the target and is stripped from the text.
+        $this->getJson('/api/v1/quick/auto?token='.$token.'&text='.urlencode('Aufgabe Müll rausbringen'))
+            ->assertCreated()->assertJsonPath('data.message', __('Task added: :title', ['title' => 'Müll rausbringen']));
+        $this->getJson('/api/v1/quick/auto?token='.$token.'&text='.urlencode('Notiz Rückruf Steuerberater'))
+            ->assertCreated()->assertJsonPath('data.message', __('Note added: :title', ['title' => 'Rückruf Steuerberater']));
+
+        // Auto without a keyword goes to the shopping list and still splits several items.
+        $this->getJson('/api/v1/quick/auto?token='.$token.'&text='.urlencode('2 Liter Milch und Butter'))
+            ->assertCreated()->assertJsonPath('data.added', 2);
+        $this->assertSame(2, ShoppingListEntry::count());
+    }
 }

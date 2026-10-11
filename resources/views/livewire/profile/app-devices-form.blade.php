@@ -63,7 +63,7 @@ new class extends Component
 
     <div class="mt-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/40"
         x-data="{
-            target: 'shopping',
+            target: 'auto',
             token: $wire.entangle('newToken'),
             copied: false,
             get url() {
@@ -86,10 +86,13 @@ new class extends Component
         <div class="mt-4" @unless ($newToken) x-show="false" x-cloak @endunless>
             <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ __('What should Siri add?') }}</p>
             <div class="mt-1 flex flex-wrap gap-2 text-sm">
+                <label class="flex items-center gap-1.5"><input type="radio" name="siri-target" value="auto" x-model="target" class="text-indigo-600"> ✨ {{ __('Automatic (by keyword)') }}</label>
                 <label class="flex items-center gap-1.5"><input type="radio" name="siri-target" value="shopping" x-model="target" class="text-indigo-600"> 🛒 {{ __('Shopping list') }}</label>
                 <label class="flex items-center gap-1.5"><input type="radio" name="siri-target" value="task" x-model="target" class="text-indigo-600"> ✅ {{ __('Task') }}</label>
+                <label class="flex items-center gap-1.5"><input type="radio" name="siri-target" value="note" x-model="target" class="text-indigo-600"> 🗒️ {{ __('Note') }}</label>
                 <label class="flex items-center gap-1.5"><input type="radio" name="siri-target" value="inbox" x-model="target" class="text-indigo-600"> 📥 {{ __('Inbox') }}</label>
             </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="target === 'auto'" x-cloak>{{ __('One shortcut for everything: start the dictation with a keyword – “Task …”, “Note …”, “Inbox …” – otherwise it goes to the shopping list. So you only need a single shortcut.') }}</p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="target === 'inbox'" x-cloak>{{ __('The Inbox sorts the note automatically (task, appointment, shopping or note).') }}</p>
 
             {{-- Ready web address with the token already in it --}}

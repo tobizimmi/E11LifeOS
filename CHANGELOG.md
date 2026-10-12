@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.57.1] – 2026-10-12
+
+### Neu
+- **Tabellenzeilen/-spalten einfügen und löschen**: Steht der Cursor in einer Tabelle, zeigt die Seiten-Bearbeitung jetzt eine kleine Werkzeugleiste (+/− Zeile, +/− Spalte, Tabelle löschen).
+- **Spaltenbreite auch per Fingertipp ändern** (↔ − / ↔ +) – als Alternative zum Ziehen am Spaltenrand, das sich auf dem Handy kaum treffen lässt.
+
+### Behoben
+- **Ein Codeblock mit HTML-ähnlichem Text (z. B. `<div>…</div>` als Beispielcode) sperrte die ganze Seite dauerhaft auf den rohen Markdown-Modus** – ohne „/“-Menü, ohne Tabellen, ohne Formatierung. Die Prüfung schaut jetzt nicht mehr in Codeblöcke/Inline-Code hinein, da deren spitze Klammern dort nur Text sind, kein echtes HTML.
+
 ## [1.57.0] – 2026-10-12
 
 ### Neu

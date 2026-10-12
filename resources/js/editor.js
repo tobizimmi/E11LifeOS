@@ -626,6 +626,20 @@ const COLWIDTHS_COMMENT = /\n?<!--colwidths:([\d,]*)-->/g;
  *
  * @returns {{ markdown: string, widthsByTable: number[][] }}
  */
+/**
+ * True when the Markdown has raw HTML the rich editor cannot represent (it would be silently
+ * dropped on save) — outside fenced code blocks and inline code spans, where angle brackets are
+ * literal text, not real HTML, and round-trip through the editor's own code-block node untouched.
+ * A false positive here is not cosmetic: it permanently kicks a page into the plain-textarea
+ * fallback, which has no slash menu, no table, no formatting — just raw Markdown.
+ */
+export function hasUnsupportedHtml(markdown) {
+    const withoutColwidthHints = extractColwidthHints(markdown).markdown;
+    const withoutCode = withoutColwidthHints.replace(/^```.*$[\s\S]*?^```$/gm, '').replace(/`[^`\n]+`/g, '');
+
+    return /<[a-z!/]/i.test(withoutCode);
+}
+
 export function extractColwidthHints(markdown) {
     const widthsByTable = [];
     const cleaned = markdown.replace(COLWIDTHS_COMMENT, (_match, list) => {
@@ -635,6 +649,22 @@ export function extractColwidthHints(markdown) {
     });
 
     return { markdown: cleaned, widthsByTable };
+}
+
+/**
+ * Column index of a cell within its row (relative to its table), accounting for the colspan of
+ * cells before it — one cell spanning 2 columns pushes every following column index up by 1.
+ */
+function columnIndexAt(table, relativePos) {
+    const row = table.resolve(relativePos).parent;
+    const cell = table.nodeAt(relativePos);
+    let column = 0;
+
+    for (let i = 0; i < row.childCount && row.child(i) !== cell; i++) {
+        column += row.child(i).attrs.colspan ?? 1;
+    }
+
+    return column;
 }
 
 /**
@@ -663,15 +693,7 @@ function applyColwidthHints(editor, widthsByTable) {
                     return true;
                 }
 
-                // Column index of this cell within its row (cells before it may span &gt; 1).
-                const row = table.resolve(relativePos).parent;
-                let column = 0;
-
-                for (let i = 0; i < row.childCount && row.child(i) !== cell; i++) {
-                    column += row.child(i).attrs.colspan ?? 1;
-                }
-
-                const width = widths[column];
+                const width = widths[columnIndexAt(table, relativePos)];
 
                 if (width) {
                     tr.setNodeAttribute(tablePos + 1 + relativePos, 'colwidth', [width]);
@@ -686,6 +708,57 @@ function applyColwidthHints(editor, widthsByTable) {
 
     if (tr.docChanged) {
         editor.view.dispatch(tr);
+    }
+}
+
+/**
+ * Widens or narrows the column the cursor is currently in by a fixed step (every cell of that
+ * column together, like a resize-handle drag) — a tap-friendly alternative to the drag handle for
+ * touch screens, where dragging a 4px column border reliably is impractical.
+ */
+export function nudgeColumnWidth(editor, delta) {
+    const { state, view } = editor;
+    const { $from } = state.selection;
+    let tablePos = null;
+    let cellPos = null;
+
+    for (let d = $from.depth; d > 0; d--) {
+        const name = $from.node(d).type.name;
+
+        if (name === 'tableCell' || name === 'tableHeader') {
+            cellPos = $from.before(d);
+        }
+
+        if (name === 'table') {
+            tablePos = $from.before(d);
+            break;
+        }
+    }
+
+    if (tablePos === null || cellPos === null) {
+        return;
+    }
+
+    const table = state.doc.nodeAt(tablePos);
+    const column = columnIndexAt(table, cellPos - tablePos - 1);
+    const [currentWidth] = table.nodeAt(cellPos - tablePos - 1).attrs.colwidth ?? [];
+    const width = Math.max(60, (currentWidth || 150) + delta);
+    const tr = state.tr;
+
+    table.descendants((cell, relativePos) => {
+        if (cell.type.name !== 'tableCell' && cell.type.name !== 'tableHeader') {
+            return true;
+        }
+
+        if (columnIndexAt(table, relativePos) === column) {
+            tr.setNodeAttribute(tablePos + 1 + relativePos, 'colwidth', [width]);
+        }
+
+        return false;
+    });
+
+    if (tr.docChanged) {
+        view.dispatch(tr);
     }
 }
 

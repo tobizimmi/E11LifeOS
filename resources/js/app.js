@@ -114,6 +114,7 @@ document.addEventListener('alpine:init', () => {
      */
     window.Alpine.data('pageEditor', ({ pageTitles, translations, autosave = false }) => {
         let editor = null;
+        let nudgeColumnWidth = null;
 
         return {
             mode: 'loading',
@@ -124,7 +125,9 @@ document.addEventListener('alpine:init', () => {
 
             async init() {
                 try {
-                    const { createPageEditor, extractColwidthHints } = await import('./editor');
+                    const editorModule = await import('./editor');
+                    const { createPageEditor, hasUnsupportedHtml } = editorModule;
+                    nudgeColumnWidth = editorModule.nudgeColumnWidth;
 
                     editor = createPageEditor(this.$refs.editor, this.$refs.bubble, {
                         markdown: this.$wire.body ?? '',
@@ -141,10 +144,7 @@ document.addEventListener('alpine:init', () => {
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
                     editor.on('transaction', () => this.selectionTick++);
-                    // Column-width comments are the editor's own markup, stripped before the
-                    // rich editor ever sees them — they must not trip the raw-HTML fallback below.
-                    const { markdown: withoutColwidthHints } = extractColwidthHints(this.$wire.body ?? '');
-                    this.hasUnsupportedContent = /<[a-z!/]/i.test(withoutColwidthHints);
+                    this.hasUnsupportedContent = hasUnsupportedHtml(this.$wire.body ?? '');
                     this.mode = this.hasUnsupportedContent ? 'markdown' : 'rich';
                 } catch (error) {
                     console.error(error);
@@ -284,6 +284,12 @@ document.addEventListener('alpine:init', () => {
 
             run(command, ...args) {
                 editor?.chain().focus()[command](...args).run();
+            },
+
+            nudgeTableColumn(delta) {
+                if (editor) {
+                    nudgeColumnWidth(editor, delta);
+                }
             },
 
             setLink() {

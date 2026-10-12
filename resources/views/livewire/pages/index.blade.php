@@ -648,6 +648,19 @@ new #[Layout('layouts.app')] class extends Component
                                 </button>
                             </div>
 
+                            <div x-show="mode === 'rich' && isActive('table')" x-cloak class="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 rounded-md bg-gray-50 px-2 py-1 text-xs dark:bg-gray-900/50" role="toolbar" aria-label="{{ __('Table') }}">
+                                <span class="me-1 text-gray-400">▦ {{ __('Table') }}:</span>
+                                <button type="button" x-on:click="run('addRowAfter')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">+ {{ __('Row') }}</button>
+                                <button type="button" x-on:click="run('deleteRow')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">− {{ __('Row') }}</button>
+                                <button type="button" x-on:click="run('addColumnAfter')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">+ {{ __('Column') }}</button>
+                                <button type="button" x-on:click="run('deleteColumn')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">− {{ __('Column') }}</button>
+                                <span class="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+                                <button type="button" x-on:click="nudgeTableColumn(-24)" title="{{ __('Narrower column') }}" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">↔ −</button>
+                                <button type="button" x-on:click="nudgeTableColumn(24)" title="{{ __('Wider column') }}" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">↔ +</button>
+                                <span class="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+                                <button type="button" x-on:click="confirm('{{ __('Delete this table?') }}') && run('deleteTable')" class="rounded-sm px-1.5 py-0.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">🗑 {{ __('Table') }}</button>
+                            </div>
+
                             <div wire:ignore x-show="mode !== 'markdown'" class="mt-1">
                                 <div x-ref="bubble" class="editor-bubble" style="visibility: hidden" role="toolbar" aria-label="{{ __('Formatting') }}">
                                     <button type="button" x-on:click="run('toggleBold')" :class="isActive('bold') && 'is-active'" title="{{ __('Bold') }}"><strong>B</strong></button>

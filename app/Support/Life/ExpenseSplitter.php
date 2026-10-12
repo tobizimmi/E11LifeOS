@@ -5,6 +5,7 @@ namespace App\Support\Life;
 use App\Models\Expense;
 use App\Models\ExpenseGroup;
 use App\Models\ExpenseMember;
+use App\Support\Csv;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -240,16 +241,16 @@ class ExpenseSplitter
         $group->loadMissing(['members', 'expenses.shares', 'expenses.payer']);
         $categories = self::categories();
         $number = fn (float $value) => number_format($value, 2, ',', '');
-        $rows = [[__('Date'), __('Title'), __('Category'), __('Amount'), __('Paid by'), __('Settlement payment'), ...$group->members->pluck('name')->all()]];
+        $rows = [[__('Date'), __('Title'), __('Category'), __('Amount'), __('Paid by'), __('Settlement payment'), ...$group->members->pluck('name')->map(Csv::sanitizeCell(...))->all()]];
 
         foreach ($group->expenses->sortBy('spent_on') as $expense) {
             $shares = $expense->shares->keyBy('expense_member_id');
             $rows[] = [
                 $expense->spent_on->format('d.m.Y'),
-                $expense->title,
+                Csv::sanitizeCell($expense->title),
                 $categories[$expense->category]['label'] ?? $expense->category,
                 $number($expense->amount),
-                $expense->payer?->name,
+                Csv::sanitizeCell($expense->payer?->name),
                 $expense->is_transfer ? __('Yes') : '',
                 ...$group->members->map(fn (ExpenseMember $member) => $number((float) ($shares[$member->id]->amount ?? 0)))->all(),
             ];

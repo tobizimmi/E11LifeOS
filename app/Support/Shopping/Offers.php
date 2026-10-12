@@ -76,7 +76,7 @@ class Offers
 
         try {
             $response = Http::withHeaders(['x-apikey' => $apiKey, 'x-clientkey' => $clientKey, 'Accept' => 'application/json'])
-                ->timeout(12)
+                ->timeout(5)
                 ->get('https://api.marktguru.de/api/v1/offers/search', ['as' => 'web', 'q' => $term, 'zipCode' => $zip, 'limit' => 60, 'offset' => 0])
                 ->throw();
         } catch (Throwable $exception) {

@@ -26,8 +26,10 @@ class SendMorningBriefings extends Command
                     return;
                 }
 
-                self::deliver($user, $webPush);
-                $sent++;
+                rescue(function () use ($user, $webPush, &$sent) {
+                    self::deliver($user, $webPush);
+                    $sent++;
+                }, report: true);
             });
 
         $this->info("Morning briefings sent: {$sent}");

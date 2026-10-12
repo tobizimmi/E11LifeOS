@@ -759,7 +759,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:systemProperty\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 8
 			path: app/Models/Item.php
 
 		-

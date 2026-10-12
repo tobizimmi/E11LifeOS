@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Csv;
 use App\Support\Finance\TaxCategories;
 use App\Support\Finance\TaxYear;
 use Illuminate\Http\Request;
@@ -31,8 +32,8 @@ class FinanceTaxExportController extends Controller
                     $transaction->booked_on->format('d.m.Y'),
                     $categories[$transaction->tax_category]['label'] ?? $transaction->tax_category,
                     $categories[$transaction->tax_category]['form'] ?? '',
-                    $transaction->counterparty,
-                    $transaction->purpose,
+                    Csv::sanitizeCell($transaction->counterparty),
+                    Csv::sanitizeCell($transaction->purpose),
                     number_format($transaction->amount, 2, ',', ''),
                     number_format(TaxYear::relevantAmount($transaction), 2, ',', ''),
                 ], ';');

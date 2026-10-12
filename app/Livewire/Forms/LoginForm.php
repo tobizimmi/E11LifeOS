@@ -35,6 +35,7 @@ class LoginForm extends Form
 
         if (! Auth::validate($this->only(['email', 'password']))) {
             RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->ipThrottleKey(), 60);
             SecurityLog::record(User::where('email', $this->email)->first(), 'login_failed');
 
             throw ValidationException::withMessages([
@@ -64,6 +65,21 @@ class LoginForm extends Form
      */
     protected function ensureIsNotRateLimited(): void
     {
+        // Credential stuffing across many different e-mail addresses from the same IP is not
+        // caught by the per-email limiter below, so it gets its own, more generous limit.
+        if (RateLimiter::tooManyAttempts($this->ipThrottleKey(), 20)) {
+            event(new Lockout(request()));
+
+            $seconds = RateLimiter::availableIn($this->ipThrottleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => trans('auth.throttle', [
+                    'seconds' => $seconds,
+                    'minutes' => ceil($seconds / 60),
+                ]),
+            ]);
+        }
+
         if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
@@ -90,5 +106,13 @@ class LoginForm extends Form
     protected function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
+    }
+
+    /**
+     * Rate limiting key for all login attempts from this IP, regardless of the e-mail tried.
+     */
+    protected function ipThrottleKey(): string
+    {
+        return 'login-ip:'.request()->ip();
     }
 }

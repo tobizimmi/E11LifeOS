@@ -57,11 +57,11 @@ class RecordSlowRequests
 
         if ($milliseconds >= self::THRESHOLD_MS) {
             $entry = ['at' => now()->toIso8601String(), 'route' => $route, 'ms' => $milliseconds, 'queries' => $queries];
-            Cache::put(self::SLOW_KEY, array_slice([$entry, ...Cache::get(self::SLOW_KEY, [])], 0, 30), now()->addDays(7));
+            Cache::store('monitoring')->put(self::SLOW_KEY, array_slice([$entry, ...Cache::store('monitoring')->get(self::SLOW_KEY, [])], 0, 30), now()->addDays(7));
         }
 
         // Per route: requests, total and slowest time of the current week (one small cache entry).
-        $routes = Cache::get(self::ROUTES_KEY, []);
+        $routes = Cache::store('monitoring')->get(self::ROUTES_KEY, []);
         $stats = $routes[$route] ?? ['count' => 0, 'total' => 0, 'max' => 0];
         $routes[$route] = ['count' => $stats['count'] + 1, 'total' => $stats['total'] + $milliseconds, 'max' => max($stats['max'], $milliseconds)];
 
@@ -70,7 +70,7 @@ class RecordSlowRequests
             $routes = array_slice($routes, 0, 200, true);
         }
 
-        Cache::put(self::ROUTES_KEY, $routes, now()->endOfWeek());
+        Cache::store('monitoring')->put(self::ROUTES_KEY, $routes, now()->endOfWeek());
     }
 
     /**
@@ -80,7 +80,7 @@ class RecordSlowRequests
      */
     public static function slowestRoutes(int $limit = 8): array
     {
-        return collect(Cache::get(self::ROUTES_KEY, []))
+        return collect(Cache::store('monitoring')->get(self::ROUTES_KEY, []))
             ->filter(fn (array $stats) => $stats['count'] >= 3)
             ->map(fn (array $stats, string $route) => ['route' => $route, 'count' => $stats['count'], 'average' => intdiv($stats['total'], $stats['count']), 'max' => $stats['max']])
             ->sortByDesc('average')->take($limit)->values()->all();

@@ -57,7 +57,7 @@ Schedule::command('portfolio:instagram')->everySixHours()->withoutOverlapping();
 // Heartbeat for the admin page (shows whether the cron job runs) and the queue for imports started there.
 // Callbacks return nothing: a returned false (e.g. a cache write that changed no row) counts as a failed task.
 Schedule::call(function (): void {
-    Cache::forever('scheduler:heartbeat', now()->toIso8601String());
+    Cache::store('monitoring')->forever('scheduler:heartbeat', now()->toIso8601String());
 })->everyMinute()->name('scheduler-heartbeat');
 Schedule::command('queue:work --queue=admin --stop-when-empty --max-time=3000 --tries=1')->everyMinute()->withoutOverlapping(60)->runInBackground();
 Schedule::command('maps:warm')->everySixHours();

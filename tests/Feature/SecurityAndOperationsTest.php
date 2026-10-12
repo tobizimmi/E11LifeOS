@@ -12,6 +12,7 @@ use App\Support\ErrorReporter;
 use App\Support\QrCode;
 use App\Support\TwoFactor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -134,15 +135,33 @@ class SecurityAndOperationsTest extends TestCase
     public function test_server_errors_are_kept_and_mailed_once_an_hour(): void
     {
         Mail::fake();
-        Cache::forget(ErrorReporter::CACHE_KEY);
+        Cache::store('monitoring')->forget(ErrorReporter::CACHE_KEY);
         config(['security.error_report_email' => 'admin@example.com']);
 
         ErrorReporter::handle(new RuntimeException('Datenbank weg'));
         ErrorReporter::handle(new RuntimeException('Datenbank weg'));
         ErrorReporter::handle(new ValidationException(validator([], [])));
 
-        $this->assertCount(2, Cache::get(ErrorReporter::CACHE_KEY));
-        $this->assertSame('Datenbank weg', Cache::get(ErrorReporter::CACHE_KEY)[0]['message']);
+        $this->assertCount(2, Cache::store('monitoring')->get(ErrorReporter::CACHE_KEY));
+        $this->assertSame('Datenbank weg', Cache::store('monitoring')->get(ErrorReporter::CACHE_KEY)[0]['message']);
+    }
+
+    public function test_server_errors_never_record_the_query_string(): void
+    {
+        Cache::store('monitoring')->forget(ErrorReporter::CACHE_KEY);
+        $this->app->instance('request', Request::create('/webhook/siri?token=geheimer-siri-token'));
+        // Simulate an HTTP request (ErrorReporter::handle() only records the URL outside the console).
+        (new \ReflectionProperty($this->app, 'isRunningInConsole'))->setValue($this->app, false);
+
+        try {
+            ErrorReporter::handle(new RuntimeException('kaputt'));
+        } finally {
+            (new \ReflectionProperty($this->app, 'isRunningInConsole'))->setValue($this->app, true);
+        }
+
+        $url = Cache::store('monitoring')->get(ErrorReporter::CACHE_KEY)[0]['url'];
+        $this->assertSame('http://localhost/webhook/siri', $url);
+        $this->assertStringNotContainsString('geheimer-siri-token', $url);
     }
 
     public function test_export_and_account_deletion_cover_the_new_modules(): void

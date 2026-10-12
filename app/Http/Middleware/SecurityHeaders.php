@@ -51,16 +51,28 @@ class SecurityHeaders
 
     public static function contentSecurityPolicy(string $nonce): string
     {
+        // Live updates (Reverb) run over a WebSocket, on its own configured host when one is
+        // set (e.g. a dedicated subdomain), otherwise on this app's own host behind the proxy.
+        // The port is left open ("*"): the public port (often 443 via a reverse proxy) can
+        // differ from Reverb's internal listen port and is not reliably known here.
+        // VITE_REVERB_HOST is what the BROWSER actually connects to (baked into the built JS,
+        // see resources/js/echo.js); reverb.servers.reverb.hostname is only the server's own
+        // listen config and config('app.url') a last-resort fallback for local setups without a
+        // dedicated Reverb host — both can legitimately diverge from the browser-facing one.
+        $reverbHost = (string) (config('reverb.browser_hostname') ?: config('reverb.servers.reverb.hostname') ?: parse_url((string) config('app.url'), PHP_URL_HOST));
+        $connect = $reverbHost !== '' ? "connect-src 'self' wss://{$reverbHost}:* ws://{$reverbHost}:*" : "connect-src 'self'";
+
         return implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'nonce-{$nonce}' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
             "font-src 'self' data: https://fonts.bunny.net",
-            // Recipe photos and logos may come from other sites; camera pictures are blob: URLs.
+            // Recipe photos are stored locally, but bank logos (GoCardless), Instagram
+            // thumbnails, shopping offer images and trip photos legitimately come from many
+            // different external hosts, so this stays open to any https image.
             "img-src 'self' data: blob: https:",
             "media-src 'self' blob:",
-            // Live updates (Reverb) run over a WebSocket, possibly on another host behind the proxy.
-            "connect-src 'self' ws: wss:",
+            $connect,
             "worker-src 'self' blob:",
             "manifest-src 'self'",
             "frame-src 'self' blob:",

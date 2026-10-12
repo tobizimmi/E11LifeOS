@@ -4,6 +4,7 @@ namespace App\Support\Paperless;
 
 use App\Models\PaperlessInstance;
 use App\Models\User;
+use App\Support\Security\UrlGuard;
 use App\Support\Vpn;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -42,22 +43,18 @@ class PaperlessClient
     public static function normaliseUrl(string $url): ?string
     {
         $url = rtrim(trim($url), '/');
-        $parts = parse_url($url);
 
-        if (! $parts || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || empty($parts['host']) || isset($parts['user']) || isset($parts['pass'])) {
+        if (! UrlGuard::hasValidShape($url)) {
             return null;
         }
 
-        $host = strtolower(trim($parts['host'], '[]'));
-        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
+        $host = strtolower(trim((string) parse_url($url, PHP_URL_HOST), '[]'));
 
-        foreach ($ips as $ip) {
-            if (str_starts_with($ip, '127.') || str_starts_with($ip, '169.254.') || $ip === '::1' || $ip === '0.0.0.0') {
-                return null;
-            }
+        if (in_array($host, ['localhost', 'metadata.google.internal'], true) || ! UrlGuard::isNotLocalHost($host)) {
+            return null;
         }
 
-        return in_array($host, ['localhost', 'metadata.google.internal'], true) ? null : preg_replace('#/api$#', '', $url);
+        return preg_replace('#/api$#', '', $url);
     }
 
     public function documentUrl(int $id): string

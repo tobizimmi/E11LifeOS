@@ -83,14 +83,19 @@ class ShoppingLists
     public static function recordPurchase(ShoppingListEntry $entry): void
     {
         $key = mb_substr(mb_strtolower(trim($entry->label)), 0, 255);
-        $stat = DB::table('shopping_item_stats')->where('household_id', $entry->household_id)->where('label_key', $key)->first();
         $values = ['label' => trim($entry->label), 'quantity' => $entry->quantity, 'aisle' => $entry->aisle, 'last_bought_at' => now(), 'updated_at' => now()];
 
-        if ($stat) {
-            DB::table('shopping_item_stats')->where('id', $stat->id)->update($values + ['count' => $stat->count + 1]);
-        } else {
-            DB::table('shopping_item_stats')->insert($values + ['household_id' => $entry->household_id, 'label_key' => $key, 'count' => 1, 'created_at' => now()]);
-        }
+        // Atomic upsert (household_id + label_key is unique): avoids the check-then-act
+        // race of a separate select/update/insert when two requests tick off the same
+        // item at once. "count" starts at 0 and is not in the update column list, so the
+        // increment() below is the only thing that ever changes it – 0 → 1 on first buy,
+        // old + 1 on every later one.
+        DB::table('shopping_item_stats')->upsert(
+            $values + ['household_id' => $entry->household_id, 'label_key' => $key, 'count' => 0, 'created_at' => now()],
+            ['household_id', 'label_key'],
+            array_keys($values)
+        );
+        DB::table('shopping_item_stats')->where('household_id', $entry->household_id)->where('label_key', $key)->increment('count');
     }
 
     /**

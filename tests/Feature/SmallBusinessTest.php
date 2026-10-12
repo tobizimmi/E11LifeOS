@@ -367,6 +367,21 @@ class SmallBusinessTest extends TestCase
         $this->get(route('business.report', ['year' => 2026]))->assertOk()->assertSee('982,00 €');
     }
 
+    public function test_a_counterparty_that_looks_like_a_spreadsheet_formula_is_defused_in_the_csv_export(): void
+    {
+        [$user, $household] = $this->businessOwner();
+        BookkeepingEntry::factory()->for($user)->for($household)->create([
+            'category' => 'goods', 'amount' => 10, 'vat_amount' => 0, 'booked_on' => '2026-04-01',
+            'counterparty' => '=cmd|\'/c calc\'!A1', 'description' => '+SUM(1+1)', 'receipt_path' => 'x.jpg',
+        ]);
+
+        $csv = $this->get(route('business.report.download', ['year' => 2026, 'format' => 'csv']))->assertOk()->getContent();
+        $this->assertStringContainsString("'=cmd|'/c calc'!A1", $csv);
+        $this->assertStringContainsString("'+SUM(1+1)", $csv);
+        $this->assertStringNotContainsString(';=cmd', $csv);
+        $this->assertStringNotContainsString(';+SUM', $csv);
+    }
+
     public function test_with_vat_income_and_expenses_are_split_into_net_and_vat(): void
     {
         [$user, $household, $profile] = $this->businessOwner(smallBusiness: false);

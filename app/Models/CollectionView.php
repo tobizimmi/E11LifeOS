@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A saved view of a collection, shared with everyone who can see the collection.
+ *
+ * @property array<string, mixed> $settings
  */
 #[Fillable(['collection_id', 'created_by', 'name', 'settings', 'position'])]
 class CollectionView extends Model

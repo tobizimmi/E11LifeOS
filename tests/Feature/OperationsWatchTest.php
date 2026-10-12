@@ -33,7 +33,7 @@ class OperationsWatchTest extends TestCase
 
         $this->directory = sys_get_temp_dir().'/e11-verify-test-'.uniqid();
         config(['backup.path' => $this->directory, 'backup.keep' => 3]);
-        Cache::put('scheduler:heartbeat', now()->toIso8601String());
+        Cache::store('monitoring')->put('scheduler:heartbeat', now()->toIso8601String());
     }
 
     protected function tearDown(): void
@@ -50,7 +50,7 @@ class OperationsWatchTest extends TestCase
         $this->artisan('backup:run')->assertSuccessful();
 
         $this->artisan('backup:verify')->assertSuccessful();
-        $last = Cache::get(SystemHealth::VERIFY_KEY);
+        $last = Cache::store('monitoring')->get(SystemHealth::VERIFY_KEY);
         $this->assertTrue($last['ok']);
         // SQLite dumps are loaded into a test database; MySQL needs the scratch connection for that.
         if (config('database.default') === 'sqlite') {
@@ -81,11 +81,11 @@ class OperationsWatchTest extends TestCase
 
         $this->artisan('system:watch')->assertSuccessful();
         $this->artisan('system:watch')->assertSuccessful();
-        $this->assertFalse(Cache::get(SystemHealth::STATE_KEY)['backup']);
+        $this->assertFalse(Cache::store('monitoring')->get(SystemHealth::STATE_KEY)['backup']);
 
         $this->artisan('backup:run')->assertSuccessful();
         $this->artisan('system:watch')->assertSuccessful();
-        $this->assertTrue(Cache::get(SystemHealth::STATE_KEY)['backup']);
+        $this->assertTrue(Cache::store('monitoring')->get(SystemHealth::STATE_KEY)['backup']);
     }
 
     public function test_server_errors_reach_the_admins_by_push_once_an_hour(): void
@@ -107,7 +107,7 @@ class OperationsWatchTest extends TestCase
             $this->get(route('admin.system'))->assertOk();
         }
 
-        $this->assertSame(3, Cache::get(RecordSlowRequests::ROUTES_KEY)['admin.system']['count']);
+        $this->assertSame(3, Cache::store('monitoring')->get(RecordSlowRequests::ROUTES_KEY)['admin.system']['count']);
         $this->assertSame('admin.system', RecordSlowRequests::slowestRoutes()[0]['route']);
 
         Volt::test('admin.system')->assertSee(__('System health'))->assertSee(__('Daily backup'))->assertSee('admin.system');
@@ -116,7 +116,9 @@ class OperationsWatchTest extends TestCase
     public function test_scheduled_callbacks_never_count_as_failed_because_of_a_return_value(): void
     {
         // A database cache write that changes no row returns false – the task must still succeed.
-        Cache::shouldReceive('forever')->once()->andReturn(false);
+        $store = \Mockery::mock();
+        $store->shouldReceive('forever')->once()->andReturn(false);
+        Cache::shouldReceive('store')->with('monitoring')->once()->andReturn($store);
         $heartbeat = collect(app(Schedule::class)->events())->first(fn ($event) => $event->description === 'scheduler-heartbeat');
 
         $heartbeat->run(app());

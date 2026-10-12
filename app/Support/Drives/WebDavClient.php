@@ -2,6 +2,7 @@
 
 namespace App\Support\Drives;
 
+use App\Support\Security\UrlGuard;
 use App\Support\Vpn;
 use DOMDocument;
 use DOMElement;
@@ -33,9 +34,7 @@ class WebDavClient implements DriveClient
      */
     public static function isAllowedUrl(string $url): bool
     {
-        $parts = parse_url($url);
-
-        if (! is_array($parts) || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || empty($parts['host']) || isset($parts['user'])) {
+        if (! UrlGuard::hasValidShape($url)) {
             return false;
         }
 
@@ -43,10 +42,7 @@ class WebDavClient implements DriveClient
             return true;
         }
 
-        $host = trim($parts['host'], '[]');
-        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
-
-        return $ips !== [] && collect($ips)->every(fn (string $ip) => filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false);
+        return UrlGuard::isPublicHost((string) parse_url($url, PHP_URL_HOST));
     }
 
     /**

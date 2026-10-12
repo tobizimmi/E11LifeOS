@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
@@ -10,9 +11,13 @@ use Illuminate\Support\Carbon;
 /**
  * Upcoming invoice due dates, subsidy deadlines and trade starts of the member's properties.
  */
-class RealEstateReminder extends Notification
+class RealEstateReminder extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     /**
      * @param  list<array{date: string, kind: string, title: string, url: string, overdue: bool}>  $events

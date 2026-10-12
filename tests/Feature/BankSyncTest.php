@@ -77,7 +77,7 @@ class BankSyncTest extends TestCase
         $connection = BankConnection::sole();
         $this->assertSame(['comdirect', null, false, $portfolio->id], [$connection->bank, $connection->pin, $connection->auto_sync, $connection->portfolio_id]);
 
-        Volt::test('portfolio.banking')->call('editConnection', $connection->id)->set('form.save_pin', true)->set('form.pin', '9876')->set('form.auto_sync', true)->call('saveConnection');
+        Volt::test('portfolio.banking')->call('editConnection', $connection->id)->set('form.save_pin', true)->set('form.pin', '9876')->set('form.auto_sync', true)->call('saveConnection')->assertSet('form.pin', '');
         $connection->refresh();
         $this->assertSame(['9876', true], [$connection->pin, $connection->auto_sync]);
         $this->assertNotSame('9876', DB::table('bank_connections')->value('pin'));
@@ -171,7 +171,7 @@ class BankSyncTest extends TestCase
         $this->assertNotContains('pin', array_keys($foreign->toArray()));
     }
 
-    public function test_an_http_error_of_the_bank_is_explained(): void
+    public function test_an_http_error_of_the_bank_is_explained_only_in_the_logs(): void
     {
         [$user, $household] = $this->owner();
         $connection = $this->connection($user, $household, ['pin' => '1111']);
@@ -183,8 +183,11 @@ class BankSyncTest extends TestCase
 
         $message = $connection->fresh()->sync_message;
         $this->assertSame('error', $connection->fresh()->sync_status);
-        $this->assertStringContainsString('Der Bankserver fints.dkb.de hat die Anfrage abgelehnt (HTTP 403).', $message);
-        $this->assertStringContainsString('Antwort der Bank: „Access Denied“', $message);
+        // The raw connection detail (host, HTTP status, the bank's response) would turn a user-chosen
+        // FinTS URL into a port-scan oracle, so the member only sees a generic message.
+        $this->assertSame('Die Bank war nicht erreichbar.', $message);
+        $this->assertStringNotContainsString('403', $message);
+        $this->assertStringNotContainsString('Access Denied', $message);
     }
 
     public function test_an_outdated_address_whose_host_is_gone_is_replaced_by_the_known_one(): void
@@ -205,7 +208,7 @@ class BankSyncTest extends TestCase
         $this->assertNotSame('error', $connection->fresh()->sync_status);
     }
 
-    public function test_a_web_banking_address_instead_of_fints_is_recognised(): void
+    public function test_a_web_banking_address_instead_of_fints_only_shows_a_generic_error(): void
     {
         [$user, $household] = $this->owner();
         $connection = $this->connection($user, $household, ['pin' => '1111', 'fints_url' => 'https://banking.dkb.de/']);
@@ -215,9 +218,9 @@ class BankSyncTest extends TestCase
 
         Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot');
 
-        $message = $connection->fresh()->sync_message;
-        $this->assertStringContainsString('Die Adresse https://banking.dkb.de/ führt zur Webseite der Bank, nicht zu ihrer FinTS-Schnittstelle.', $message);
-        $this->assertStringContainsString('Die bekannte FinTS-Adresse dieser Bank ist https://fints.dkb.de/fints.', $message);
+        // The detailed detection (web page instead of FinTS, with the known address) stays in the
+        // logs; the member only sees a generic message, so the response body is never echoed back.
+        $this->assertSame('Die Bank war nicht erreichbar.', $connection->fresh()->sync_message);
     }
 
     /**

@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -31,6 +32,7 @@ class SystemHealth
     {
         return [
             'scheduler' => self::scheduler(),
+            'database' => self::database(),
             'failed_jobs' => self::failedJobs(),
             'stuck_jobs' => self::stuckJobs(),
             'disk' => self::disk(),
@@ -38,6 +40,7 @@ class SystemHealth
             'backup_remote' => self::remoteBackup(),
             'restore_test' => self::restoreTest(),
             'vpn' => self::vpn(),
+            'reverb' => self::reverb(),
             'logs' => self::logs(),
         ];
     }
@@ -47,7 +50,7 @@ class SystemHealth
      */
     private static function scheduler(): array
     {
-        $heartbeat = Cache::get('scheduler:heartbeat');
+        $heartbeat = Cache::store('monitoring')->get('scheduler:heartbeat');
         $at = $heartbeat ? Carbon::parse($heartbeat) : null;
 
         return [
@@ -55,6 +58,25 @@ class SystemHealth
             'label' => __('Scheduler'),
             'detail' => $at ? __('Last run :time', ['time' => $at->diffForHumans()]) : __('Never ran'),
         ];
+    }
+
+    /**
+     * @return array{ok: bool, label: string, detail: string}
+     */
+    private static function database(): array
+    {
+        try {
+            DB::connection()->getPdo();
+            DB::select('select 1');
+
+            return ['ok' => true, 'label' => __('Database'), 'detail' => __('Connected')];
+        } catch (\Throwable $exception) {
+            // The raw PDO message can contain the DSN host, port and username — logged for
+            // diagnosis, never shown, same as the bank/NAS connection errors elsewhere.
+            report($exception);
+
+            return ['ok' => false, 'label' => __('Database'), 'detail' => __('Not reachable.')];
+        }
     }
 
     /**
@@ -132,7 +154,7 @@ class SystemHealth
             return ['ok' => true, 'label' => __('Copy off the server'), 'detail' => __('Not set up')];
         }
 
-        $last = Cache::get('backup:remote-last');
+        $last = Cache::store('monitoring')->get('backup:remote-last');
         $at = $last ? Carbon::parse($last) : null;
 
         return [
@@ -147,7 +169,7 @@ class SystemHealth
      */
     private static function restoreTest(): array
     {
-        $last = Cache::get(self::VERIFY_KEY);
+        $last = Cache::store('monitoring')->get(self::VERIFY_KEY);
 
         if (! is_array($last)) {
             return ['ok' => true, 'label' => __('Restore test'), 'detail' => __('Runs every Sunday night')];
@@ -174,6 +196,38 @@ class SystemHealth
         $running = Vpn::isRunning();
 
         return ['ok' => $running, 'label' => __('VPN'), 'detail' => $running ? __('Connected') : __('Not connected – the home network is not reachable')];
+    }
+
+    /**
+     * Reverb's own local port (REVERB_LOCAL_PORT, written into .env by the deploy, see
+     * config/broadcasting.php). A simple TCP connect, plus Reverb's own "/up" health endpoint
+     * where that is reachable.
+     *
+     * @return array{ok: bool, label: string, detail: string}
+     */
+    private static function reverb(): array
+    {
+        $port = (int) config('broadcasting.local_reverb_port');
+
+        if ($port <= 0) {
+            return ['ok' => true, 'label' => __('Reverb'), 'detail' => __('Not set up')];
+        }
+
+        try {
+            $response = Http::timeout(2)->get("http://127.0.0.1:{$port}/up");
+
+            return ['ok' => $response->successful(), 'label' => __('Reverb'), 'detail' => $response->successful() ? __('Running') : __('Unexpected response on port :port', ['port' => $port])];
+        } catch (\Throwable) {
+            $socket = @fsockopen('127.0.0.1', $port, $errno, $errstr, 2);
+
+            if ($socket) {
+                fclose($socket);
+
+                return ['ok' => true, 'label' => __('Reverb'), 'detail' => __('Port :port open', ['port' => $port])];
+            }
+
+            return ['ok' => false, 'label' => __('Reverb'), 'detail' => __('Not reachable on port :port', ['port' => $port])];
+        }
     }
 
     /**

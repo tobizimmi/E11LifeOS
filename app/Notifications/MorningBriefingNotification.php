@@ -3,15 +3,20 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * Daily morning briefing e-mail (see App\Support\MorningBriefing).
  */
-class MorningBriefingNotification extends Notification
+class MorningBriefingNotification extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     /**
      * @param  array{date: string, weather: ?string, sections: list<array{icon: string, title: string, lines: list<string>, url: string}>}  $briefing

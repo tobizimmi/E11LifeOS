@@ -53,6 +53,16 @@ return [
             'lock_path' => storage_path('framework/cache/data'),
         ],
 
+        // Error history, slow-request stats and the system health watcher's state – its own
+        // store so the deploy's plain `cache:clear` (default store only) never wipes it.
+        // Driver overridable like the default store above (phpunit.xml sets it to "array" so
+        // tests stay isolated instead of writing real files across separate test runs).
+        'monitoring' => [
+            'driver' => env('MONITORING_CACHE_STORE', 'file'),
+            'path' => storage_path('framework/cache/monitoring'),
+            'lock_path' => storage_path('framework/cache/monitoring'),
+        ],
+
         'storage' => [
             'driver' => 'storage',
             'disk' => env('CACHE_STORAGE_DISK'),

@@ -7,6 +7,7 @@ use App\Models\BusinessProfile;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\User;
+use App\Support\Csv;
 use Illuminate\Support\Carbon;
 
 /**
@@ -179,7 +180,7 @@ class EuerReport
             fputcsv($out, [
                 $row['date']->format('d.m.Y'),
                 $row['kind'] === BookkeepingEntry::INCOME ? __('Income') : __('Expense'),
-                $row['reference'], $row['description'], $row['counterparty'], $row['category'],
+                Csv::sanitizeCell($row['reference']), Csv::sanitizeCell($row['description']), Csv::sanitizeCell($row['counterparty']), $row['category'],
                 $lines[$row['line']]['label'] ?? $row['line'],
                 $number($row['net']), $number($row['vat']), $number($row['gross']),
                 $row['receipt'] ? __('yes') : __('no'),

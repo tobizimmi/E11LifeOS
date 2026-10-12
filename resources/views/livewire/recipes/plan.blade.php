@@ -11,6 +11,7 @@ use App\Support\ShoppingIngredients;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -29,6 +30,16 @@ new #[Layout('layouts.app')] class extends Component
      * Day the add dialog is open for (Y-m-d), null = closed.
      */
     public ?string $addingDate = null;
+
+    /**
+     * ID of the entry being edited in the dialog, null = it is in "add" mode.
+     */
+    public ?int $editingId = null;
+
+    /**
+     * Whether the entry being edited is linked to a recipe (the link itself cannot be changed here).
+     */
+    public bool $editingHasRecipe = false;
 
     public string $addingMealType = 'dinner';
 
@@ -79,14 +90,34 @@ new #[Layout('layouts.app')] class extends Component
     public function startAdding(string $date, string $mealType = 'dinner'): void
     {
         $this->resetValidation();
-        $this->reset('recipeSearch', 'customTitle', 'addingServings', 'addingPrivate');
+        $this->reset('recipeSearch', 'customTitle', 'addingServings', 'addingPrivate', 'editingId', 'editingHasRecipe');
         $this->addingDate = Carbon::parse($date)->toDateString();
         $this->addingMealType = in_array($mealType, MealPlan::MEAL_TYPES, true) ? $mealType : 'dinner';
+    }
+
+    /**
+     * Opens the dialog in "edit" mode, pre-filled with the entry's current values.
+     */
+    public function startEditing(int $id): void
+    {
+        $entry = MealPlan::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($id);
+
+        $this->resetValidation();
+        $this->reset('recipeSearch');
+        $this->editingId = $entry->id;
+        $this->editingHasRecipe = $entry->recipe_id !== null;
+        $this->addingDate = $entry->date->toDateString();
+        $this->addingMealType = $entry->meal_type;
+        $this->addingServings = $entry->servings;
+        $this->addingPrivate = $entry->isPrivate();
+        $this->customTitle = $entry->recipe_id ? '' : $entry->title;
     }
 
     public function cancelAdding(): void
     {
         $this->addingDate = null;
+        $this->editingId = null;
+        $this->editingHasRecipe = false;
     }
 
     private function validateSlot(): void
@@ -142,6 +173,36 @@ new #[Layout('layouts.app')] class extends Component
     public function removeEntry(int $id): void
     {
         MealPlan::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($id)->delete();
+    }
+
+    /**
+     * Saves changes to an existing entry: date, meal type, servings and – for free-text entries –
+     * the title and its privacy. A linked recipe itself cannot be swapped here; remove and re-add
+     * the entry for that.
+     */
+    public function saveEdit(): void
+    {
+        $this->validateSlot();
+
+        $entry = MealPlan::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($this->editingId);
+
+        $attributes = [
+            'date' => $this->addingDate,
+            'meal_type' => $this->addingMealType,
+            'servings' => $this->addingServings,
+        ];
+
+        if (! $entry->recipe_id) {
+            $this->validate(['customTitle' => ['required', 'string', 'max:500']]);
+            $attributes['title'] = trim($this->customTitle);
+            $attributes['visibility'] = $this->addingPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED;
+        }
+
+        $entry->update($attributes);
+
+        $this->addingDate = null;
+        $this->editingId = null;
+        $this->editingHasRecipe = false;
     }
 
     /**
@@ -212,7 +273,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $lines = [];
 
-        foreach ($this->entriesOfWeek()->whereNotNull('recipe') as $entry) {
+        foreach ($this->entriesOfWeek->whereNotNull('recipe') as $entry) {
             foreach ($entry->recipe->scaledIngredients($entry->servings) as $ingredient) {
                 if (! $ingredient['isSection']) {
                     $lines[] = $ingredient + ['recipe' => $entry->recipe->title];
@@ -241,7 +302,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function suggestWeek(): void
     {
-        $planned = $this->entriesOfWeek()->where('meal_type', 'dinner')->map(fn (MealPlan $entry) => $entry->date->toDateString())->all();
+        $planned = $this->entriesOfWeek->where('meal_type', 'dinner')->map(fn (MealPlan $entry) => $entry->date->toDateString())->all();
         $dates = collect(range(0, 6))->map(fn (int $offset) => $this->weekStart()->addDays($offset)->toDateString())
             ->filter(fn (string $date) => $date >= today()->toDateString() && ! in_array($date, $planned, true))
             ->values()->all();
@@ -331,9 +392,11 @@ new #[Layout('layouts.app')] class extends Component
 
     /**
      * Visible entries of the shown week; recipes the user can't see are hidden from the entry.
+     * Cached per request (several call sites need it in the same render/action).
      *
      * @return \Illuminate\Support\Collection<int, MealPlan>
      */
+    #[Computed]
     private function entriesOfWeek(): \Illuminate\Support\Collection
     {
         $start = $this->weekStart();
@@ -352,7 +415,7 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $start = $this->weekStart();
-        $entries = $this->entriesOfWeek();
+        $entries = $this->entriesOfWeek;
         $mealOrder = array_flip(MealPlan::MEAL_TYPES);
 
         $days = collect(range(0, 6))->map(fn (int $offset) => $start->copy()->addDays($offset))
@@ -365,7 +428,7 @@ new #[Layout('layouts.app')] class extends Component
             ])
             ->map(fn (array $day) => [...$day, 'nutrition' => MealPlan::nutritionPerPerson($day['entries'])]);
 
-        $recipeResults = $this->addingDate !== null
+        $recipeResults = $this->addingDate !== null && $this->editingId === null
             ? Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)
                 ->whereNull('archived_at')
                 ->when(trim($this->recipeSearch) !== '', fn ($query) => $query->matching($this->recipeSearch))
@@ -539,6 +602,7 @@ new #[Layout('layouts.app')] class extends Component
                                             @if ($entry->recipe)
                                                 <button type="button" wire:click="planLeftovers({{ $entry->id }})" class="opacity-60 hover:opacity-100" title="{{ __('Leftovers tomorrow') }}" aria-label="{{ __('Leftovers tomorrow') }}">🥡</button>
                                             @endif
+                                            <button type="button" wire:click="startEditing({{ $entry->id }})" class="opacity-60 hover:text-indigo-600 hover:opacity-100" title="{{ __('Edit entry') }}" aria-label="{{ __('Edit entry') }}"><x-icon name="pencil" class="h-4 w-4" stroke-width="2" /></button>
                                             <button type="button" wire:click="removeEntry({{ $entry->id }})" class="opacity-60 hover:text-red-600 hover:opacity-100" aria-label="{{ __('Remove from meal plan') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                         </span>
                                     </p>
@@ -588,10 +652,12 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 <div class="flex items-end gap-3">
-                    <div class="flex-1">
-                        <x-input-label for="recipeSearch" :value="__('Recipe')" />
-                        <x-text-input wire:model.live.debounce.250ms="recipeSearch" id="recipeSearch" type="search" class="mt-1 block w-full" placeholder="{{ __('Search recipes or ingredients...') }}" autofocus />
-                    </div>
+                    @unless ($editingId)
+                        <div class="flex-1">
+                            <x-input-label for="recipeSearch" :value="__('Recipe')" />
+                            <x-text-input wire:model.live.debounce.250ms="recipeSearch" id="recipeSearch" type="search" class="mt-1 block w-full" placeholder="{{ __('Search recipes or ingredients...') }}" autofocus />
+                        </div>
+                    @endunless
                     <div class="w-24">
                         <x-input-label for="addingServings" :value="__('Servings')" />
                         <x-text-input wire:model="addingServings" id="addingServings" type="number" min="1" max="99" class="mt-1 block w-full" placeholder="{{ __('auto') }}" />
@@ -599,38 +665,59 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <x-input-error :messages="$errors->get('addingServings')" />
 
-                <ul class="max-h-64 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
-                    @forelse ($recipeResults as $result)
-                        <li wire:key="result-{{ $result->id }}">
-                            <button type="button" wire:click="addRecipe({{ $result->id }})" class="flex w-full items-center gap-3 px-1 py-2 text-start hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                @if ($result->imageUrl())
-                                    <img src="{{ $result->imageUrl() }}" alt="" class="h-10 w-10 rounded-sm object-cover" />
-                                @else
-                                    <span class="flex h-10 w-10 items-center justify-center rounded-sm bg-gray-100 dark:bg-gray-700" aria-hidden="true">🍽️</span>
-                                @endif
-                                <span class="min-w-0 flex-1">
-                                    <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $result->title }}</span>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                                        @if ($result->totalTime()) ⏱ {{ $result->totalTime() }} {{ __('min') }} @endif
-                                        @if ($result->servings) · {{ trans_choice(':count serving|:count servings', $result->servings) }} @endif
+                @if ($editingId)
+                    @if ($editingHasRecipe)
+                        {{-- The linked recipe itself cannot be swapped here; only its slot (meal, date, servings) can change. --}}
+                        <div class="flex items-center gap-3 pt-2">
+                            <x-primary-button type="button" wire:click="saveEdit">{{ __('Save') }}</x-primary-button>
+                            <button type="button" wire:click="cancelAdding" class="text-sm text-gray-500 underline">{{ __('Cancel') }}</button>
+                        </div>
+                    @else
+                        <form wire:submit="saveEdit" class="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <x-input-label for="customTitle" :value="__('Or free text')" />
+                            <div class="flex gap-2">
+                                <x-text-input wire:model="customTitle" id="customTitle" class="block flex-1" autofocus />
+                                <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
+                            </div>
+                            <x-input-error :messages="$errors->get('customTitle')" />
+                            <x-private-checkbox id="addingPrivate" wire:model="addingPrivate" />
+                            <button type="button" wire:click="cancelAdding" class="text-sm text-gray-500 underline">{{ __('Cancel') }}</button>
+                        </form>
+                    @endif
+                @else
+                    <ul class="max-h-64 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
+                        @forelse ($recipeResults as $result)
+                            <li wire:key="result-{{ $result->id }}">
+                                <button type="button" wire:click="addRecipe({{ $result->id }})" class="flex w-full items-center gap-3 px-1 py-2 text-start hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    @if ($result->imageUrl())
+                                        <img src="{{ $result->imageUrl() }}" alt="" class="h-10 w-10 rounded-sm object-cover" />
+                                    @else
+                                        <span class="flex h-10 w-10 items-center justify-center rounded-sm bg-gray-100 dark:bg-gray-700" aria-hidden="true">🍽️</span>
+                                    @endif
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ $result->title }}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                                            @if ($result->totalTime()) ⏱ {{ $result->totalTime() }} {{ __('min') }} @endif
+                                            @if ($result->servings) · {{ trans_choice(':count serving|:count servings', $result->servings) }} @endif
+                                        </span>
                                     </span>
-                                </span>
-                            </button>
-                        </li>
-                    @empty
-                        <li class="py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No recipes match your filter.') }}</li>
-                    @endforelse
-                </ul>
+                                </button>
+                            </li>
+                        @empty
+                            <li class="py-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No recipes match your filter.') }}</li>
+                        @endforelse
+                    </ul>
 
-                <form wire:submit="addCustom" class="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <x-input-label for="customTitle" :value="__('Or free text')" />
-                    <div class="flex gap-2">
-                        <x-text-input wire:model="customTitle" id="customTitle" class="block flex-1" placeholder="{{ __('e.g. Leftovers, eating out') }}" />
-                        <x-secondary-button type="submit">{{ __('Add') }}</x-secondary-button>
-                    </div>
-                    <x-input-error :messages="$errors->get('customTitle')" />
-                    <x-private-checkbox id="addingPrivate" wire:model="addingPrivate" />
-                </form>
+                    <form wire:submit="addCustom" class="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <x-input-label for="customTitle" :value="__('Or free text')" />
+                        <div class="flex gap-2">
+                            <x-text-input wire:model="customTitle" id="customTitle" class="block flex-1" placeholder="{{ __('e.g. Leftovers, eating out') }}" />
+                            <x-secondary-button type="submit">{{ __('Add') }}</x-secondary-button>
+                        </div>
+                        <x-input-error :messages="$errors->get('customTitle')" />
+                        <x-private-checkbox id="addingPrivate" wire:model="addingPrivate" />
+                    </form>
+                @endif
             </div>
         </div>
     @endif

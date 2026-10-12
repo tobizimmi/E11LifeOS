@@ -26,8 +26,10 @@ class SendWeeklyDigests extends Command
                     return;
                 }
 
-                self::deliver($user, $webPush);
-                $sent++;
+                rescue(function () use ($user, $webPush, &$sent) {
+                    self::deliver($user, $webPush);
+                    $sent++;
+                }, report: true);
             });
 
         $this->info("Weekly summaries sent: {$sent}");

@@ -265,7 +265,7 @@ new #[Layout('layouts.app')] class extends Component
         <div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
             <nav class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="{{ __('People') }}">
                 @foreach ($profiles as $item)
-                    <button type="button" wire:click="selectProfile({{ $item->id }})" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm pointer-coarse:min-h-11', 'bg-indigo-600 text-white' => $item->id === $profileId && ! $isCreating, 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $item->id !== $profileId || $isCreating])>{{ $item->name }}@if ($item->age() !== null) <span class="opacity-70">· {{ $item->age() }}</span>@endif</button>
+                    <button type="button" wire:key="profile-{{ $item->id }}" wire:click="selectProfile({{ $item->id }})" @class(['shrink-0 rounded-full px-3 py-1.5 text-sm pointer-coarse:min-h-11', 'bg-indigo-600 text-white' => $item->id === $profileId && ! $isCreating, 'bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700' => $item->id !== $profileId || $isCreating])>{{ $item->name }}@if ($item->age() !== null) <span class="opacity-70">· {{ $item->age() }}</span>@endif</button>
                 @endforeach
                 <button type="button" wire:click="startNewProfile" class="shrink-0 rounded-full px-3 py-1.5 text-sm text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 pointer-coarse:min-h-11 dark:text-indigo-300 dark:ring-indigo-800">+ {{ __('Person') }}</button>
             </nav>

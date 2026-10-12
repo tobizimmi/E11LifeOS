@@ -135,6 +135,9 @@ jobs:
           # exception cannot even render an error page ("valid cache path").
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/views
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/cache/data
+          # Observability data (error history, slow-request stats, health watcher state) lives in
+          # its own cache store so `cache:clear` below (default store only) never wipes it.
+          mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/cache/monitoring
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/framework/sessions
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/logs
           mkdir -p ${{ env.APP_PATH_DEPLOY }}/storage/app/private

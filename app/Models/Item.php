@@ -145,6 +145,35 @@ class Item extends Model
         }
 
         $this->rescheduleIfRepeating($statusProperty);
+        $this->syncRepeatAnchorWithManualDueChange();
+    }
+
+    /**
+     * A manual due-date edit (drag & drop in the calendar, typing a new date) must move the
+     * stored repeat anchor too — otherwise the next automatic reschedule (rescheduleIfRepeating())
+     * silently reverts to the day the series was anchored on before, ignoring where the member
+     * just moved it to. Skipped when this save IS the automatic reschedule itself
+     * ($rescheduledTo set): that path already decided the anchor it wants to keep.
+     */
+    private function syncRepeatAnchorWithManualDueChange(): void
+    {
+        if ($this->rescheduledTo !== null) {
+            return;
+        }
+
+        $dueProperty = $this->collection?->systemProperty('due');
+        $repeatProperty = $this->collection?->systemProperty('repeat');
+
+        if (! $dueProperty || ! $repeatProperty || ! $this->propertyValue($repeatProperty)) {
+            return;
+        }
+
+        $due = $this->propertyValue($dueProperty);
+        $originalDue = ($this->exists ? ($this->getOriginal('properties') ?? []) : [])[$dueProperty->id] ?? null;
+
+        if ($due && $due !== $originalDue) {
+            $this->setRepeatAnchorDay((int) Carbon::createFromFormat('!Y-m-d', $due)->day);
+        }
     }
 
     /**
@@ -170,8 +199,20 @@ class Item extends Model
         $rule = $repeatProperty ? $this->propertyValue($repeatProperty) : null;
         $due = $dueProperty ? $this->propertyValue($dueProperty) : null;
 
-        if (! $rule || ! $due || ! ($next = Recurrence::next($due, $rule))) {
+        if (! $rule || ! $due) {
             return;
+        }
+
+        $anchorDay = $this->repeatAnchorDay();
+
+        if (! ($next = Recurrence::next($due, $rule, null, $anchorDay))) {
+            return;
+        }
+
+        // First time this task reschedules: fix the anchor day so a short month in
+        // between never permanently shrinks it again (31 Jan → 28 Feb → 31 Mar, not 28 Mar).
+        if ($anchorDay === null) {
+            $this->setRepeatAnchorDay((int) Carbon::createFromFormat('!Y-m-d', $due)->day);
         }
 
         $values = $this->properties ?? [];
@@ -190,6 +231,26 @@ class Item extends Model
         $this->properties = $values;
         $this->done = false;
         $this->rescheduledTo = $next;
+    }
+
+    /**
+     * Day of month a monthly/yearly repeat rule anchors to (content.repeat_anchor_day),
+     * fixed the first time a repeating task reschedules so it does not drift down to a
+     * shorter month's last day over time. Null for items without one yet (older tasks
+     * fall back to the current due date's day, as before).
+     */
+    public function repeatAnchorDay(): ?int
+    {
+        $day = $this->content['repeat_anchor_day'] ?? null;
+
+        return is_numeric($day) ? (int) $day : null;
+    }
+
+    public function setRepeatAnchorDay(int $day): void
+    {
+        $content = $this->content ?? [];
+        $content['repeat_anchor_day'] = $day;
+        $this->content = $content;
     }
 
     /**

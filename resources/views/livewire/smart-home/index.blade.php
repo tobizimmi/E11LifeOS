@@ -518,14 +518,18 @@ new #[Layout('layouts.app')] class extends Component
                             @if ($isOwner && $connection->isHomeAssistant())
                                 <details class="mt-2 text-xs text-gray-600 dark:text-gray-300">
                                     <summary class="cursor-pointer">{{ __('Send values to E11LifeOS at once (webhook)') }}</summary>
-                                    <p class="mt-1">{{ __('Add this to configuration.yaml in Home Assistant and send the entities used in automations with an automation (state trigger → action “rest_command.e11lifeos”):') }}</p>
-                                    <pre class="mt-1 overflow-x-auto rounded-md bg-gray-50 p-2 dark:bg-gray-900">rest_command:
+                                    @if ($connection->webhook_secret)
+                                        <p class="mt-1">{{ __('Add this to configuration.yaml in Home Assistant and send the entities used in automations with an automation (state trigger → action “rest_command.e11lifeos”):') }}</p>
+                                        <pre class="mt-1 overflow-x-auto rounded-md bg-gray-50 p-2 dark:bg-gray-900">rest_command:
   e11lifeos:
     url: "{{ route('api.v1.smart-home.webhook', $connection->webhook_secret) }}"
     method: post
     content_type: "application/json"
     payload: '{"entity_id": "@{{ entity_id }}", "state": "@{{ state }}"}'</pre>
-                                    <p class="mt-1">{{ __('Without the webhook the values are fetched every minute.') }}</p>
+                                        <p class="mt-1">{{ __('Without the webhook the values are fetched every minute.') }}</p>
+                                    @else
+                                        <p class="mt-1">{{ __('The webhook address will be shown again after the next deploy.') }}</p>
+                                    @endif
                                 </details>
                             @endif
                         </div>

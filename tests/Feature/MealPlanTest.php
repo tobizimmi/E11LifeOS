@@ -6,6 +6,7 @@ use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\ShoppingListEntry;
 use App\Support\ShoppingIngredients;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Volt\Volt;
@@ -67,6 +68,53 @@ class MealPlanTest extends TestCase
 
         Volt::test('recipes.plan', ['week' => '2026-09-30'])->call('removeEntry', $entry->id);
         $this->assertDatabaseMissing('meal_plans', ['id' => $entry->id]);
+    }
+
+    public function test_entries_can_be_edited(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $recipe = Recipe::factory()->for($household)->create(['title' => 'Lasagne', 'servings' => 4]);
+        $custom = MealPlan::factory()->for($household)->create(['date' => '2026-09-24', 'meal_type' => 'dinner', 'title' => 'Essen gehn', 'servings' => 2]);
+        $recipeEntry = MealPlan::factory()->for($household)->create(['date' => '2026-09-25', 'meal_type' => 'dinner', 'recipe_id' => $recipe->id, 'title' => $recipe->title, 'servings' => 4]);
+        $this->actingAs($user);
+
+        // Free-text entry: fix the typo and the servings.
+        Volt::test('recipes.plan')
+            ->call('startEditing', $custom->id)
+            ->assertSet('editingHasRecipe', false)
+            ->assertSet('customTitle', 'Essen gehn')
+            ->assertSet('addingServings', 2)
+            ->set('customTitle', 'Essen gehen')
+            ->set('addingServings', 3)
+            ->call('saveEdit')
+            ->assertSet('addingDate', null)
+            ->assertSet('editingId', null);
+
+        $this->assertSame(['Essen gehen', 3], [$custom->fresh()->title, $custom->fresh()->servings]);
+
+        // Recipe-based entry: only the servings change, the recipe link is untouched.
+        Volt::test('recipes.plan')
+            ->call('startEditing', $recipeEntry->id)
+            ->assertSet('editingHasRecipe', true)
+            ->set('addingServings', 6)
+            ->call('saveEdit');
+
+        $this->assertSame([6, $recipe->id, 'Lasagne'], [$recipeEntry->fresh()->servings, $recipeEntry->fresh()->recipe_id, $recipeEntry->fresh()->title]);
+    }
+
+    public function test_a_member_of_another_household_cannot_edit_an_entry(): void
+    {
+        [, $household] = $this->memberWithHousehold();
+        [$otherUser] = $this->memberWithHousehold();
+        $entry = MealPlan::factory()->for($household)->create(['title' => 'Pizza']);
+
+        $this->actingAs($otherUser);
+
+        $this->assertThrows(fn () => Volt::test('recipes.plan')->call('startEditing', $entry->id), ModelNotFoundException::class);
+
+        // Forging the state (editingId set without going through startEditing) must not bypass the check either.
+        $this->assertThrows(fn () => Volt::test('recipes.plan')->set('editingId', $entry->id)->set('addingDate', '2026-09-23')->call('saveEdit'), ModelNotFoundException::class);
+        $this->assertSame('Pizza', $entry->fresh()->title);
     }
 
     public function test_the_ingredients_of_the_week_go_onto_the_shopping_list_combined_and_scaled(): void

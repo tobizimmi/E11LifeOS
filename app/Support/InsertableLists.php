@@ -3,13 +3,19 @@
 namespace App\Support;
 
 use App\Models\ChecklistTemplate;
+use App\Models\Collection;
+use App\Models\CollectionView;
+use App\Models\Item;
 use App\Models\ShoppingList;
 use App\Models\User;
 use App\Support\Life\TripPlanner;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
  * Lists that can be put into a page, a task's notes or a task's subtasks without a trip: packing
- * lists, checklists (built-in and own templates) and the household's shopping lists.
+ * lists, checklists (built-in and own templates), the household's shopping lists, and — always
+ * live, there is no static form of these — its collections (optionally one of their saved views,
+ * so the embed keeps the same filter/sort the member already set up).
  */
 class InsertableLists
 {
@@ -36,7 +42,32 @@ class InsertableLists
             $options[] = ['key' => 'shopping:'.$list->id, 'group' => __('Shopping lists'), 'icon' => $list->icon ?: '🛒', 'name' => $list->name, 'count' => (int) $list->entries_count, 'live' => true];
         }
 
+        foreach (self::embeddableCollections($user, $householdId) as $collection) {
+            $count = Item::query()->forHousehold($householdId)->visibleTo($user)->where('collection_id', $collection->id)->count();
+            $icon = $collection->icon ?: '🗂️';
+            $options[] = ['key' => 'collection:'.$collection->id, 'group' => __('Collections'), 'icon' => $icon, 'name' => $collection->name, 'count' => $count, 'live' => true];
+
+            // A direct query, not the $collection->views relation: Collection::views() has no
+            // generic return-type annotation, so the relation would type as a bare Model here.
+            foreach (CollectionView::where('collection_id', $collection->id)->orderBy('position')->orderBy('id')->get() as $view) {
+                $options[] = ['key' => 'collection:'.$collection->id.'-'.$view->id, 'group' => __('Collections'), 'icon' => $icon, 'name' => $collection->name.' – '.$view->name, 'count' => $count, 'live' => true];
+            }
+        }
+
         return $options;
+    }
+
+    /**
+     * Collections the member can embed: their own collections, not the built-in system ones
+     * (Tasks, Pantry) that already have dedicated embeds or pages of their own. Note: a plain
+     * where('system_key', '!=', ...) would silently drop every row here, since system_key is
+     * null for all of them and SQL's "!=" never matches against null.
+     *
+     * @return EloquentCollection<int, Collection>
+     */
+    private static function embeddableCollections(User $user, int $householdId): EloquentCollection
+    {
+        return Collection::query()->visibleTo($user, $householdId)->whereNull('system_key')->orderBy('name')->get();
     }
 
     /**
@@ -55,6 +86,9 @@ class InsertableLists
             'shopping' => ($list = ShoppingList::where('household_id', $householdId)->find((int) $id))
                 ? ['' => $list->entries()->where('checked', false)->orderBy('position')->get()->map(fn ($entry) => trim($entry->quantity.' '.$entry->label))->all()]
                 : null,
+            // Collections have no static checklist form — they are always embedded live (see
+            // markdown() below), so an empty-but-non-null array is enough to pass validation.
+            'collection' => Collection::query()->visibleTo($user, $householdId)->whereKey((int) explode('-', $id)[0])->exists() ? [] : null,
             default => null,
         };
     }
@@ -72,6 +106,12 @@ class InsertableLists
         }
 
         if ($live && $option['live']) {
+            if (str_starts_with($key, 'collection:')) {
+                [$collectionId, $viewId] = array_pad(explode('-', substr($key, 11), 2), 2, null);
+
+                return ':::embed {type="collection" collection="'.(int) $collectionId.'"'.($viewId ? ' view="'.(int) $viewId.'"' : '').'} :::';
+            }
+
             return ':::embed {type="shopping" list="'.(int) substr($key, 9).'"} :::';
         }
 

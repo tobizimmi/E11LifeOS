@@ -20,7 +20,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $heartbeat = Cache::get('scheduler:heartbeat');
+        $heartbeat = Cache::store('monitoring')->get('scheduler:heartbeat');
 
         return [
             'accounts' => AdminOverview::accounts(),

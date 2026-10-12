@@ -4,15 +4,20 @@ namespace App\Notifications;
 
 use App\Models\Item;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * E-mail at a task's due time, for people without a device that gets push notifications.
  */
-class TaskDueNow extends Notification
+class TaskDueNow extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     public function __construct(public Item $task) {}
 

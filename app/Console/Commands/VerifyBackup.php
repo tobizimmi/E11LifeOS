@@ -28,7 +28,7 @@ class VerifyBackup extends Command
         $summary = __(':tables tables, :rows rows, :files files', ['tables' => $result['tables'], 'rows' => $result['rows'], 'files' => $result['files']])
             .($result['restored'] ? ' · '.__('loaded into a test database') : '');
 
-        Cache::forever(SystemHealth::VERIFY_KEY, [
+        Cache::store('monitoring')->forever(SystemHealth::VERIFY_KEY, [
             'at' => now()->toIso8601String(),
             'ok' => $result['ok'],
             'file' => basename($latest),

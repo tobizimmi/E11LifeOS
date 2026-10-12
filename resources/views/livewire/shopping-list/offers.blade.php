@@ -130,7 +130,9 @@ new #[Layout('layouts.app')] class extends Component
                 }
 
                 if ($this->forList) {
-                    ShoppingListEntry::where('shopping_list_id', $this->targetList()->id)->where('checked', false)->orderBy('label')->limit(12)->pluck('label')
+                    // Capped at 6: each uncached label triggers an external HTTP call on this
+                    // render, sequentially – keep the worst case render time bounded.
+                    ShoppingListEntry::where('shopping_list_id', $this->targetList()->id)->where('checked', false)->orderBy('label')->limit(6)->pluck('label')
                         ->each(function (string $label) use (&$sections, $offers) {
                             $found = $offers->search($label, $this->zip, $this->chains, 6);
 

@@ -112,6 +112,12 @@ class FinanceTaxTest extends TestCase
         $this->assertStringContainsString('450,00', $csv);
         $this->assertStringContainsString('Haushaltsnahe Dienstleistungen (§ 35a)', $csv);
 
+        // A counterparty that looks like a spreadsheet formula is defused (CSV formula injection).
+        $this->booking($account, '=cmd|\'/c calc\'!A1', -10, ['tax_category' => 'household_services']);
+        $csv = $this->get(route('finance.tax-export', 2026))->assertOk()->streamedContent();
+        $this->assertStringContainsString("'=cmd|'/c calc'!A1", $csv);
+        $this->assertStringNotContainsString(';=cmd', $csv);
+
         Volt::test('finance.index')->call('setTaxCategory', $booking->id, '');
         $this->assertNull($booking->fresh()->tax_amount);
     }

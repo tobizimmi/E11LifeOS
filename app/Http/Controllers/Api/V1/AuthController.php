@@ -33,6 +33,12 @@ class AuthController extends ApiController
             return response()->json(['success' => false, 'error' => __('auth.failed')], 422);
         }
 
+        $needsSecondFactor = $user->hasSecondFactor() || config('security.require_two_factor');
+
+        if ($needsSecondFactor && ! $user->hasTwoFactor()) {
+            return response()->json(['success' => false, 'setup_required' => true, 'error' => __('Please set up two-factor authentication in the browser first.')], 403);
+        }
+
         // With two-factor authentication the app has to send the code of the authenticator app too.
         if ($user->hasTwoFactor() && ! TwoFactor::verify($user, (string) ($data['code'] ?? ''))) {
             if (filled($data['code'] ?? null)) {

@@ -7,6 +7,8 @@ use App\Models\HouseholdMember;
 use App\Models\Item;
 use App\Models\Space;
 use App\Models\User;
+use App\Support\Concerns\AssignsNextPosition;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -15,6 +17,8 @@ use Illuminate\Support\Str;
  */
 class QuickCapture
 {
+    use AssignsNextPosition;
+
     /**
      * "#tags" in the text become tags of the entry.
      */
@@ -91,7 +95,6 @@ class QuickCapture
             'visibility' => $private ? Item::VISIBILITY_PRIVATE : $collection->entryVisibility(),
             'title' => mb_substr($parsed['title'], 0, 255),
             'created_by' => $user->id,
-            'position' => (int) Item::where('collection_id', $collection->id)->max('position') + 1,
         ]);
 
         $values = ['due' => $parsed['due'] ?? $defaultDue, 'repeat' => $parsed['repeat'], 'priority' => $parsed['priority'], 'assignee' => $parsed['assignee']];
@@ -103,7 +106,14 @@ class QuickCapture
         }
 
         $task->due_time = $parsed['time'];
-        $task->save();
+
+        // The position read and the insert must commit together (see AssignsNextPosition), so
+        // the save() that actually creates the row happens inside this transaction too.
+        DB::transaction(function () use ($task, $collection) {
+            $task->position = self::nextPosition(Item::where('collection_id', $collection->id));
+            $task->save();
+        });
+
         $task->syncTagNames([...$parsed['tags'], ...$extraTags]);
 
         return $task;

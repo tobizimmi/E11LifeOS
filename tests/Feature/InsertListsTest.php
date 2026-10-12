@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ChecklistTemplate;
 use App\Models\Collection;
+use App\Models\CollectionView;
 use App\Models\Item;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
@@ -53,6 +54,29 @@ class InsertListsTest extends TestCase
 
         $this->actingAs($stranger);
         Volt::test('pages.index')->call('listMarkdown', 'shopping:'.$list->id)->assertNotFound();
+    }
+
+    public function test_collections_and_their_saved_views_can_be_embedded_from_the_picker(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        // A regular collection has no system_key at all (null), not an empty string — a plain
+        // where('system_key', '!=', ...) would silently drop it, since SQL's "!=" never matches
+        // a null column. This must not happen: every normal collection has to show up here.
+        $collection = Collection::factory()->for($household)->create(['name' => 'Verträge', 'icon' => '📑']);
+        $view = CollectionView::create(['collection_id' => $collection->id, 'name' => 'Offene', 'settings' => []]);
+        $tasks = Collection::tasksFor($household->id);
+
+        $page = Volt::test('pages.index');
+        $options = collect($page->instance()->insertableLists());
+
+        $this->assertTrue($options->contains(fn ($option) => $option['key'] === 'collection:'.$collection->id && $option['name'] === 'Verträge' && $option['live']));
+        $this->assertTrue($options->contains('key', 'collection:'.$collection->id.'-'.$view->id));
+        // The built-in Tasks collection has its own dedicated "tasks" embed already.
+        $this->assertFalse($options->contains('key', 'collection:'.$tasks->id));
+
+        $this->assertSame(':::embed {type="collection" collection="'.$collection->id.'"} :::', $page->instance()->listMarkdown('collection:'.$collection->id, true));
+        $this->assertSame(':::embed {type="collection" collection="'.$collection->id.'" view="'.$view->id.'"} :::', $page->instance()->listMarkdown('collection:'.$collection->id.'-'.$view->id, true));
     }
 
     public function test_a_list_becomes_subtasks_of_a_task_without_duplicates(): void

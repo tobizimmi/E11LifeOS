@@ -28,6 +28,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The app always sits behind the Apache/Plesk reverse proxy on the same host (see
+        // docs/deployment.md) — without this, request()->ip() is the proxy's own loopback
+        // address for every visitor, which would make the per-IP login/register rate limits
+        // apply to the whole app at once instead of per visitor.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
+
         $middleware->alias([
             'addon' => EnsureAddonEnabled::class,
             'module' => EnsureModuleAllowed::class,

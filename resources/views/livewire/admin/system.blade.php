@@ -67,18 +67,18 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $heartbeat = Cache::get('scheduler:heartbeat');
+        $heartbeat = Cache::store('monitoring')->get('scheduler:heartbeat');
 
         return [
             'heartbeat' => $heartbeat ? Carbon::parse($heartbeat) : null,
             'failedJobs' => rescue(fn () => DB::table('failed_jobs')->count(), 0, false),
             'recentFailedJobs' => $this->recentFailedJobs(),
-            'recentErrors' => Cache::get(\App\Support\ErrorReporter::CACHE_KEY, []),
+            'recentErrors' => Cache::store('monitoring')->get(\App\Support\ErrorReporter::CACHE_KEY, []),
             'health' => \App\Support\Operations\SystemHealth::checks(),
-            'restoreTest' => Cache::get(\App\Support\Operations\SystemHealth::VERIFY_KEY),
-            'slowRequests' => array_slice(Cache::get(\App\Http\Middleware\RecordSlowRequests::SLOW_KEY, []), 0, 10),
+            'restoreTest' => Cache::store('monitoring')->get(\App\Support\Operations\SystemHealth::VERIFY_KEY),
+            'slowRequests' => array_slice(Cache::store('monitoring')->get(\App\Http\Middleware\RecordSlowRequests::SLOW_KEY, []), 0, 10),
             'slowRoutes' => \App\Http\Middleware\RecordSlowRequests::slowestRoutes(),
-            'remoteBackup' => Cache::get('backup:remote-last'),
+            'remoteBackup' => Cache::store('monitoring')->get('backup:remote-last'),
             'status' => [
                 __('AI (Claude)') => StructuredAi::isConfigured(),
                 __('Sending e-mails') => config('mail.default') !== 'log' && config('mail.default') !== 'array',

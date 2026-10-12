@@ -192,4 +192,102 @@ class RecurringTasksAndCalendarTest extends TestCase
             ->set('viewMode', 'calendar')
             ->assertViewHas('currentView', 'table');
     }
+
+    /**
+     * Regression test for the anchor day drifting down a short month at a time
+     * (31 Jan → 28 Feb → 28 Mar instead of 31 Mar) when a monthly task is ticked off
+     * on time every single month, several months in a row.
+     */
+    public function test_a_monthly_task_ticked_off_on_time_each_month_keeps_the_31st(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $tasks = Collection::tasksFor($household->id);
+        $due = $tasks->systemProperty('due');
+        $repeat = $tasks->systemProperty('repeat');
+
+        $this->travelTo(Carbon::parse('2026-01-31 10:00'));
+
+        $todo = Item::factory()->todo()->for($household)->create(['title' => 'Miete überweisen']);
+        $todo->setPropertyValue($due, '2026-01-31');
+        $todo->setPropertyValue($repeat, Recurrence::MONTHLY);
+        $todo->save();
+
+        $todo->fresh()->update(['done' => true]);
+        $this->assertSame('2026-02-28', $todo->fresh()->propertyValue($due));
+
+        $this->travelTo(Carbon::parse('2026-02-28 10:00'));
+        $todo->fresh()->update(['done' => true]);
+        // Without the fix the anchor would be re-derived from 28 Feb, landing on 28 Mar
+        // instead of the original 31st.
+        $this->assertSame('2026-03-31', $todo->fresh()->propertyValue($due));
+
+        $this->travelTo(Carbon::parse('2026-03-31 10:00'));
+        $todo->fresh()->update(['done' => true]);
+        $this->assertSame('2026-04-30', $todo->fresh()->propertyValue($due));
+    }
+
+    public function test_dragging_a_monthly_task_to_a_new_date_moves_its_anchor_too(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $tasks = Collection::tasksFor($household->id);
+        $due = $tasks->systemProperty('due');
+        $repeat = $tasks->systemProperty('repeat');
+
+        $this->travelTo(Carbon::parse('2026-01-31 10:00'));
+
+        $todo = Item::factory()->todo()->for($household)->create(['title' => 'Müll rausbringen']);
+        $todo->setPropertyValue($due, '2026-01-31');
+        $todo->setPropertyValue($repeat, Recurrence::MONTHLY);
+        $todo->save();
+
+        // First completion fixes the anchor at 31, as above.
+        $todo->fresh()->update(['done' => true]);
+        $this->assertSame('2026-02-28', $todo->fresh()->propertyValue($due));
+
+        // The member now drags the task to the 15th by hand — not by ticking it off.
+        $todo = $todo->fresh();
+        $todo->setPropertyValue($due, '2026-05-15');
+        $todo->save();
+        $this->assertSame(15, $todo->fresh()->repeatAnchorDay());
+
+        // Completing it afterwards must stay near the 15th, not snap back to month-end.
+        $this->travelTo(Carbon::parse('2026-05-15 10:00'));
+        $todo->fresh()->update(['done' => true]);
+        $this->assertSame('2026-06-15', $todo->fresh()->propertyValue($due));
+    }
+
+    /**
+     * occurrencesBetween() must fast-forward arithmetically instead of stepping through
+     * every single day since the due date – otherwise an old daily repeat needs
+     * thousands of next() calls just to reach the requested window.
+     */
+    public function test_occurrences_between_stays_fast_for_an_old_daily_repeat(): void
+    {
+        $due = today()->subYears(3)->format('Y-m-d');
+        $start = today();
+        $end = today()->copy()->addDays(5);
+
+        $startedAt = microtime(true);
+        $dates = Recurrence::occurrencesBetween($due, Recurrence::DAILY, $start, $end);
+        $elapsed = microtime(true) - $startedAt;
+
+        $this->assertSame(
+            collect(range(0, 5))->map(fn (int $offset) => $start->copy()->addDays($offset)->format('Y-m-d'))->all(),
+            $dates
+        );
+        $this->assertLessThan(0.5, $elapsed, 'occurrencesBetween should fast-forward instead of stepping through every day since the due date.');
+    }
+
+    /**
+     * The fast-forward jump for an old monthly repeat must keep landing on the anchor
+     * day (or the month's last day), the same as stepping through it one month at a time.
+     */
+    public function test_occurrences_between_keeps_the_anchor_day_for_an_old_monthly_repeat(): void
+    {
+        $dates = Recurrence::occurrencesBetween('2023-01-31', Recurrence::MONTHLY, Carbon::parse('2026-09-01'), Carbon::parse('2026-11-30'));
+
+        $this->assertSame(['2026-09-30', '2026-10-31', '2026-11-30'], $dates);
+    }
 }

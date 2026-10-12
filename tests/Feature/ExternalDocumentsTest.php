@@ -25,23 +25,23 @@ class ExternalDocumentsTest extends TestCase
     private function fakePaperless(): void
     {
         Http::fake([
-            'paperless.test/api/documents/?*' => Http::response(['count' => 2, 'results' => [
+            '93.184.216.34/api/documents/?*' => Http::response(['count' => 2, 'results' => [
                 ['id' => 41, 'title' => 'Kaufvertrag Lindenstraße', 'created' => '2026-07-01T00:00:00Z', 'correspondent' => 3],
                 ['id' => 42, 'title' => 'Grundbuchauszug', 'created' => '2026-06-15T00:00:00Z', 'correspondent' => null],
             ]]),
-            'paperless.test/api/documents/41/thumb/' => Http::response('PNGDATA', 200, ['Content-Type' => 'image/webp']),
-            'paperless.test/api/documents/41/preview/' => Http::response('%PDF-1.7', 200, ['Content-Type' => 'application/pdf']),
-            'paperless.test/api/documents/41/notes/' => Http::response([]),
-            'paperless.test/api/documents/41/' => Http::response(['id' => 41, 'title' => 'Kaufvertrag Lindenstraße', 'created' => '2026-07-01', 'tags' => [1], 'notes' => []]),
-            'paperless.test/api/documents/post_document/' => Http::response('"b1e2-task"'),
-            'paperless.test/api/tasks/?*' => Http::response([['status' => 'SUCCESS', 'related_document' => 77]]),
-            'paperless.test/api/tags/?*' => Http::response(['results' => [['id' => 1, 'name' => 'Haus'], ['id' => 2, 'name' => 'Steuer']]]),
+            '93.184.216.34/api/documents/41/thumb/' => Http::response('PNGDATA', 200, ['Content-Type' => 'image/webp']),
+            '93.184.216.34/api/documents/41/preview/' => Http::response('%PDF-1.7', 200, ['Content-Type' => 'application/pdf']),
+            '93.184.216.34/api/documents/41/notes/' => Http::response([]),
+            '93.184.216.34/api/documents/41/' => Http::response(['id' => 41, 'title' => 'Kaufvertrag Lindenstraße', 'created' => '2026-07-01', 'tags' => [1], 'notes' => []]),
+            '93.184.216.34/api/documents/post_document/' => Http::response('"b1e2-task"'),
+            '93.184.216.34/api/tasks/?*' => Http::response([['status' => 'SUCCESS', 'related_document' => 77]]),
+            '93.184.216.34/api/tags/?*' => Http::response(['results' => [['id' => 1, 'name' => 'Haus'], ['id' => 2, 'name' => 'Steuer']]]),
         ]);
     }
 
     private function paperlessInstance(int $userId, int $householdId, bool $shared = false): PaperlessInstance
     {
-        return PaperlessInstance::create(['user_id' => $userId, 'household_id' => $householdId, 'name' => 'Archiv', 'url' => 'https://paperless.test', 'token' => 'secret-token', 'shared' => $shared]);
+        return PaperlessInstance::create(['user_id' => $userId, 'household_id' => $householdId, 'name' => 'Archiv', 'url' => 'https://93.184.216.34', 'token' => 'secret-token', 'shared' => $shared]);
     }
 
     private function entry(Collection $collection, int $userId): Item
@@ -58,13 +58,13 @@ class ExternalDocumentsTest extends TestCase
 
         Volt::test('profile.paperless-form')
             ->call('add')
-            ->set('name', 'Familienarchiv')->set('url', 'https://paperless.test/')->set('token', 'secret-token')
+            ->set('name', 'Familienarchiv')->set('url', 'https://93.184.216.34/')->set('token', 'secret-token')
             ->call('save')
             ->assertHasNoErrors()
             ->assertSee('Verbunden – 2 Dokumente in paperless.');
 
         $instance = PaperlessInstance::sole();
-        $this->assertSame(['Familienarchiv', 'https://paperless.test', 'secret-token', false], [$instance->name, $instance->url, $instance->token, $instance->shared]);
+        $this->assertSame(['Familienarchiv', 'https://93.184.216.34', 'secret-token', false], [$instance->name, $instance->url, $instance->token, $instance->shared]);
         $this->assertNotSame('secret-token', \DB::table('paperless_instances')->value('token'));
         $this->assertArrayNotHasKey('token', $instance->toArray());
         Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Token secret-token'));
@@ -123,6 +123,24 @@ class ExternalDocumentsTest extends TestCase
         // As soon as paperless has processed the upload (task SUCCESS), the document id is filled in.
         $uploaded = ExternalLink::where('title', 'Angebot Dach')->sole();
         $this->assertSame([77, null, $instance->id], [$uploaded->paperless_document_id, $uploaded->paperless_task_id, $uploaded->paperless_instance_id]);
+    }
+
+    public function test_linking_a_paperless_document_id_that_does_not_exist_is_rejected(): void
+    {
+        $this->fakePaperless();
+        [$user, $household] = $this->memberWithHousehold();
+        $this->paperlessInstance($user->id, $household->id);
+        $realEstate = RealEstate::factory()->for($household)->create(['created_by' => $user->id]);
+        $this->actingAs($user);
+
+        // 999 is not one of the documents fakePaperless() knows about: a member guessing ids
+        // must not be able to create a link to a document that isn't actually on the instance.
+        Volt::test('documents-panel', ['type' => 'real_estate', 'id' => $realEstate->id])
+            ->call('open', 'paperless')
+            ->call('linkPaperless', 999, 'Geraten')
+            ->assertNotFound();
+
+        $this->assertSame(0, ExternalLink::count());
     }
 
     public function test_mail_links_and_mail_copies_without_paperless(): void
@@ -192,6 +210,10 @@ class ExternalDocumentsTest extends TestCase
             ->assertSet('instanceId', $shared->id);
         $this->get(route('paperless.document', [$shared->id, 41, 'thumb']))->assertOk();
         $this->get(route('paperless.document', [$personal->id, 42, 'thumb']))->assertNotFound();
+
+        // Being allowed to use the shared instance does not mean every document id on it is
+        // readable (IDOR): an id never linked into the household is refused too.
+        $this->get(route('paperless.document', [$shared->id, 999, 'thumb']))->assertNotFound();
     }
 
     public function test_an_unreachable_paperless_in_the_home_network_points_to_the_vpn(): void
@@ -220,13 +242,13 @@ class ExternalDocumentsTest extends TestCase
 
         Volt::test('profile.paperless-form')
             ->call('add')
-            ->set('name', 'Zuhause')->set('url', 'https://paperless.test')->set('token', 'secret-token')
+            ->set('name', 'Zuhause')->set('url', 'https://93.184.216.34')->set('token', 'secret-token')
             ->call('save')
             ->assertSee('Verbunden – 7 Dokumente in paperless.');
 
         // Remembered: the next request goes out without a version right away.
         Http::fake(fn (Request $request) => Http::response(['count' => 7, 'results' => []]));
-        (new PaperlessClient('https://paperless.test', 'secret-token'))->count();
+        (new PaperlessClient('https://93.184.216.34', 'secret-token'))->count();
         Http::assertSent(fn ($request) => ($request->header('Accept')[0] ?? '') === 'application/json');
     }
 
@@ -240,7 +262,7 @@ class ExternalDocumentsTest extends TestCase
 
         Volt::test('profile.paperless-form')
             ->call('add')
-            ->set('url', 'https://paperless.test')->set('token', 'wrong')
+            ->set('url', 'https://93.184.216.34')->set('token', 'wrong')
             ->call('save')
             ->assertSee('paperless lehnt das Token ab (Invalid token.)')
             ->set('token', " Token abc123\n")

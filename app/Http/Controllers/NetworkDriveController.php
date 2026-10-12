@@ -21,7 +21,10 @@ class NetworkDriveController extends Controller
         try {
             $response = $drive->client()->download($path);
         } catch (Throwable $exception) {
-            abort(404, $exception->getMessage());
+            // The NAS's raw error (status, sometimes an internal hostname or path) stays in the
+            // log; the member only sees a plain "not available" message.
+            report($exception);
+            abort(404, __('The file is not available.'));
         }
 
         $body = $response->toPsrResponse()->getBody();

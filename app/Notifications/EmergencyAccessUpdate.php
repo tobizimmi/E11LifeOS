@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -10,9 +11,13 @@ use Illuminate\Notifications\Notification;
  * Mails around an emergency access: the owner learns of a request, the trusted person of the
  * decision (granted or declined).
  */
-class EmergencyAccessUpdate extends Notification
+class EmergencyAccessUpdate extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public array $backoff = [60, 300, 900];
 
     public const REQUESTED = 'requested';
 

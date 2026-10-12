@@ -87,13 +87,25 @@ class ModuleCatalog
      */
     public static function forRoute(?string $routeName): ?string
     {
-        if (! $routeName) {
-            return null;
-        }
+        return $routeName ? self::match($routeName) : null;
+    }
 
+    /**
+     * The module a Livewire component belongs to, null for core pages. Component names (e.g.
+     * "health.index") happen to follow the same dotted shape as the route name patterns above,
+     * so the same matching applies – used as a fallback when a Livewire update request does not
+     * resolve the original page route (see RecordSlowRequests for how the name is read).
+     */
+    public static function forComponent(?string $componentName): ?string
+    {
+        return $componentName ? self::match($componentName) : null;
+    }
+
+    private static function match(string $name): ?string
+    {
         foreach (self::all() as $key => $module) {
             foreach ($module['routes'] as $pattern) {
-                if (Str::is($pattern, $routeName)) {
+                if (Str::is($pattern, $name)) {
                     return $key;
                 }
             }

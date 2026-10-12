@@ -43,13 +43,15 @@ class SendTimedTaskReminders extends Command
                     return;
                 }
 
-                $pushed = $webPush->send($recipient, '⏰ '.$task->title, __('Due now (:time)', ['time' => $task->due_time]), route('tasks.index', ['task' => $task->id]), urgent: true);
+                rescue(function () use ($task, $recipient, $webPush, &$reminded) {
+                    $pushed = $webPush->send($recipient, '⏰ '.$task->title, __('Due now (:time)', ['time' => $task->due_time]), route('tasks.index', ['task' => $task->id]), urgent: true);
 
-                if ($pushed === 0 && $recipient->reminder_emails) {
-                    $recipient->notify(new TaskDueNow($task));
-                }
+                    if ($pushed === 0 && $recipient->reminder_emails) {
+                        $recipient->notify(new TaskDueNow($task));
+                    }
 
-                $reminded++;
+                    $reminded++;
+                }, report: true);
             });
 
         $this->info("Timed reminders: {$reminded}");

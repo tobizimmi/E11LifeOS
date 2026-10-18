@@ -6822,5 +6822,7 @@
     "Scan :date": "Scan :date",
     "The scan could not be processed. Please try again.": "Der Scan konnte nicht verarbeitet werden. Bitte erneut versuchen.",
     "paperless was not reachable – the scan is saved and will be uploaded automatically as soon as the connection is back.": "paperless war nicht erreichbar – der Scan ist gespeichert und wird automatisch hochgeladen, sobald die Verbindung wieder steht.",
-    "Scan sent to paperless. It appears in the inbox for filing.": "Scan an paperless gesendet. Er erscheint zum Ablegen im Posteingang."
+    "Scan sent to paperless. It appears in the inbox for filing.": "Scan an paperless gesendet. Er erscheint zum Ablegen im Posteingang.",
+    "Correspondent": "Korrespondent",
+    "The paperless tags could not be loaded (offline?). You can still scan – the document is queued and tagged later.": "Die paperless-Tags konnten nicht geladen werden (offline?). Du kannst trotzdem scannen – das Dokument wird gespeichert und später getaggt hochgeladen."
 }

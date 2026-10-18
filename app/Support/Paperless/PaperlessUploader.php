@@ -25,16 +25,18 @@ class PaperlessUploader
     /**
      * Tries to upload the document right away; on any failure it is stored and queued. Returns
      * whether it was queued (true) or uploaded immediately (false).
+     *
+     * @param  list<int>  $tagIds  paperless tag ids chosen while scanning (the inbox tag is added)
      */
-    public function store(PaperlessInstance $instance, User $user, int $householdId, string $contents, string $filename, string $title): bool
+    public function store(PaperlessInstance $instance, User $user, int $householdId, string $contents, string $filename, string $title, array $tagIds = [], ?int $correspondentId = null, ?int $documentTypeId = null): bool
     {
         try {
             $client = PaperlessClient::for($instance, $user);
-            $client->uploadContents($contents, $filename, $title, $this->inboxTags($client));
+            $client->uploadContents($contents, $filename, $title, [...$this->inboxTags($client), ...$tagIds], null, $correspondentId, $documentTypeId);
 
             return false;
         } catch (Throwable) {
-            $this->queue($instance, $user, $householdId, $contents, $filename, $title);
+            $this->queue($instance, $user, $householdId, $contents, $filename, $title, $tagIds, $correspondentId, $documentTypeId);
 
             return true;
         }
@@ -42,8 +44,10 @@ class PaperlessUploader
 
     /**
      * Stores the document on disk and records it for a later retry.
+     *
+     * @param  list<int>  $tagIds
      */
-    public function queue(?PaperlessInstance $instance, User $user, int $householdId, string $contents, string $filename, string $title): PaperlessPendingUpload
+    public function queue(?PaperlessInstance $instance, User $user, int $householdId, string $contents, string $filename, string $title, array $tagIds = [], ?int $correspondentId = null, ?int $documentTypeId = null): PaperlessPendingUpload
     {
         $path = self::DIRECTORY.'/'.Str::uuid()->toString().'.pdf';
         Storage::disk(self::DISK)->put($path, $contents);
@@ -55,7 +59,9 @@ class PaperlessUploader
             'title' => mb_substr($title, 0, 255),
             'filename' => mb_substr($filename, 0, 255),
             'path' => $path,
-            'tag' => null,
+            'tag_ids' => array_values(array_unique(array_map('intval', $tagIds))),
+            'correspondent_id' => $correspondentId,
+            'document_type_id' => $documentTypeId,
         ]);
     }
 
@@ -95,7 +101,8 @@ class PaperlessUploader
 
         try {
             $client = PaperlessClient::for($instance, $user);
-            $client->uploadContents((string) Storage::disk(self::DISK)->get($upload->path), $upload->filename, $upload->title, $this->inboxTags($client));
+            $tagIds = [...$this->inboxTags($client), ...array_map('intval', (array) ($upload->tag_ids ?? []))];
+            $client->uploadContents((string) Storage::disk(self::DISK)->get($upload->path), $upload->filename, $upload->title, $tagIds, null, $upload->correspondent_id, $upload->document_type_id);
         } catch (Throwable $exception) {
             $upload->forceFill([
                 'attempts' => $upload->attempts + 1,

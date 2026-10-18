@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.58.1] – 2026-10-18
+
+### Neu
+- **Scan: paperless-Tags, Korrespondent & Dokumenttyp direkt vergeben.** Beim Dokument-Scan lassen sich jetzt vorhandene **Tags** (Mehrfachauswahl), ein **Korrespondent** und ein **Dokumenttyp** aus paperless auswählen – sie werden direkt beim Upload mitgegeben. Die Auswahl wird auch in der Offline-Queue gespeichert, sodass sie beim späteren Nachladen erhalten bleibt. Der Posteingang-Tag wird wie bisher automatisch ergänzt.
+
 ## [1.58.0] – 2026-10-18
 
 ### Neu

@@ -67,14 +67,34 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
             <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {{ __('Capture first, sort later: turn each entry into a task, a note or a shopping list item.') }}
-                </p>
+                <div class="mb-4 flex items-start justify-between gap-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        {{ __('Capture first, sort later: turn each entry into a task, a note or a shopping list item.') }}
+                    </p>
+                    <a href="{{ route('scan.index') }}" wire:navigate class="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">📷 {{ __('Scan') }}</a>
+                </div>
                 <livewire:quick-capture />
             </div>
 
             @if (auth()->user()->hasPaperless())
-                <livewire:paperless-inbox lazy />
+                {{-- Paperless is collapsed by default so the real inbox entries stay in focus. --}}
+                <div
+                    class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl"
+                    x-data="{ open: false }"
+                    x-init="try { open = localStorage.getItem('inbox-paperless-open') === '1' } catch (e) {}"
+                >
+                    <button type="button"
+                        x-on:click="open = !open; try { localStorage.setItem('inbox-paperless-open', open ? '1' : '0') } catch (e) {}"
+                        class="flex w-full items-center justify-between gap-2 px-6 py-4 text-left"
+                        :aria-expanded="open.toString()"
+                    >
+                        <span class="font-semibold text-gray-900 dark:text-gray-100">🗂 {{ __('paperless inbox') }}</span>
+                        <span class="text-gray-400 transition-transform" :class="open && 'rotate-180'" aria-hidden="true">▾</span>
+                    </button>
+                    <div x-show="open" x-cloak class="border-t border-gray-100 dark:border-gray-700">
+                        <livewire:paperless-inbox lazy />
+                    </div>
+                </div>
             @endif
 
             <div class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-6">

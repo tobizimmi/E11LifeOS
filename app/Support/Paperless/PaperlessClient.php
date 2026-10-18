@@ -160,6 +160,28 @@ class PaperlessClient
     }
 
     /**
+     * All correspondents (id => name), cached for ten minutes.
+     *
+     * @return array<int, string>
+     */
+    public function correspondents(): array
+    {
+        return Cache::remember('paperless-correspondents:'.md5($this->baseUrl.$this->token), 600, fn () => collect($this->get('/api/correspondents/', ['page_size' => 1000])->json('results') ?? [])
+            ->mapWithKeys(fn (array $item) => [(int) $item['id'] => (string) $item['name']])->sort()->all());
+    }
+
+    /**
+     * All document types (id => name), cached for ten minutes.
+     *
+     * @return array<int, string>
+     */
+    public function documentTypes(): array
+    {
+        return Cache::remember('paperless-document-types:'.md5($this->baseUrl.$this->token), 600, fn () => collect($this->get('/api/document_types/', ['page_size' => 1000])->json('results') ?? [])
+            ->mapWithKeys(fn (array $item) => [(int) $item['id'] => (string) $item['name']])->sort()->all());
+    }
+
+    /**
      * Thumbnail, preview (PDF/image) or original file.
      */
     public function file(int $id, string $variant): Response
@@ -185,11 +207,16 @@ class PaperlessClient
      * @param  list<int>  $tagIds
      * @param  ?string  $created  date of the document (Y-m-d)
      */
-    public function uploadContents(string $contents, string $filename, ?string $title = null, array $tagIds = [], ?string $created = null): string
+    public function uploadContents(string $contents, string $filename, ?string $title = null, array $tagIds = [], ?string $created = null, ?int $correspondentId = null, ?int $documentTypeId = null): string
     {
-        $data = array_filter(['title' => $title, 'created' => $created]);
+        $data = array_filter([
+            'title' => $title,
+            'created' => $created,
+            'correspondent' => $correspondentId,
+            'document_type' => $documentTypeId,
+        ]);
 
-        foreach ($tagIds as $index => $tagId) {
+        foreach (array_values(array_unique($tagIds)) as $index => $tagId) {
             $data['tags['.$index.']'] = $tagId;
         }
 

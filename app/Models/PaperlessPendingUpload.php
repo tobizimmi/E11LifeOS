@@ -10,13 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A scanned or uploaded document that is waiting to be sent to paperless because the instance was
  * unreachable when it was created. The PDF is stored on the local disk until the upload succeeds.
  */
-#[Fillable(['household_id', 'user_id', 'paperless_instance_id', 'title', 'filename', 'path', 'tag', 'attempts', 'last_error', 'last_tried_at'])]
+#[Fillable(['household_id', 'user_id', 'paperless_instance_id', 'title', 'filename', 'path', 'tag', 'tag_ids', 'correspondent_id', 'document_type_id', 'attempts', 'last_error', 'last_tried_at'])]
 class PaperlessPendingUpload extends Model
 {
     protected function casts(): array
     {
         return [
             'last_tried_at' => 'datetime',
+            'tag_ids' => 'array',
         ];
     }
 

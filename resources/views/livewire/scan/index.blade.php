@@ -2,6 +2,8 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\PaperlessInstance;
+use App\Support\Paperless\PaperlessClient;
+use App\Support\Paperless\PaperlessException;
 use App\Support\Paperless\PaperlessUploader;
 use App\Support\Paperless\ScanPdf;
 use Illuminate\Support\Facades\Auth;
@@ -25,10 +27,65 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $queued = false;
 
+    /** @var list<int> paperless tag ids chosen for the scan */
+    public array $selectedTagIds = [];
+
+    public ?int $correspondentId = null;
+
+    public ?int $documentTypeId = null;
+
+    /** @var array<int, string> */
+    public array $tags = [];
+
+    /** @var array<int, string> */
+    public array $correspondents = [];
+
+    /** @var array<int, string> */
+    public array $documentTypes = [];
+
+    public bool $optionsFailed = false;
+
     public function mount(): void
     {
         $this->resolveHousehold();
         $this->instanceId = PaperlessInstance::defaultFor($this->currentUser())?->id;
+        $this->loadOptions();
+    }
+
+    /**
+     * Loads the tags, correspondents and document types of the chosen instance (empty when
+     * paperless is offline – scanning still works and is queued).
+     */
+    public function loadOptions(): void
+    {
+        $this->reset('tags', 'correspondents', 'documentTypes', 'optionsFailed');
+        $instance = PaperlessInstance::query()->availableTo($this->currentUser())->find($this->instanceId);
+
+        if ($instance === null) {
+            return;
+        }
+
+        try {
+            $client = PaperlessClient::for($instance, $this->currentUser());
+            $this->tags = $client->tags();
+            $this->correspondents = $client->correspondents();
+            $this->documentTypes = $client->documentTypes();
+        } catch (PaperlessException) {
+            $this->optionsFailed = true;
+        }
+    }
+
+    public function updatedInstanceId(): void
+    {
+        $this->reset('selectedTagIds', 'correspondentId', 'documentTypeId');
+        $this->loadOptions();
+    }
+
+    public function toggleTag(int $tagId): void
+    {
+        $this->selectedTagIds = in_array($tagId, $this->selectedTagIds, true)
+            ? array_values(array_diff($this->selectedTagIds, [$tagId]))
+            : [...$this->selectedTagIds, $tagId];
     }
 
     /**
@@ -61,14 +118,18 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
+        $tagIds = array_values(array_intersect(array_map('intval', $this->selectedTagIds), array_keys($this->tags)));
+        $correspondentId = $this->correspondentId !== null && isset($this->correspondents[$this->correspondentId]) ? (int) $this->correspondentId : null;
+        $documentTypeId = $this->documentTypeId !== null && isset($this->documentTypes[$this->documentTypeId]) ? (int) $this->documentTypeId : null;
+
         $filename = \Illuminate\Support\Str::slug($title) ?: 'scan';
-        $this->queued = app(PaperlessUploader::class)->store($instance, $user, (int) $this->householdId, $pdf, $filename.'.pdf', $title);
+        $this->queued = app(PaperlessUploader::class)->store($instance, $user, (int) $this->householdId, $pdf, $filename.'.pdf', $title, $tagIds, $correspondentId, $documentTypeId);
 
         $this->message = $this->queued
             ? __('paperless was not reachable – the scan is saved and will be uploaded automatically as soon as the connection is back.')
             : __('Scan sent to paperless. It appears in the inbox for filing.');
 
-        $this->title = '';
+        $this->reset('title', 'selectedTagIds', 'correspondentId', 'documentTypeId');
         $this->dispatch('scan-done');
         $this->dispatch('inbox-updated');
     }
@@ -117,6 +178,53 @@ new #[Layout('layouts.app')] class extends Component
                         <x-input-label for="scan-title" :value="__('Title (optional)')" />
                         <x-text-input id="scan-title" wire:model="title" class="mt-1 block w-full" placeholder="{{ __('e.g. electricity bill 2026') }}" />
                     </div>
+
+                    {{-- paperless metadata: tags, correspondent, document type --}}
+                    @if ($optionsFailed)
+                        <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('The paperless tags could not be loaded (offline?). You can still scan – the document is queued and tagged later.') }}</p>
+                    @endif
+
+                    @if ($tags !== [])
+                        <div>
+                            <x-input-label :value="__('Tags')" />
+                            <div class="mt-1 flex flex-wrap gap-1.5">
+                                @foreach ($tags as $tagId => $tagName)
+                                    <button type="button" wire:click="toggleTag({{ $tagId }})" @class([
+                                        'rounded-full border px-2.5 py-1 text-xs',
+                                        'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200' => in_array($tagId, $selectedTagIds, true),
+                                        'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300' => ! in_array($tagId, $selectedTagIds, true),
+                                    ])>{{ $tagName }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($correspondents !== [] || $documentTypes !== [])
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            @if ($correspondents !== [])
+                                <div>
+                                    <x-input-label for="scan-correspondent" :value="__('Correspondent')" />
+                                    <select id="scan-correspondent" wire:model="correspondentId" class="mt-1 block w-full rounded-md border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                        <option value="">— {{ __('none') }} —</option>
+                                        @foreach ($correspondents as $cId => $cName)
+                                            <option value="{{ $cId }}">{{ $cName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                            @if ($documentTypes !== [])
+                                <div>
+                                    <x-input-label for="scan-doctype" :value="__('Document type')" />
+                                    <select id="scan-doctype" wire:model="documentTypeId" class="mt-1 block w-full rounded-md border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                        <option value="">— {{ __('none') }} —</option>
+                                        @foreach ($documentTypes as $dId => $dName)
+                                            <option value="{{ $dId }}">{{ $dName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                         <input type="checkbox" x-model="enhance" class="rounded-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900">

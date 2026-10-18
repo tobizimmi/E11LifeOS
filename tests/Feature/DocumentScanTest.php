@@ -31,10 +31,15 @@ class DocumentScanTest extends TestCase
         return 'data:image/jpeg;base64,'.base64_encode((string) ob_get_clean());
     }
 
-    public function test_a_scan_is_sent_to_paperless_when_reachable(): void
+    public function test_a_scan_is_sent_to_paperless_with_chosen_tags_when_reachable(): void
     {
         Http::fake([
-            'paperless.test/api/tags/?*' => Http::response(['results' => [['id' => 3, 'name' => 'Posteingang', 'is_inbox_tag' => true]]]),
+            'paperless.test/api/tags/?*' => Http::response(['results' => [
+                ['id' => 3, 'name' => 'Posteingang', 'is_inbox_tag' => true],
+                ['id' => 7, 'name' => 'Steuer', 'is_inbox_tag' => false],
+            ]]),
+            'paperless.test/api/correspondents/?*' => Http::response(['results' => [['id' => 5, 'name' => 'Finanzamt']]]),
+            'paperless.test/api/document_types/?*' => Http::response(['results' => [['id' => 9, 'name' => 'Rechnung']]]),
             'paperless.test/api/documents/post_document/' => Http::response('"task-123"'),
         ]);
 
@@ -43,11 +48,24 @@ class DocumentScanTest extends TestCase
         $this->actingAs($user);
 
         Volt::test('scan.index')
+            ->assertSet('tags', [3 => 'Posteingang', 7 => 'Steuer'])
+            ->call('toggleTag', 7)
+            ->set('correspondentId', 5)
+            ->set('documentTypeId', 9)
             ->call('save', [$this->pageDataUri()], 'Stromrechnung')
             ->assertSet('queued', false);
 
         $this->assertSame(0, PaperlessPendingUpload::count());
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/api/documents/post_document/'));
+        // The upload carries the inbox tag (3) plus the chosen tag (7), correspondent and type.
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/api/documents/post_document/')) {
+                return false;
+            }
+            $data = collect($request->data())->mapWithKeys(fn ($part) => [$part['name'] => $part['contents']]);
+
+            return $data->get('correspondent') == 5 && $data->get('document_type') == 9
+                && $data->values()->contains('3') && $data->values()->contains('7');
+        });
     }
 
     public function test_a_scan_is_queued_and_later_flushed_when_paperless_is_down(): void

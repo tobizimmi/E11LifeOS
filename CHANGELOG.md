@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.58.0] – 2026-10-18
+
+### Neu
+- **Dokumente scannen (mehrseitig) → paperless.** Neue Seite „Dokument scannen" (📷 in der Inbox): mit der Handy-Kamera mehrere Seiten nacheinander aufnehmen, automatische Optimierung (Dokumentmodus: graustufig, mehr Kontrast), Seiten sortieren/löschen, alles zu **einer PDF** zusammenfügen und an paperless senden. Alternativ aus Fotos/Dateien.
+- **Offline-Sicherung für Scans.** Ist paperless gerade nicht erreichbar (z. B. VPN/Server down), wird die PDF **zwischengespeichert** und automatisch hochgeladen, sobald die Verbindung wieder steht (Scheduler alle 5 Minuten). Ein Scan geht so nie verloren; wartende Scans werden angezeigt.
+
+### Geändert
+- **Inbox: Paperless-Bereich einklappbar** und standardmäßig **zugeklappt**, damit die eigentlichen Inbox-Einträge nicht untergehen. Der Zustand wird pro Gerät gemerkt.
+
 ## [1.57.1] – 2026-10-12
 
 ### Neu

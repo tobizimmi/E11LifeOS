@@ -72,6 +72,7 @@ Route::post('profile/export', [DataExportController::class, 'encrypted'])
 Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');
     Volt::route('inbox', 'inbox.index')->name('inbox.index');
+    Volt::route('scan', 'scan.index')->name('scan.index');
     Volt::route('notifications', 'notifications.index')->name('notifications.index');
     Volt::route('support', 'support.index')->name('support.index');
     Volt::route('modules', 'modules.index')->name('modules.index');

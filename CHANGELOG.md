@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.59.1] – 2026-10-19
+
+### Behoben
+- **Dokumente-Archiv: Dokument öffnen ging nicht.** Beim Tippen auf ein Dokument lud die App zwar, blieb auf dem Handy aber bei der Übersicht stehen – die Detailansicht öffnete sich weit unterhalb außerhalb des Bildschirms. Das Dokument öffnet sich jetzt als eigenständige Ansicht über der Liste (am Rechner weiterhin in der Spalte daneben) und springt sichtbar auf. Zusätzlich wird das Dokument nur noch einmal geladen statt bei jeder Interaktion erneut – das macht das Öffnen über VPN deutlich schneller.
+
 ## [1.59.0] – 2026-10-19
 
 ### Neu

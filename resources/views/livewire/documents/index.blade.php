@@ -39,6 +39,14 @@ new #[Layout('layouts.app')] class extends Component
     /** Document opened in the detail panel. */
     public ?int $selectedId = null;
 
+    /**
+     * The opened document, loaded once in open() and refreshed after edits – so the detail
+     * panel does not re-fetch it from paperless on every render (slow over VPN).
+     *
+     * @var array{id: int, title: string, created: ?string, correspondent: ?int, document_type: ?int, tags: list<int>, notes: list<array{id: ?int, note: string, created: ?string}>}|null
+     */
+    public ?array $selected = null;
+
     public string $editTitle = '';
 
     /** @var list<int> */
@@ -78,7 +86,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         if ($property === 'instanceId') {
-            $this->reset('selectedId', 'tag', 'correspondent', 'documentType');
+            $this->reset('selectedId', 'selected', 'tag', 'correspondent', 'documentType');
         }
     }
 
@@ -108,16 +116,20 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->selectedId = $id;
+        $this->selected = $document;
         $this->editTitle = $document['title'];
         $this->editTags = $document['tags'];
         $this->editCorrespondent = $document['correspondent'];
         $this->editDocumentType = $document['document_type'];
         $this->editDate = $document['created'] ?? '';
+
+        // Bring the detail into view – on mobile it would otherwise open far below the grid.
+        $this->dispatch('document-opened');
     }
 
     public function close(): void
     {
-        $this->reset('selectedId', 'editTitle', 'editTags', 'editCorrespondent', 'editDocumentType', 'editDate', 'newNote');
+        $this->reset('selectedId', 'selected', 'editTitle', 'editTags', 'editCorrespondent', 'editDocumentType', 'editDate', 'newNote');
     }
 
     public function toggleEditTag(int $tagId): void
@@ -147,6 +159,7 @@ new #[Layout('layouts.app')] class extends Component
                 'document_type' => $this->editDocumentType,
                 'created' => $data['editDate'] !== '' ? $data['editDate'] : null,
             ]);
+            $this->selected = $this->client()->document($this->selectedId);
             $this->message = __('Saved.');
         } catch (PaperlessException $exception) {
             $this->message = $exception->getMessage();
@@ -164,6 +177,7 @@ new #[Layout('layouts.app')] class extends Component
 
         try {
             $this->client()->addNote($this->selectedId, $note);
+            $this->selected = $this->client()->document($this->selectedId);
             $this->newNote = '';
             $this->message = __('Note added.');
         } catch (PaperlessException $exception) {
@@ -199,7 +213,6 @@ new #[Layout('layouts.app')] class extends Component
         $correspondents = [];
         $documentTypes = [];
         $documents = ['results' => [], 'count' => 0, 'page' => 1, 'pages' => 1];
-        $selected = null;
         $error = null;
 
         if ($this->instanceId !== null && $instances->contains('id', $this->instanceId)) {
@@ -217,10 +230,6 @@ new #[Layout('layouts.app')] class extends Component
                     'created_to' => $this->to ?: null,
                     'ordering' => $this->ordering,
                 ], $this->page);
-
-                if ($this->selectedId !== null) {
-                    $selected = $client->document($this->selectedId);
-                }
             } catch (PaperlessException $exception) {
                 $error = $exception->getMessage();
             }
@@ -232,13 +241,12 @@ new #[Layout('layouts.app')] class extends Component
             'correspondents' => $correspondents,
             'documentTypes' => $documentTypes,
             'documents' => $documents,
-            'selected' => $selected,
             'error' => $error,
         ];
     }
 }; ?>
 
-<div>
+<div x-data x-on:document-opened.window="$nextTick(() => document.getElementById('doc-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">🗂️ {{ __('Documents') }}</h2>
@@ -370,10 +378,11 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                     </div>
 
-                    {{-- Detail panel --}}
+                    {{-- Detail panel: an overlay on phones (so it clearly opens over the grid), an in-column panel from lg up. --}}
                     <div class="lg:col-span-1">
                         @if ($selectedId && $selected)
-                            <div class="sticky top-4 space-y-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                            <div id="doc-detail" wire:key="doc-detail-{{ $selectedId }}" wire:click.self="close" class="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-black/40 p-4 backdrop-blur-xs lg:static lg:z-auto lg:overflow-visible lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+                            <div class="mx-auto max-w-lg space-y-3 rounded-2xl bg-white p-4 shadow-xl dark:bg-gray-800 lg:sticky lg:top-4 lg:max-w-none lg:shadow-xs">
                                 <div class="flex items-start justify-between gap-2">
                                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Document') }}</h3>
                                     <button type="button" wire:click="close" class="text-gray-400 hover:text-gray-600" aria-label="{{ __('Close') }}">✕</button>
@@ -454,8 +463,9 @@ new #[Layout('layouts.app')] class extends Component
                                     </form>
                                 </div>
                             </div>
+                            </div>
                         @else
-                            <div class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs dark:bg-gray-800 dark:text-gray-400">
+                            <div class="hidden rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-xs lg:block dark:bg-gray-800 dark:text-gray-400">
                                 {{ __('Select a document to view and edit it.') }}
                             </div>
                         @endif

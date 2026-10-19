@@ -501,6 +501,7 @@ function slashCommands(t, onPickFile, onPickList) {
         { title: t.embedCalendar, hint: '📅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'calendar' } }) },
         { title: t.embedSubpages, hint: '📄', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'subpages' } }) },
         { title: t.pageLink, hint: '[[ ]]', run: (c) => c.insertContent('[[') },
+        ...(onPickList ? [{ title: t.database, hint: '🗂️', run: (c) => { onPickList(); return c; } }] : []),
         ...(onPickList ? [{ title: t.insertList, hint: '📋', run: (c) => { onPickList(); return c; } }] : []),
         ...(onPickFile ? [{ title: t.attachment, hint: '📎', run: (c) => { onPickFile(); return c; } }] : []),
     ];

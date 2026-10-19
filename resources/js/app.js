@@ -230,8 +230,13 @@ document.addEventListener('alpine:init', () => {
             },
 
             async insertList(key, live = false) {
-                const markdown = await this.$wire.listMarkdown(key, live);
                 this.listPicker.open = false;
+
+                // "newdb:<template>" creates a fresh collection (database) and embeds it live;
+                // everything else is an existing list inserted as checklist or live block.
+                const markdown = key.startsWith('newdb:')
+                    ? await this.$wire.createDatabase(key.slice(6))
+                    : await this.$wire.listMarkdown(key, live);
 
                 if (!editor || !markdown) {
                     return;

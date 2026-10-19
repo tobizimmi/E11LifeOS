@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\Item;
 use App\Models\ShoppingList;
 use App\Models\Tag;
+use App\Support\InsertableLists;
 use App\Support\NoteMarkdown;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,26 @@ use Tests\TestCase;
 class PagesIndexTest extends TestCase
 {
     use CreatesHouseholdMembers, RefreshDatabase;
+
+    public function test_a_member_can_create_a_database_from_a_page(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('pages.index')->call('createDatabase', 'projects');
+
+        // The projects template creates a non-system collection with its properties.
+        $collection = Collection::where('household_id', $household->id)->whereNull('system_key')->latest('id')->first();
+        $this->assertNotNull($collection);
+        $this->assertGreaterThanOrEqual(3, $collection->properties()->count());
+
+        // The pantry is never offered inline (it is a system-linked collection).
+        $options = InsertableLists::options($user, $household->id, withNewDatabase: true);
+        $keys = collect($options)->pluck('key')->all();
+        $this->assertContains('newdb:projects', $keys);
+        $this->assertContains('newdb:blank', $keys);
+        $this->assertNotContains('newdb:pantry', $keys);
+    }
 
     public function test_a_member_can_create_a_note(): void
     {

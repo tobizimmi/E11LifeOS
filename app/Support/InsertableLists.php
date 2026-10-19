@@ -20,11 +20,22 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 class InsertableLists
 {
     /**
+     * With $withNewDatabase, the first group offers creating a brand-new collection (database)
+     * right from the page – the page editor turns such a pick into a live collection embed
+     * (see the pages component's createDatabase()). Only pages pass it; a task note or a
+     * collection would not create a sibling database.
+     *
      * @return list<array{key: string, group: string, icon: string, name: string, count: int, live: bool}>
      */
-    public static function options(User $user, int $householdId): array
+    public static function options(User $user, int $householdId, bool $withNewDatabase = false): array
     {
         $options = [];
+
+        if ($withNewDatabase) {
+            foreach (self::databaseTemplates() as $key => $template) {
+                $options[] = ['key' => 'newdb:'.$key, 'group' => __('New database'), 'icon' => $template['icon'], 'name' => $template['label'], 'count' => 0, 'live' => false];
+            }
+        }
 
         foreach (TripPlanner::templates() as $key => $template) {
             $options[] = ['key' => 'packing:'.$key, 'group' => __('Packing lists'), 'icon' => $template['icon'], 'name' => $template['label'], 'count' => count($template['items']), 'live' => false];
@@ -55,6 +66,18 @@ class InsertableLists
         }
 
         return $options;
+    }
+
+    /**
+     * Collection templates offered when creating a new database from a page. The pantry is left
+     * out: it is a system-linked collection (recipes, shopping list) and is set up from its own
+     * module, not inline.
+     *
+     * @return array<string, array{label: string, icon: string, description: string}>
+     */
+    public static function databaseTemplates(): array
+    {
+        return collect(CollectionTemplates::all())->except('pantry')->all();
     }
 
     /**

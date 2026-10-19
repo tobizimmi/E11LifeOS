@@ -465,6 +465,30 @@
         @apply text-xs text-indigo-600 underline dark:text-indigo-400;
     }
 
+    .note-content .page-embed-tablewrap {
+        @apply -mx-1 overflow-x-auto;
+    }
+
+    .note-content .page-embed-table {
+        @apply w-full border-collapse text-sm;
+    }
+
+    .note-content .page-embed-table th {
+        @apply border-b border-gray-200 px-2 py-1 text-start text-xs font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400;
+    }
+
+    .note-content .page-embed-table td {
+        @apply border-b border-gray-100 px-2 py-1 align-top text-gray-800 dark:border-gray-800 dark:text-gray-200;
+    }
+
+    .note-content .page-embed-table tr:last-child td {
+        @apply border-b-0;
+    }
+
+    .note-content .page-embed-table a.is-done {
+        @apply text-gray-400 line-through;
+    }
+
     .note-editor .callout-icon {
         @apply cursor-pointer rounded-sm hover:bg-black/5;
     }

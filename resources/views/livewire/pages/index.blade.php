@@ -102,7 +102,30 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function insertableLists(): array
     {
-        return \App\Support\InsertableLists::options(Auth::user(), (int) $this->householdId);
+        return \App\Support\InsertableLists::options(Auth::user(), (int) $this->householdId, withNewDatabase: true);
+    }
+
+    /**
+     * Creates a new collection (database) from a page and returns its live embed as Markdown, so
+     * the editor can drop it in at the cursor. The collection follows the page's privacy; it is
+     * configured and filled on its own page (the embed links there).
+     */
+    public function createDatabase(string $template): string
+    {
+        $templates = \App\Support\InsertableLists::databaseTemplates();
+        abort_unless(isset($templates[$template]), 404);
+
+        $collection = \App\Models\Collection::create([
+            'household_id' => $this->householdId,
+            'name' => $template === 'blank' ? __('New database') : $templates[$template]['label'],
+            'icon' => $templates[$template]['icon'],
+            'visibility' => $this->isPrivate ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+            'created_by' => Auth::id(),
+        ]);
+
+        \App\Support\CollectionTemplates::apply($collection, $template);
+
+        return ':::embed {type="collection" collection="'.$collection->id.'"} :::';
     }
 
     /**

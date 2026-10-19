@@ -43,6 +43,7 @@ class EditorTranslations
             'embedSubpages' => __('List of subpages'),
             'embedShopping' => __('Shopping list (live)'),
             'embedCollection' => __('Collection (live)'),
+            'database' => __('Database (new or existing)'),
             'insertList' => __('Insert list (packing, checklist, shopping)'),
             'embedHint' => __('shown live when the page is read'),
             'uploading' => __('Uploading …'),

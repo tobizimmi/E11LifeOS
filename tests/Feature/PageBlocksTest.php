@@ -93,6 +93,13 @@ class PageBlocksTest extends TestCase
         $this->assertStringContainsString(route('collections.show', ['collection' => $collection->id, 'entry' => $open->id]), $html);
         $this->assertStringContainsString(route('collections.show', $collection->id), $html);
 
+        // A collection with properties renders as a compact table: the property is a column and
+        // its option names are the cell values.
+        $this->assertStringContainsString('page-embed-table', $html);
+        $this->assertStringContainsString('<th>Status</th>', $html);
+        $this->assertStringContainsString('Offen', $html);
+        $this->assertStringContainsString('Erledigt', $html);
+
         // A saved view's filter and sort are applied the same way they are in the full collection.
         $view = CollectionView::create(['collection_id' => $collection->id, 'name' => 'Offene', 'settings' => [
             'filters' => [['property' => (string) $status->id, 'operator' => 'is', 'value' => 'open']],

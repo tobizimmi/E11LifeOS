@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.60.0] – 2026-10-19
+
+### Neu
+- **Datenbanken direkt auf Seiten anlegen (wie in Notion).** Auf einer Seite gibt es jetzt den Befehl **„/Datenbank"** (und im Editor „📋 Liste einfügen" → Gruppe „Neue Datenbank"): damit legst du mitten im Text eine neue Datenbank an – leer oder aus einer Vorlage (Projekte, Haushaltsbuch, Verträge, Inventar, Lesezeichen, Tagebuch, Gewohnheiten, Leseliste). Sie wird als **lebendiger Block** in die Seite eingebettet und immer aktuell angezeigt. Vorher ging das nur mit einer schon vorhandenen Sammlung.
+- **Eingebettete Datenbanken als Tabelle.** Eine eingebettete Sammlung mit Eigenschaften wird auf der Seite jetzt als **kompakte Tabelle** mit Spalten (Status, Datum, Person, Betrag …) angezeigt statt nur als Titelliste – jeder Eintrag verlinkt in die volle Datenbank zum Bearbeiten.
+
 ## [1.59.1] – 2026-10-19
 
 ### Behoben

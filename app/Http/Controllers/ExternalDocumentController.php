@@ -32,6 +32,21 @@ class ExternalDocumentController extends Controller
             ->where('household_id', $request->user()->currentHousehold()?->id)
             ->exists(), 404);
 
+        return $this->stream($client, $document, $variant);
+    }
+
+    /**
+     * Serves any document of an instance the viewer may use – the document archive shows the whole
+     * paperless library, not only linked documents. Access is bound to the instance itself
+     * (own or shared with the household), which PaperlessClient::for already enforces.
+     */
+    public function paperlessArchive(Request $request, PaperlessInstance $instance, int $document, string $variant): Response
+    {
+        return $this->stream(PaperlessClient::for($instance, $request->user()), $document, $variant);
+    }
+
+    private function stream(PaperlessClient $client, int $document, string $variant): Response
+    {
         try {
             $response = $client->file($document, $variant);
         } catch (Throwable $exception) {

@@ -51,4 +51,27 @@ class DocumentArchiveTest extends TestCase
         $component->call('deleteDocument', 41)->assertSet('selectedId', null);
         Http::assertSent(fn ($request) => $request->method() === 'DELETE' && str_contains($request->url(), '/api/documents/41/'));
     }
+
+    public function test_the_archive_serves_thumbnails_without_requiring_a_link(): void
+    {
+        Http::fake([
+            'paperless.test/api/documents/41/thumb/' => Http::response('PNGDATA', 200, ['Content-Type' => 'image/png']),
+            'paperless.test/*' => Http::response(['count' => 0, 'results' => []]),
+        ]);
+
+        [$user, $household] = $this->memberWithHousehold();
+        $instance = PaperlessInstance::create(['user_id' => $user->id, 'household_id' => $household->id, 'name' => 'Archiv', 'url' => 'https://paperless.test', 'token' => 'secret', 'shared' => false]);
+        $this->actingAs($user);
+
+        // Works for an unlinked document, because access is bound to the usable instance.
+        $this->get(route('paperless.archive', [$instance->id, 41, 'thumb']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+
+        // A member of another household may not use this instance.
+        [$outsider] = $this->memberWithHousehold();
+        $this->actingAs($outsider)
+            ->get(route('paperless.archive', [$instance->id, 41, 'thumb']))
+            ->assertNotFound();
+    }
 }

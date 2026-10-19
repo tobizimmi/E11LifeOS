@@ -3,6 +3,27 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.60.1] – 2026-10-19
+
+### Behoben
+- **Echtzeit/Live-Updates unter Unterpfad repariert.** Läuft die App unter einem Pfad (z. B. „/E11LifeOS-staging"), ging die Kanal-Autorisierung fälschlich an „/broadcasting/auth" auf der Domain-Wurzel → 404. Sie nutzt jetzt die App-Basis-URL. Außerdem verursachte der Reconnect-Handler einen unbehandelten JavaScript-Fehler („$refresh is not a function"), der die Editor-Bedienung (u. a. „Liste/Datenbank einfügen") stören konnte – jetzt abgesichert.
+
+## [1.60.0] – 2026-10-19
+
+### Neu
+- **Datenbanken direkt auf Seiten anlegen (wie in Notion).** Auf einer Seite gibt es jetzt den Befehl **„/Datenbank"** (und im Editor „📋 Liste einfügen" → Gruppe „Neue Datenbank"): damit legst du mitten im Text eine neue Datenbank an – leer oder aus einer Vorlage (Projekte, Haushaltsbuch, Verträge, Inventar, Lesezeichen, Tagebuch, Gewohnheiten, Leseliste). Sie wird als **lebendiger Block** in die Seite eingebettet und immer aktuell angezeigt. Vorher ging das nur mit einer schon vorhandenen Sammlung.
+- **Eingebettete Datenbanken als Tabelle.** Eine eingebettete Sammlung mit Eigenschaften wird auf der Seite jetzt als **kompakte Tabelle** mit Spalten (Status, Datum, Person, Betrag …) angezeigt statt nur als Titelliste – jeder Eintrag verlinkt in die volle Datenbank zum Bearbeiten.
+
+## [1.59.1] – 2026-10-19
+
+### Behoben
+- **Dokumente-Archiv: Dokument öffnen ging nicht.** Beim Tippen auf ein Dokument lud die App zwar, blieb auf dem Handy aber bei der Übersicht stehen – die Detailansicht öffnete sich weit unterhalb außerhalb des Bildschirms. Das Dokument öffnet sich jetzt als eigenständige Ansicht über der Liste (am Rechner weiterhin in der Spalte daneben) und springt sichtbar auf. Zusätzlich wird das Dokument nur noch einmal geladen statt bei jeder Interaktion erneut – das macht das Öffnen über VPN deutlich schneller.
+
+## [1.59.0] – 2026-10-19
+
+### Neu
+- **Dokumente-Archiv: paperless voll im Tool verwalten.** Neuer Bereich **„Dokumente"** (unter Vorsorge & Dokumente): alle paperless-Dokumente durchsuchen (Volltext), nach **Tag, Korrespondent, Dokumenttyp und Datum filtern**, sortieren und blättern. In der Detailansicht: Vorschau öffnen, **Metadaten bearbeiten** (Titel, Tags, Korrespondent, Dokumenttyp, Datum), **Notizen** hinzufügen, herunterladen und **löschen** (mit Sicherheitsabfrage). Die Dokumente bleiben in paperless – das Tool liest/steuert nur über die API (VPN-fähig).
+
 ## [1.58.1] – 2026-10-18
 
 ### Neu

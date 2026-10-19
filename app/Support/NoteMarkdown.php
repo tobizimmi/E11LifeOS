@@ -485,20 +485,91 @@ class NoteMarkdown
             $entries = (($settings['direction'] ?? 'asc') === 'desc' ? $entries->sortByDesc($key) : $entries->sortBy($key))->values();
         }
 
-        $rows = $entries->take(15)->map(fn (Item $entry) => sprintf(
-            '<li><a href="%s"%s>%s</a></li>',
-            e(route('collections.show', ['collection' => $collection->id, 'entry' => $entry->id])),
-            $collection->isTasks() && $entry->done ? ' class="is-done"' : '',
-            e($entry->title),
-        ));
+        // Up to three columns (the title is always shown): relations need extra lookups and are
+        // left out of the compact table.
+        $columns = $properties->reject(fn (CollectionProperty $property) => $property->type === CollectionProperty::TYPE_RELATION)->take(3)->values();
+        $shown = $entries->take(15);
 
         $label = ($collection->icon ?: '🗂️').' '.$collection->name.($view ? ' – '.$view->name : '');
         $link = sprintf('<p class="page-embed-empty"><a href="%s">%s</a></p>', e(route('collections.show', $collection->id)), e(__('Open collection')));
         $more = $entries->count() > 15 ? sprintf('<p class="page-embed-empty">%s</p>', e(__(':count more …', ['count' => $entries->count() - 15]))) : '';
 
-        return self::embedFrame($label, ($rows->isEmpty()
-            ? '<p class="page-embed-empty">'.e(__('No entries here (yet).')).'</p>'
-            : '<ul class="page-embed-subpages">'.$rows->implode('').'</ul>'.$more).$link);
+        if ($shown->isEmpty()) {
+            return self::embedFrame($label, '<p class="page-embed-empty">'.e(__('No entries here (yet).')).'</p>'.$link);
+        }
+
+        // A list when there are no extra columns (same look as before), otherwise a compact table.
+        if ($columns->isEmpty()) {
+            $rows = $shown->map(fn (Item $entry) => sprintf(
+                '<li><a href="%s"%s>%s</a></li>',
+                e(route('collections.show', ['collection' => $collection->id, 'entry' => $entry->id])),
+                $collection->isTasks() && $entry->done ? ' class="is-done"' : '',
+                e($entry->title),
+            ));
+
+            return self::embedFrame($label, '<ul class="page-embed-subpages">'.$rows->implode('').'</ul>'.$more.$link);
+        }
+
+        $memberNames = self::personNames($columns, $shown);
+
+        $head = '<tr><th>'.e($collection->name).'</th>'.$columns->map(fn (CollectionProperty $property) => '<th>'.e($property->name).'</th>')->implode('').'</tr>';
+        $body = $shown->map(function (Item $entry) use ($collection, $columns, $memberNames) {
+            $cells = $columns->map(fn (CollectionProperty $property) => '<td>'.e(self::formatCell($property, $entry, $memberNames)).'</td>')->implode('');
+
+            return sprintf(
+                '<tr><td><a href="%s"%s>%s</a></td>%s</tr>',
+                e(route('collections.show', ['collection' => $collection->id, 'entry' => $entry->id])),
+                $collection->isTasks() && $entry->done ? ' class="is-done"' : '',
+                e($entry->title),
+                $cells,
+            );
+        })->implode('');
+
+        return self::embedFrame($label, '<div class="page-embed-tablewrap"><table class="page-embed-table"><thead>'.$head.'</thead><tbody>'.$body.'</tbody></table></div>'.$more.$link);
+    }
+
+    /**
+     * Names of the members referenced by person columns of the shown entries (id => name), so the
+     * table can print "Anna" instead of a raw id.
+     *
+     * @param  \Illuminate\Support\Collection<int, CollectionProperty>  $columns
+     * @param  \Illuminate\Support\Collection<int, Item>  $entries
+     * @return array<int, string>
+     */
+    private static function personNames($columns, $entries): array
+    {
+        $personColumns = $columns->where('type', CollectionProperty::TYPE_PERSON);
+
+        if ($personColumns->isEmpty()) {
+            return [];
+        }
+
+        $ids = $entries->flatMap(fn (Item $entry) => $personColumns->map(fn (CollectionProperty $property) => $entry->propertyValue($property)))
+            ->filter()->map(fn ($value) => (int) $value)->unique()->values()->all();
+
+        return $ids === [] ? [] : User::whereIn('id', $ids)->pluck('name', 'id')->all();
+    }
+
+    /**
+     * A property value of an entry as a short, human-readable string for the embed table.
+     *
+     * @param  array<int, string>  $memberNames
+     */
+    private static function formatCell(CollectionProperty $property, Item $entry, array $memberNames): string
+    {
+        $value = $entry->propertyValue($property);
+
+        return match ($property->type) {
+            CollectionProperty::TYPE_CHECKBOX => $value ? '✓' : '–',
+            CollectionProperty::TYPE_DATE => $value ? (self::parseDue((string) $value)?->format('d.m.Y') ?? (string) $value) : '',
+            CollectionProperty::TYPE_SELECT => $property->option((string) $value)['name'] ?? '',
+            CollectionProperty::TYPE_MULTI_SELECT => collect((array) $value)
+                ->map(fn ($id) => $property->option((string) $id)['name'] ?? null)->filter()->implode(', '),
+            CollectionProperty::TYPE_PERSON => $value !== null ? ($memberNames[(int) $value] ?? '') : '',
+            CollectionProperty::TYPE_URL => $value ? (string) (parse_url((string) $value, PHP_URL_HOST) ?: $value) : '',
+            CollectionProperty::TYPE_NUMBER => $value === null ? '' : rtrim(rtrim(number_format((float) $value, 2, ',', '.'), '0'), ','),
+            default => (string) ($value ?? ''),
+        };
     }
 
     /**

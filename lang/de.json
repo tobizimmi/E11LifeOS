@@ -6824,5 +6824,22 @@
     "paperless was not reachable – the scan is saved and will be uploaded automatically as soon as the connection is back.": "paperless war nicht erreichbar – der Scan ist gespeichert und wird automatisch hochgeladen, sobald die Verbindung wieder steht.",
     "Scan sent to paperless. It appears in the inbox for filing.": "Scan an paperless gesendet. Er erscheint zum Ablegen im Posteingang.",
     "Correspondent": "Korrespondent",
-    "The paperless tags could not be loaded (offline?). You can still scan – the document is queued and tagged later.": "Die paperless-Tags konnten nicht geladen werden (offline?). Du kannst trotzdem scannen – das Dokument wird gespeichert und später getaggt hochgeladen."
+    "The paperless tags could not be loaded (offline?). You can still scan – the document is queued and tagged later.": "Die paperless-Tags konnten nicht geladen werden (offline?). Du kannst trotzdem scannen – das Dokument wird gespeichert und später getaggt hochgeladen.",
+    "No paperless connection set up yet. Add one under Profile → paperless to see your documents.": "Noch keine paperless-Verbindung eingerichtet. Lege eine unter Profil → paperless an, um deine Dokumente zu sehen.",
+    "Full-text search …": "Volltextsuche …",
+    "Oldest first": "Älteste zuerst",
+    "Title A–Z": "Titel A–Z",
+    "Recently added": "Zuletzt hinzugefügt",
+    "Document": "Dokument",
+    "Delete this document in paperless? This cannot be undone.": "Dieses Dokument in paperless löschen? Das kann nicht rückgängig gemacht werden.",
+    "(untitled)": "(ohne Titel)",
+    "Page :page of :pages": "Seite :page von :pages",
+    ":count document|:count documents": ":count Dokument|:count Dokumente",
+    "Select a document to view and edit it.": "Wähle ein Dokument, um es anzusehen und zu bearbeiten.",
+    "Note added.": "Notiz hinzugefügt.",
+    "Document deleted.": "Dokument gelöscht.",
+    "No notes yet.": "Noch keine Notizen.",
+    "Add a note …": "Notiz hinzufügen …",
+    "New database": "Neue Datenbank",
+    "Database (new or existing)": "Datenbank (neu oder vorhanden)"
 }

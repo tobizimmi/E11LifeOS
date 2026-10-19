@@ -93,6 +93,54 @@ class PaperlessClient
     }
 
     /**
+     * A page of documents for the archive view, with optional filters. Documents stay in paperless;
+     * this only reads them through the API.
+     *
+     * @param  array{query?: ?string, tag?: ?int, correspondent?: ?int, document_type?: ?int, created_from?: ?string, created_to?: ?string, ordering?: ?string}  $filters
+     * @return array{count: int, pages: int, page: int, results: list<array{id: int, title: string, created: ?string, correspondent: ?int, document_type: ?int, tags: list<int>}>}
+     */
+    public function documents(array $filters = [], int $page = 1, int $perPage = 24): array
+    {
+        $parameters = array_filter([
+            'page' => max(1, $page),
+            'page_size' => $perPage,
+            'ordering' => $filters['ordering'] ?? '-created',
+            'truncate_content' => 'true',
+            'query' => filled($filters['query'] ?? null) ? trim((string) $filters['query']) : null,
+            'tags__id__all' => $filters['tag'] ?? null,
+            'correspondent__id' => $filters['correspondent'] ?? null,
+            'document_type__id' => $filters['document_type'] ?? null,
+            'created__date__gte' => $filters['created_from'] ?? null,
+            'created__date__lte' => $filters['created_to'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $response = $this->get('/api/documents/', $parameters);
+        $count = (int) $response->json('count');
+
+        return [
+            'count' => $count,
+            'page' => max(1, $page),
+            'pages' => (int) max(1, (int) ceil($count / $perPage)),
+            'results' => collect($response->json('results') ?? [])->map(fn (array $document) => [
+                'id' => (int) $document['id'],
+                'title' => (string) ($document['title'] ?? ''),
+                'created' => isset($document['created']) ? substr((string) $document['created'], 0, 10) : null,
+                'correspondent' => $document['correspondent'] !== null ? (int) $document['correspondent'] : null,
+                'document_type' => $document['document_type'] !== null ? (int) $document['document_type'] : null,
+                'tags' => array_map('intval', (array) ($document['tags'] ?? [])),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Permanently deletes a document in paperless (irreversible).
+     */
+    public function deleteDocument(int $id): void
+    {
+        $this->send(fn (PendingRequest $request) => $request->delete($this->baseUrl.'/api/documents/'.$id.'/'));
+    }
+
+    /**
      * Documents that still carry an inbox tag (newly consumed, e.g. from a mail rule), newest first.
      *
      * @return list<array{id: int, title: string, created: ?string, tags: list<int>, content: string}>
@@ -133,7 +181,7 @@ class PaperlessClient
     }
 
     /**
-     * @return array{id: int, title: string, created: ?string, tags: list<int>, notes: list<array{note: string, created: ?string}>}
+     * @return array{id: int, title: string, created: ?string, correspondent: ?int, document_type: ?int, tags: list<int>, notes: list<array{id: ?int, note: string, created: ?string}>}
      */
     public function document(int $id): array
     {
@@ -143,8 +191,10 @@ class PaperlessClient
             'id' => (int) $document['id'],
             'title' => (string) ($document['title'] ?? ''),
             'created' => isset($document['created']) ? substr((string) $document['created'], 0, 10) : null,
+            'correspondent' => ($document['correspondent'] ?? null) !== null ? (int) $document['correspondent'] : null,
+            'document_type' => ($document['document_type'] ?? null) !== null ? (int) $document['document_type'] : null,
             'tags' => array_map('intval', (array) ($document['tags'] ?? [])),
-            'notes' => collect($document['notes'] ?? [])->map(fn ($note) => ['note' => (string) ($note['note'] ?? ''), 'created' => isset($note['created']) ? substr((string) $note['created'], 0, 10) : null])->all(),
+            'notes' => collect($document['notes'] ?? [])->map(fn ($note) => ['id' => isset($note['id']) ? (int) $note['id'] : null, 'note' => (string) ($note['note'] ?? ''), 'created' => isset($note['created']) ? substr((string) $note['created'], 0, 10) : null])->all(),
         ];
     }
 

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.59.0] – 2026-10-19
+
+### Neu
+- **Dokumente-Archiv: paperless voll im Tool verwalten.** Neuer Bereich **„Dokumente"** (unter Vorsorge & Dokumente): alle paperless-Dokumente durchsuchen (Volltext), nach **Tag, Korrespondent, Dokumenttyp und Datum filtern**, sortieren und blättern. In der Detailansicht: Vorschau öffnen, **Metadaten bearbeiten** (Titel, Tags, Korrespondent, Dokumenttyp, Datum), **Notizen** hinzufügen, herunterladen und **löschen** (mit Sicherheitsabfrage). Die Dokumente bleiben in paperless – das Tool liest/steuert nur über die API (VPN-fähig).
+
 ## [1.58.1] – 2026-10-18
 
 ### Neu

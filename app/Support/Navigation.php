@@ -81,6 +81,7 @@ class Navigation
             'emergency' => ['provisions', __('Emergency folder'), 'shield-check', 'emergency.index', ['emergency.*']],
             'provision' => ['provisions', __('Provision check'), 'scale', 'provision.index', ['provision.*']],
             'drives' => ['provisions', __('Network drives'), 'server-stack', 'drives.index', ['drives.*']],
+            'documents' => $user->hasPaperless() ? ['provisions', __('Documents'), 'document-duplicate', 'documents.index', ['documents.*']] : null,
             'household' => ['household', __('Members'), 'user-group', 'household.show', ['household.show']],
             'groups' => ['household', __('Groups & sharing'), 'share', 'groups.index', ['groups.*']],
             'pdf' => ['household', __('PDF design'), 'document-text', 'pdf.editor', ['pdf.editor']],

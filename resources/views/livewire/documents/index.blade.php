@@ -337,7 +337,7 @@ new #[Layout('layouts.app')] class extends Component
                                     'border-indigo-500 ring-1 ring-indigo-500' => $selectedId === $doc['id'],
                                     'border-gray-200 hover:border-indigo-300 dark:border-gray-700' => $selectedId !== $doc['id'],
                                 ])>
-                                    <img src="{{ route('paperless.document', [$instanceId, $doc['id'], 'thumb']) }}" alt="" loading="lazy" class="mb-2 h-36 w-full rounded-sm border border-gray-100 bg-gray-50 object-cover object-top dark:border-gray-700">
+                                    <img src="{{ route('paperless.archive', [$instanceId, $doc['id'], 'thumb']) }}" alt="" loading="lazy" class="mb-2 h-36 w-full rounded-sm border border-gray-100 bg-gray-50 object-cover object-top dark:border-gray-700">
                                     <p class="line-clamp-2 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $doc['title'] ?: __('(untitled)') }}</p>
                                     <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                                         {{ $doc['created'] ? \Illuminate\Support\Carbon::parse($doc['created'])->format('d.m.Y') : '' }}
@@ -379,13 +379,13 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" wire:click="close" class="text-gray-400 hover:text-gray-600" aria-label="{{ __('Close') }}">✕</button>
                                 </div>
 
-                                <a href="{{ route('paperless.document', [$instanceId, $selectedId, 'preview']) }}" target="_blank" rel="noopener" class="block">
-                                    <img src="{{ route('paperless.document', [$instanceId, $selectedId, 'thumb']) }}" alt="" class="max-h-72 w-full rounded-md border border-gray-200 bg-gray-50 object-contain dark:border-gray-700">
+                                <a href="{{ route('paperless.archive', [$instanceId, $selectedId, 'preview']) }}" target="_blank" rel="noopener" class="block">
+                                    <img src="{{ route('paperless.archive', [$instanceId, $selectedId, 'thumb']) }}" alt="" class="max-h-72 w-full rounded-md border border-gray-200 bg-gray-50 object-contain dark:border-gray-700">
                                 </a>
 
                                 <div class="flex flex-wrap gap-2 text-sm">
-                                    <a href="{{ route('paperless.document', [$instanceId, $selectedId, 'preview']) }}" target="_blank" rel="noopener" class="rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600">👁 {{ __('Preview') }}</a>
-                                    <a href="{{ route('paperless.document', [$instanceId, $selectedId, 'download']) }}" class="rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600">⬇ {{ __('Download') }}</a>
+                                    <a href="{{ route('paperless.archive', [$instanceId, $selectedId, 'preview']) }}" target="_blank" rel="noopener" class="rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600">👁 {{ __('Preview') }}</a>
+                                    <a href="{{ route('paperless.archive', [$instanceId, $selectedId, 'download']) }}" class="rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600">⬇ {{ __('Download') }}</a>
                                     <button type="button" wire:click="deleteDocument({{ $selectedId }})" wire:confirm="{{ __('Delete this document in paperless? This cannot be undone.') }}" class="ms-auto rounded-md px-2 py-1 text-red-600 ring-1 ring-red-300 dark:text-red-400 dark:ring-red-800">🗑 {{ __('Delete') }}</button>
                                 </div>
 

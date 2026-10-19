@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.60.1] – 2026-10-19
+
+### Behoben
+- **Echtzeit/Live-Updates unter Unterpfad repariert.** Läuft die App unter einem Pfad (z. B. „/E11LifeOS-staging"), ging die Kanal-Autorisierung fälschlich an „/broadcasting/auth" auf der Domain-Wurzel → 404. Sie nutzt jetzt die App-Basis-URL. Außerdem verursachte der Reconnect-Handler einen unbehandelten JavaScript-Fehler („$refresh is not a function"), der die Editor-Bedienung (u. a. „Liste/Datenbank einfügen") stören konnte – jetzt abgesichert.
+
 ## [1.60.0] – 2026-10-19
 
 ### Neu

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.73.0] – 2026-10-21
+
+### Neu
+- **Datenübersicht im Profil (Datenhoheit).** Das Profil zeigt jetzt „Deine Daten auf einen Blick": wie viele Seiten, Aufgaben, Inbox-Einträge, Datenbanken, Anhänge, Buchungen und Depots du hast, plus welche Dienste verbunden sind (paperless, Bank, Smart Home, Push, Kalender-Abos). Direkt darüber/darunter liegt der vollständige Export – transparent an einem Ort.
+
 ## [1.72.0] – 2026-10-21
 
 ### Neu

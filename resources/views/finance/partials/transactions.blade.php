@@ -205,7 +205,10 @@
 
     @if ($rules->isNotEmpty())
         <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
-            <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Remembered categories') }}</h3>
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Remembered categories') }}</h3>
+                <button type="button" wire:click="applyRules" wire:loading.attr="disabled" wire:target="applyRules" class="text-xs text-indigo-600 hover:underline dark:text-indigo-300">{{ __('Apply rules to all bookings') }}</button>
+            </div>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Bookings containing this text always get this category.') }}</p>
             <ul class="mt-3 flex flex-wrap gap-2">
                 @foreach ($rules as $rule)

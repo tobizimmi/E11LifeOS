@@ -261,6 +261,29 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Applies all remembered rules and the keyword catalogue to the not-yet-locked bookings – useful
+     * after an import done before a rule existed, or after editing the rules.
+     */
+    public function applyRules(): void
+    {
+        $categorizer = new Categorizer($this->currentUser()->id);
+        $changed = 0;
+
+        Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)
+            ->where('category_locked', false)->get()
+            ->each(function (Transaction $transaction) use ($categorizer, &$changed) {
+                $category = $categorizer->categorize($transaction->counterparty, $transaction->purpose, (float) $transaction->amount);
+
+                if ($category !== $transaction->category) {
+                    $transaction->update(['category' => $category]);
+                    $changed++;
+                }
+            });
+
+        $this->dispatch('toast', message: trans_choice('{0}No bookings changed.|{1}:count booking recategorised.|[2,*]:count bookings recategorised.', $changed, ['count' => $changed]));
+    }
+
+    /**
      * Lets the AI categorize the bookings still marked "other".
      */
     public function categorizeWithAi(FinanceAi $ai): void

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.72.0] – 2026-10-21
+
+### Neu
+- **Vorabpauschale-Rechner im Portfolio.** Die Steuer-Seite hat jetzt einen eigenen Abschnitt für die **Vorabpauschale** thesaurierender Fonds/ETFs: Wert zu Jahresanfang und -ende, Ausschüttungen und Fondsart (Teilfreistellung 30/15/60/0 %) eingeben – der Rechner zeigt Basisertrag (Basiszins × 70 %), die Vorabpauschale (gedeckelt auf den Wertzuwachs, abzüglich Ausschüttungen) und die geschätzte Steuer (25 % + Soli, optional Kirchensteuer). Basiszins-Tabelle 2023–2026 hinterlegt.
+
 ## [1.71.0] – 2026-10-21
 
 ### Neu

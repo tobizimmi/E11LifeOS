@@ -250,6 +250,22 @@ class FinanceAnalysisTest extends TestCase
         $this->assertSame('children', (new Categorizer($user->id))->categorize('Kita Sonnenschein', 'Beitrag Oktober', -250));
     }
 
+    public function test_apply_rules_recategorises_unlocked_bookings(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $account = BankAccount::factory()->for($household)->for($user)->create();
+        FinanceRule::create(['user_id' => $user->id, 'pattern' => 'kita sonnenschein', 'category' => 'children']);
+        $booking = Transaction::factory()->for($account, 'account')->create(['counterparty' => 'Kita Sonnenschein', 'purpose' => 'Beitrag', 'category' => 'other', 'category_locked' => false, 'booked_on' => '2026-09-01', 'amount' => -250]);
+        $locked = Transaction::factory()->for($account, 'account')->create(['counterparty' => 'Kita Sonnenschein', 'purpose' => 'Beitrag', 'category' => 'leisure', 'category_locked' => true, 'booked_on' => '2026-08-01', 'amount' => -250]);
+
+        Volt::test('finance.index')->call('applyRules');
+
+        $this->assertSame('children', $booking->fresh()->category);
+        // A booking the member fixed by hand (locked) is left alone.
+        $this->assertSame('leisure', $locked->fresh()->category);
+    }
+
     public function test_bank_data_of_other_members_stays_private(): void
     {
         [$user, $household] = $this->memberWithHousehold();

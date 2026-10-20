@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.71.0] – 2026-10-21
+
+### Neu
+- **Kategorie-Regeln auf alle Buchungen anwenden.** In den Finanzen gibt es bei den gemerkten Kategorien jetzt den Button **„Regeln auf alle Buchungen anwenden"**. Damit werden alle nicht von Hand gesetzten Buchungen anhand deiner Regeln und des Stichwort-Katalogs neu einsortiert – praktisch nach einem Import, der vor dem Anlegen einer Regel lief, oder nach dem Ändern von Regeln. Von Hand gesetzte (gesperrte) Kategorien bleiben unangetastet.
+
 ## [1.70.0] – 2026-10-21
 
 ### Neu

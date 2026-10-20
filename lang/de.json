@@ -6873,5 +6873,7 @@
     "Or just type to capture it as a task, shopping item or inbox note.": "Oder tippe einfach los – daraus wird eine Aufgabe, ein Einkauf oder ein Inbox-Eintrag.",
     "From cashflow": "Aus Cashflow",
     "From savings plans": "Aus Sparplänen",
-    "Deadline from your life areas.": "Frist aus deinen Lebensbereichen."
+    "Deadline from your life areas.": "Frist aus deinen Lebensbereichen.",
+    "Apply rules to all bookings": "Regeln auf alle Buchungen anwenden",
+    "{0}No bookings changed.|{1}:count booking recategorised.|[2,*]:count bookings recategorised.": "{0}Keine Buchungen geändert.|{1}:count Buchung neu einsortiert.|[2,*]:count Buchungen neu einsortiert."
 }

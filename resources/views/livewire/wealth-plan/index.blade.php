@@ -125,6 +125,16 @@ new #[Layout('layouts.app')] class extends Component
                             <input type="number" step="0.01" min="0" wire:model.live.debounce.400ms="monthlySavings" class="{{ $input }} pe-7">
                             <span class="pointer-events-none absolute inset-y-0 end-2 flex items-center text-gray-400">€</span>
                         </div>
+                        @if ($plan['cashflow_surplus'] > 0 || $plan['savings_plans'] > 0)
+                            <div class="mt-1.5 flex flex-wrap gap-1.5">
+                                @if ($plan['cashflow_surplus'] > 0)
+                                    <button type="button" wire:click="$set('monthlySavings', '{{ $plan['cashflow_surplus'] }}')" class="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">🔁 {{ __('From cashflow') }}: {{ $euro($plan['cashflow_surplus']) }}</button>
+                                @endif
+                                @if ($plan['savings_plans'] > 0)
+                                    <button type="button" wire:click="$set('monthlySavings', '{{ $plan['savings_plans'] }}')" class="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">📈 {{ __('From savings plans') }}: {{ $euro($plan['savings_plans']) }}</button>
+                                @endif
+                            </div>
+                        @endif
                     </label>
                     <label class="text-xs text-gray-600 dark:text-gray-300">{{ __('Monthly expenses') }}
                         <div class="relative mt-1">

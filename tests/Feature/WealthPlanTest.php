@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\NetWorthItem;
+use App\Models\Portfolio;
+use App\Models\SavingsPlan;
 use App\Support\Finance\WealthPlan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -66,6 +68,20 @@ class WealthPlanTest extends TestCase
         $this->assertEqualsWithDelta($expected, $plan['series'][1]['value'], 0.5);
         $this->assertNotNull($plan['years_to_target']);
         $this->assertGreaterThan(0, $plan['years_to_target']);
+    }
+
+    public function test_savings_plans_are_summed_to_a_monthly_rate(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $portfolio = Portfolio::factory()->for($user)->create();
+        SavingsPlan::create(['portfolio_id' => $portfolio->id, 'symbol' => 'VWCE.DE', 'name' => 'FTSE All-World', 'amount' => 300, 'frequency' => 'monthly', 'day_of_month' => 1, 'next_date' => today(), 'active' => true]);
+        SavingsPlan::create(['portfolio_id' => $portfolio->id, 'symbol' => 'IWDA.AS', 'name' => 'MSCI World', 'amount' => 300, 'frequency' => 'quarterly', 'day_of_month' => 1, 'next_date' => today(), 'active' => true]);
+        SavingsPlan::create(['portfolio_id' => $portfolio->id, 'symbol' => 'OLD.DE', 'name' => 'Paused', 'amount' => 999, 'frequency' => 'monthly', 'day_of_month' => 1, 'next_date' => today(), 'active' => false]);
+
+        $plan = WealthPlan::for($user);
+
+        // 300 monthly + 300 quarterly (=100/month); the inactive plan is ignored.
+        $this->assertEqualsWithDelta(400.0, $plan['savings_plans'], 0.001);
     }
 
     public function test_already_reached_target_needs_no_years(): void

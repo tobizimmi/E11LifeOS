@@ -59,4 +59,25 @@ class NotesTest extends TestCase
         Volt::test('notes.index')->set('draft', '   ')->call('addNote');
         $this->assertSame(0, Item::where('type', Item::TYPE_NOTE)->count());
     }
+
+    public function test_a_note_is_edited_with_a_separate_title_and_rich_body(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $component = Volt::test('notes.index')->set('draft', 'Idee')->call('addNote');
+        $note = Item::where('household_id', $household->id)->where('type', Item::TYPE_NOTE)->sole();
+
+        $component->call('edit', $note->id)
+            ->assertSet('editTitle', 'Idee')
+            ->assertSet('body', '')
+            ->set('editTitle', 'Projektidee')
+            ->set('body', "## Plan\n\n- [ ] Schritt eins")
+            ->call('saveEdit')
+            ->assertSet('editingId', null);
+
+        $note->refresh();
+        $this->assertSame('Projektidee', $note->title);
+        $this->assertSame("## Plan\n\n- [ ] Schritt eins", $note->content['body']);
+    }
 }

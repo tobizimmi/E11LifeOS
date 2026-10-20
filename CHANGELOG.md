@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.61.0] – 2026-10-20
+
+### Neu
+- **Notizen komfortabler bearbeiten (wie Craft).** Beim Bearbeiten einer Notiz gibt es jetzt ein eigenes Titelfeld und denselben Rich-Editor wie bei den Seiten: Formatierung (fett/kursiv/durchgestrichen/markiert/Code/Link), per **„/"** Überschriften, Listen, Checklisten, Tabellen, Callouts und Umschalt-Abschnitte sowie **[[Verlinkungen]]** zu anderen Seiten – statt wie bisher nur ein einfaches Textfeld.
+
 ## [1.60.1] – 2026-10-19
 
 ### Behoben

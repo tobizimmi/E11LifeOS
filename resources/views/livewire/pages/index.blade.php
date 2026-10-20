@@ -717,6 +717,7 @@ new #[Layout('layouts.app')] class extends Component
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
                                 {{ __('In checklists, “//15.10.” adds a due date and “@Name” a person; ↗ makes an item a task.') }}
+                                {{ __('Move a block with Alt + ↑ / ↓.') }}
                             </p>
                             <x-input-error :messages="$errors->get('body')" class="mt-2" />
                         </div>

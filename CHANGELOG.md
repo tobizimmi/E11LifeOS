@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.66.0] – 2026-10-20
+
+### Neu
+- **Blöcke anordnen.** Im Seiten-/Notiz-Editor lässt sich der aktuelle Block jetzt per **Alt + ↑ / ↓** nach oben oder unten verschieben (Notion-artiges Umsortieren). Bewusst ohne das offizielle Drag-&-Drop-Paket umgesetzt, da dieses den gesamten Kollaborations-/Yjs-Stack mitgezogen hätte.
+
 ## [1.65.0] – 2026-10-20
 
 ### Neu

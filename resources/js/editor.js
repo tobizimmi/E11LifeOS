@@ -597,6 +597,59 @@ function slashCommands(t, onPickFile, onPickList) {
     ];
 }
 
+/**
+ * Move the current top-level block up or down with Alt+↑ / Alt+↓ (Notion-style "arrange blocks").
+ * Dependency-free: the official drag-handle extension pulls in the whole collaboration/Yjs stack,
+ * which is far too heavy just for reordering.
+ */
+const BlockMove = Extension.create({
+    name: 'blockMove',
+
+    addCommands() {
+        return {
+            moveBlock:
+                (direction) =>
+                ({ state, dispatch }) => {
+                    const { $from } = state.selection;
+
+                    if ($from.depth < 1) {
+                        return false;
+                    }
+
+                    const doc = state.doc;
+                    const index = $from.index(0);
+
+                    if (direction < 0 ? index === 0 : index >= doc.childCount - 1) {
+                        return false;
+                    }
+
+                    if (!dispatch) {
+                        return true;
+                    }
+
+                    const node = doc.child(index);
+                    const sibling = doc.child(index + direction);
+                    const nodeStart = $from.before(1);
+                    const tr = state.tr.delete(nodeStart, nodeStart + node.nodeSize);
+                    const insertPos = direction < 0 ? nodeStart - sibling.nodeSize : nodeStart + sibling.nodeSize;
+
+                    tr.insert(insertPos, node);
+                    tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos + 1)));
+                    dispatch(tr.scrollIntoView());
+
+                    return true;
+                },
+        };
+    },
+
+    addKeyboardShortcuts() {
+        return {
+            'Alt-ArrowUp': () => this.editor.commands.moveBlock(-1),
+            'Alt-ArrowDown': () => this.editor.commands.moveBlock(1),
+        };
+    },
+});
+
 const SlashMenu = Extension.create({
     name: 'slashMenu',
 
@@ -938,6 +991,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             Callout.configure({ translations }),
             Toggle.configure({ translations }),
             Embed.configure({ translations }),
+            BlockMove,
             SlashMenu.configure({ translations, onPickFile, onPickList }),
             PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
         ],

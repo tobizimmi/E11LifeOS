@@ -2,7 +2,10 @@
 
 namespace App\Support\Finance;
 
+use App\Models\Portfolio;
+use App\Models\SavingsPlan;
 use App\Models\User;
+use App\Support\Addons;
 use Illuminate\Support\Carbon;
 
 /**
@@ -17,7 +20,7 @@ class WealthPlan
 
     /**
      * @param  array{monthly_savings?: mixed, return?: mixed, withdrawal?: mixed, monthly_expenses?: mixed, target?: mixed}  $inputs
-     * @return array{start: float, monthly_savings: float, monthly_expenses: float, return: float, withdrawal: float, fire_number: float, target: float, years_to_target: ?int, target_year: ?int, passive_at_target: float, series: list<array{year: int, value: float}>, has_data: bool}
+     * @return array{start: float, monthly_savings: float, monthly_expenses: float, cashflow_surplus: float, savings_plans: float, return: float, withdrawal: float, fire_number: float, target: float, years_to_target: ?int, target_year: ?int, passive_at_target: float, series: list<array{year: int, value: float}>, has_data: bool}
      */
     public static function for(User $user, array $inputs = []): array
     {
@@ -25,7 +28,9 @@ class WealthPlan
         $cashflow = CashflowStatement::for($user);
 
         $start = (float) $netWorth['net'];
-        $monthlySavings = self::number($inputs['monthly_savings'] ?? null, max(0.0, (float) $cashflow['cashflow']));
+        $cashflowSurplus = max(0.0, (float) $cashflow['cashflow']);
+        $savingsPlans = self::savingsPlansMonthly($user);
+        $monthlySavings = self::number($inputs['monthly_savings'] ?? null, $cashflowSurplus);
         $monthlyExpenses = self::number($inputs['monthly_expenses'] ?? null, max(0.0, (float) $cashflow['expenses']['total']));
         $return = self::clamp(self::number($inputs['return'] ?? null, 5.0), 0, 20);
         $withdrawal = self::clamp(self::number($inputs['withdrawal'] ?? null, 4.0), 1, 10);
@@ -55,6 +60,8 @@ class WealthPlan
             'start' => round($start, 2),
             'monthly_savings' => round($monthlySavings, 2),
             'monthly_expenses' => round($monthlyExpenses, 2),
+            'cashflow_surplus' => round($cashflowSurplus, 2),
+            'savings_plans' => round($savingsPlans, 2),
             'return' => $return,
             'withdrawal' => $withdrawal,
             'fire_number' => $fireNumber,
@@ -65,6 +72,24 @@ class WealthPlan
             'series' => $series,
             'has_data' => $cashflow['has_data'] || $start != 0.0,
         ];
+    }
+
+    /**
+     * Monthly-equivalent total of the active savings plans across the member's portfolios.
+     */
+    private static function savingsPlansMonthly(User $user): float
+    {
+        if (! $user->canUseAddon(Addons::PORTFOLIO)) {
+            return 0.0;
+        }
+
+        return (float) SavingsPlan::whereIn('portfolio_id', Portfolio::where('user_id', $user->id)->select('id'))
+            ->where('active', true)->get()
+            ->sum(fn (SavingsPlan $plan) => match ($plan->frequency) {
+                'weekly' => $plan->amount * 52 / 12,
+                'quarterly' => $plan->amount / 3,
+                default => $plan->amount,
+            });
     }
 
     private static function number(mixed $value, float $default): float

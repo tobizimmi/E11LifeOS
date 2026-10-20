@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.69.0] – 2026-10-21
+
+### Neu
+- **Vermögensplan nutzt Portfolio-Sparpläne.** Unter der Sparrate gibt es jetzt Schnellauswahl-Chips: **„Aus Cashflow"** (Überschuss aus der Cashflow-Analyse, inkl. Mieten & Dividenden) und **„Aus Sparplänen"** (monatliche Summe deiner aktiven Portfolio-Sparpläne, wöchentlich/quartalsweise automatisch umgerechnet). So lässt sich die FIRE-Hochrechnung mit einem Tipp auf echte Zahlen stützen.
+
 ## [1.68.0] – 2026-10-20
 
 ### Behoben

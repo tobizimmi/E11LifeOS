@@ -33,6 +33,7 @@ class ModuleCatalog
             Addons::BUSINESS => $module($addons[Addons::BUSINESS]['label'], $addons[Addons::BUSINESS]['icon'], ['business.*'], true),
             'net_worth' => $module(__('Net worth'), '🥧', ['net-worth.*', 'api.v1.net-worth']),
             'cashflow' => $module(__('Cashflow analysis'), '🔁', ['cashflow.*']),
+            'wealth_plan' => $module(__('Wealth plan'), '🚀', ['wealth-plan.*']),
             'contracts' => $module(__('Contract costs'), '📄', ['contracts.*', 'letters.*']),
             'quotes' => $module(__('Quote comparisons'), '⚖️', ['quotes.*']),
             'wishlist' => $module(__('Wishlist'), '🎁', ['wishlist.*']),

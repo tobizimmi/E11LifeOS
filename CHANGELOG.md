@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.62.0] – 2026-10-20
+
+### Verbessert
+- **App-Gefühl der installierten Web-App (PWA) verbessert.** Auf dem iPhone/iPad startet die zum Home-Bildschirm hinzugefügte App jetzt im **Vollbild-App-Modus** (ohne Browser-Leiste) mit passender Statusleiste und App-Titel. Das App-Icon bietet beim langen Drücken **Schnellaktionen** (Heute, Aufgaben, Neue Notiz, Dokument scannen). Zusätzlich saubere App-Kennung, Kategorien und Behebung der Manifest-Warnung beim Teilen.
+
 ## [1.61.0] – 2026-10-20
 
 ### Neu

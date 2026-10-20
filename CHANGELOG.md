@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.65.0] – 2026-10-20
+
+### Neu
+- **Inbox-Einträge mit Seiten, Aufgaben & Co. verknüpfen.** Beim Öffnen eines Inbox-Eintrags gibt es jetzt den Bereich **„Verknüpfungen"** (wie bei Seiten und Aufgaben): den Eintrag mit Seiten, Aufgaben, Einträgen oder Rezepten verbinden und sehen, was auf ihn verweist. Damit sind Inbox und ToDos mit den Seiten durchgängig verzahnt.
+
 ## [1.64.0] – 2026-10-20
 
 ### Neu

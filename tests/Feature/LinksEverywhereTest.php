@@ -93,6 +93,18 @@ class LinksEverywhereTest extends TestCase
         $this->actingAs($stranger)->get(route('items.show', $target))->assertNotFound();
     }
 
+    public function test_the_inbox_quick_sheet_embeds_the_links_panel(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $entry = Item::factory()->for($household)->create(['type' => Item::TYPE_INBOX, 'title' => 'Idee notiert']);
+
+        Volt::test('inbox.quick-sheet')
+            ->call('open', $entry->id)
+            ->assertSee('Idee notiert')
+            ->assertSeeLivewire('links-panel');
+    }
+
     public function test_item_links_open_the_right_place(): void
     {
         [$user, $household] = $this->memberWithHousehold();

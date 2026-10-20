@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.64.0] – 2026-10-20
+
+### Neu
+- **Mehrspalten-Layout auf Seiten (Notion-Blöcke).** Über das „/"-Menü lassen sich **zwei oder drei Spalten** einfügen; darin kann beliebiger Inhalt (Text, Listen, Bilder, Callouts …) stehen. Auf breiten Bildschirmen stehen die Spalten nebeneinander, auf dem Handy werden sie automatisch untereinander gestapelt.
+
 ## [1.63.0] – 2026-10-20
 
 ### Neu

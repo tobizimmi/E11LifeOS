@@ -374,6 +374,52 @@ const Toggle = Node.create({
 });
 
 /**
+ * Multi-column layout (":::columns" with nested ":::column" blocks). Columns sit side by side on
+ * wide screens and stack on phones (see .page-columns in the stylesheet). The server renders the
+ * same block structure.
+ */
+const Column = Node.create({
+    name: 'column',
+    content: 'block+',
+    isolating: true,
+
+    parseHTML() {
+        return [{ tag: 'div[data-column]' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['div', mergeAttributes(HTMLAttributes, { 'data-column': '', class: 'page-column' }), 0];
+    },
+
+    ...createBlockMarkdownSpec({ nodeName: 'column', content: 'block' }),
+});
+
+const Columns = Node.create({
+    name: 'columns',
+    group: 'block',
+    content: 'column+',
+    defining: true,
+
+    parseHTML() {
+        return [{ tag: 'div[data-columns]' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['div', mergeAttributes(HTMLAttributes, { 'data-columns': '', class: 'page-columns' }), 0];
+    },
+
+    ...createBlockMarkdownSpec({ nodeName: 'columns', content: 'block' }),
+});
+
+/** A columns node with the given number of empty columns, for the slash menu. */
+function makeColumns(count) {
+    return {
+        type: 'columns',
+        content: Array.from({ length: count }, () => ({ type: 'column', content: [{ type: 'paragraph' }] })),
+    };
+}
+
+/**
  * Live block (":::embed {type="tasks"} :::"): the server fills in the page's tasks, the next
  * 14 days of the calendar or the list of subpages; the editor shows a placeholder.
  */
@@ -539,6 +585,8 @@ function slashCommands(t, onPickFile, onPickList) {
             run: (c) => c.insertContent({ type: 'callout', attrs: { type }, content: [{ type: 'paragraph' }] }),
         })),
         { title: t.toggle, hint: '▾', run: (c) => c.insertContent({ type: 'toggle', attrs: { title: '' }, content: [{ type: 'paragraph' }] }) },
+        { title: t.columns2, hint: '▥', run: (c) => c.insertContent(makeColumns(2)) },
+        { title: t.columns3, hint: '◫', run: (c) => c.insertContent(makeColumns(3)) },
         { title: t.embedTasks, hint: '✅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'tasks' } }) },
         { title: t.embedCalendar, hint: '📅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'calendar' } }) },
         { title: t.embedSubpages, hint: '📄', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'subpages' } }) },
@@ -885,6 +933,8 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             MarkdownImage,
             Highlight,
             TextColor,
+            Column,
+            Columns,
             Callout.configure({ translations }),
             Toggle.configure({ translations }),
             Embed.configure({ translations }),

@@ -37,6 +37,8 @@ class EditorTranslations
             'calloutDanger' => __('Important box'),
             'calloutTypeHint' => __('Click to change the colour'),
             'toggle' => __('Toggle section'),
+            'columns2' => __('Two columns'),
+            'columns3' => __('Three columns'),
             'toggleTitle' => __('Title of the section'),
             'embedTasks' => __('Tasks of this page'),
             'embedCalendar' => __('Calendar: next 14 days'),

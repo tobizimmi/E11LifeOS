@@ -38,7 +38,7 @@ class NoteMarkdown
      */
     private const TASK_MARKER = '/^((?:\s*>)*\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(?=\])/';
 
-    private const BLOCK_OPEN = '/^:::(callout|toggle)(?:\s+\{([^}]*)\})?\s*$/';
+    private const BLOCK_OPEN = '/^:::(callout|toggle|columns|column)(?:\s+\{([^}]*)\})?\s*$/';
 
     private const BLOCK_CLOSE = '/^:::\s*$/';
 
@@ -404,6 +404,14 @@ class NoteMarkdown
     {
         if ($kind === 'toggle') {
             return sprintf('<details class="page-toggle"><summary>%s</summary><div class="page-toggle-body">%s</div></details>', e(($attributes['title'] ?? '') ?: __('Details')), $innerHtml);
+        }
+
+        if ($kind === 'columns') {
+            return '<div class="page-columns">'.$innerHtml.'</div>';
+        }
+
+        if ($kind === 'column') {
+            return '<div class="page-column">'.$innerHtml.'</div>';
         }
 
         $type = array_key_exists($attributes['type'] ?? '', self::CALLOUT_TYPES) ? $attributes['type'] : 'info';

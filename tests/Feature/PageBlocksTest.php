@@ -70,6 +70,21 @@ class PageBlocksTest extends TestCase
         $this->assertTrue($task->fresh()->done);
     }
 
+    public function test_a_multi_column_layout_renders_as_columns(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $body = ":::columns\n:::column\nLinks\n:::\n\n:::column\nRechts\n:::\n:::";
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => $body]]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        $this->assertStringContainsString('<div class="page-columns">', $html);
+        $this->assertSame(2, substr_count($html, '<div class="page-column">'));
+        $this->assertStringContainsString('Links', $html);
+        $this->assertStringContainsString('Rechts', $html);
+    }
+
     public function test_coloured_text_renders_as_a_themed_span(): void
     {
         [$user, $household] = $this->memberWithHousehold();

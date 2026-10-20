@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.63.0] – 2026-10-20
+
+### Neu
+- **Mehr Text-Stile im Seiten-/Notiz-Editor (Notion/Craft).** Über das Auswahl-Menü lassen sich Textstellen jetzt **einfärben** (8 Farben) und schnell in **Überschrift 1/2/3** umwandeln (vorher nur H2). Die Farben werden hell- und dunkelmodus-gerecht dargestellt und bleiben beim Speichern erhalten.
+
 ## [1.62.0] – 2026-10-20
 
 ### Verbessert

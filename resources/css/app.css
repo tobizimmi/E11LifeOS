@@ -489,6 +489,84 @@
         @apply text-gray-400 line-through;
     }
 
+    /* Named text colours ({color=…} / the editor's TextColor mark), tuned for light and dark. */
+    .note-content .tc-gray,
+    .note-editor .tc-gray {
+        @apply text-gray-500 dark:text-gray-400;
+    }
+
+    .note-content .tc-red,
+    .note-editor .tc-red {
+        @apply text-red-600 dark:text-red-400;
+    }
+
+    .note-content .tc-orange,
+    .note-editor .tc-orange {
+        @apply text-orange-600 dark:text-orange-400;
+    }
+
+    .note-content .tc-yellow,
+    .note-editor .tc-yellow {
+        @apply text-yellow-600 dark:text-yellow-400;
+    }
+
+    .note-content .tc-green,
+    .note-editor .tc-green {
+        @apply text-green-600 dark:text-green-400;
+    }
+
+    .note-content .tc-blue,
+    .note-editor .tc-blue {
+        @apply text-blue-600 dark:text-blue-400;
+    }
+
+    .note-content .tc-purple,
+    .note-editor .tc-purple {
+        @apply text-purple-600 dark:text-purple-400;
+    }
+
+    .note-content .tc-pink,
+    .note-editor .tc-pink {
+        @apply text-pink-600 dark:text-pink-400;
+    }
+
+    /* The colour swatches in the formatting bubble (an "A" in each palette colour). */
+    .editor-bubble .tc-swatch {
+        @apply font-bold;
+    }
+
+    .editor-bubble .tc-gray {
+        @apply text-gray-500 dark:text-gray-400;
+    }
+
+    .editor-bubble .tc-red {
+        @apply text-red-600 dark:text-red-400;
+    }
+
+    .editor-bubble .tc-orange {
+        @apply text-orange-600 dark:text-orange-400;
+    }
+
+    .editor-bubble .tc-yellow {
+        @apply text-yellow-600 dark:text-yellow-400;
+    }
+
+    .editor-bubble .tc-green {
+        @apply text-green-600 dark:text-green-400;
+    }
+
+    .editor-bubble .tc-blue {
+        @apply text-blue-600 dark:text-blue-400;
+    }
+
+    .editor-bubble .tc-purple {
+        @apply text-purple-600 dark:text-purple-400;
+    }
+
+    .editor-bubble .tc-pink {
+        @apply text-pink-600 dark:text-pink-400;
+    }
+
     .note-editor .callout-icon {
         @apply cursor-pointer rounded-sm hover:bg-black/5;
     }

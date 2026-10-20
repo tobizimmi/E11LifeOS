@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.67.0] – 2026-10-20
+
+### Neu
+- **Vermögensplan (FIRE).** Neuer Bereich unter „Geld", der dein aktuelles Nettovermögen und deine monatliche Sparrate aus der Cashflow-Analyse nimmt und in die Zukunft hochrechnet. Du siehst deine **FIRE-Zahl** (Jahresausgaben ÷ Entnahmerate, klassische 4-%-Regel), wann dein Vermögen dein Ziel erreicht (Jahr + Dauer) und wie viel **passives Einkommen** pro Monat am Ziel herauskommt. Rendite, Entnahmerate, Sparrate, Ausgaben und ein eigenes Zielvermögen sind frei einstellbar; dazu eine Verlaufskurve und eine Meilenstein-Tabelle alle 5 Jahre.
+
 ## [1.66.0] – 2026-10-20
 
 ### Neu

@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('net-worth', 'net-worth.index')->name('net-worth.index');
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
     Volt::route('cashflow', 'cashflow.index')->name('cashflow.index');
+    Volt::route('wealth-plan', 'wealth-plan.index')->name('wealth-plan.index');
     Volt::route('wishlist', 'wishlist.index')->name('wishlist.index');
     Volt::route('pantry', 'pantry.index')->name('pantry.index');
     Volt::route('changelog', 'changelog.index')->name('changelog');

@@ -60,6 +60,7 @@ class Navigation
             'business' => $user->canUseAddon(Addons::BUSINESS) ? ['money', __('Small business'), 'briefcase', 'business.index', ['business.*']] : null,
             'net_worth' => $finance || $portfolio || $realEstate ? ['money', __('Net worth'), 'chart-pie', 'net-worth.index', ['net-worth.*']] : null,
             'cashflow' => $finance || $portfolio || $realEstate ? ['money', __('Cashflow analysis'), 'arrows-right-left', 'cashflow.index', ['cashflow.*']] : null,
+            'wealth_plan' => $finance || $portfolio || $realEstate ? ['money', __('Wealth plan'), 'chart-bar', 'wealth-plan.index', ['wealth-plan.*']] : null,
             'contracts' => ['money', __('Contract costs'), 'document-text', 'contracts.index', ['contracts.*', 'letters.*']],
             'quotes' => ['money', __('Quote comparisons'), 'scale', 'quotes.index', ['quotes.*']],
             'wishlist' => ['money', __('Wishlist'), 'gift', 'wishlist.index', ['wishlist.*']],
@@ -188,7 +189,7 @@ class Navigation
         return [
             'everything' => ['label' => __('Everything'), 'description' => __('All modules in the menu.'), 'modules' => null],
             'family' => ['label' => __('Family & household'), 'description' => __('Tasks, calendar, shopping, recipes, home, health, people, trips.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'journal', 'shopping', 'pantry', 'recipes', 'house', 'smart_home', 'automations', 'vehicles', 'health', 'people', 'kids', 'trips', 'places', 'splits', 'household']],
-            'money' => ['label' => __('Money focus'), 'description' => __('Finances, portfolio, contracts, net worth plus the everyday basics.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'shopping', 'finance', 'portfolio', 'business', 'net_worth', 'cashflow', 'contracts', 'quotes', 'wishlist', 'knowledge', 'real_estate', 'emergency', 'provision']],
+            'money' => ['label' => __('Money focus'), 'description' => __('Finances, portfolio, contracts, net worth plus the everyday basics.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'shopping', 'finance', 'portfolio', 'business', 'net_worth', 'cashflow', 'wealth_plan', 'contracts', 'quotes', 'wishlist', 'knowledge', 'real_estate', 'emergency', 'provision']],
             'minimal' => ['label' => __('Minimal'), 'description' => __('Just tasks, calendar, shopping list and notes.'), 'modules' => ['dashboard', 'inbox', 'notes', 'tasks', 'calendar', 'shopping']],
         ];
     }

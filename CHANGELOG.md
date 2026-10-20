@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.68.0] – 2026-10-20
+
+### Behoben
+- **„Anlegen" in der unteren Leiste öffnete die Suche.** Der „+"-Button (und das Tastenkürzel **N**) öffnet die Befehlsleiste jetzt im **Anlegen-Modus**: Mit sofort sichtbaren Optionen (Neue Notiz, Neue Aufgabe, Einkaufsliste, Neuer Termin) und dem Hinweis, dass man einfach lostippen kann, um etwas als Aufgabe, Einkauf oder Inbox-Eintrag zu erfassen. Im Suchmodus (Lupe / „/") bleibt alles wie gehabt.
+
 ## [1.67.0] – 2026-10-20
 
 ### Neu

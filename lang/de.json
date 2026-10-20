@@ -6841,5 +6841,7 @@
     "No notes yet.": "Noch keine Notizen.",
     "Add a note …": "Notiz hinzufügen …",
     "New database": "Neue Datenbank",
-    "Database (new or existing)": "Datenbank (neu oder vorhanden)"
+    "Database (new or existing)": "Datenbank (neu oder vorhanden)",
+    "Text colour": "Textfarbe",
+    "Remove colour": "Farbe entfernen"
 }

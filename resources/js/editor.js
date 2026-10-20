@@ -183,6 +183,48 @@ const Highlight = Mark.create({
     },
 });
 
+const TEXT_COLORS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
+
+/**
+ * Coloured text ("{color=green}text{/color}"), rendered as <span class="tc-green"> on the server.
+ * The colour is a named palette entry so the Markdown stays short and the server can map it to a
+ * theme-aware CSS class (see NoteMarkdown::colours()).
+ */
+const TextColor = Mark.create({
+    name: 'textColor',
+
+    addAttributes() {
+        return { color: { default: 'gray' } };
+    },
+
+    parseHTML() {
+        return TEXT_COLORS.map((color) => ({ tag: `span.tc-${color}`, attrs: { color } }));
+    },
+
+    renderHTML({ mark, HTMLAttributes }) {
+        return ['span', mergeAttributes(HTMLAttributes, { class: `tc-${mark.attrs.color}` }), 0];
+    },
+
+    markdownTokenizer: {
+        name: 'textColor',
+        level: 'inline',
+        start: (src) => src.indexOf('{color='),
+        tokenize(src, _tokens, lexer) {
+            const match = /^\{color=([a-z]+)\}([\s\S]*?)\{\/color\}/.exec(src);
+
+            if (!match || !TEXT_COLORS.includes(match[1])) {
+                return undefined;
+            }
+
+            return { type: 'textColor', raw: match[0], color: match[1], text: match[2], tokens: lexer.inlineTokens(match[2]) };
+        },
+    },
+
+    parseMarkdown: (token, helpers) => helpers.applyMark('textColor', helpers.parseInline(token.tokens || []), { color: token.color }),
+
+    renderMarkdown: (node, h) => `{color=${node.attrs?.color ?? 'gray'}}${h.renderChildren(node)}{/color}`,
+});
+
 /**
  * Coloured box (":::callout {type="tip"}" … ":::"); the symbol switches the colour.
  */
@@ -842,6 +884,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             WikiLink,
             MarkdownImage,
             Highlight,
+            TextColor,
             Callout.configure({ translations }),
             Toggle.configure({ translations }),
             Embed.configure({ translations }),

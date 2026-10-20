@@ -70,6 +70,24 @@ class PageBlocksTest extends TestCase
         $this->assertTrue($task->fresh()->done);
     }
 
+    public function test_coloured_text_renders_as_a_themed_span(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => 'Ein {color=green}wichtiger{/color} Punkt und `{color=red}code{/color}`.']]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        // The colour outside code becomes a themed span …
+        $this->assertStringContainsString('<span class="tc-green">wichtiger</span>', $html);
+        // … but a colour token inside inline code stays literal.
+        $this->assertStringContainsString('{color=red}code{/color}', $html);
+
+        // An unknown colour is left untouched (only the fixed palette is accepted).
+        $unknown = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => '{color=chartreuse}x{/color}']]);
+        $this->assertStringContainsString('{color=chartreuse}x{/color}', NoteMarkdown::toHtml($unknown, $user));
+    }
+
     public function test_a_collection_can_be_embedded_in_a_page(): void
     {
         [$user, $household] = $this->memberWithHousehold();

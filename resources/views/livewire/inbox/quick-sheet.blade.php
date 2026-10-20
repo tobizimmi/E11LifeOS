@@ -146,6 +146,11 @@ new class extends Component
                     </div>
                 </div>
 
+                {{-- Link the entry to pages, tasks or other items (and show what links here). --}}
+                <div class="border-t border-gray-100 pt-3 dark:border-gray-700">
+                    <livewire:links-panel type="item" :id="$entry->id" :key="'inbox-links-'.$entry->id" />
+                </div>
+
                 <a href="{{ route('inbox.index') }}" wire:navigate class="inline-block text-sm text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Open inbox') }} →</a>
             </div>
 

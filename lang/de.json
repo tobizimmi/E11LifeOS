@@ -6891,5 +6891,15 @@
     "taxable after exemption: :amount": "steuerpflichtig nach Teilfreistellung: :amount",
     "counts towards your :amount allowance": "zählt auf deinen Freibetrag von :amount",
     "Estimate only. The Vorabpauschale is zero if the fund did not gain value or distributed enough. Your bank withholds it in January of the following year.": "Nur eine Schätzung. Die Vorabpauschale ist null, wenn der Fonds nicht an Wert gewonnen oder genug ausgeschüttet hat. Die Bank behält sie im Januar des Folgejahres ein.",
-    "FIFO method as used by German banks. Partial exemptions on sales (Teilfreistellung) are not included; the advance lump sum (Vorabpauschale) has its own estimator below. No tax advice – the bank's annual tax certificate is binding.": "FIFO-Methode wie bei deutschen Banken. Teilfreistellungen bei Verkäufen sind nicht enthalten; die Vorabpauschale hat unten einen eigenen Rechner. Keine Steuerberatung – verbindlich ist die Jahressteuerbescheinigung der Bank."
+    "FIFO method as used by German banks. Partial exemptions on sales (Teilfreistellung) are not included; the advance lump sum (Vorabpauschale) has its own estimator below. No tax advice – the bank's annual tax certificate is binding.": "FIFO-Methode wie bei deutschen Banken. Teilfreistellungen bei Verkäufen sind nicht enthalten; die Vorabpauschale hat unten einen eigenen Rechner. Keine Steuerberatung – verbindlich ist die Jahressteuerbescheinigung der Bank.",
+    "Your data at a glance": "Deine Daten auf einen Blick",
+    "Everything you keep here stays yours. Below is what you have and which services are connected – you can export all of it any time.": "Alles, was du hier speicherst, bleibt deins. Unten siehst du, was du hast und welche Dienste verbunden sind – du kannst jederzeit alles exportieren.",
+    "Database entries": "Datenbank-Einträge",
+    "Databases": "Datenbanken",
+    "Attachments": "Anhänge",
+    "Connected services": "Verbundene Dienste",
+    "Document archive (paperless)": "Dokumentenarchiv (paperless)",
+    "Bank connections": "Bankverbindungen",
+    "Push devices": "Push-Geräte",
+    "Calendar feeds": "Kalender-Abos"
 }

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.70.0] – 2026-10-21
+
+### Neu
+- **Fristen werden zu Aufgaben.** Ablaufende Dokumente/Ausweise (Notfallordner) und Fahrzeug-Termine (TÜV/Inspektion, Service) landen jetzt automatisch als **To-Do** in deiner Aufgabenliste, sobald sie in ihre Vorlaufzeit kommen – mit Fälligkeitsdatum, Zuweisung und Rücklink. Ergänzt die bestehenden Kalender-Einträge und Push-Erinnerungen; jede Frist wird genau einmal angelegt. (Verträge & Garantien aus Sammlungen erzeugen weiterhin über den Vertrags-Assistenten Aufgaben.)
+
 ## [1.69.0] – 2026-10-21
 
 ### Neu

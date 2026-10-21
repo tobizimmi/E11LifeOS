@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.74.0] – 2026-10-21
+
+### Neu
+- **Sammlungen: Zusammenfassung pro Zahlenspalte wählbar.** Unter einer Tabelle zeigte LifeOS bei Zahlenspalten bisher immer die Summe. Jetzt lässt sich pro Spalte in den Sammlungs-Einstellungen wählen, wie zusammengefasst wird: **Summe (Σ), Durchschnitt (Ø), Minimum (↓), Maximum (↑) oder Anzahl (#)** – Notion-artige Rollups.
+
 ## [1.73.0] – 2026-10-21
 
 ### Neu

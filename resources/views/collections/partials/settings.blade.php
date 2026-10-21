@@ -143,6 +143,16 @@
                                             </label>
                                         @endif
                                     @endif
+                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_NUMBER)
+                                        <label class="flex flex-wrap items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
+                                            Σ {{ __('Summary under the table') }}
+                                            <select wire:change="setPropertySummary({{ $property->id }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-0.5 text-xs">
+                                                @foreach (['sum' => __('Sum'), 'avg' => __('Average'), 'min' => __('Minimum'), 'max' => __('Maximum'), 'count' => __('Count')] as $value => $label)
+                                                    <option value="{{ $value }}" @selected($property->summaryFunction() === $value)>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                    @endif
                                     @if ($property->hasOptions())
                                         <div class="flex flex-wrap items-center gap-2 ps-2">
                                             @foreach ($property->selectOptions() as $option)

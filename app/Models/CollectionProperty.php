@@ -123,12 +123,57 @@ class CollectionProperty extends Model
     {
         $values = collect($entries)->map(fn (Item $entry) => $entry->propertyValue($this));
 
-        return match ($this->type) {
-            self::TYPE_NUMBER => $values->filter(fn ($value) => is_numeric($value))->isEmpty()
-                ? null
-                : rtrim(rtrim(number_format((float) $values->filter(fn ($value) => is_numeric($value))->sum(), 2, ',', '.'), '0'), ','),
-            self::TYPE_CHECKBOX => $values->filter()->count().' / '.$values->count(),
-            default => null,
+        if ($this->type === self::TYPE_CHECKBOX) {
+            return $values->filter()->count().' / '.$values->count();
+        }
+
+        if ($this->type !== self::TYPE_NUMBER) {
+            return null;
+        }
+
+        $numbers = $values->filter(fn ($value) => is_numeric($value))->map(fn ($value) => (float) $value);
+
+        if ($numbers->isEmpty()) {
+            return null;
+        }
+
+        $result = match ($this->summaryFunction()) {
+            'avg' => $numbers->avg(),
+            'min' => $numbers->min(),
+            'max' => $numbers->max(),
+            'count' => $numbers->count(),
+            default => $numbers->sum(),
+        };
+
+        return rtrim(rtrim(number_format((float) $result, 2, ',', '.'), '0'), ',');
+    }
+
+    /**
+     * How a number column is summarised under the table: sum (default), average, minimum, maximum
+     * or how many entries have a value.
+     *
+     * @var array<int, string>
+     */
+    public const SUMMARY_FUNCTIONS = ['sum', 'avg', 'min', 'max', 'count'];
+
+    public function summaryFunction(): string
+    {
+        $function = data_get($this->options, 'summary');
+
+        return is_string($function) && in_array($function, self::SUMMARY_FUNCTIONS, true) ? $function : 'sum';
+    }
+
+    /**
+     * Short prefix shown before the summary value (Σ for sum, Ø for average …).
+     */
+    public function summaryPrefix(): string
+    {
+        return match ($this->summaryFunction()) {
+            'avg' => 'Ø ',
+            'min' => '↓ ',
+            'max' => '↑ ',
+            'count' => '# ',
+            default => 'Σ ',
         };
     }
 

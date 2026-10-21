@@ -51,6 +51,7 @@ class Navigation
             'learnings' => ['start', __('Lessons learned'), 'academic-cap', 'learnings.index', ['learnings.*']],
             'tasks' => ['everyday', __('To-Do'), 'check-circle', 'tasks.index', ['tasks.index']],
             'calendar' => ['everyday', __('Calendar'), 'calendar-days', 'calendar.index', ['calendar.*']],
+            'kiosk' => ['everyday', __('Family screen'), 'squares-2x2', 'kiosk.index', ['kiosk.*']],
             'journal' => ['everyday', __('Routines & journal'), 'face-smile', 'journal.index', ['journal.*']],
             'shopping' => ['everyday', __('Shopping List'), 'shopping-cart', 'shopping-list.index', ['shopping-list.*']],
             'pantry' => ['everyday', __('Pantry'), 'archive-box', 'pantry.index', ['pantry.*']],

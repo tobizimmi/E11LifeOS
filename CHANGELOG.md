@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.76.0] – 2026-10-21
+
+### Neu
+- **Familien-Bildschirm (Kiosk-Dashboard).** Neue, großflächige Vollbild-Ansicht fürs Küchen-Tablet: große Uhr & Datum, die heutige Agenda (Termine, Aufgaben, Essensplan, Fristen) und die offene Einkaufsliste – ohne Menü-Drumherum und mit automatischer Aktualisierung (alle 60 s). Erreichbar über „Familien-Bildschirm" im Menü.
+
 ## [1.75.0] – 2026-10-21
 
 ### Neu

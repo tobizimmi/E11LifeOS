@@ -80,6 +80,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('support/{ticket}', 'support.show')->whereNumber('ticket')->name('support.show');
     Route::get('support/files/{message}/{index}', SupportFileController::class)->whereNumber(['message', 'index'])->name('support.file')->middleware('throttle:120,1');
     Volt::route('calendar', 'calendar.index')->name('calendar.index');
+    Volt::route('kiosk', 'kiosk.index')->name('kiosk.index');
     Volt::route('net-worth', 'net-worth.index')->name('net-worth.index');
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
     Volt::route('cashflow', 'cashflow.index')->name('cashflow.index');

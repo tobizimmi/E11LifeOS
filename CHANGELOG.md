@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.80.0] – 2026-10-21
+
+### Neu
+- **App-API: Reisen bearbeiten.** Neue Schreib-Endpunkte, damit die native App unterwegs den Reiseverlauf (Stationen), die Packliste und Buchungen pflegen kann: `POST /api/v1/trips/{id}/stops` + `PUT|DELETE /api/v1/trip-stops/{id}`, `POST /api/v1/trips/{id}/packing` + `PUT|DELETE /api/v1/trip-packing/{id}` sowie `POST /api/v1/trips/{id}/bookings` + `PUT|DELETE /api/v1/trip-bookings/{id}`. Alles haushaltsbezogen abgesichert.
+
 ## [1.79.0] – 2026-10-21
 
 ### Neu

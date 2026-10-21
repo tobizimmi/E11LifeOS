@@ -448,6 +448,7 @@ new #[Layout('layouts.app')] class extends Component
 @endphp
 
 <div
+    wire:poll.visible.30s
     x-data="{ wakeLock: null }"
     x-effect="
         if ($wire.shoppingMode && 'wakeLock' in navigator && ! wakeLock) { navigator.wakeLock.request('screen').then(lock => wakeLock = lock).catch(() => {}) }

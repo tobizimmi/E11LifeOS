@@ -141,4 +141,13 @@ return [
         'base_url' => env('GOCARDLESS_BASE_URL', 'https://bankaccountdata.gocardless.com/api/v2'),
     ],
 
+    // Two-way calendar sync with Google Calendar. Create an OAuth client at
+    // console.cloud.google.com (Calendar API), add the redirect URI and put the keys in the
+    // environment. Without them the "connect Google Calendar" feature stays hidden.
+    'google_calendar' => [
+        'client_id' => env('GOOGLE_CALENDAR_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CALENDAR_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_CALENDAR_REDIRECT'),
+    ],
+
 ];

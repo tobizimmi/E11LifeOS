@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\PortfolioController;
@@ -42,6 +43,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('capture', [TodayController::class, 'capture'])->name('capture');
         Route::post('presence', [SmartHomeController::class, 'presence'])->name('presence');
 
+        // Generic collections/items (notes, pantry/supplies, custom databases) for offline editing.
+        Route::get('collections', [CollectionController::class, 'index'])->name('collections.index');
+        Route::get('collections/{collection}/items', [CollectionController::class, 'items'])->whereNumber('collection')->name('collections.items');
+        Route::post('collections/{collection}/items', [CollectionController::class, 'storeItem'])->whereNumber('collection')->name('collections.items.store');
+        Route::put('items/{item}', [CollectionController::class, 'updateItem'])->whereNumber('item')->name('items.update');
+        Route::delete('items/{item}', [CollectionController::class, 'destroyItem'])->whereNumber('item')->name('items.destroy');
+
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
@@ -51,6 +59,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::middleware('addon:portfolio')->group(function () {
             Route::get('portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');
             Route::get('portfolios/{portfolio}/positions', [PortfolioController::class, 'positions'])->name('portfolios.positions');
+            Route::post('portfolios/{portfolio}/positions', [PortfolioController::class, 'storePosition'])->name('portfolios.positions.store');
+            Route::put('positions/{position}', [PortfolioController::class, 'updatePosition'])->whereNumber('position')->name('positions.update');
+            Route::delete('positions/{position}', [PortfolioController::class, 'destroyPosition'])->whereNumber('position')->name('positions.destroy');
             Route::get('portfolios/{portfolio}/summary', [PortfolioController::class, 'summary'])->name('portfolios.summary');
             Route::get('portfolios/{portfolio}/transactions', [PortfolioController::class, 'transactions'])->name('portfolios.transactions');
             Route::get('portfolios/{portfolio}/chart', [PortfolioController::class, 'chart'])->name('portfolios.chart');

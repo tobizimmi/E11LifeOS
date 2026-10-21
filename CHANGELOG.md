@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.75.0] – 2026-10-21
+
+### Neu
+- **Einkaufsliste aktualisiert sich live.** Die Einkaufsliste lädt sich bei geöffnetem Tab automatisch alle 30 Sekunden neu. Fügt ein Haushaltsmitglied am Handy etwas hinzu oder hakt es ab, erscheint das auf dem Küchen-Tablet oder dem zweiten Gerät ohne manuelles Neuladen.
+
 ## [1.74.0] – 2026-10-21
 
 ### Neu

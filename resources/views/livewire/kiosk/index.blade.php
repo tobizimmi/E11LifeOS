@@ -41,7 +41,9 @@ new #[Layout('layouts.wall')] class extends Component
     }
 }; ?>
 
-<div wire:poll.visible.60s class="min-h-screen bg-gray-950 p-6 text-gray-100 sm:p-8" x-data="{ now: '' }"
+<div wire:poll.visible.60s class="min-h-screen bg-gray-950 p-6 text-gray-100 sm:p-8"
+     style="padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem); padding-left: calc(env(safe-area-inset-left, 0px) + 1.5rem); padding-right: calc(env(safe-area-inset-right, 0px) + 1.5rem); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem)"
+     x-data="{ now: '' }"
      x-init="now = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); setInterval(() => now = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }), 10000)">
 
     <header class="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5">

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.77.1] – 2026-10-21
+
+### Behoben
+- **Familien-Bildschirm: Uhr nicht mehr hinter der Statusleiste.** Die große Uhr saß am iPhone-Tablet zu weit oben und wurde von der Systemleiste (Uhrzeit/Akku) überlagert. Die Ansicht berücksichtigt jetzt den sicheren Bereich (Notch/Statusleiste) oben und an den Rändern.
+
 ## [1.77.0] – 2026-10-21
 
 ### Neu

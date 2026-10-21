@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\MarketController;
+use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -51,7 +52,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('items/{item}', [CollectionController::class, 'updateItem'])->whereNumber('item')->name('items.update');
         Route::delete('items/{item}', [CollectionController::class, 'destroyItem'])->whereNumber('item')->name('items.destroy');
 
-        // Trips (read-only for now): list + itinerary/places/packing/bookings for offline viewing.
+        // Pages / notes (second brain): Markdown body, offline editable.
+        Route::get('pages', [PageController::class, 'index'])->name('pages.index');
+        Route::post('pages', [PageController::class, 'store'])->name('pages.store');
+        Route::get('pages/{page}', [PageController::class, 'show'])->whereNumber('page')->name('pages.show');
+        Route::put('pages/{page}', [PageController::class, 'update'])->whereNumber('page')->name('pages.update');
+        Route::delete('pages/{page}', [PageController::class, 'destroy'])->whereNumber('page')->name('pages.destroy');
+
+        // Trips (read + edit itinerary/packing/bookings) for offline use.
         Route::get('trips', [TripController::class, 'index'])->name('trips.index');
         Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
         Route::post('trips/{trip}/stops', [TripController::class, 'storeStop'])->whereNumber('trip')->name('trips.stops.store');

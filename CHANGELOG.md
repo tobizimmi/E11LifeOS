@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.78.0] – 2026-10-21
+
+### Neu
+- **App-API für Offline-Bearbeitung erweitert.** Neue Endpunkte unter `/api/v1`, damit die native App weitere Bereiche offline lesen und schreiben und bei Verbindung synchronisieren kann: Sammlungen/Einträge (Notizen, Haushaltsvorrat, eigene Datenbanken) mit Eigenschaften (`GET /collections`, `GET/POST /collections/{id}/items`, `PUT/DELETE /items/{id}`) sowie Portfolio-Positionen (`POST /portfolios/{id}/positions`, `PUT/DELETE /positions/{id}`). Alles haushalts- bzw. kontobezogen abgesichert.
+
 ## [1.77.1] – 2026-10-21
 
 ### Behoben

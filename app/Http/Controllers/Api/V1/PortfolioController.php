@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Portfolio;
+use App\Models\PortfolioPosition;
 use App\Models\PortfolioTransaction;
 use App\Support\Portfolio\Valuation;
 use Illuminate\Http\JsonResponse;
@@ -124,8 +125,82 @@ class PortfolioController extends ApiController
         return $this->valuation->rows($portfolio->positions()->get());
     }
 
+    /**
+     * Adds a manually tracked position to a portfolio (e.g. entered offline in the app).
+     */
+    public function storePosition(Request $request, Portfolio $portfolio): JsonResponse
+    {
+        $this->authorizePortfolio($portfolio);
+        $data = $this->validatePosition($request);
+
+        $position = PortfolioPosition::create($data + ['portfolio_id' => $portfolio->id, 'manual' => true]);
+
+        return $this->ok($this->positionData($position), 201);
+    }
+
+    public function updatePosition(Request $request, PortfolioPosition $position): JsonResponse
+    {
+        $this->authorizePosition($position);
+        $position->update($this->validatePosition($request, required: false));
+
+        return $this->ok($this->positionData($position->fresh()));
+    }
+
+    public function destroyPosition(PortfolioPosition $position): JsonResponse
+    {
+        $this->authorizePosition($position);
+        $position->delete();
+
+        return $this->ok(['id' => $position->id]);
+    }
+
+    /**
+     * @return array{symbol?: string, name?: ?string, isin?: ?string, quantity?: float, avg_buy_price?: float, currency?: ?string, asset_type?: ?string, notes?: ?string}
+     */
+    private function validatePosition(Request $request, bool $required = true): array
+    {
+        return $request->validate([
+            'symbol' => [$required ? 'required' : 'sometimes', 'string', 'max:32'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'isin' => ['nullable', 'string', 'max:20'],
+            'quantity' => [$required ? 'required' : 'sometimes', 'numeric', 'min:0'],
+            'avg_buy_price' => [$required ? 'required' : 'sometimes', 'numeric', 'min:0'],
+            'currency' => ['nullable', 'string', 'max:3'],
+            'asset_type' => ['nullable', 'string', 'max:32'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+    }
+
+    /**
+     * @return array{id: int, portfolio_id: int, symbol: string, name: ?string, isin: ?string, quantity: float, avg_buy_price: float, currency: ?string, asset_type: ?string, notes: ?string, manual: bool}
+     */
+    private function positionData(PortfolioPosition $position): array
+    {
+        return [
+            'id' => $position->id,
+            'portfolio_id' => (int) $position->portfolio_id,
+            'symbol' => $position->symbol,
+            'name' => $position->name,
+            'isin' => $position->isin,
+            'quantity' => (float) $position->quantity,
+            'avg_buy_price' => (float) $position->avg_buy_price,
+            'currency' => $position->currency,
+            'asset_type' => $position->asset_type,
+            'notes' => $position->notes,
+            'manual' => (bool) $position->manual,
+        ];
+    }
+
     private function authorizePortfolio(Portfolio $portfolio): void
     {
         abort_unless($portfolio->user_id === $this->user()->id, 404);
+    }
+
+    private function authorizePosition(PortfolioPosition $position): void
+    {
+        abort_unless(
+            Portfolio::whereKey($position->portfolio_id)->where('user_id', $this->user()->id)->exists(),
+            404
+        );
     }
 }

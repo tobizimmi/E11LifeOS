@@ -15,6 +15,7 @@ use App\Http\Controllers\ExpenseGroupController;
 use App\Http\Controllers\ExternalDocumentController;
 use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
+use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\GroupTripController;
 use App\Http\Controllers\HealthPdfController;
@@ -68,6 +69,12 @@ Route::get('profile/export', DataExportController::class)
 Route::post('profile/export', [DataExportController::class, 'encrypted'])
     ->middleware(['auth', 'throttle:6,1'])
     ->name('profile.export.encrypted');
+
+Route::middleware(['auth'])->controller(GoogleCalendarController::class)->group(function () {
+    Route::get('profile/google-calendar/connect', 'connect')->name('google-calendar.connect');
+    Route::get('profile/google-calendar/callback', 'callback')->name('google-calendar.callback');
+    Route::delete('profile/google-calendar', 'disconnect')->name('google-calendar.disconnect');
+});
 
 Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');

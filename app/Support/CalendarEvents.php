@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CalendarConnection;
 use App\Models\CalendarSubscription;
 use App\Models\Collection;
 use App\Models\Invoice;
@@ -36,6 +37,8 @@ class CalendarEvents
 
     public const EXTERNAL = 'external';
 
+    public const GOOGLE = 'google';
+
     public const LIFE = 'life';
 
     /**
@@ -52,6 +55,7 @@ class CalendarEvents
             self::PORTFOLIO => $user->canUseAddon(Addons::PORTFOLIO) ? ['label' => __('Portfolio'), 'icon' => '📈', 'color' => 'rose'] : null,
             self::LIFE => ['label' => __('Life & provisions'), 'icon' => '🗂️', 'color' => 'teal'],
             self::EXTERNAL => CalendarSubscription::query()->visibleTo($user, $user->currentHousehold()?->id)->exists() ? ['label' => __('Other calendars'), 'icon' => '🗓️', 'color' => 'slate'] : null,
+            self::GOOGLE => CalendarConnection::where('user_id', $user->id)->where('provider', 'google')->exists() ? ['label' => __('Google Calendar'), 'icon' => '🗓️', 'color' => 'rose'] : null,
         ]);
     }
 
@@ -106,6 +110,21 @@ class CalendarEvents
 
                 foreach (IcsCalendar::eventsBetween($subscription, $from, $until) as $event) {
                     $events[] = self::event($event['date'], self::EXTERNAL, $event['title'].' · '.$label, route('calendar.index', ['date' => $event['date'], 'day' => $event['date']]), time: $event['time']);
+                }
+            }
+        }
+
+        if (in_array(self::GOOGLE, $allowed, true)) {
+            $fromDate = $from->toDateString();
+            $untilDate = $until->toDateString();
+
+            foreach (CalendarConnection::where('user_id', $user->id)->where('provider', 'google')->get() as $connection) {
+                foreach ($connection->cached_events ?? [] as $event) {
+                    $date = $event['date'];
+
+                    if ($date >= $fromDate && $date <= $untilDate) {
+                        $events[] = self::event($date, self::GOOGLE, '🗓️ '.$event['title'], route('calendar.index', ['date' => $date, 'day' => $date]), time: $event['time']);
+                    }
                 }
             }
         }

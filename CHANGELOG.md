@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.77.0] – 2026-10-21
+
+### Neu
+- **Google-Kalender-Anbindung (Vorbereitung + Termin-Import).** Im Profil lässt sich der Google Kalender verbinden (OAuth); verbundene Google-Termine erscheinen danach als eigene Quelle „Google Kalender" im LifeOS-Kalender und werden stündlich aktualisiert. Die Anbindung bleibt verborgen, bis die Google-Zugangsdaten am Server hinterlegt sind (`GOOGLE_CALENDAR_*`). Das Zurückschreiben von LifeOS-Terminen nach Google folgt als nächster Schritt.
+
 ## [1.76.0] – 2026-10-21
 
 ### Neu

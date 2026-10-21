@@ -6911,5 +6911,16 @@
     "Nothing scheduled today. Enjoy the day!": "Heute nichts geplant. Genieß den Tag!",
     "The shopping list is empty.": "Die Einkaufsliste ist leer.",
     "Updates automatically.": "Aktualisiert sich automatisch.",
-    "Exit": "Verlassen"
+    "Exit": "Verlassen",
+    "Google Calendar": "Google Kalender",
+    "Connect your Google Calendar so its events appear in LifeOS.": "Verbinde deinen Google Kalender, damit seine Termine in LifeOS erscheinen.",
+    "Prepared, but not yet available: the Google access credentials still need to be set on the server. Once they are, the connect button appears here.": "Vorbereitet, aber noch nicht verfügbar: Die Google-Zugangsdaten müssen noch am Server hinterlegt werden. Danach erscheint hier der Verbinden-Button.",
+    "Last synced :time": "Zuletzt synchronisiert :time",
+    "Disconnect Google Calendar?": "Google Kalender trennen?",
+    "Connect with Google": "Mit Google verbinden",
+    "Writing LifeOS events back to Google follows in a later step.": "Das Zurückschreiben von LifeOS-Terminen nach Google folgt in einem späteren Schritt.",
+    "Calendar synced.": "Kalender synchronisiert.",
+    "Google Calendar connected.": "Google Kalender verbunden.",
+    "Google Calendar disconnected.": "Google Kalender getrennt.",
+    "Could not connect the calendar.": "Der Kalender konnte nicht verbunden werden."
 }

@@ -54,6 +54,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Trips (read-only for now): list + itinerary/places/packing/bookings for offline viewing.
         Route::get('trips', [TripController::class, 'index'])->name('trips.index');
         Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
+        Route::post('trips/{trip}/stops', [TripController::class, 'storeStop'])->whereNumber('trip')->name('trips.stops.store');
+        Route::put('trip-stops/{stop}', [TripController::class, 'updateStop'])->whereNumber('stop')->name('trip-stops.update');
+        Route::delete('trip-stops/{stop}', [TripController::class, 'destroyStop'])->whereNumber('stop')->name('trip-stops.destroy');
+        Route::post('trips/{trip}/packing', [TripController::class, 'storePacking'])->whereNumber('trip')->name('trips.packing.store');
+        Route::put('trip-packing/{packingItem}', [TripController::class, 'updatePacking'])->whereNumber('packingItem')->name('trip-packing.update');
+        Route::delete('trip-packing/{packingItem}', [TripController::class, 'destroyPacking'])->whereNumber('packingItem')->name('trip-packing.destroy');
+        Route::post('trips/{trip}/bookings', [TripController::class, 'storeBooking'])->whereNumber('trip')->name('trips.bookings.store');
+        Route::put('trip-bookings/{booking}', [TripController::class, 'updateBooking'])->whereNumber('booking')->name('trip-bookings.update');
+        Route::delete('trip-bookings/{booking}', [TripController::class, 'destroyBooking'])->whereNumber('booking')->name('trip-bookings.destroy');
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');

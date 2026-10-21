@@ -27,7 +27,11 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?int $editingId = null;
 
-    public string $editText = '';
+    /** Title of the note being edited. */
+    public string $editTitle = '';
+
+    /** Body (Markdown) of the note being edited – bound to the rich editor (pageEditor in app.js). */
+    public string $body = '';
 
     public function mount(): void
     {
@@ -70,13 +74,13 @@ new #[Layout('layouts.app')] class extends Component
     {
         $note = $this->findNote($id);
         $this->editingId = $note->id;
-        $this->editText = trim($note->title."\n".(string) ($note->content['body'] ?? ''));
+        $this->editTitle = $note->title;
+        $this->body = (string) ($note->content['body'] ?? '');
     }
 
     public function cancelEdit(): void
     {
-        $this->editingId = null;
-        $this->editText = '';
+        $this->reset('editingId', 'editTitle', 'body');
     }
 
     public function saveEdit(): void
@@ -85,13 +89,13 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        [$title, $body] = $this->split($this->editText);
+        $title = Str::limit(trim($this->editTitle), 252, '');
 
         if ($title === '') {
             return;
         }
 
-        $this->findNote($this->editingId)->update(['title' => $title, 'content' => ['body' => $body]]);
+        $this->findNote($this->editingId)->update(['title' => $title, 'content' => ['body' => trim($this->body)]]);
         $this->cancelEdit();
     }
 
@@ -149,6 +153,8 @@ new #[Layout('layouts.app')] class extends Component
                 'html' => trim((string) ($note->content['body'] ?? '')) !== '' ? NoteMarkdown::toHtml($note, Auth::user()) : '',
                 'updated' => $note->updated_at,
             ]),
+            // For the editor's [[ link autocomplete.
+            'pageTitles' => $notes->pluck('title')->reject(fn (string $title) => $title === '')->unique()->values()->all(),
         ];
     }
 }; ?>
@@ -177,14 +183,56 @@ new #[Layout('layouts.app')] class extends Component
             @forelse ($notes as $note)
                 <section wire:key="note-{{ $note['id'] }}" class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     @if ($editingId === $note['id'])
-                        <form wire:submit="saveEdit">
-                            <textarea wire:model="editText" rows="5" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></textarea>
-                            <div class="mt-2 flex flex-wrap gap-2">
-                                <x-primary-button>{{ __('Save') }}</x-primary-button>
-                                <x-secondary-button type="button" wire:click="cancelEdit">{{ __('Cancel') }}</x-secondary-button>
-                                <button type="button" wire:click="delete({{ $note['id'] }})" wire:confirm="{{ __('Delete this note?') }}" class="ms-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete') }}</button>
-                            </div>
-                        </form>
+                        <div x-data="pageEditor(@js([
+                            'pageTitles' => $pageTitles,
+                            'translations' => \App\Support\EditorTranslations::all(__('Note')),
+                            'autosave' => false,
+                        ]))" wire:key="note-editor-{{ $note['id'] }}">
+                            <form wire:submit="saveEdit" class="space-y-2">
+                                <x-text-input wire:model="editTitle" class="block w-full font-semibold" placeholder="{{ __('Title') }}" aria-label="{{ __('Title') }}" />
+
+                                <div x-show="mode === 'rich' && isActive('table')" x-cloak class="flex flex-wrap items-center gap-x-1 gap-y-1 rounded-md bg-gray-50 px-2 py-1 text-xs dark:bg-gray-900/50" role="toolbar" aria-label="{{ __('Table') }}">
+                                    <span class="me-1 text-gray-400">▦ {{ __('Table') }}:</span>
+                                    <button type="button" x-on:click="run('addRowAfter')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">+ {{ __('Row') }}</button>
+                                    <button type="button" x-on:click="run('deleteRow')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">− {{ __('Row') }}</button>
+                                    <button type="button" x-on:click="run('addColumnAfter')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">+ {{ __('Column') }}</button>
+                                    <button type="button" x-on:click="run('deleteColumn')" class="rounded-sm px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700">− {{ __('Column') }}</button>
+                                </div>
+
+                                <div wire:ignore x-show="mode !== 'markdown'">
+                                    <div x-ref="bubble" class="editor-bubble" style="visibility: hidden" role="toolbar" aria-label="{{ __('Formatting') }}">
+                                        <button type="button" x-on:click="run('toggleBold')" :class="isActive('bold') && 'is-active'" title="{{ __('Bold') }}"><strong>B</strong></button>
+                                        <button type="button" x-on:click="run('toggleItalic')" :class="isActive('italic') && 'is-active'" title="{{ __('Italic') }}"><em>I</em></button>
+                                        <button type="button" x-on:click="run('toggleStrike')" :class="isActive('strike') && 'is-active'" title="{{ __('Strikethrough') }}"><s>S</s></button>
+                                        <button type="button" x-on:click="run('toggleMark', 'highlight')" :class="isActive('highlight') && 'is-active'" title="{{ __('Highlight') }}"><mark class="rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40">A</mark></button>
+                                        <button type="button" x-on:click="run('toggleCode')" :class="isActive('code') && 'is-active'" title="{{ __('Code') }}"><code>&lt;/&gt;</code></button>
+                                        <button type="button" x-on:click="setLink()" :class="isActive('link') && 'is-active'" title="{{ __('Link') }}">🔗</button>
+                                        <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                        <button type="button" x-on:click="run('toggleHeading', { level: 1 })" :class="isActive('heading', { level: 1 }) && 'is-active'" title="{{ __('Heading 1') }}">H1</button>
+                                        <button type="button" x-on:click="run('toggleHeading', { level: 2 })" :class="isActive('heading', { level: 2 }) && 'is-active'" title="{{ __('Heading 2') }}">H2</button>
+                                        <button type="button" x-on:click="run('toggleHeading', { level: 3 })" :class="isActive('heading', { level: 3 }) && 'is-active'" title="{{ __('Heading 3') }}">H3</button>
+                                        <button type="button" x-on:click="run('toggleTaskList')" :class="isActive('taskList') && 'is-active'" title="{{ __('Checklist') }}">☐</button>
+                                        <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                        @foreach (['gray','red','orange','yellow','green','blue','purple','pink'] as $tc)
+                                            <button type="button" x-on:click="setTextColor('{{ $tc }}')" class="tc-swatch tc-{{ $tc }}" title="{{ __('Text colour') }}">A</button>
+                                        @endforeach
+                                        <button type="button" x-on:click="setTextColor('')" title="{{ __('Remove colour') }}">A̶</button>
+                                    </div>
+                                    <div x-ref="editor" class="editor-frame">
+                                        <p x-show="mode === 'loading'" class="p-3 text-sm text-gray-400">{{ __('Loading editor …') }}</p>
+                                    </div>
+                                </div>
+                                <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" rows="8" class="block w-full rounded-lg border-gray-300 font-mono text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"></textarea>
+
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type.') }}</p>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <x-primary-button>{{ __('Save') }}</x-primary-button>
+                                    <x-secondary-button type="button" wire:click="cancelEdit">{{ __('Cancel') }}</x-secondary-button>
+                                    <button type="button" wire:click="delete({{ $note['id'] }})" wire:confirm="{{ __('Delete this note?') }}" class="ms-auto text-sm text-red-600 underline dark:text-red-400">{{ __('Delete') }}</button>
+                                </div>
+                            </form>
+                        </div>
                     @else
                         <div class="flex items-start justify-between gap-3">
                             <h3 class="min-w-0 font-semibold text-gray-900 dark:text-gray-100">{{ $note['title'] }}</h3>

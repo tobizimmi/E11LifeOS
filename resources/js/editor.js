@@ -183,6 +183,48 @@ const Highlight = Mark.create({
     },
 });
 
+const TEXT_COLORS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
+
+/**
+ * Coloured text ("{color=green}text{/color}"), rendered as <span class="tc-green"> on the server.
+ * The colour is a named palette entry so the Markdown stays short and the server can map it to a
+ * theme-aware CSS class (see NoteMarkdown::colours()).
+ */
+const TextColor = Mark.create({
+    name: 'textColor',
+
+    addAttributes() {
+        return { color: { default: 'gray' } };
+    },
+
+    parseHTML() {
+        return TEXT_COLORS.map((color) => ({ tag: `span.tc-${color}`, attrs: { color } }));
+    },
+
+    renderHTML({ mark, HTMLAttributes }) {
+        return ['span', mergeAttributes(HTMLAttributes, { class: `tc-${mark.attrs.color}` }), 0];
+    },
+
+    markdownTokenizer: {
+        name: 'textColor',
+        level: 'inline',
+        start: (src) => src.indexOf('{color='),
+        tokenize(src, _tokens, lexer) {
+            const match = /^\{color=([a-z]+)\}([\s\S]*?)\{\/color\}/.exec(src);
+
+            if (!match || !TEXT_COLORS.includes(match[1])) {
+                return undefined;
+            }
+
+            return { type: 'textColor', raw: match[0], color: match[1], text: match[2], tokens: lexer.inlineTokens(match[2]) };
+        },
+    },
+
+    parseMarkdown: (token, helpers) => helpers.applyMark('textColor', helpers.parseInline(token.tokens || []), { color: token.color }),
+
+    renderMarkdown: (node, h) => `{color=${node.attrs?.color ?? 'gray'}}${h.renderChildren(node)}{/color}`,
+});
+
 /**
  * Coloured box (":::callout {type="tip"}" … ":::"); the symbol switches the colour.
  */
@@ -330,6 +372,52 @@ const Toggle = Node.create({
         };
     },
 });
+
+/**
+ * Multi-column layout (":::columns" with nested ":::column" blocks). Columns sit side by side on
+ * wide screens and stack on phones (see .page-columns in the stylesheet). The server renders the
+ * same block structure.
+ */
+const Column = Node.create({
+    name: 'column',
+    content: 'block+',
+    isolating: true,
+
+    parseHTML() {
+        return [{ tag: 'div[data-column]' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['div', mergeAttributes(HTMLAttributes, { 'data-column': '', class: 'page-column' }), 0];
+    },
+
+    ...createBlockMarkdownSpec({ nodeName: 'column', content: 'block' }),
+});
+
+const Columns = Node.create({
+    name: 'columns',
+    group: 'block',
+    content: 'column+',
+    defining: true,
+
+    parseHTML() {
+        return [{ tag: 'div[data-columns]' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['div', mergeAttributes(HTMLAttributes, { 'data-columns': '', class: 'page-columns' }), 0];
+    },
+
+    ...createBlockMarkdownSpec({ nodeName: 'columns', content: 'block' }),
+});
+
+/** A columns node with the given number of empty columns, for the slash menu. */
+function makeColumns(count) {
+    return {
+        type: 'columns',
+        content: Array.from({ length: count }, () => ({ type: 'column', content: [{ type: 'paragraph' }] })),
+    };
+}
 
 /**
  * Live block (":::embed {type="tasks"} :::"): the server fills in the page's tasks, the next
@@ -497,6 +585,8 @@ function slashCommands(t, onPickFile, onPickList) {
             run: (c) => c.insertContent({ type: 'callout', attrs: { type }, content: [{ type: 'paragraph' }] }),
         })),
         { title: t.toggle, hint: '▾', run: (c) => c.insertContent({ type: 'toggle', attrs: { title: '' }, content: [{ type: 'paragraph' }] }) },
+        { title: t.columns2, hint: '▥', run: (c) => c.insertContent(makeColumns(2)) },
+        { title: t.columns3, hint: '◫', run: (c) => c.insertContent(makeColumns(3)) },
         { title: t.embedTasks, hint: '✅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'tasks' } }) },
         { title: t.embedCalendar, hint: '📅', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'calendar' } }) },
         { title: t.embedSubpages, hint: '📄', run: (c) => c.insertContent({ type: 'embed', attrs: { type: 'subpages' } }) },
@@ -506,6 +596,59 @@ function slashCommands(t, onPickFile, onPickList) {
         ...(onPickFile ? [{ title: t.attachment, hint: '📎', run: (c) => { onPickFile(); return c; } }] : []),
     ];
 }
+
+/**
+ * Move the current top-level block up or down with Alt+↑ / Alt+↓ (Notion-style "arrange blocks").
+ * Dependency-free: the official drag-handle extension pulls in the whole collaboration/Yjs stack,
+ * which is far too heavy just for reordering.
+ */
+const BlockMove = Extension.create({
+    name: 'blockMove',
+
+    addCommands() {
+        return {
+            moveBlock:
+                (direction) =>
+                ({ state, dispatch }) => {
+                    const { $from } = state.selection;
+
+                    if ($from.depth < 1) {
+                        return false;
+                    }
+
+                    const doc = state.doc;
+                    const index = $from.index(0);
+
+                    if (direction < 0 ? index === 0 : index >= doc.childCount - 1) {
+                        return false;
+                    }
+
+                    if (!dispatch) {
+                        return true;
+                    }
+
+                    const node = doc.child(index);
+                    const sibling = doc.child(index + direction);
+                    const nodeStart = $from.before(1);
+                    const tr = state.tr.delete(nodeStart, nodeStart + node.nodeSize);
+                    const insertPos = direction < 0 ? nodeStart - sibling.nodeSize : nodeStart + sibling.nodeSize;
+
+                    tr.insert(insertPos, node);
+                    tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos + 1)));
+                    dispatch(tr.scrollIntoView());
+
+                    return true;
+                },
+        };
+    },
+
+    addKeyboardShortcuts() {
+        return {
+            'Alt-ArrowUp': () => this.editor.commands.moveBlock(-1),
+            'Alt-ArrowDown': () => this.editor.commands.moveBlock(1),
+        };
+    },
+});
 
 const SlashMenu = Extension.create({
     name: 'slashMenu',
@@ -842,9 +985,13 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             WikiLink,
             MarkdownImage,
             Highlight,
+            TextColor,
+            Column,
+            Columns,
             Callout.configure({ translations }),
             Toggle.configure({ translations }),
             Embed.configure({ translations }),
+            BlockMove,
             SlashMenu.configure({ translations, onPickFile, onPickList }),
             PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
         ],

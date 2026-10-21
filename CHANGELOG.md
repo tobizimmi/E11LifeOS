@@ -3,6 +3,96 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.77.1] – 2026-10-21
+
+### Behoben
+- **Familien-Bildschirm: Uhr nicht mehr hinter der Statusleiste.** Die große Uhr saß am iPhone-Tablet zu weit oben und wurde von der Systemleiste (Uhrzeit/Akku) überlagert. Die Ansicht berücksichtigt jetzt den sicheren Bereich (Notch/Statusleiste) oben und an den Rändern.
+
+## [1.77.0] – 2026-10-21
+
+### Neu
+- **Google-Kalender-Anbindung (Vorbereitung + Termin-Import).** Im Profil lässt sich der Google Kalender verbinden (OAuth); verbundene Google-Termine erscheinen danach als eigene Quelle „Google Kalender" im LifeOS-Kalender und werden stündlich aktualisiert. Die Anbindung bleibt verborgen, bis die Google-Zugangsdaten am Server hinterlegt sind (`GOOGLE_CALENDAR_*`). Das Zurückschreiben von LifeOS-Terminen nach Google folgt als nächster Schritt.
+
+## [1.76.0] – 2026-10-21
+
+### Neu
+- **Familien-Bildschirm (Kiosk-Dashboard).** Neue, großflächige Vollbild-Ansicht fürs Küchen-Tablet: große Uhr & Datum, die heutige Agenda (Termine, Aufgaben, Essensplan, Fristen) und die offene Einkaufsliste – ohne Menü-Drumherum und mit automatischer Aktualisierung (alle 60 s). Erreichbar über „Familien-Bildschirm" im Menü.
+
+## [1.75.0] – 2026-10-21
+
+### Neu
+- **Einkaufsliste aktualisiert sich live.** Die Einkaufsliste lädt sich bei geöffnetem Tab automatisch alle 30 Sekunden neu. Fügt ein Haushaltsmitglied am Handy etwas hinzu oder hakt es ab, erscheint das auf dem Küchen-Tablet oder dem zweiten Gerät ohne manuelles Neuladen.
+
+## [1.74.0] – 2026-10-21
+
+### Neu
+- **Sammlungen: Zusammenfassung pro Zahlenspalte wählbar.** Unter einer Tabelle zeigte LifeOS bei Zahlenspalten bisher immer die Summe. Jetzt lässt sich pro Spalte in den Sammlungs-Einstellungen wählen, wie zusammengefasst wird: **Summe (Σ), Durchschnitt (Ø), Minimum (↓), Maximum (↑) oder Anzahl (#)** – Notion-artige Rollups.
+
+## [1.73.0] – 2026-10-21
+
+### Neu
+- **Datenübersicht im Profil (Datenhoheit).** Das Profil zeigt jetzt „Deine Daten auf einen Blick": wie viele Seiten, Aufgaben, Inbox-Einträge, Datenbanken, Anhänge, Buchungen und Depots du hast, plus welche Dienste verbunden sind (paperless, Bank, Smart Home, Push, Kalender-Abos). Direkt darüber/darunter liegt der vollständige Export – transparent an einem Ort.
+
+## [1.72.0] – 2026-10-21
+
+### Neu
+- **Vorabpauschale-Rechner im Portfolio.** Die Steuer-Seite hat jetzt einen eigenen Abschnitt für die **Vorabpauschale** thesaurierender Fonds/ETFs: Wert zu Jahresanfang und -ende, Ausschüttungen und Fondsart (Teilfreistellung 30/15/60/0 %) eingeben – der Rechner zeigt Basisertrag (Basiszins × 70 %), die Vorabpauschale (gedeckelt auf den Wertzuwachs, abzüglich Ausschüttungen) und die geschätzte Steuer (25 % + Soli, optional Kirchensteuer). Basiszins-Tabelle 2023–2026 hinterlegt.
+
+## [1.71.0] – 2026-10-21
+
+### Neu
+- **Kategorie-Regeln auf alle Buchungen anwenden.** In den Finanzen gibt es bei den gemerkten Kategorien jetzt den Button **„Regeln auf alle Buchungen anwenden"**. Damit werden alle nicht von Hand gesetzten Buchungen anhand deiner Regeln und des Stichwort-Katalogs neu einsortiert – praktisch nach einem Import, der vor dem Anlegen einer Regel lief, oder nach dem Ändern von Regeln. Von Hand gesetzte (gesperrte) Kategorien bleiben unangetastet.
+
+## [1.70.0] – 2026-10-21
+
+### Neu
+- **Fristen werden zu Aufgaben.** Ablaufende Dokumente/Ausweise (Notfallordner) und Fahrzeug-Termine (TÜV/Inspektion, Service) landen jetzt automatisch als **To-Do** in deiner Aufgabenliste, sobald sie in ihre Vorlaufzeit kommen – mit Fälligkeitsdatum, Zuweisung und Rücklink. Ergänzt die bestehenden Kalender-Einträge und Push-Erinnerungen; jede Frist wird genau einmal angelegt. (Verträge & Garantien aus Sammlungen erzeugen weiterhin über den Vertrags-Assistenten Aufgaben.)
+
+## [1.69.0] – 2026-10-21
+
+### Neu
+- **Vermögensplan nutzt Portfolio-Sparpläne.** Unter der Sparrate gibt es jetzt Schnellauswahl-Chips: **„Aus Cashflow"** (Überschuss aus der Cashflow-Analyse, inkl. Mieten & Dividenden) und **„Aus Sparplänen"** (monatliche Summe deiner aktiven Portfolio-Sparpläne, wöchentlich/quartalsweise automatisch umgerechnet). So lässt sich die FIRE-Hochrechnung mit einem Tipp auf echte Zahlen stützen.
+
+## [1.68.0] – 2026-10-20
+
+### Behoben
+- **„Anlegen" in der unteren Leiste öffnete die Suche.** Der „+"-Button (und das Tastenkürzel **N**) öffnet die Befehlsleiste jetzt im **Anlegen-Modus**: Mit sofort sichtbaren Optionen (Neue Notiz, Neue Aufgabe, Einkaufsliste, Neuer Termin) und dem Hinweis, dass man einfach lostippen kann, um etwas als Aufgabe, Einkauf oder Inbox-Eintrag zu erfassen. Im Suchmodus (Lupe / „/") bleibt alles wie gehabt.
+
+## [1.67.0] – 2026-10-20
+
+### Neu
+- **Vermögensplan (FIRE).** Neuer Bereich unter „Geld", der dein aktuelles Nettovermögen und deine monatliche Sparrate aus der Cashflow-Analyse nimmt und in die Zukunft hochrechnet. Du siehst deine **FIRE-Zahl** (Jahresausgaben ÷ Entnahmerate, klassische 4-%-Regel), wann dein Vermögen dein Ziel erreicht (Jahr + Dauer) und wie viel **passives Einkommen** pro Monat am Ziel herauskommt. Rendite, Entnahmerate, Sparrate, Ausgaben und ein eigenes Zielvermögen sind frei einstellbar; dazu eine Verlaufskurve und eine Meilenstein-Tabelle alle 5 Jahre.
+
+## [1.66.0] – 2026-10-20
+
+### Neu
+- **Blöcke anordnen.** Im Seiten-/Notiz-Editor lässt sich der aktuelle Block jetzt per **Alt + ↑ / ↓** nach oben oder unten verschieben (Notion-artiges Umsortieren). Bewusst ohne das offizielle Drag-&-Drop-Paket umgesetzt, da dieses den gesamten Kollaborations-/Yjs-Stack mitgezogen hätte.
+
+## [1.65.0] – 2026-10-20
+
+### Neu
+- **Inbox-Einträge mit Seiten, Aufgaben & Co. verknüpfen.** Beim Öffnen eines Inbox-Eintrags gibt es jetzt den Bereich **„Verknüpfungen"** (wie bei Seiten und Aufgaben): den Eintrag mit Seiten, Aufgaben, Einträgen oder Rezepten verbinden und sehen, was auf ihn verweist. Damit sind Inbox und ToDos mit den Seiten durchgängig verzahnt.
+
+## [1.64.0] – 2026-10-20
+
+### Neu
+- **Mehrspalten-Layout auf Seiten (Notion-Blöcke).** Über das „/"-Menü lassen sich **zwei oder drei Spalten** einfügen; darin kann beliebiger Inhalt (Text, Listen, Bilder, Callouts …) stehen. Auf breiten Bildschirmen stehen die Spalten nebeneinander, auf dem Handy werden sie automatisch untereinander gestapelt.
+
+## [1.63.0] – 2026-10-20
+
+### Neu
+- **Mehr Text-Stile im Seiten-/Notiz-Editor (Notion/Craft).** Über das Auswahl-Menü lassen sich Textstellen jetzt **einfärben** (8 Farben) und schnell in **Überschrift 1/2/3** umwandeln (vorher nur H2). Die Farben werden hell- und dunkelmodus-gerecht dargestellt und bleiben beim Speichern erhalten.
+
+## [1.62.0] – 2026-10-20
+
+### Verbessert
+- **App-Gefühl der installierten Web-App (PWA) verbessert.** Auf dem iPhone/iPad startet die zum Home-Bildschirm hinzugefügte App jetzt im **Vollbild-App-Modus** (ohne Browser-Leiste) mit passender Statusleiste und App-Titel. Das App-Icon bietet beim langen Drücken **Schnellaktionen** (Heute, Aufgaben, Neue Notiz, Dokument scannen). Zusätzlich saubere App-Kennung, Kategorien und Behebung der Manifest-Warnung beim Teilen.
+
+## [1.61.0] – 2026-10-20
+
+### Neu
+- **Notizen komfortabler bearbeiten (wie Craft).** Beim Bearbeiten einer Notiz gibt es jetzt ein eigenes Titelfeld und denselben Rich-Editor wie bei den Seiten: Formatierung (fett/kursiv/durchgestrichen/markiert/Code/Link), per **„/"** Überschriften, Listen, Checklisten, Tabellen, Callouts und Umschalt-Abschnitte sowie **[[Verlinkungen]]** zu anderen Seiten – statt wie bisher nur ein einfaches Textfeld.
+
 ## [1.60.1] – 2026-10-19
 
 ### Behoben

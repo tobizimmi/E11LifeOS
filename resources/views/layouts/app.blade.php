@@ -17,6 +17,12 @@
         <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
         <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
 
+        {{-- Run full-screen (without browser chrome) when added to the home screen on iOS and Android. --}}
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="E11LifeOS">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -92,7 +98,7 @@
                                     <x-icon :name="$tabIcon" class="h-6 w-6" />{{ $tabLabel }}
                                 </a>
                             @else
-                                <button type="button" x-data x-on:click="$dispatch('open-search')" class="flex w-full flex-col items-center gap-0.5 py-1.5 text-gray-600 dark:text-gray-400">
+                                <button type="button" x-data x-on:click="$dispatch('open-create')" class="flex w-full flex-col items-center gap-0.5 py-1.5 text-gray-600 dark:text-gray-400">
                                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm" aria-hidden="true"><x-icon :name="$tabIcon" class="h-5 w-5" stroke-width="2" /></span>{{ $tabLabel }}
                                 </button>
                             @endif
@@ -118,7 +124,7 @@
                         if (this.pending === 'g' && this.routes[event.key]) { event.preventDefault(); this.pending = null; Livewire.navigate(this.routes[event.key]); return; }
                         this.pending = null;
                         if (event.key === '/') { event.preventDefault(); $dispatch('open-search') }
-                        else if (event.key === 'n') { event.preventDefault(); $dispatch('open-search') }
+                        else if (event.key === 'n') { event.preventDefault(); $dispatch('open-create') }
                         else if (event.key === '?') { event.preventDefault(); this.help = ! this.help }
                         else if (event.key === 'g') { this.pending = 'g'; setTimeout(() => this.pending = null, 1200) }
                     },

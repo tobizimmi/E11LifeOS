@@ -38,7 +38,7 @@ class NoteMarkdown
      */
     private const TASK_MARKER = '/^((?:\s*>)*\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(?=\])/';
 
-    private const BLOCK_OPEN = '/^:::(callout|toggle)(?:\s+\{([^}]*)\})?\s*$/';
+    private const BLOCK_OPEN = '/^:::(callout|toggle|columns|column)(?:\s+\{([^}]*)\})?\s*$/';
 
     private const BLOCK_CLOSE = '/^:::\s*$/';
 
@@ -91,7 +91,7 @@ class NoteMarkdown
         }, $note->body());
 
         $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks, $attributes);
-        $html = strtr(self::highlight(self::renderBlocks((string) $markdown, $embed)), $links);
+        $html = strtr(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))), $links);
 
         $html = self::decorateChecklists($html, $note, $viewer);
 
@@ -406,9 +406,43 @@ class NoteMarkdown
             return sprintf('<details class="page-toggle"><summary>%s</summary><div class="page-toggle-body">%s</div></details>', e(($attributes['title'] ?? '') ?: __('Details')), $innerHtml);
         }
 
+        if ($kind === 'columns') {
+            return '<div class="page-columns">'.$innerHtml.'</div>';
+        }
+
+        if ($kind === 'column') {
+            return '<div class="page-column">'.$innerHtml.'</div>';
+        }
+
         $type = array_key_exists($attributes['type'] ?? '', self::CALLOUT_TYPES) ? $attributes['type'] : 'info';
 
         return sprintf('<div class="callout callout-%s" role="note"><span class="callout-icon" aria-hidden="true">%s</span><div class="callout-body">%s</div></div>', $type, self::CALLOUT_TYPES[$type], $innerHtml);
+    }
+
+    /**
+     * Named text colours the editor can apply ("{color=green}…{/color}").
+     */
+    public const TEXT_COLOURS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
+
+    /**
+     * "{color=green}text{/color}" becomes <span class="tc-green">, except inside code. Only the
+     * fixed palette is accepted; anything else is left untouched.
+     */
+    private static function colours(string $html): string
+    {
+        $parts = preg_split('/(<pre[\s>].*?<\/pre>|<code[\s>].*?<\/code>)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$html];
+
+        foreach ($parts as $index => $part) {
+            if ($index % 2 === 0) {
+                $parts[$index] = (string) preg_replace_callback('/\{color=([a-z]+)\}(.+?)\{\/color\}/su', function (array $match) {
+                    return in_array($match[1], self::TEXT_COLOURS, true)
+                        ? '<span class="tc-'.$match[1].'">'.$match[2].'</span>'
+                        : $match[0];
+                }, $part);
+            }
+        }
+
+        return implode('', $parts);
     }
 
     /**

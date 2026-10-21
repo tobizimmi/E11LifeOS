@@ -1020,6 +1020,20 @@ new #[Layout('layouts.app')] class extends Component
         $this->schemaChanged();
     }
 
+    /**
+     * How a number column is summarised under the table (sum, avg, min, max, count).
+     */
+    public function setPropertySummary(int $propertyId, string $function): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->type === CollectionProperty::TYPE_NUMBER, 422);
+
+        $options = $property->options ?? [];
+        $options['summary'] = in_array($function, CollectionProperty::SUMMARY_FUNCTIONS, true) ? $function : 'sum';
+        $property->update(['options' => $options]);
+        $this->schemaChanged();
+    }
+
     public function renameProperty(int $propertyId, string $name): void
     {
         $name = trim($name);
@@ -1809,7 +1823,7 @@ new #[Layout('layouts.app')] class extends Component
                                     @foreach ($visibleProperties as $property)
                                         <td class="px-3 py-2 font-semibold" wire:key="tf-{{ $property->id }}">
                                             @if (($aggregate = $property->aggregate($entries)) !== null)
-                                                {{ $property->type === \App\Models\CollectionProperty::TYPE_NUMBER ? 'Σ ' : '' }}{{ $aggregate }}
+                                                {{ $property->type === \App\Models\CollectionProperty::TYPE_NUMBER ? $property->summaryPrefix() : '' }}{{ $aggregate }}
                                             @endif
                                         </td>
                                     @endforeach

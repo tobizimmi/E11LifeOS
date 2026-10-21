@@ -70,6 +70,39 @@ class PageBlocksTest extends TestCase
         $this->assertTrue($task->fresh()->done);
     }
 
+    public function test_a_multi_column_layout_renders_as_columns(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $body = ":::columns\n:::column\nLinks\n:::\n\n:::column\nRechts\n:::\n:::";
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => $body]]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        $this->assertStringContainsString('<div class="page-columns">', $html);
+        $this->assertSame(2, substr_count($html, '<div class="page-column">'));
+        $this->assertStringContainsString('Links', $html);
+        $this->assertStringContainsString('Rechts', $html);
+    }
+
+    public function test_coloured_text_renders_as_a_themed_span(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => 'Ein {color=green}wichtiger{/color} Punkt und `{color=red}code{/color}`.']]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        // The colour outside code becomes a themed span …
+        $this->assertStringContainsString('<span class="tc-green">wichtiger</span>', $html);
+        // … but a colour token inside inline code stays literal.
+        $this->assertStringContainsString('{color=red}code{/color}', $html);
+
+        // An unknown colour is left untouched (only the fixed palette is accepted).
+        $unknown = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => '{color=chartreuse}x{/color}']]);
+        $this->assertStringContainsString('{color=chartreuse}x{/color}', NoteMarkdown::toHtml($unknown, $user));
+    }
+
     public function test_a_collection_can_be_embedded_in_a_page(): void
     {
         [$user, $household] = $this->memberWithHousehold();

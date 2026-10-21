@@ -311,6 +311,19 @@ document.addEventListener('alpine:init', () => {
                     editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run();
                 }
             },
+
+            // Text colour of the selection; an empty value removes the colour again.
+            setTextColor(color) {
+                if (!editor) {
+                    return;
+                }
+
+                if (color) {
+                    editor.chain().focus().setMark('textColor', { color }).run();
+                } else {
+                    editor.chain().focus().unsetMark('textColor').run();
+                }
+            },
         };
     });
 

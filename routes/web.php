@@ -15,6 +15,7 @@ use App\Http\Controllers\ExpenseGroupController;
 use App\Http\Controllers\ExternalDocumentController;
 use App\Http\Controllers\FinanceReportPdfController;
 use App\Http\Controllers\FinanceTaxExportController;
+use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\GroupTripController;
 use App\Http\Controllers\HealthPdfController;
@@ -69,6 +70,12 @@ Route::post('profile/export', [DataExportController::class, 'encrypted'])
     ->middleware(['auth', 'throttle:6,1'])
     ->name('profile.export.encrypted');
 
+Route::middleware(['auth'])->controller(GoogleCalendarController::class)->group(function () {
+    Route::get('profile/google-calendar/connect', 'connect')->name('google-calendar.connect');
+    Route::get('profile/google-calendar/callback', 'callback')->name('google-calendar.callback');
+    Route::delete('profile/google-calendar', 'disconnect')->name('google-calendar.disconnect');
+});
+
 Route::middleware(['auth'])->group(function () {
     Volt::route('household', 'household.show')->name('household.show');
     Volt::route('inbox', 'inbox.index')->name('inbox.index');
@@ -80,9 +87,11 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('support/{ticket}', 'support.show')->whereNumber('ticket')->name('support.show');
     Route::get('support/files/{message}/{index}', SupportFileController::class)->whereNumber(['message', 'index'])->name('support.file')->middleware('throttle:120,1');
     Volt::route('calendar', 'calendar.index')->name('calendar.index');
+    Volt::route('kiosk', 'kiosk.index')->name('kiosk.index');
     Volt::route('net-worth', 'net-worth.index')->name('net-worth.index');
     Volt::route('contracts', 'contracts.index')->name('contracts.index');
     Volt::route('cashflow', 'cashflow.index')->name('cashflow.index');
+    Volt::route('wealth-plan', 'wealth-plan.index')->name('wealth-plan.index');
     Volt::route('wishlist', 'wishlist.index')->name('wishlist.index');
     Volt::route('pantry', 'pantry.index')->name('pantry.index');
     Volt::route('changelog', 'changelog.index')->name('changelog');

@@ -391,7 +391,9 @@ new class extends Component
 <div
     x-data="{
         open: false,
-        show() {
+        mode: 'search',
+        show(mode = 'search') {
+            this.mode = mode;
             this.open = true;
             this.$nextTick(() => this.$refs.input.focus());
         },
@@ -409,7 +411,8 @@ new class extends Component
     x-on:keydown.window.meta.k.prevent="show()"
     x-on:keydown.window.ctrl.k.prevent="show()"
     x-on:keydown.escape.window="open = false"
-    x-on:open-search.window="show()"
+    x-on:open-search.window="show('search')"
+    x-on:open-create.window="show('create')"
     x-on:close-search.window="open = false"
 >
     <div
@@ -428,14 +431,25 @@ new class extends Component
                 wire:model.live.debounce.250ms="query"
                 type="search"
                 placeholder="{{ __('Search, jump to or create …') }}"
+                x-bind:placeholder="mode === 'create' ? @js(__('What would you like to create?')) : @js(__('Search, jump to or create …'))"
                 class="w-full border-0 border-b border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 px-4 py-3 focus:ring-0"
                 x-on:keydown.enter.prevent="results()[0]?.click()"
             />
 
             <div x-ref="results" class="max-h-[60vh] overflow-y-auto">
                 @if ($typed === '')
+                    {{-- Quick-create menu, shown when the palette is opened via the "+" (create) button. --}}
+                    <div class="py-2" x-show="mode === 'create'" x-cloak>
+                        <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Create') }}</h4>
+                        @foreach ([['notes.index', '✏️', __('New note')], ['tasks.index', '✅', __('New task')], ['shopping-list.index', '🛒', __('Shopping List')], ['calendar.index', '📅', __('New appointment')]] as [$createRoute, $createIcon, $createLabel])
+                            <a href="{{ route($createRoute) }}" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+                                <span aria-hidden="true">{{ $createIcon }}</span> <span class="truncate">{{ $createLabel }}</span>
+                            </a>
+                        @endforeach
+                        <p class="px-4 pt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Or just type to capture it as a task, shopping item or inbox note.') }}</p>
+                    </div>
                     {{-- Recently opened pages, kept in this browser only (see e11-recent in app.js). --}}
-                    <div class="py-2" x-data="{ recent: window.E11Recent?.list() ?? [] }" x-on:open-search.window="recent = window.E11Recent?.list() ?? []" x-show="recent.length">
+                    <div class="py-2" x-data="{ recent: window.E11Recent?.list() ?? [] }" x-on:open-search.window="recent = window.E11Recent?.list() ?? []" x-show="mode === 'search' && recent.length">
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Recently opened') }}</h4>
                         <template x-for="item in recent" :key="item.url">
                             <a :href="item.url" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">

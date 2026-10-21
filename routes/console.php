@@ -14,6 +14,8 @@ Artisan::command('inspire', function () {
 
 // Needs "php artisan schedule:run" every minute on the server (cron) or "php artisan schedule:work".
 Schedule::command('collections:deadline-tasks')->dailyAt('06:45');
+Schedule::command('life:deadline-tasks')->dailyAt('06:48');
+Schedule::command('calendar:sync-google')->hourlyAt(20)->withoutOverlapping();
 Schedule::command('real-estate:reminders')->dailyAt('07:10');
 Schedule::command('real-estate:purge-applicants')->dailyAt('03:40');
 Schedule::command('net-worth:snapshot')->dailyAt('23:40');

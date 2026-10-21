@@ -77,9 +77,17 @@
             </div>
 
             <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
+                <livewire:profile.calendar-sync-form />
+            </div>
+
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
                 <div class="max-w-xl">
                     <livewire:profile.app-devices-form />
                 </div>
+            </div>
+
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">
+                <livewire:profile.data-overview />
             </div>
 
             <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs rounded-2xl">

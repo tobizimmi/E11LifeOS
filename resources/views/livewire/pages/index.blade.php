@@ -693,8 +693,15 @@ new #[Layout('layouts.app')] class extends Component
                                     <button type="button" x-on:click="run('toggleCode')" :class="isActive('code') && 'is-active'" title="{{ __('Code') }}"><code>&lt;/&gt;</code></button>
                                     <button type="button" x-on:click="setLink()" :class="isActive('link') && 'is-active'" title="{{ __('Link') }}">🔗</button>
                                     <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                    <button type="button" x-on:click="run('toggleHeading', { level: 1 })" :class="isActive('heading', { level: 1 }) && 'is-active'" title="{{ __('Heading 1') }}">H1</button>
                                     <button type="button" x-on:click="run('toggleHeading', { level: 2 })" :class="isActive('heading', { level: 2 }) && 'is-active'" title="{{ __('Heading 2') }}">H2</button>
+                                    <button type="button" x-on:click="run('toggleHeading', { level: 3 })" :class="isActive('heading', { level: 3 }) && 'is-active'" title="{{ __('Heading 3') }}">H3</button>
                                     <button type="button" x-on:click="run('toggleTaskList')" :class="isActive('taskList') && 'is-active'" title="{{ __('Checklist') }}">☐</button>
+                                    <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                    @foreach (['gray','red','orange','yellow','green','blue','purple','pink'] as $tc)
+                                        <button type="button" x-on:click="setTextColor('{{ $tc }}')" class="tc-swatch tc-{{ $tc }}" title="{{ __('Text colour') }}">A</button>
+                                    @endforeach
+                                    <button type="button" x-on:click="setTextColor('')" title="{{ __('Remove colour') }}">A̶</button>
                                 </div>
                                 <div x-ref="editor" class="editor-frame">
                                     <p x-show="mode === 'loading'" class="p-3 text-sm text-gray-400">{{ __('Loading editor …') }}</p>
@@ -710,6 +717,7 @@ new #[Layout('layouts.app')] class extends Component
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
                                 {{ __('In checklists, “//15.10.” adds a due date and “@Name” a person; ↗ makes an item a task.') }}
+                                {{ __('Move a block with Alt + ↑ / ↓.') }}
                             </p>
                             <x-input-error :messages="$errors->get('body')" class="mt-2" />
                         </div>

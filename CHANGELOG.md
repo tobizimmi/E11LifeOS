@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.79.0] – 2026-10-21
+
+### Neu
+- **App-API: Reisen lesen.** Neue Endpunkte `GET /api/v1/trips` und `GET /api/v1/trips/{id}` liefern Reisen mit Reiseverlauf (Stationen), Orten, Packliste und Buchungen – damit die native App eine Reise unterwegs offline anzeigen kann. Das Bearbeiten von Reisen in der App folgt als nächste Stufe.
+
 ## [1.78.0] – 2026-10-21
 
 ### Neu

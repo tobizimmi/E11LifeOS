@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
 use App\Http\Controllers\Api\V1\TodayController;
+use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('collections/{collection}/items', [CollectionController::class, 'storeItem'])->whereNumber('collection')->name('collections.items.store');
         Route::put('items/{item}', [CollectionController::class, 'updateItem'])->whereNumber('item')->name('items.update');
         Route::delete('items/{item}', [CollectionController::class, 'destroyItem'])->whereNumber('item')->name('items.destroy');
+
+        // Trips (read-only for now): list + itinerary/places/packing/bookings for offline viewing.
+        Route::get('trips', [TripController::class, 'index'])->name('trips.index');
+        Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');

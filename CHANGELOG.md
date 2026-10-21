@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.81.0] – 2026-10-21
+
+### Neu
+- **App-API: Seiten/Notizen bearbeiten.** Neue Endpunkte für den „Second Brain"-Bereich, damit die native App Seiten offline lesen und schreiben kann: `GET /api/v1/pages`, `POST /api/v1/pages`, `GET|PUT|DELETE /api/v1/pages/{id}`. Der Seiteninhalt ist Markdown (content.body); eine Seite mit Unterseiten wird nicht gelöscht. Haushaltsbezogen abgesichert.
+
 ## [1.80.0] – 2026-10-21
 
 ### Neu

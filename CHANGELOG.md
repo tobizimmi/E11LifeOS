@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.81.1] – 2026-10-22
+
+### Behoben
+- **„Seite abgelaufen" (419) abgefangen.** Wenn die App nach längerer Zeit wieder geöffnet wird und die Sitzung abgelaufen ist, erschien bisher Livewires englischer Dialog „This page has expired." Die Seite lädt sich jetzt still neu und übernimmt dank „Angemeldet bleiben" wieder die Anmeldung, statt den Nutzer mit einem Hinweis zu unterbrechen.
+- **Sitzung bleibt länger bestehen.** Die Standard-Sitzungsdauer wurde von 2 Stunden auf 30 Tage angehoben, damit die wie eine native App genutzte Oberfläche angemeldet bleibt und 419-Fehler kaum noch auftreten.
+
 ## [1.81.0] – 2026-10-21
 
 ### Neu

@@ -6,7 +6,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 ## [1.81.2] – 2026-10-26
 
 ### Sicherheit
-- **Node.js auf 22 LTS angehoben.** Build und Deploy nutzen jetzt Node 22 statt des auslaufenden Node 20, das keine Sicherheitsupdates mehr erhält (u. a. die Brotli-RCE CVE-2026-111497 „Node2Shell" ist erst ab 22.23.4 gepatcht). Node dient bei uns nur zum Asset-Bauen und als PM2-Prozessmanager; die Anwendung selbst ist PHP, daher betrifft die Lücke unseren Code nicht – der Schritt hält die Werkzeugkette aber auf einer unterstützten, gepflegten Version.
+- **Node.js auf 24 LTS angehoben.** Build und Deploy nutzen jetzt Node 24 (Active LTS bis ~April 2028) statt des auslaufenden Node 20, das keine Sicherheitsupdates mehr erhält (u. a. die Brotli-RCE CVE-2026-111497 „Node2Shell" ist erst ab 24.22.1 gepatcht). Node dient bei uns nur zum Asset-Bauen und als PM2-Prozessmanager; die Anwendung selbst ist PHP, daher betrifft die Lücke unseren Code nicht – der Schritt hält die Werkzeugkette aber auf einer unterstützten, gepflegten Version. Server-Anleitung dazu: `docs/node-aktualisieren.md`.
 
 ## [1.81.1] – 2026-10-22
 

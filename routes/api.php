@@ -1,13 +1,16 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\MarketController;
+use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
 use App\Http\Controllers\Api\V1\TodayController;
+use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +45,33 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('capture', [TodayController::class, 'capture'])->name('capture');
         Route::post('presence', [SmartHomeController::class, 'presence'])->name('presence');
 
+        // Generic collections/items (notes, pantry/supplies, custom databases) for offline editing.
+        Route::get('collections', [CollectionController::class, 'index'])->name('collections.index');
+        Route::get('collections/{collection}/items', [CollectionController::class, 'items'])->whereNumber('collection')->name('collections.items');
+        Route::post('collections/{collection}/items', [CollectionController::class, 'storeItem'])->whereNumber('collection')->name('collections.items.store');
+        Route::put('items/{item}', [CollectionController::class, 'updateItem'])->whereNumber('item')->name('items.update');
+        Route::delete('items/{item}', [CollectionController::class, 'destroyItem'])->whereNumber('item')->name('items.destroy');
+
+        // Pages / notes (second brain): Markdown body, offline editable.
+        Route::get('pages', [PageController::class, 'index'])->name('pages.index');
+        Route::post('pages', [PageController::class, 'store'])->name('pages.store');
+        Route::get('pages/{page}', [PageController::class, 'show'])->whereNumber('page')->name('pages.show');
+        Route::put('pages/{page}', [PageController::class, 'update'])->whereNumber('page')->name('pages.update');
+        Route::delete('pages/{page}', [PageController::class, 'destroy'])->whereNumber('page')->name('pages.destroy');
+
+        // Trips (read + edit itinerary/packing/bookings) for offline use.
+        Route::get('trips', [TripController::class, 'index'])->name('trips.index');
+        Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
+        Route::post('trips/{trip}/stops', [TripController::class, 'storeStop'])->whereNumber('trip')->name('trips.stops.store');
+        Route::put('trip-stops/{stop}', [TripController::class, 'updateStop'])->whereNumber('stop')->name('trip-stops.update');
+        Route::delete('trip-stops/{stop}', [TripController::class, 'destroyStop'])->whereNumber('stop')->name('trip-stops.destroy');
+        Route::post('trips/{trip}/packing', [TripController::class, 'storePacking'])->whereNumber('trip')->name('trips.packing.store');
+        Route::put('trip-packing/{packingItem}', [TripController::class, 'updatePacking'])->whereNumber('packingItem')->name('trip-packing.update');
+        Route::delete('trip-packing/{packingItem}', [TripController::class, 'destroyPacking'])->whereNumber('packingItem')->name('trip-packing.destroy');
+        Route::post('trips/{trip}/bookings', [TripController::class, 'storeBooking'])->whereNumber('trip')->name('trips.bookings.store');
+        Route::put('trip-bookings/{booking}', [TripController::class, 'updateBooking'])->whereNumber('booking')->name('trip-bookings.update');
+        Route::delete('trip-bookings/{booking}', [TripController::class, 'destroyBooking'])->whereNumber('booking')->name('trip-bookings.destroy');
+
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
@@ -51,6 +81,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::middleware('addon:portfolio')->group(function () {
             Route::get('portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');
             Route::get('portfolios/{portfolio}/positions', [PortfolioController::class, 'positions'])->name('portfolios.positions');
+            Route::post('portfolios/{portfolio}/positions', [PortfolioController::class, 'storePosition'])->name('portfolios.positions.store');
+            Route::put('positions/{position}', [PortfolioController::class, 'updatePosition'])->whereNumber('position')->name('positions.update');
+            Route::delete('positions/{position}', [PortfolioController::class, 'destroyPosition'])->whereNumber('position')->name('positions.destroy');
             Route::get('portfolios/{portfolio}/summary', [PortfolioController::class, 'summary'])->name('portfolios.summary');
             Route::get('portfolios/{portfolio}/transactions', [PortfolioController::class, 'transactions'])->name('portfolios.transactions');
             Route::get('portfolios/{portfolio}/chart', [PortfolioController::class, 'chart'])->name('portfolios.chart');

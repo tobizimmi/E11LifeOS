@@ -3,6 +3,37 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.81.2] – 2026-10-26
+
+### Sicherheit
+- **Node.js auf 24 LTS angehoben.** Build und Deploy nutzen jetzt Node 24 (Active LTS bis ~April 2028) statt des auslaufenden Node 20, das keine Sicherheitsupdates mehr erhält (u. a. die Brotli-RCE CVE-2026-111497 „Node2Shell" ist erst ab 24.22.1 gepatcht). Node dient bei uns nur zum Asset-Bauen und als PM2-Prozessmanager; die Anwendung selbst ist PHP, daher betrifft die Lücke unseren Code nicht – der Schritt hält die Werkzeugkette aber auf einer unterstützten, gepflegten Version. Server-Anleitung dazu: `docs/node-aktualisieren.md`.
+
+## [1.81.1] – 2026-10-22
+
+### Behoben
+- **„Seite abgelaufen" (419) abgefangen.** Wenn die App nach längerer Zeit wieder geöffnet wird und die Sitzung abgelaufen ist, erschien bisher Livewires englischer Dialog „This page has expired." Die Seite lädt sich jetzt still neu und übernimmt dank „Angemeldet bleiben" wieder die Anmeldung, statt den Nutzer mit einem Hinweis zu unterbrechen.
+- **Sitzung bleibt länger bestehen.** Die Standard-Sitzungsdauer wurde von 2 Stunden auf 30 Tage angehoben, damit die wie eine native App genutzte Oberfläche angemeldet bleibt und 419-Fehler kaum noch auftreten.
+
+## [1.81.0] – 2026-10-21
+
+### Neu
+- **App-API: Seiten/Notizen bearbeiten.** Neue Endpunkte für den „Second Brain"-Bereich, damit die native App Seiten offline lesen und schreiben kann: `GET /api/v1/pages`, `POST /api/v1/pages`, `GET|PUT|DELETE /api/v1/pages/{id}`. Der Seiteninhalt ist Markdown (content.body); eine Seite mit Unterseiten wird nicht gelöscht. Haushaltsbezogen abgesichert.
+
+## [1.80.0] – 2026-10-21
+
+### Neu
+- **App-API: Reisen bearbeiten.** Neue Schreib-Endpunkte, damit die native App unterwegs den Reiseverlauf (Stationen), die Packliste und Buchungen pflegen kann: `POST /api/v1/trips/{id}/stops` + `PUT|DELETE /api/v1/trip-stops/{id}`, `POST /api/v1/trips/{id}/packing` + `PUT|DELETE /api/v1/trip-packing/{id}` sowie `POST /api/v1/trips/{id}/bookings` + `PUT|DELETE /api/v1/trip-bookings/{id}`. Alles haushaltsbezogen abgesichert.
+
+## [1.79.0] – 2026-10-21
+
+### Neu
+- **App-API: Reisen lesen.** Neue Endpunkte `GET /api/v1/trips` und `GET /api/v1/trips/{id}` liefern Reisen mit Reiseverlauf (Stationen), Orten, Packliste und Buchungen – damit die native App eine Reise unterwegs offline anzeigen kann. Das Bearbeiten von Reisen in der App folgt als nächste Stufe.
+
+## [1.78.0] – 2026-10-21
+
+### Neu
+- **App-API für Offline-Bearbeitung erweitert.** Neue Endpunkte unter `/api/v1`, damit die native App weitere Bereiche offline lesen und schreiben und bei Verbindung synchronisieren kann: Sammlungen/Einträge (Notizen, Haushaltsvorrat, eigene Datenbanken) mit Eigenschaften (`GET /collections`, `GET/POST /collections/{id}/items`, `PUT/DELETE /items/{id}`) sowie Portfolio-Positionen (`POST /portfolios/{id}/positions`, `PUT/DELETE /positions/{id}`). Alles haushalts- bzw. kontobezogen abgesichert.
+
 ## [1.77.1] – 2026-10-21
 
 ### Behoben

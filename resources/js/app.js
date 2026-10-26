@@ -766,9 +766,46 @@ document.addEventListener('livewire:init', () => {
     window.Livewire.hook('request', ({ succeed, fail }) => {
         LivewireFeedback.start();
         succeed(() => LivewireFeedback.done());
-        fail(() => LivewireFeedback.done());
+        fail((payload) => {
+            LivewireFeedback.done();
+            handleExpiredSession(payload);
+        });
     });
 });
+
+/*
+ * Gracefully recover from an expired session (HTTP 419) instead of Livewire's default English
+ * "This page has expired." confirm dialog. The app is used like a native app on the home screen,
+ * so it is often reopened long after the session lifetime; the first action then fails with 419.
+ * We reload the current page silently: the server issues a fresh session + CSRF token, and
+ * "remember me" re-authenticates the user on the same URL. A short guard prevents a reload loop.
+ */
+function handleExpiredSession(payload) {
+    if (!payload || payload.status !== 419 || typeof payload.preventDefault !== 'function') {
+        return;
+    }
+
+    payload.preventDefault();
+
+    let last = 0;
+    try {
+        last = Number(sessionStorage.getItem('e11-session-expired-reload') || 0);
+    } catch {
+        last = 0;
+    }
+
+    if (Date.now() - last < 8000) {
+        return;
+    }
+
+    try {
+        sessionStorage.setItem('e11-session-expired-reload', String(Date.now()));
+    } catch {
+        // Ignore storage failures (private mode); the reload still proceeds.
+    }
+
+    window.location.reload();
+}
 
 /*
  * Physical motion (Apple "Designing Fluid Interfaces"): springs described by damping ratio and

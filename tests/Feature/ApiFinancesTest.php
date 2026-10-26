@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BankAccount;
 use App\Models\FinanceBudget;
 use App\Models\Transaction;
 use App\Models\User;
@@ -26,8 +27,9 @@ class ApiFinancesTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
 
-        Transaction::create(['household_id' => $household->id, 'user_id' => $user->id, 'booked_on' => now()->toDateString(), 'amount' => -50, 'counterparty' => 'Supermarkt', 'purpose' => 'Einkauf', 'category' => 'groceries', 'import_hash' => 'h1']);
-        Transaction::create(['household_id' => $household->id, 'user_id' => $user->id, 'booked_on' => now()->toDateString(), 'amount' => 1000, 'counterparty' => 'Arbeitgeber', 'purpose' => 'Gehalt', 'category' => 'other', 'import_hash' => 'h2']);
+        $account = BankAccount::create(['household_id' => $household->id, 'user_id' => $user->id, 'name' => 'Giro']);
+        Transaction::create(['household_id' => $household->id, 'user_id' => $user->id, 'bank_account_id' => $account->id, 'booked_on' => now()->toDateString(), 'amount' => -50, 'counterparty' => 'Supermarkt', 'purpose' => 'Einkauf', 'category' => 'groceries', 'import_hash' => 'h1']);
+        Transaction::create(['household_id' => $household->id, 'user_id' => $user->id, 'bank_account_id' => $account->id, 'booked_on' => now()->toDateString(), 'amount' => 1000, 'counterparty' => 'Arbeitgeber', 'purpose' => 'Gehalt', 'category' => 'other', 'import_hash' => 'h2']);
         FinanceBudget::create(['user_id' => $user->id, 'household_id' => $household->id, 'category' => 'groceries', 'monthly_limit' => 200]);
 
         $data = $this->getJson('/api/v1/finances', $headers)->assertOk()->json('data');
@@ -47,7 +49,8 @@ class ApiFinancesTest extends TestCase
         [$other, $otherHousehold] = $this->memberWithHousehold();
         $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
 
-        Transaction::create(['household_id' => $otherHousehold->id, 'user_id' => $other->id, 'booked_on' => now()->toDateString(), 'amount' => -99, 'category' => 'groceries', 'import_hash' => 'h3']);
+        $account = BankAccount::create(['household_id' => $otherHousehold->id, 'user_id' => $other->id, 'name' => 'Giro']);
+        Transaction::create(['household_id' => $otherHousehold->id, 'user_id' => $other->id, 'bank_account_id' => $account->id, 'booked_on' => now()->toDateString(), 'amount' => -99, 'category' => 'groceries', 'import_hash' => 'h3']);
 
         $this->getJson('/api/v1/finances', $headers)->assertOk()->assertJsonCount(0, 'data.transactions');
     }

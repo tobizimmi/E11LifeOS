@@ -318,7 +318,7 @@ class LifeController extends ApiController
             ->get()
             ->map(fn (Transaction $transaction): array => [
                 'id' => $transaction->id,
-                'booked_on' => $transaction->booked_on?->toDateString(),
+                'booked_on' => $transaction->booked_on->toDateString(),
                 'amount' => round((float) $transaction->amount, 2),
                 'counterparty' => $transaction->counterparty,
                 'purpose' => $transaction->purpose,

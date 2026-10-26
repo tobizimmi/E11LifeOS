@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\ApiToken;
 use App\Models\Collection;
+use App\Models\FinanceBudget;
 use App\Models\Household;
 use App\Models\Item;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Support\CalendarEvents;
+use App\Support\Finance\Budgets;
+use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\NetWorth;
 use App\Support\InAppNotifications;
 use App\Support\QuickCapture;
@@ -268,6 +272,70 @@ class LifeController extends ApiController
                 'total' => $group['total'],
                 'rows' => array_map(fn (array $row) => ['label' => $row['label'], 'value' => $row['value'], 'hint' => $row['hint']], $group['rows']),
             ], $netWorth['groups']),
+        ]);
+    }
+
+    /**
+     * Finance overview: this month's income/expenses, budget status and the most recent bookings.
+     */
+    public function finances(): JsonResponse
+    {
+        $user = $this->user();
+        $household = $this->household();
+        $month = Carbon::now()->startOfMonth();
+
+        $monthTx = Transaction::query()
+            ->where('household_id', $household->id)
+            ->whereBetween('booked_on', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()])
+            ->get();
+        $income = round((float) $monthTx->where('amount', '>', 0)->sum('amount'), 2);
+        $expenses = round(abs((float) $monthTx->where('amount', '<', 0)->sum('amount')), 2);
+
+        $budgets = [];
+        foreach (Budgets::status($user, $household->id, $month) as $row) {
+            /** @var array<string, mixed> $row */
+            $rawBudget = $row['budget'] ?? null;
+            $budget = $rawBudget instanceof FinanceBudget ? $rawBudget : null;
+
+            $budgets[] = [
+                'category' => $budget?->category,
+                'label' => $row['label'],
+                'icon' => $row['icon'],
+                'spent' => round((float) $row['spent'], 2),
+                'limit' => round((float) $row['limit'], 2),
+                'available' => round((float) $row['available'], 2),
+                'remaining' => round((float) $row['remaining'], 2),
+                'percent' => (float) $row['percent'],
+            ];
+        }
+
+        $transactions = Transaction::query()
+            ->where('household_id', $household->id)
+            ->with('account')
+            ->orderByDesc('booked_on')
+            ->orderByDesc('id')
+            ->limit(40)
+            ->get()
+            ->map(fn (Transaction $transaction): array => [
+                'id' => $transaction->id,
+                'booked_on' => $transaction->booked_on->toDateString(),
+                'amount' => round((float) $transaction->amount, 2),
+                'counterparty' => $transaction->counterparty,
+                'purpose' => $transaction->purpose,
+                'category' => $transaction->category,
+                'category_label' => $transaction->category !== null ? FinanceCategories::label($transaction->category) : null,
+                'account' => $transaction->account?->name,
+            ])
+            ->values()
+            ->all();
+
+        return $this->ok([
+            'month' => $month->format('Y-m'),
+            'income' => $income,
+            'expenses' => $expenses,
+            'balance' => round($income - $expenses, 2),
+            'budgets' => $budgets,
+            'transactions' => $transactions,
         ]);
     }
 

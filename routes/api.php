@@ -40,6 +40,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('shopping/quick', [LifeController::class, 'quickShopping'])->name('shopping.quick');
         Route::post('shopping/{entry}/toggle', [LifeController::class, 'toggleShopping'])->whereNumber('entry')->name('shopping.toggle');
         Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
+        Route::get('finances', [LifeController::class, 'finances'])->name('finances');
         Route::get('today', [TodayController::class, 'today'])->name('today');
         Route::get('widgets', [TodayController::class, 'widgets'])->name('widgets');
         Route::post('capture', [TodayController::class, 'capture'])->name('capture');

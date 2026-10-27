@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
@@ -75,6 +76,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('pages/{page}', [PageController::class, 'show'])->whereNumber('page')->name('pages.show');
         Route::put('pages/{page}', [PageController::class, 'update'])->whereNumber('page')->name('pages.update');
         Route::delete('pages/{page}', [PageController::class, 'destroy'])->whereNumber('page')->name('pages.destroy');
+        Route::post('pages/{page}/attachments', [AttachmentController::class, 'store'])->whereNumber('page')->name('pages.attachments.store');
+        Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->whereNumber('attachment')->name('attachments.api.show');
 
         // Trips (read + edit itinerary/packing/bookings) for offline use.
         Route::get('trips', [TripController::class, 'index'])->name('trips.index');

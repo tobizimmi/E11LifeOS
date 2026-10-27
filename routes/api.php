@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
@@ -40,6 +41,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('shopping/quick', [LifeController::class, 'quickShopping'])->name('shopping.quick');
         Route::post('shopping/{entry}/toggle', [LifeController::class, 'toggleShopping'])->whereNumber('entry')->name('shopping.toggle');
         Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
+        Route::get('finances', [LifeController::class, 'finances'])->name('finances');
         Route::get('today', [TodayController::class, 'today'])->name('today');
         Route::get('widgets', [TodayController::class, 'widgets'])->name('widgets');
         Route::post('capture', [TodayController::class, 'capture'])->name('capture');
@@ -76,6 +78,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
             Route::post('smart-home/modes/{key}', [SmartHomeController::class, 'mode'])->where('key', '[a-z_]{1,40}')->name('smart-home.mode');
+        });
+
+        Route::middleware('addon:recipes')->group(function () {
+            Route::get('recipes', [RecipeController::class, 'index'])->name('recipes.index');
+            Route::get('recipes/{recipe}', [RecipeController::class, 'show'])->whereNumber('recipe')->name('recipes.show');
         });
 
         Route::middleware('addon:portfolio')->group(function () {

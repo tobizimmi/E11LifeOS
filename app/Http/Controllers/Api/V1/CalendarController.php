@@ -30,7 +30,7 @@ class CalendarController extends ApiController
                 return [
                     'id' => $subscription->id,
                     'name' => $subscription->name,
-                    'host' => is_string($subscription->url) ? parse_url($subscription->url, PHP_URL_HOST) : null,
+                    'host' => parse_url($subscription->url, PHP_URL_HOST) ?: null,
                     'visibility' => $subscription->visibility,
                     'owner' => $owner instanceof User ? $owner->name : null,
                     'mine' => $subscription->user_id === $this->user()->id,
@@ -61,7 +61,7 @@ class CalendarController extends ApiController
         return $this->ok([
             'id' => $subscription->id,
             'name' => $subscription->name,
-            'host' => is_string($subscription->url) ? parse_url($subscription->url, PHP_URL_HOST) : null,
+            'host' => parse_url($subscription->url, PHP_URL_HOST) ?: null,
             'visibility' => $subscription->visibility,
             'mine' => true,
         ], 201);

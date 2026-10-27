@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\CalendarSubscription;
 use App\Models\Household;
 use App\Models\Item;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,16 +23,21 @@ class CalendarController extends ApiController
             ->with('user')
             ->orderBy('name')
             ->get()
-            ->map(fn (CalendarSubscription $subscription): array => [
-                'id' => $subscription->id,
-                'name' => $subscription->name,
-                'url' => $subscription->url,
-                'visibility' => $subscription->visibility,
-                'owner' => $subscription->user?->name,
-                'mine' => $subscription->user_id === $this->user()->id,
-                'fetched_at' => $subscription->fetched_at?->toIso8601String(),
-                'error' => $subscription->error,
-            ]);
+            ->map(function (CalendarSubscription $subscription): array {
+                // The URL is stored encrypted and may hold a secret token, so expose only its host.
+                $owner = $subscription->user;
+
+                return [
+                    'id' => $subscription->id,
+                    'name' => $subscription->name,
+                    'host' => is_string($subscription->url) ? parse_url($subscription->url, PHP_URL_HOST) : null,
+                    'visibility' => $subscription->visibility,
+                    'owner' => $owner instanceof User ? $owner->name : null,
+                    'mine' => $subscription->user_id === $this->user()->id,
+                    'error' => $subscription->error,
+                ];
+            })
+            ->all();
 
         return $this->ok($subscriptions);
     }
@@ -55,7 +61,7 @@ class CalendarController extends ApiController
         return $this->ok([
             'id' => $subscription->id,
             'name' => $subscription->name,
-            'url' => $subscription->url,
+            'host' => is_string($subscription->url) ? parse_url($subscription->url, PHP_URL_HOST) : null,
             'visibility' => $subscription->visibility,
             'mine' => true,
         ], 201);

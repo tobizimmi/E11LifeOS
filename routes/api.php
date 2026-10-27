@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
+use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\PageController;
@@ -32,8 +34,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('tasks', [LifeController::class, 'tasks'])->name('tasks.index');
         Route::post('tasks', [LifeController::class, 'storeTask'])->name('tasks.store');
+        Route::put('tasks/{task}', [LifeController::class, 'updateTask'])->whereNumber('task')->name('tasks.update');
+        Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
         Route::get('calendar', [LifeController::class, 'calendar'])->name('calendar');
+        Route::get('calendar/subscriptions', [CalendarController::class, 'subscriptions'])->name('calendar.subscriptions.index');
+        Route::post('calendar/subscriptions', [CalendarController::class, 'storeSubscription'])->name('calendar.subscriptions.store');
+        Route::delete('calendar/subscriptions/{subscription}', [CalendarController::class, 'destroySubscription'])->whereNumber('subscription')->name('calendar.subscriptions.destroy');
         Route::get('notifications', [LifeController::class, 'notifications'])->name('notifications.index');
         Route::post('notifications/read', [LifeController::class, 'readNotifications'])->name('notifications.read');
         Route::get('shopping', [LifeController::class, 'shopping'])->name('shopping.index');
@@ -42,6 +49,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('shopping/{entry}/toggle', [LifeController::class, 'toggleShopping'])->whereNumber('entry')->name('shopping.toggle');
         Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
         Route::get('finances', [LifeController::class, 'finances'])->name('finances');
+        Route::get('finance/categories', [FinanceController::class, 'categories'])->name('finance.categories');
+        Route::put('transactions/{transaction}', [FinanceController::class, 'recategorize'])->whereNumber('transaction')->name('transactions.update');
+        Route::get('budgets', [FinanceController::class, 'budgets'])->name('budgets.index');
+        Route::put('budgets', [FinanceController::class, 'updateBudget'])->name('budgets.update');
+        Route::get('cashflow', [FinanceController::class, 'cashflow'])->name('cashflow.index');
+        Route::post('cashflow', [FinanceController::class, 'storeCashflow'])->name('cashflow.store');
+        Route::put('cashflow/{cashflowEntry}', [FinanceController::class, 'updateCashflow'])->whereNumber('cashflowEntry')->name('cashflow.update');
+        Route::delete('cashflow/{cashflowEntry}', [FinanceController::class, 'destroyCashflow'])->whereNumber('cashflowEntry')->name('cashflow.destroy');
         Route::get('today', [TodayController::class, 'today'])->name('today');
         Route::get('widgets', [TodayController::class, 'widgets'])->name('widgets');
         Route::post('capture', [TodayController::class, 'capture'])->name('capture');
@@ -82,7 +97,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::middleware('addon:recipes')->group(function () {
             Route::get('recipes', [RecipeController::class, 'index'])->name('recipes.index');
+            Route::post('recipes', [RecipeController::class, 'store'])->name('recipes.store');
             Route::get('recipes/{recipe}', [RecipeController::class, 'show'])->whereNumber('recipe')->name('recipes.show');
+            Route::put('recipes/{recipe}', [RecipeController::class, 'update'])->whereNumber('recipe')->name('recipes.update');
+            Route::delete('recipes/{recipe}', [RecipeController::class, 'destroy'])->whereNumber('recipe')->name('recipes.destroy');
         });
 
         Route::middleware('addon:portfolio')->group(function () {

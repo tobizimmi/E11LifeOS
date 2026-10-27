@@ -69,13 +69,34 @@ class LifeController extends ApiController
      */
     public function storeTask(Request $request): JsonResponse
     {
-        $data = $request->validate(['text' => ['required', 'string', 'max:500']]);
+        $data = $request->validate([
+            'text' => ['required', 'string', 'max:500'],
+            'due' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'priority' => ['sometimes', 'nullable', 'in:high,medium,low'],
+        ]);
         $task = QuickCapture::task($this->user(), $this->household()->id, $data['text']);
         abort_if($task === null, 422, __('Please enter a title.'));
 
-        $due = Collection::tasksFor($task->household_id)->systemProperty('due');
+        $collection = Collection::tasksFor($task->household_id);
+        $dueProperty = $collection->systemProperty('due');
+        $priorityProperty = $collection->systemProperty('priority');
 
-        return $this->ok($this->taskData($task, $due ? ((string) $task->propertyValue($due) ?: null) : null), 201);
+        // An explicit date/priority (e.g. the calendar quick-add) overrides what was parsed from the text.
+        if (array_key_exists('due', $data) && $dueProperty) {
+            $task->setPropertyValue($dueProperty, $data['due']);
+        }
+        if (array_key_exists('priority', $data) && $priorityProperty) {
+            $task->setPropertyValue($priorityProperty, $data['priority']);
+        }
+        if (array_key_exists('due', $data) || array_key_exists('priority', $data)) {
+            $task->save();
+        }
+
+        return $this->ok($this->taskData(
+            $task,
+            $dueProperty ? ((string) $task->propertyValue($dueProperty) ?: null) : null,
+            $priorityProperty ? ((string) $task->propertyValue($priorityProperty) ?: null) : null,
+        ), 201);
     }
 
     public function toggleTask(int $task): JsonResponse

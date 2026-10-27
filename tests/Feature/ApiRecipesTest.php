@@ -52,4 +52,47 @@ class ApiRecipesTest extends TestCase
 
         $this->getJson('/api/v1/recipes', $headers)->assertOk()->assertJsonCount(0, 'data');
     }
+
+    public function test_recipes_can_be_created_updated_and_deleted(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $household->setAddon('recipes', true);
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        $id = $this->postJson('/api/v1/recipes', [
+            'title' => 'Chili',
+            'servings' => 4,
+            'difficulty' => 'easy',
+            'ingredients' => ['Bohnen', 'Hackfleisch'],
+            'instructions' => ['Anbraten', 'Köcheln'],
+        ], $headers)->assertCreated()
+            ->assertJsonPath('data.title', 'Chili')
+            ->assertJsonPath('data.servings', 4)
+            ->assertJsonCount(2, 'data.ingredients')
+            ->json('data.id');
+
+        $this->assertDatabaseHas('recipes', ['id' => $id, 'household_id' => $household->id, 'created_by' => $user->id]);
+
+        // An invalid difficulty is rejected.
+        $this->postJson('/api/v1/recipes', ['title' => 'X', 'difficulty' => 'extreme'], $headers)->assertStatus(422);
+
+        // Partial update keeps other fields.
+        $this->putJson("/api/v1/recipes/{$id}", [
+            'title' => 'Chili con Carne',
+            'instructions' => ['Anbraten', 'Köcheln', 'Servieren'],
+        ], $headers)->assertOk()
+            ->assertJsonPath('data.title', 'Chili con Carne')
+            ->assertJsonPath('data.servings', 4)
+            ->assertJsonCount(3, 'data.instructions');
+
+        // Deletion removes it.
+        $this->deleteJson("/api/v1/recipes/{$id}", [], $headers)->assertOk();
+        $this->assertDatabaseMissing('recipes', ['id' => $id]);
+
+        // Another household's recipe cannot be edited or deleted.
+        [$other, $otherHousehold] = $this->memberWithHousehold();
+        $foreign = Recipe::factory()->create(['household_id' => $otherHousehold->id, 'created_by' => $other->id, 'title' => 'Fremd']);
+        $this->putJson("/api/v1/recipes/{$foreign->id}", ['title' => 'Hack'], $headers)->assertNotFound();
+        $this->deleteJson("/api/v1/recipes/{$foreign->id}", [], $headers)->assertNotFound();
+    }
 }

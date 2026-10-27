@@ -40,6 +40,7 @@ class LifeController extends ApiController
         $household = $this->household();
         $collection = Collection::tasksFor($household->id)->load('properties');
         $due = $collection->systemProperty('due');
+        $priority = $collection->systemProperty('priority');
         $filter = (string) $request->query('filter', 'all');
         $today = today()->toDateString();
         $week = today()->addDays(7)->toDateString();
@@ -54,7 +55,11 @@ class LifeController extends ApiController
             })
             ->sortBy(fn (array $row) => $row['due'] ?? '9999-99-99')
             ->values()
-            ->map(fn (array $row) => $this->taskData($row['task'], $row['due']));
+            ->map(fn (array $row) => $this->taskData(
+                $row['task'],
+                $row['due'],
+                $priority ? ((string) $row['task']->propertyValue($priority) ?: null) : null,
+            ));
 
         return $this->ok($tasks);
     }
@@ -81,6 +86,52 @@ class LifeController extends ApiController
         $item->update(['done' => ! $item->done]);
 
         return $this->ok(['id' => $item->id, 'done' => $item->done]);
+    }
+
+    public function updateTask(Request $request, int $task): JsonResponse
+    {
+        $household = $this->household();
+        $collection = Collection::tasksFor($household->id);
+        $item = Item::query()->forHousehold($household->id)->visibleTo($this->user())
+            ->where('collection_id', $collection->id)->findOrFail($task);
+
+        $data = $request->validate([
+            'title' => ['sometimes', 'string', 'max:500'],
+            'due' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'priority' => ['sometimes', 'nullable', 'in:high,medium,low'],
+        ]);
+
+        if (array_key_exists('title', $data)) {
+            $item->title = $data['title'];
+        }
+
+        $dueProperty = $collection->systemProperty('due');
+        if (array_key_exists('due', $data) && $dueProperty) {
+            $item->setPropertyValue($dueProperty, $data['due']);
+        }
+
+        $priorityProperty = $collection->systemProperty('priority');
+        if (array_key_exists('priority', $data) && $priorityProperty) {
+            $item->setPropertyValue($priorityProperty, $data['priority']);
+        }
+
+        $item->save();
+
+        return $this->ok($this->taskData(
+            $item,
+            $dueProperty ? ((string) $item->propertyValue($dueProperty) ?: null) : null,
+            $priorityProperty ? ((string) $item->propertyValue($priorityProperty) ?: null) : null,
+        ));
+    }
+
+    public function destroyTask(int $task): JsonResponse
+    {
+        $household = $this->household();
+        $item = Item::query()->forHousehold($household->id)->visibleTo($this->user())
+            ->where('collection_id', Collection::tasksFor($household->id)->id)->findOrFail($task);
+        $item->delete();
+
+        return $this->ok();
     }
 
     /**
@@ -347,9 +398,9 @@ class LifeController extends ApiController
     /**
      * @return array{id: int, title: string, due: ?string, time: ?string, done: bool, url: string}
      */
-    private function taskData(Item $task, ?string $due): array
+    private function taskData(Item $task, ?string $due, ?string $priority = null): array
     {
-        return ['id' => $task->id, 'title' => $task->title, 'due' => $due, 'time' => $task->due_time, 'done' => (bool) $task->done, 'url' => route('tasks.index', ['task' => $task->id])];
+        return ['id' => $task->id, 'title' => $task->title, 'due' => $due, 'time' => $task->due_time, 'priority' => $priority, 'done' => (bool) $task->done, 'url' => route('tasks.index', ['task' => $task->id])];
     }
 
     /**

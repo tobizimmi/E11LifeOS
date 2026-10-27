@@ -32,6 +32,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('tasks', [LifeController::class, 'tasks'])->name('tasks.index');
         Route::post('tasks', [LifeController::class, 'storeTask'])->name('tasks.store');
+        Route::put('tasks/{task}', [LifeController::class, 'updateTask'])->whereNumber('task')->name('tasks.update');
+        Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
         Route::get('calendar', [LifeController::class, 'calendar'])->name('calendar');
         Route::get('notifications', [LifeController::class, 'notifications'])->name('notifications.index');

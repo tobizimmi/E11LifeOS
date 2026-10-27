@@ -55,6 +55,39 @@ class LifeApiTest extends TestCase
         $this->assertFalse($foreign->fresh()->done);
     }
 
+    public function test_tasks_can_be_edited_and_deleted(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        $id = $this->postJson('/api/v1/tasks', ['text' => 'Entwurf'], $headers)->assertCreated()->json('data.id');
+
+        $this->putJson("/api/v1/tasks/{$id}", [
+            'title' => 'Steuererklärung',
+            'due' => '2026-10-15',
+            'priority' => 'high',
+        ], $headers)->assertOk()
+            ->assertJsonPath('data.title', 'Steuererklärung')
+            ->assertJsonPath('data.due', '2026-10-15')
+            ->assertJsonPath('data.priority', 'high');
+
+        // An invalid priority is rejected.
+        $this->putJson("/api/v1/tasks/{$id}", ['priority' => 'urgent'], $headers)->assertStatus(422);
+
+        // Clearing the due date works.
+        $this->putJson("/api/v1/tasks/{$id}", ['due' => null], $headers)->assertOk()->assertJsonPath('data.due', null);
+
+        // Deletion removes it from the list.
+        $this->deleteJson("/api/v1/tasks/{$id}", [], $headers)->assertOk();
+        $this->getJson('/api/v1/tasks', $headers)->assertJsonCount(0, 'data');
+
+        // Another household's task cannot be edited or deleted.
+        [, $otherHousehold] = $this->memberWithHousehold();
+        $foreign = Item::factory()->todo()->create(['household_id' => $otherHousehold->id, 'collection_id' => Collection::tasksFor($otherHousehold->id)->id]);
+        $this->putJson("/api/v1/tasks/{$foreign->id}", ['title' => 'Hack'], $headers)->assertNotFound();
+        $this->deleteJson("/api/v1/tasks/{$foreign->id}", [], $headers)->assertNotFound();
+    }
+
     public function test_shopping_list_notifications_and_net_worth(): void
     {
         [$user, $household] = $this->memberWithHousehold();

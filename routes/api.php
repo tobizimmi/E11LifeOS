@@ -126,6 +126,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('search', [MarketController::class, 'search'])->name('search');
 
             Route::get('recommendations', [RecommendationController::class, 'index'])->name('recommendations');
+            Route::get('strategy', [PortfolioController::class, 'strategy'])->name('strategy');
 
             Route::get('settings', [SettingsController::class, 'show'])->name('settings.show');
             Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');

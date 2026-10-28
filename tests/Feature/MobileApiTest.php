@@ -121,7 +121,7 @@ class MobileApiTest extends TestCase
 
         $api->getJson('/api/v1/strategy')->assertOk()
             ->assertJsonPath('data.positions.0.symbol', 'SAP.DE')
-            ->assertJsonPath('data.positions.0.thirds_filled', 3)
+            ->assertJsonPath('data.positions.0.thirds_filled', 1)
             ->assertJsonPath('data.positions.0.cluster_risk', true)
             ->assertJsonPath('data.health.sectors', 0);
     }

@@ -79,14 +79,18 @@ class PortfolioStrategyTest extends TestCase
         $this->assertSame([], $result['signals']);
     }
 
-    public function test_three_thirds_state_follows_the_invested_share(): void
+    public function test_three_thirds_state_follows_the_number_of_buys(): void
     {
-        // One value holds a third of the invested capital (~3 %), the other two a ninth each (~1 %).
-        $result = StrategyCoach::analyse([
-            $this->row('FULL.DE', cost: 3000, weight: 3.0, price: 90, avgBuyPrice: 100),
-            $this->row('ONE.DE', cost: 1000, weight: 1.0, price: 90, avgBuyPrice: 100),
-            $this->row('TWO.DE', cost: 2000, weight: 2.0, price: 90, avgBuyPrice: 100),
-        ], lastBuyPrices: ['ONE.DE' => 100.0, 'TWO.DE' => 100.0, 'FULL.DE' => 100.0]);
+        // One third per buy: three buys = full, one buy = first third, two buys = second third.
+        $result = StrategyCoach::analyse(
+            [
+                $this->row('FULL.DE', cost: 3000, weight: 3.0, price: 90, avgBuyPrice: 100),
+                $this->row('ONE.DE', cost: 1000, weight: 1.0, price: 90, avgBuyPrice: 100),
+                $this->row('TWO.DE', cost: 2000, weight: 2.0, price: 90, avgBuyPrice: 100),
+            ],
+            lastBuyPrices: ['ONE.DE' => 100.0, 'TWO.DE' => 100.0, 'FULL.DE' => 100.0],
+            buyCounts: ['FULL.DE' => 3, 'ONE.DE' => 1, 'TWO.DE' => 2],
+        );
 
         $positions = collect($result['positions'])->keyBy('symbol');
         $this->assertSame(3, $positions['FULL.DE']['thirds_filled']);

@@ -46,9 +46,10 @@ class StrategyCoach
      *                                            needs at least symbol/name/sector, value, cost, gain_percent,
      *                                            weight, price and avg_buy_price (read with fallbacks)
      * @param  array<string, float>  $lastBuyPrices  symbol => last buy price in euros, for the next-third trigger
+     * @param  array<string, int>  $buyCounts  symbol => number of buy transactions (one third per buy)
      * @return array{health: array{checks: list<array{key: string, label: string, status: string, detail: string}>, positions: int, sectors: int, top_weight: float, score: int}, positions: list<array<string, mixed>>, signals: list<array<string, mixed>>}
      */
-    public static function analyse(array $rows, array $lastBuyPrices = []): array
+    public static function analyse(array $rows, array $lastBuyPrices = [], array $buyCounts = []): array
     {
         $totalCost = array_sum(array_map(fn (array $row) => (float) ($row['cost'] ?? 0), $rows));
         $positions = [];
@@ -69,10 +70,11 @@ class StrategyCoach
                 $sectors[(string) $sector] = true;
             }
 
-            // Three-thirds state from the invested share (cost weight), so a price rally does not
-            // make an unfinished position look full.
+            // Three-thirds state from the number of buys (one third per purchase): a position built in
+            // one buy is on its first third, in three or more buys it is full. Manually tracked
+            // positions without transactions count as one third.
             $costWeight = $totalCost > 0 ? $cost / $totalCost * 100 : 0.0;
-            $thirdsFilled = max(1, min(3, (int) round($costWeight / (self::FULL_POSITION_PERCENT / 3))));
+            $thirdsFilled = max(1, min(3, (int) ($buyCounts[$symbol] ?? 1)));
             $clusterRisk = $weight > self::MAX_WEIGHT_PERCENT;
 
             $nextTranche = null;
@@ -219,27 +221,35 @@ class StrategyCoach
             'avg_buy_price' => $row['position']->avg_buy_price,
         ])->all();
 
-        return self::analyse($rows, self::lastBuyPrices($portfolioIds));
+        [$lastBuyPrices, $buyCounts] = self::buyHistory($portfolioIds);
+
+        return self::analyse($rows, $lastBuyPrices, $buyCounts);
     }
 
     /**
-     * The price of the most recent buy per symbol (in euros), for the next-third trigger.
+     * Per symbol the price of the most recent buy (in euros, for the next-third trigger) and the
+     * number of buys (one third per buy).
      *
      * @param  Collection<int, int>  $portfolioIds
-     * @return array<string, float>
+     * @return array{0: array<string, float>, 1: array<string, int>}
      */
-    private static function lastBuyPrices(Collection $portfolioIds): array
+    private static function buyHistory(Collection $portfolioIds): array
     {
-        return PortfolioTransaction::whereIn('portfolio_id', $portfolioIds)
+        $buys = PortfolioTransaction::whereIn('portfolio_id', $portfolioIds)
             ->whereIn('type', ['buy', 'transfer_in'])
             ->orderBy('executed_on')
             ->orderBy('id')
-            ->get(['symbol', 'price', 'exchange_rate', 'currency'])
-            ->mapWithKeys(function (PortfolioTransaction $transaction) {
-                $rate = $transaction->currency !== 'EUR' && $transaction->exchange_rate > 0 ? $transaction->exchange_rate : 1.0;
+            ->get(['symbol', 'price', 'exchange_rate', 'currency']);
 
-                return [$transaction->symbol => round((float) $transaction->price / $rate, 4)];
-            })
-            ->all();
+        $lastBuyPrices = [];
+        $buyCounts = [];
+
+        foreach ($buys as $transaction) {
+            $rate = $transaction->currency !== 'EUR' && $transaction->exchange_rate > 0 ? $transaction->exchange_rate : 1.0;
+            $lastBuyPrices[$transaction->symbol] = round((float) $transaction->price / $rate, 4);
+            $buyCounts[$transaction->symbol] = ($buyCounts[$transaction->symbol] ?? 0) + 1;
+        }
+
+        return [$lastBuyPrices, $buyCounts];
     }
 }

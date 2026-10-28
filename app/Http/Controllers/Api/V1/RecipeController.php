@@ -6,6 +6,8 @@ use App\Models\Household;
 use App\Models\Recipe;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Mobile API for recipes: browse the household's recipes, open one with its ingredients and
@@ -74,6 +76,19 @@ class RecipeController extends ApiController
     }
 
     /**
+     * Serves the recipe's cover image (token-authenticated; the app sends the Bearer header).
+     */
+    public function image(Recipe $recipe): StreamedResponse
+    {
+        $this->authorizeRecipe($recipe);
+
+        $path = $recipe->image_path;
+        abort_unless(is_string($path) && $path !== '' && Storage::disk(Recipe::IMAGE_DISK)->exists($path), 404);
+
+        return Storage::disk(Recipe::IMAGE_DISK)->response($path, null, ['Cache-Control' => 'private, max-age=2592000']);
+    }
+
+    /**
      * Only recipes the member can see in their household may be edited or removed.
      */
     private function authorizeRecipe(Recipe $recipe): void
@@ -125,6 +140,7 @@ class RecipeController extends ApiController
             'title' => $recipe->title,
             'description' => $recipe->description,
             'image_url' => $recipe->imageUrl(),
+            'image_path' => $recipe->image_path ? '/recipes/'.$recipe->id.'/image' : null,
             'prep_time' => $recipe->prep_time,
             'cook_time' => $recipe->cook_time,
             'total_time' => $recipe->totalTime(),

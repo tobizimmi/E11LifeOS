@@ -102,6 +102,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('recipes', [RecipeController::class, 'index'])->name('recipes.index');
             Route::post('recipes', [RecipeController::class, 'store'])->name('recipes.store');
             Route::get('recipes/{recipe}', [RecipeController::class, 'show'])->whereNumber('recipe')->name('recipes.show');
+            Route::get('recipes/{recipe}/image', [RecipeController::class, 'image'])->whereNumber('recipe')->name('recipes.image.api');
             Route::put('recipes/{recipe}', [RecipeController::class, 'update'])->whereNumber('recipe')->name('recipes.update');
             Route::delete('recipes/{recipe}', [RecipeController::class, 'destroy'])->whereNumber('recipe')->name('recipes.destroy');
         });

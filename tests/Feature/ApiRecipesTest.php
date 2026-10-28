@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Recipe;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
 
@@ -94,5 +95,19 @@ class ApiRecipesTest extends TestCase
         $foreign = Recipe::factory()->create(['household_id' => $otherHousehold->id, 'created_by' => $other->id, 'title' => 'Fremd']);
         $this->putJson("/api/v1/recipes/{$foreign->id}", ['title' => 'Hack'], $headers)->assertNotFound();
         $this->deleteJson("/api/v1/recipes/{$foreign->id}", [], $headers)->assertNotFound();
+    }
+
+    public function test_recipe_cover_image_is_listed_and_served(): void
+    {
+        Storage::fake(Recipe::IMAGE_DISK);
+        [$user, $household] = $this->memberWithHousehold();
+        $household->setAddon('recipes', true);
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        Storage::disk(Recipe::IMAGE_DISK)->put('recipes/cover.jpg', 'imagedata');
+        $recipe = Recipe::factory()->create(['household_id' => $household->id, 'created_by' => $user->id, 'image_path' => 'recipes/cover.jpg']);
+
+        $this->getJson('/api/v1/recipes', $headers)->assertOk()->assertJsonPath('data.0.image_path', "/recipes/{$recipe->id}/image");
+        $this->get("/api/v1/recipes/{$recipe->id}/image", $headers)->assertOk();
     }
 }

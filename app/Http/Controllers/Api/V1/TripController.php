@@ -8,6 +8,7 @@ use App\Models\TripBooking;
 use App\Models\TripPackingItem;
 use App\Models\TripPlace;
 use App\Models\TripStop;
+use App\Support\Life\PlaceFinder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,10 +37,10 @@ class TripController extends ApiController
             'stops' => $trip->stops->map(fn (TripStop $stop) => $this->stopData($stop))->all(),
             'places' => $trip->places->map(fn (TripPlace $place) => [
                 'id' => $place->id,
-                'name' => $place->name,
+                'name' => PlaceFinder::readable((string) $place->name),
                 'kind' => $place->kind,
                 'category' => $place->category,
-                'address' => $place->address,
+                'address' => $place->address ? PlaceFinder::readable($place->address) : null,
                 'lat' => $place->lat,
                 'lng' => $place->lng,
             ])->all(),
@@ -204,8 +205,8 @@ class TripController extends ApiController
             'time' => $stop->time,
             'end_time' => $stop->end_time,
             'kind' => $stop->kind,
-            'title' => $stop->title,
-            'location' => $stop->location,
+            'title' => PlaceFinder::readable((string) $stop->title),
+            'location' => $stop->location ? PlaceFinder::readable($stop->location) : null,
             'notes' => $stop->notes,
             'done' => (bool) $stop->done,
         ];

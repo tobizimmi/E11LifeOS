@@ -189,7 +189,7 @@ class StrategyCoach
             'detail' => __(':count positions (around :target are the goal for broad diversification).', ['count' => $count, 'target' => self::TARGET_POSITIONS]),
         ];
 
-        $score = $checks === [] ? 0 : (int) round(collect($checks)->avg(fn (array $check) => match ($check['status']) {
+        $score = (int) round((float) collect($checks)->avg(fn (array $check) => match ($check['status']) {
             'ok' => 100,
             'warn' => 55,
             default => 10,

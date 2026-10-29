@@ -238,6 +238,7 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
     Volt::route('dividends', 'portfolio.dividends')->name('dividends');
     Volt::route('taxes', 'portfolio.taxes')->name('taxes');
     Volt::route('rebalancing', 'portfolio.rebalancing')->name('rebalancing');
+    Volt::route('strategy', 'portfolio.strategy')->name('strategy');
     Volt::route('savings-plans', 'portfolio.savings')->name('savings');
     Volt::route('alerts', 'portfolio.alerts')->name('alerts');
     Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');

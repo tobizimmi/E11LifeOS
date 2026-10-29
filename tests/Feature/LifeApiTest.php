@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CalendarSubscription;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Models\ShoppingList;
@@ -53,6 +54,74 @@ class LifeApiTest extends TestCase
         $foreign = Item::factory()->todo()->create(['household_id' => $otherHousehold->id, 'collection_id' => Collection::tasksFor($otherHousehold->id)->id]);
         $this->postJson("/api/v1/tasks/{$foreign->id}/toggle", [], $headers)->assertNotFound();
         $this->assertFalse($foreign->fresh()->done);
+    }
+
+    public function test_tasks_can_be_edited_and_deleted(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        $id = $this->postJson('/api/v1/tasks', ['text' => 'Entwurf'], $headers)->assertCreated()->json('data.id');
+
+        $this->putJson("/api/v1/tasks/{$id}", [
+            'title' => 'Steuererklärung',
+            'due' => '2026-10-15',
+            'priority' => 'high',
+        ], $headers)->assertOk()
+            ->assertJsonPath('data.title', 'Steuererklärung')
+            ->assertJsonPath('data.due', '2026-10-15')
+            ->assertJsonPath('data.priority', 'high');
+
+        // An invalid priority is rejected.
+        $this->putJson("/api/v1/tasks/{$id}", ['priority' => 'urgent'], $headers)->assertStatus(422);
+
+        // Clearing the due date works.
+        $this->putJson("/api/v1/tasks/{$id}", ['due' => null], $headers)->assertOk()->assertJsonPath('data.due', null);
+
+        // Deletion removes it from the list.
+        $this->deleteJson("/api/v1/tasks/{$id}", [], $headers)->assertOk();
+        $this->getJson('/api/v1/tasks', $headers)->assertJsonCount(0, 'data');
+
+        // Another household's task cannot be edited or deleted.
+        [, $otherHousehold] = $this->memberWithHousehold();
+        $foreign = Item::factory()->todo()->create(['household_id' => $otherHousehold->id, 'collection_id' => Collection::tasksFor($otherHousehold->id)->id]);
+        $this->putJson("/api/v1/tasks/{$foreign->id}", ['title' => 'Hack'], $headers)->assertNotFound();
+        $this->deleteJson("/api/v1/tasks/{$foreign->id}", [], $headers)->assertNotFound();
+    }
+
+    public function test_quick_add_task_accepts_explicit_due_and_priority(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        $this->postJson('/api/v1/tasks', ['text' => 'Zahnarzt', 'due' => '2026-10-02', 'priority' => 'high'], $headers)->assertCreated()
+            ->assertJsonPath('data.title', 'Zahnarzt')
+            ->assertJsonPath('data.due', '2026-10-02')
+            ->assertJsonPath('data.priority', 'high');
+    }
+
+    public function test_calendar_subscriptions_can_be_listed_added_and_removed(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+
+        $this->getJson('/api/v1/calendar/subscriptions', $headers)->assertOk()->assertJsonCount(0, 'data');
+
+        $id = $this->postJson('/api/v1/calendar/subscriptions', ['name' => 'Feiertage', 'url' => 'https://example.com/feed.ics'], $headers)
+            ->assertCreated()->assertJsonPath('data.name', 'Feiertage')->json('data.id');
+
+        // A malformed URL is rejected.
+        $this->postJson('/api/v1/calendar/subscriptions', ['name' => 'X', 'url' => 'not-a-url'], $headers)->assertStatus(422);
+
+        $this->getJson('/api/v1/calendar/subscriptions', $headers)->assertOk()->assertJsonCount(1, 'data');
+
+        $this->deleteJson("/api/v1/calendar/subscriptions/{$id}", [], $headers)->assertOk();
+        $this->getJson('/api/v1/calendar/subscriptions', $headers)->assertOk()->assertJsonCount(0, 'data');
+
+        // Another member's private feed is neither visible nor removable.
+        [$other, $otherHousehold] = $this->memberWithHousehold();
+        $foreign = CalendarSubscription::create(['user_id' => $other->id, 'household_id' => $otherHousehold->id, 'name' => 'Fremd', 'url' => 'https://x.test/y.ics', 'visibility' => 'private']);
+        $this->deleteJson("/api/v1/calendar/subscriptions/{$foreign->id}", [], $headers)->assertNotFound();
     }
 
     public function test_shopping_list_notifications_and_net_worth(): void

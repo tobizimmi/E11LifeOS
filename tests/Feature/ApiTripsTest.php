@@ -23,6 +23,19 @@ class ApiTripsTest extends TestCase
         return $this->postJson('/api/v1/auth/login', ['username' => $user->email, 'password' => 'password', 'device_name' => 'iPhone'])->json('data.token');
     }
 
+    public function test_place_names_in_foreign_scripts_are_transliterated_to_latin(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $headers = ['Authorization' => 'Bearer '.$this->tokenFor($user)];
+        $trip = Trip::factory()->create(['household_id' => $household->id, 'created_by' => $user->id]);
+        TripStop::factory()->create(['trip_id' => $trip->id, 'title' => 'Χαμουζάς', 'location' => 'Δήμος Ζακύνθου']);
+
+        $stop = $this->getJson("/api/v1/trips/{$trip->id}", $headers)->assertOk()->json('data.stops.0');
+
+        $this->assertDoesNotMatchRegularExpression('/\p{Greek}/u', (string) $stop['title']);
+        $this->assertDoesNotMatchRegularExpression('/\p{Greek}/u', (string) ($stop['location'] ?? ''));
+    }
+
     public function test_trips_are_listed_and_shown_with_their_itinerary(): void
     {
         [$user, $household] = $this->memberWithHousehold();

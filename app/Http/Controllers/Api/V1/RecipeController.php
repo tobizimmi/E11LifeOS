@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\Household;
 use App\Models\Recipe;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Mobile API for recipes (read-only): browse the household's recipes and open one with its
- * ingredients and steps. Gated by the "recipes" addon.
+ * Mobile API for recipes: browse the household's recipes, open one with its ingredients and
+ * steps, and create/edit/delete recipes. Gated by the "recipes" addon.
  */
 class RecipeController extends ApiController
 {
@@ -35,11 +38,96 @@ class RecipeController extends ApiController
 
         $recipe->load('categories:id,name');
 
-        return $this->ok($this->listData($recipe) + [
+        return $this->ok($this->detailData($recipe));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $this->validatedRecipe($request, creating: true);
+
+        $recipe = new Recipe($data);
+        $recipe->household_id = $this->household()->id;
+        $recipe->created_by = $this->user()->id;
+        $recipe->save();
+
+        $recipe->load('categories:id,name');
+
+        return $this->ok($this->detailData($recipe), 201);
+    }
+
+    public function update(Request $request, Recipe $recipe): JsonResponse
+    {
+        $this->authorizeRecipe($recipe);
+
+        $recipe->fill($this->validatedRecipe($request, creating: false));
+        $recipe->save();
+
+        $recipe->load('categories:id,name');
+
+        return $this->ok($this->detailData($recipe));
+    }
+
+    public function destroy(Recipe $recipe): JsonResponse
+    {
+        $this->authorizeRecipe($recipe);
+        $recipe->delete();
+
+        return $this->ok();
+    }
+
+    /**
+     * Serves the recipe's cover image (token-authenticated; the app sends the Bearer header).
+     */
+    public function image(Recipe $recipe): StreamedResponse
+    {
+        $this->authorizeRecipe($recipe);
+
+        $path = $recipe->image_path;
+        abort_unless(is_string($path) && $path !== '' && Storage::disk(Recipe::IMAGE_DISK)->exists($path), 404);
+
+        return Storage::disk(Recipe::IMAGE_DISK)->response($path, null, ['Cache-Control' => 'private, max-age=2592000']);
+    }
+
+    /**
+     * Only recipes the member can see in their household may be edited or removed.
+     */
+    private function authorizeRecipe(Recipe $recipe): void
+    {
+        abort_unless(
+            Recipe::query()->visibleTo($this->user(), $this->household()->id)->whereKey($recipe->id)->exists(),
+            404,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatedRecipe(Request $request, bool $creating): array
+    {
+        return $request->validate([
+            'title' => [$creating ? 'required' : 'sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'servings' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:999'],
+            'prep_time' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000'],
+            'cook_time' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000'],
+            'difficulty' => ['sometimes', 'nullable', 'in:easy,medium,hard'],
+            'ingredients' => ['sometimes', 'nullable', 'array'],
+            'ingredients.*' => ['string', 'max:500'],
+            'instructions' => ['sometimes', 'nullable', 'array'],
+            'instructions.*' => ['string', 'max:5000'],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function detailData(Recipe $recipe): array
+    {
+        return $this->listData($recipe) + [
             'ingredients' => $recipe->ingredients ?? [],
             'instructions' => $recipe->instructions ?? [],
             'nutrition' => $recipe->nutrition,
-        ]);
+        ];
     }
 
     /**
@@ -52,6 +140,7 @@ class RecipeController extends ApiController
             'title' => $recipe->title,
             'description' => $recipe->description,
             'image_url' => $recipe->imageUrl(),
+            'image_path' => $recipe->image_path ? '/recipes/'.$recipe->id.'/image' : null,
             'prep_time' => $recipe->prep_time,
             'cook_time' => $recipe->cook_time,
             'total_time' => $recipe->totalTime(),

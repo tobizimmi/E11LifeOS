@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
 use App\Models\PortfolioTransaction;
+use App\Support\Portfolio\StrategyCoach;
 use App\Support\Portfolio\Valuation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,6 +71,15 @@ class PortfolioController extends ApiController
             'top_3' => $byGain->take(3)->map($performer)->all(),
             'bottom_3' => $byGain->reverse()->take(3)->values()->map($performer)->all(),
         ]);
+    }
+
+    /**
+     * Three-thirds strategy coach across all portfolios of the user: depot health, three-thirds buy
+     * state and sell signals (see {@see StrategyCoach}).
+     */
+    public function strategy(): JsonResponse
+    {
+        return $this->ok(StrategyCoach::forUser($this->user(), $this->valuation));
     }
 
     public function transactions(Request $request, Portfolio $portfolio): JsonResponse

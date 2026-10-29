@@ -118,6 +118,12 @@ class MobileApiTest extends TestCase
         $api->putJson('/api/v1/settings', ['strategy' => 'conservative', 'drop_threshold' => 15])->assertOk()->assertJsonPath('data.strategy', 'conservative');
         $api->putJson('/api/v1/settings', ['strategy' => 'yolo'])->assertStatus(422)->assertJsonPath('success', false);
         $api->getJson('/api/v1/recommendations')->assertOk()->assertJsonPath('data.meta.cache_empty', true);
+
+        $api->getJson('/api/v1/strategy')->assertOk()
+            ->assertJsonPath('data.positions.0.symbol', 'SAP.DE')
+            ->assertJsonPath('data.positions.0.thirds_filled', 1)
+            ->assertJsonPath('data.positions.0.cluster_risk', true)
+            ->assertJsonPath('data.health.sectors', 0);
     }
 
     public function test_other_users_portfolios_and_disabled_addons_are_hidden(): void

@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.82.0] – 2026-10-29
+
+### Neu
+- **Portfolio: Drei-Drittel-Strategie-Coach.** Neuer Bereich `Portfolio → Strategie`, der das Depot entlang der antizyklischen Drei-Drittel-Strategie auswertet: eine **Depot-Gesundheit** gegen die Grundregeln (höchstens 3 % je Wert = Klumpenrisiko-Warnung, mindestens fünf Branchen, rund 30 Positionen) mit Ampel-Status und Gesamtscore, den **Drei-Drittel-Kaufstatus** je Position (ein Drittel je Kauf, mit dem Trigger-Kurs für das nächste Drittel bei −10/−15 % unter dem letzten Kauf) sowie **Verkaufssignale** gegen den Durchschnittseinstand (+25 % erstes Drittel, +35 % zweites Drittel, Trailing-Stop ab +30 %, spätestens +100 %). Hinweis, keine Anlageempfehlung. Zusätzlich als API für die native App: `GET /api/v1/strategy`.
+
+### Sicherheit
+- **symfony/mime aktualisiert (CVE-2026-45070).** Patch-Update von v8.1.6 auf v8.1.10 gegen eine Header-Injection-Schwachstelle in den Mime-Parameternamen.
+- **PHP 8.4 als Zielversion festgelegt.** Die Composer-Anforderung wurde von `^8.3` auf `^8.4` angehoben (die Abhängigkeiten, u. a. Symfony 8.1, setzen real PHP ≥ 8.4.1 voraus) und die Plattform auf die Server-Version 8.4.27 gepinnt, damit Entwicklung, CI und Deploy konsistent auf derselben PHP-Version auflösen.
+
 ## [1.81.2] – 2026-10-26
 
 ### Sicherheit

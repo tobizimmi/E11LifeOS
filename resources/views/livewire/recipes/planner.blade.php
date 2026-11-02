@@ -306,7 +306,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
 
                 <div class="mt-5 flex flex-wrap items-center gap-3">
-                    <x-primary-button wire:click="generate" wire:loading.attr="disabled" wire:target="generate" @disabled(! $aiReady)>
+                    <x-primary-button wire:click="generate" wire:loading.attr="disabled" wire:target="generate">
                         <span wire:loading.remove wire:target="generate">✨ {{ __('Generate week plan') }}</span>
                         <span wire:loading wire:target="generate">{{ __('Generating …') }}</span>
                     </x-primary-button>

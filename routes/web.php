@@ -213,6 +213,7 @@ Route::middleware(['auth', 'addon:recipes'])->group(function () {
     Volt::route('recipes/import', 'recipes.import')->name('recipes.import');
     Volt::route('recipes/categories', 'recipes.categories')->name('recipes.categories');
     Volt::route('recipes/plan', 'recipes.plan')->name('recipes.plan');
+    Volt::route('recipes/planner', 'recipes.planner')->name('recipes.planner');
     Route::get('recipes/plan.pdf', MealPlanPdfController::class)->name('recipes.plan.pdf');
     Volt::route('recipes/{recipe}', 'recipes.show')->whereNumber('recipe')->name('recipes.show');
     Volt::route('recipes/{recipe}/edit', 'recipes.form')->whereNumber('recipe')->name('recipes.edit');

@@ -27,7 +27,7 @@ return new class extends Migration
             $table->json('allergens')->nullable();           // ['nuts','lactose']
             $table->json('dish_types')->nullable();          // ['healthy','high_protein','low_carb']
             $table->json('cuisines')->nullable();            // ['italian','asian']
-            $table->json('disliked_ingredients')->nullable();// ['coriander','olives']
+            $table->json('disliked_ingredients')->nullable(); // ['coriander','olives']
             $table->json('appliances')->nullable();          // ['oven','air_fryer','thermomix']
             $table->timestamps();
         });

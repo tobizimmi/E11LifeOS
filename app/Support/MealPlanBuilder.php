@@ -19,7 +19,7 @@ class MealPlanBuilder
      * Creates a cookbook recipe per entry of the result.
      *
      * @param  array<string, mixed>  $result
-     * @return array<int, Recipe>  keyed by the result recipe index
+     * @return array<int, Recipe> keyed by the result recipe index
      */
     public static function createRecipes(User $user, int $householdId, array $result): array
     {
@@ -37,7 +37,7 @@ class MealPlanBuilder
      *
      * @param  array<string, mixed>  $result
      * @param  array<int, Recipe>  $savedRecipes  from {@see self::createRecipes()} (empty = plan by title only)
-     * @return int  the number of entries created
+     * @return int the number of entries created
      */
     public static function addToPlan(User $user, int $householdId, Carbon $weekStart, array $result, array $savedRecipes = []): int
     {

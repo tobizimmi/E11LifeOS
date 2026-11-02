@@ -29,7 +29,7 @@ class MealPlannerTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private function result(): array
+    private function aiResult(): array
     {
         return [
             'supermarket' => 'Rewe',
@@ -83,7 +83,7 @@ class MealPlannerTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->once()->andReturn($this->result()));
+        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->once()->andReturn($this->aiResult()));
 
         $component = Volt::test('recipes.planner');
         $component->call('generate')->assertHasNoErrors();
@@ -115,7 +115,7 @@ class MealPlannerTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->andReturn($this->result()));
+        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->andReturn($this->aiResult()));
 
         Volt::test('recipes.planner')->call('generate')->call('applyPlan', false);
 

@@ -5,13 +5,16 @@ use App\Models\Item;
 use App\Models\SavingsGoal;
 use App\Models\WishlistItem;
 use App\Support\Life\Affordability;
+use App\Support\WishlistPrices;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
  * Wishes with reason, priority and price, checked against the monthly surplus and the reserves.
+ * Each wish can carry a link whose price is tracked automatically and filtered/sorted by the user.
  */
 new #[Layout('layouts.app')] class extends Component
 {
@@ -20,6 +23,14 @@ new #[Layout('layouts.app')] class extends Component
     public bool $showForm = false;
 
     public ?int $editingId = null;
+
+    #[Url(except: '')]
+    public string $filterCategory = '';
+
+    #[Url(except: 'priority')]
+    public string $sort = 'priority';
+
+    public bool $checking = false;
 
     /**
      * @var array{title: string, price: string, priority: string, category: string, reason: string, url: string, wanted_by: string, private: bool}
@@ -73,26 +84,41 @@ new #[Layout('layouts.app')] class extends Component
             'wish.wanted_by' => ['nullable', 'date'],
         ], attributes: ['wish.title' => __('What do you want?'), 'wish.price' => __('What does it cost?'), 'wish.url' => __('Link')])['wish'];
 
+        $url = trim((string) $data['url']) ?: null;
+
         $attributes = [
             'title' => $data['title'],
             'price' => $data['price'] !== '' && $data['price'] !== null ? round((float) $data['price'], 2) : null,
             'priority' => $data['priority'],
             'category' => $data['category'],
             'reason' => trim((string) $data['reason']) ?: null,
-            'url' => trim((string) $data['url']) ?: null,
+            'url' => $url,
             'wanted_by' => $data['wanted_by'] ?: null,
             'visibility' => $this->wish['private'] ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
         ];
 
         if ($this->editingId) {
             $wish = $this->findWish($this->editingId);
+            $linkChanged = $url !== $wish->url;
             $wish->update($wish->created_by === Auth::id() ? $attributes : array_diff_key($attributes, ['visibility' => true]));
+
+            // A new/changed link resets the tracked price so the next check starts fresh.
+            if ($linkChanged) {
+                $wish->forceFill(['tracked_price' => null, 'tracked_currency' => null, 'lowest_price' => null, 'price_checked_at' => null, 'price_check_status' => null])->save();
+                if ($url) {
+                    WishlistPrices::refresh($wish, notify: false);
+                }
+            }
         } else {
-            WishlistItem::create($attributes + [
+            $wish = WishlistItem::create($attributes + [
                 'household_id' => $this->householdId,
                 'created_by' => Auth::id(),
                 'position' => (int) WishlistItem::where('household_id', $this->householdId)->max('position') + 1,
             ]);
+
+            if ($url) {
+                WishlistPrices::refresh($wish, notify: false);
+            }
         }
 
         $this->reset(['editingId', 'wish', 'showForm']);
@@ -108,6 +134,25 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->findWish($id)->delete();
         $this->reset(['editingId', 'wish', 'showForm']);
+    }
+
+    /**
+     * Looks up the current online price for one wish right now.
+     */
+    public function checkPrice(int $id): void
+    {
+        $this->checking = true;
+        $wish = $this->findWish($id);
+
+        if (! $wish->url) {
+            $this->dispatch('toast', message: __('Add a link first to track the price.'));
+
+            return;
+        }
+
+        $this->dispatch('toast', message: WishlistPrices::refresh($wish, notify: false)
+            ? __('Price updated.')
+            : __('No price found on the page.'));
     }
 
     /**
@@ -138,11 +183,24 @@ new #[Layout('layouts.app')] class extends Component
         $open = $wishes->where('status', 'open')->values();
         $budget = Affordability::budget(Auth::user());
 
+        $priorityRank = array_flip(WishlistItem::PRIORITIES);
+        $filtered = $this->filterCategory !== '' ? $open->where('category', $this->filterCategory)->values() : $open;
+
+        $sorted = match ($this->sort) {
+            'price_desc' => $filtered->sortByDesc(fn (WishlistItem $w) => $w->tracked_price ?? $w->price ?? 0),
+            'price_asc' => $filtered->sortBy(fn (WishlistItem $w) => $w->tracked_price ?? $w->price ?? PHP_INT_MAX),
+            'drop' => $filtered->sortByDesc(fn (WishlistItem $w) => $w->hasPriceDrop() ? ($w->price - $w->tracked_price) : -1),
+            'title' => $filtered->sortBy(fn (WishlistItem $w) => mb_strtolower($w->title)),
+            'newest' => $filtered->sortByDesc('created_at'),
+            default => $filtered->sortBy(fn (WishlistItem $w) => [$priorityRank[$w->priority] ?? 9, $w->position]),
+        };
+
         return [
             'budget' => $budget,
             'checks' => Affordability::checkAll($open, $budget),
-            'openByPriority' => collect(WishlistItem::PRIORITIES)->mapWithKeys(fn (string $priority) => [$priority => $open->where('priority', $priority)->values()])->filter->isNotEmpty(),
+            'openList' => $sorted->values(),
             'openTotal' => round((float) $open->sum('price'), 2),
+            'categoryCounts' => $open->groupBy('category')->map->count(),
             'decided' => $wishes->where('status', '!=', 'open')->sortByDesc('decided_at')->values(),
             'droppedTotal' => round((float) $wishes->where('status', 'dropped')->sum('price'), 2),
         ];
@@ -160,6 +218,7 @@ new #[Layout('layouts.app')] class extends Component
     ];
     $priorities = \App\Models\WishlistItem::priorities();
     $categories = \App\Models\WishlistItem::categories();
+    $sorts = ['priority' => __('Priority'), 'price_asc' => __('Price ↑'), 'price_desc' => __('Price ↓'), 'drop' => __('Biggest saving'), 'newest' => __('Newest'), 'title' => __('Name')];
 @endphp
 
 <div x-on:page-primary.window="$wire.create()">
@@ -189,11 +248,11 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </section>
 
-
             @if ($showForm)
                 <form wire:submit="save" @if (! $editingId) data-draft="wish" data-draft-restored="{{ __('Draft restored') }}" @endif class="grid gap-3 rounded-2xl bg-white p-5 shadow-xs sm:grid-cols-6 dark:bg-gray-800">
                     <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('What do you want?') }}<input type="text" wire:model="wish.title" class="{{ $input }}" placeholder="{{ __('e.g. road bike, new sofa, weekend in Vienna') }}" autofocus><x-input-error :messages="$errors->get('wish.title')" /></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('What does it cost?') }}<input type="text" inputmode="decimal" wire:model="wish.price" class="{{ $input }}" placeholder="0,00"><x-input-error :messages="$errors->get('wish.price')" /></label>
+                    <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Link') }}<input type="url" wire:model="wish.url" class="{{ $input }}" placeholder="https://"><x-input-error :messages="$errors->get('wish.url')" /><span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ __('With a link the price is checked automatically every few days.') }}</span></label>
                     <label class="text-sm text-gray-700 sm:col-span-6 dark:text-gray-300">{{ __('Why do you want it?') }}<textarea wire:model="wish.reason" rows="2" class="{{ $input }}" placeholder="{{ __('e.g. old one is broken, want to ride to work') }}"></textarea></label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Priority') }}
                         <select wire:model="wish.priority" class="{{ $input }}">
@@ -210,8 +269,7 @@ new #[Layout('layouts.app')] class extends Component
                         </select>
                     </label>
                     <label class="text-sm text-gray-700 sm:col-span-2 dark:text-gray-300">{{ __('Wanted by') }}<input type="date" wire:model="wish.wanted_by" class="{{ $input }}"></label>
-                    <label class="text-sm text-gray-700 sm:col-span-4 dark:text-gray-300">{{ __('Link') }}<input type="url" wire:model="wish.url" class="{{ $input }}" placeholder="https://"><x-input-error :messages="$errors->get('wish.url')" /></label>
-                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-2 dark:text-gray-300"><input type="checkbox" wire:model="wish.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
+                    <label class="flex items-center gap-2 self-end text-sm text-gray-700 sm:col-span-6 dark:text-gray-300"><input type="checkbox" wire:model="wish.private" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Only visible to me') }}</label>
                     <div class="flex flex-wrap gap-2 sm:col-span-6">
                         <x-primary-button>{{ $editingId ? __('Save changes') : __('Add') }}</x-primary-button>
                         <x-secondary-button type="button" wire:click="$set('showForm', false)">{{ __('Cancel') }}</x-secondary-button>
@@ -222,67 +280,102 @@ new #[Layout('layouts.app')] class extends Component
                 </form>
             @endif
 
-            @forelse ($openByPriority as $priorityKey => $wishes)
-                <section class="space-y-3" aria-labelledby="priority-{{ $priorityKey }}">
-                    <h3 id="priority-{{ $priorityKey }}" class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $priorities[$priorityKey]['icon'] }} {{ $priorities[$priorityKey]['label'] }}</h3>
-                    @foreach ($wishes as $item)
-                        @php($check = $checks[$item->id])
-                        <article wire:key="wish-{{ $item->id }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
-                            <div class="flex flex-wrap items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $categories[$item->category]['icon'] ?? '🛍️' }} {{ $item->title }}
-                                        @if ($item->isPrivate())
-                                            <x-private-badge />
-                                        @endif
-                                    </p>
-                                    @if ($item->reason)
-                                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ $item->reason }}</p>
-                                    @endif
-                                    <p class="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
-                                        @if ($item->wanted_by)
-                                            <span>📅 {{ __('by :date', ['date' => $item->wanted_by->format('d.m.Y')]) }}</span>
-                                        @endif
-                                        @if ($item->url)
-                                            <a href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Open link') }} ↗</a>
-                                        @endif
-                                    </p>
-                                </div>
-                                <p class="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($item->price) }}</p>
-                            </div>
-
-                            <div class="mt-3 rounded-lg px-3 py-2 text-sm ring-1 {{ $levels[$check['level']]['class'] }}" role="status">
-                                <span class="font-medium"><span aria-hidden="true">{{ $levels[$check['level']]['dot'] }}</span> {{ $levels[$check['level']]['label'] }}:</span> {{ $check['text'] }}
-                            </div>
-                            @foreach ($check['hints'] as $hint)
-                                <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">💡 {{ $hint }}</p>
+            {{-- Filter & sort toolbar --}}
+            @if ($openList->isNotEmpty() || $filterCategory !== '')
+                <section class="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3 shadow-xs dark:bg-gray-800">
+                    <div class="flex flex-wrap gap-1.5">
+                        <button type="button" wire:click="$set('filterCategory', '')" @class(['rounded-full px-3 py-1 text-xs font-medium', 'bg-indigo-600 text-white' => $filterCategory === '', 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200' => $filterCategory !== ''])>{{ __('All') }}</button>
+                        @foreach ($categoryCounts as $key => $count)
+                            <button type="button" wire:click="$set('filterCategory', '{{ $key }}')" @class(['rounded-full px-3 py-1 text-xs font-medium', 'bg-indigo-600 text-white' => $filterCategory === $key, 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200' => $filterCategory !== $key])>{{ $categories[$key]['icon'] ?? '🛍️' }} {{ $categories[$key]['label'] ?? $key }} <span class="opacity-60">{{ $count }}</span></button>
+                        @endforeach
+                    </div>
+                    <label class="ms-auto flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">{{ __('Sort') }}
+                        <select wire:model.live="sort" class="rounded-md border-gray-300 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                            @foreach ($sorts as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
                             @endforeach
-
-                            @if ($item->savingsGoal)
-                                @php($saved = $item->savingsGoal->savedSoFar())
-                                <div class="mt-3">
-                                    <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400"><span>🎯 {{ __('Savings goal') }}</span><span class="tabular-nums">{{ $euro($saved) }} / {{ $euro($item->savingsGoal->target_amount) }}</span></div>
-                                    <div class="mt-1 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $item->savingsGoal->target_amount > 0 ? (int) min(100, $saved / $item->savingsGoal->target_amount * 100) : 0 }}">
-                                        <div class="h-full rounded-full bg-indigo-500" style="width: {{ $item->savingsGoal->target_amount > 0 ? min(100, round($saved / $item->savingsGoal->target_amount * 100)) : 0 }}%"></div>
-                                    </div>
-                                </div>
-                            @endif
-
-                            <div class="mt-3 flex flex-wrap gap-2 text-sm">
-                                <button type="button" wire:click="decide({{ $item->id }}, 'bought')" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700">✓ {{ __('Bought') }}</button>
-                                <button type="button" wire:click="decide({{ $item->id }}, 'dropped')" class="rounded-lg px-3 py-1.5 text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700">{{ __('Don\'t need it') }}</button>
-                                @if ($item->price && ! $item->savingsGoal && $check['level'] !== 'green')
-                                    <button type="button" wire:click="createSavingsGoal({{ $item->id }})" class="rounded-lg px-3 py-1.5 text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-indigo-900/30">🎯 {{ __('Create savings goal') }}</button>
-                                @endif
-                                <button type="button" wire:click="edit({{ $item->id }})" class="ms-auto text-gray-500 underline dark:text-gray-400">{{ __('Edit') }}</button>
-                            </div>
-                        </article>
-                    @endforeach
+                        </select>
+                    </label>
                 </section>
+            @endif
+
+            @forelse ($openList as $item)
+                @php($check = $checks[$item->id])
+                <article wire:key="wish-{{ $item->id }}" class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-gray-900 dark:text-gray-100">
+                                <span class="mr-1">{{ $categories[$item->category]['icon'] ?? '🛍️' }}</span>{{ $item->title }}
+                                <span class="ms-1 align-middle text-xs text-gray-400">{{ $priorities[$item->priority]['icon'] ?? '' }}</span>
+                                @if ($item->isPrivate())
+                                    <x-private-badge />
+                                @endif
+                            </p>
+                            @if ($item->reason)
+                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ $item->reason }}</p>
+                            @endif
+                            <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                @if ($item->wanted_by)
+                                    <span>📅 {{ __('by :date', ['date' => $item->wanted_by->format('d.m.Y')]) }}</span>
+                                @endif
+                                @if ($item->url)
+                                    <a href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline dark:text-indigo-400">{{ __('Open link') }} ↗</a>
+                                    <button type="button" wire:click="checkPrice({{ $item->id }})" wire:loading.attr="disabled" class="text-gray-500 underline hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">🔄 {{ __('Check price') }}</button>
+                                @endif
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($item->price) }}</p>
+                            @if ($item->tracked_price !== null)
+                                <p @class(['text-sm tabular-nums', 'font-semibold text-emerald-600 dark:text-emerald-400' => $item->hasPriceDrop(), 'text-gray-500 dark:text-gray-400' => ! $item->hasPriceDrop()])>
+                                    {{ __('online') }}: {{ $euro($item->tracked_price) }}
+                                    @if ($item->hasPriceDrop()) ↓ @endif
+                                </p>
+                                @if ($item->lowest_price !== null && $item->lowest_price < $item->tracked_price)
+                                    <p class="text-xs text-gray-400 dark:text-gray-500">{{ __('low: :price', ['price' => $euro($item->lowest_price)]) }}</p>
+                                @endif
+                            @elseif ($item->url && $item->price_check_status === 'failed')
+                                <p class="text-xs text-gray-400 dark:text-gray-500">{{ __('no price found') }}</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="mt-3 rounded-lg px-3 py-2 text-sm ring-1 {{ $levels[$check['level']]['class'] }}" role="status">
+                        <span class="font-medium"><span aria-hidden="true">{{ $levels[$check['level']]['dot'] }}</span> {{ $levels[$check['level']]['label'] }}:</span> {{ $check['text'] }}
+                    </div>
+                    @foreach ($check['hints'] as $hint)
+                        <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">💡 {{ $hint }}</p>
+                    @endforeach
+
+                    @if ($item->savingsGoal)
+                        @php($saved = $item->savingsGoal->savedSoFar())
+                        <div class="mt-3">
+                            <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400"><span>🎯 {{ __('Savings goal') }}</span><span class="tabular-nums">{{ $euro($saved) }} / {{ $euro($item->savingsGoal->target_amount) }}</span></div>
+                            <div class="mt-1 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $item->savingsGoal->target_amount > 0 ? (int) min(100, $saved / $item->savingsGoal->target_amount * 100) : 0 }}">
+                                <div class="h-full rounded-full bg-indigo-500" style="width: {{ $item->savingsGoal->target_amount > 0 ? min(100, round($saved / $item->savingsGoal->target_amount * 100)) : 0 }}%"></div>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                        <button type="button" wire:click="decide({{ $item->id }}, 'bought')" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700">✓ {{ __('Bought') }}</button>
+                        <button type="button" wire:click="decide({{ $item->id }}, 'dropped')" class="rounded-lg px-3 py-1.5 text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700">{{ __('Don\'t need it') }}</button>
+                        @if ($item->price && ! $item->savingsGoal && $check['level'] !== 'green')
+                            <button type="button" wire:click="createSavingsGoal({{ $item->id }})" class="rounded-lg px-3 py-1.5 text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-indigo-900/30">🎯 {{ __('Create savings goal') }}</button>
+                        @endif
+                        <button type="button" wire:click="edit({{ $item->id }})" class="ms-auto text-gray-500 underline dark:text-gray-400">{{ __('Edit') }}</button>
+                    </div>
+                </article>
             @empty
                 <section class="rounded-2xl bg-white p-6 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">🎁</p>
-                    <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No wishes yet.') }}</p>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Note what you would like to buy, why and how important it is – the app checks against your cashflow whether it fits now or when it will.') }}</p>
+                    @if ($filterCategory !== '')
+                        <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No wishes in this category.') }}</p>
+                        <button type="button" wire:click="$set('filterCategory', '')" class="mt-1 text-sm text-indigo-600 underline dark:text-indigo-400">{{ __('Show all') }}</button>
+                    @else
+                        <p class="mt-2 text-gray-700 dark:text-gray-200">{{ __('No wishes yet.') }}</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Note what you would like to buy, why and how important it is – the app checks against your cashflow whether it fits now or when it will.') }}</p>
+                    @endif
                 </section>
             @endforelse
 

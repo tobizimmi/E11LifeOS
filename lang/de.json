@@ -7011,5 +7011,20 @@
     "offer": "Angebot",
     ":count meals added and recipes saved.": ":count Mahlzeiten übernommen und Rezepte gespeichert.",
     ":count meals added to the plan.": ":count Mahlzeiten zum Plan hinzugefügt.",
-    "Shopping list created.": "Einkaufsliste erstellt."
+    "Shopping list created.": "Einkaufsliste erstellt.",
+    "With a link the price is checked automatically every few days.": "Mit Link wird der Preis alle paar Tage automatisch geprüft.",
+    "Add a link first to track the price.": "Füge zuerst einen Link hinzu, um den Preis zu verfolgen.",
+    "Price updated.": "Preis aktualisiert.",
+    "No price found on the page.": "Auf der Seite wurde kein Preis gefunden.",
+    "Check price": "Preis prüfen",
+    "Price ↑": "Preis ↑",
+    "Price ↓": "Preis ↓",
+    "Biggest saving": "Größte Ersparnis",
+    "Newest": "Neueste",
+    "online": "online",
+    "low: :price": "Tief: :price",
+    "no price found": "kein Preis gefunden",
+    "No wishes in this category.": "Keine Wünsche in dieser Kategorie.",
+    "Price dropped: :title": "Preis gefallen: :title",
+    "Now :price (saved at :saved).": "Jetzt :price (gespeichert bei :saved)."
 }

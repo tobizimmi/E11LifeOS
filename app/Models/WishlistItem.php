@@ -29,8 +29,13 @@ use Illuminate\Support\Carbon;
  * @property ?int $savings_goal_id
  * @property ?Carbon $decided_at
  * @property ?Carbon $created_at
+ * @property ?float $tracked_price
+ * @property ?string $tracked_currency
+ * @property ?float $lowest_price
+ * @property ?Carbon $price_checked_at
+ * @property ?string $price_check_status
  */
-#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'price', 'priority', 'category', 'reason', 'url', 'status', 'wanted_by', 'savings_goal_id', 'decided_at', 'position'])]
+#[Fillable(['household_id', 'created_by', 'visibility', 'title', 'price', 'priority', 'category', 'reason', 'url', 'status', 'wanted_by', 'savings_goal_id', 'decided_at', 'position', 'tracked_price', 'tracked_currency', 'lowest_price', 'price_checked_at', 'price_check_status'])]
 class WishlistItem extends Model
 {
     /** @use HasFactory<WishlistItemFactory> */
@@ -44,9 +49,20 @@ class WishlistItem extends Model
     {
         return [
             'price' => 'float',
+            'tracked_price' => 'float',
+            'lowest_price' => 'float',
             'wanted_by' => 'date',
             'decided_at' => 'datetime',
+            'price_checked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether the price found online is at least 1 % below what the wish was saved with.
+     */
+    public function hasPriceDrop(): bool
+    {
+        return $this->tracked_price !== null && $this->price !== null && $this->tracked_price < $this->price * 0.99;
     }
 
     /**

@@ -42,6 +42,7 @@ Schedule::command('digest:weekly')->hourlyAt(2)->withoutOverlapping();
 Schedule::command('briefing:morning')->hourlyAt(0)->withoutOverlapping();
 Schedule::command('finance:check-budgets')->dailyAt('19:05');
 Schedule::command('wishlist:check-prices')->dailyAt('08:20')->withoutOverlapping();
+Schedule::command('finance:watch-subscriptions')->dailyAt('07:40')->withoutOverlapping();
 Schedule::command('backup:run')->dailyAt('03:15')->withoutOverlapping();
 Schedule::command('backup:verify')->weeklyOn(0, '04:30')->withoutOverlapping();
 Schedule::command('system:watch')->everyTenMinutes()->withoutOverlapping();

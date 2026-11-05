@@ -361,7 +361,7 @@ parameters:
 			path: app/Http/Controllers/OfflineCaptureController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<int\<0, max\>, array\{text\: string, hint\: string\|null, tone\: string, options\: array\<int, array\<string, mixed\>\>, url\: string\|null, nodes\: array\<int, array\<string, mixed\>\>\}\|null\>, Closure\(App\\Models\\CollectionProperty\)\: non\-empty\-array\<int\<0, max\>, array\{text\: string, hint\: string\|null, tone\: string, options\: array\<int, array\<string, mixed\>\>, url\: string\|null, nodes\: array\<int, array\<string, mixed\>\>\}\|null\> given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<int\<0, max\>, array\{text\: string, hint\: string\|null, tone\: string, options\: array\<int, array\<string, mixed\>\>, url\: string\|null, nodes\: array\<int, array\<string, mixed\>\>, files\: array\<int, int\>\}\|null\>, Closure\(App\\Models\\CollectionProperty\)\: non\-empty\-array\<int\<0, max\>, array\{text\: string, hint\: string\|null, tone\: string, options\: array\<int, array\<string, mixed\>\>, url\: string\|null, nodes\: array\<int, array\<string, mixed\>\>, files\: array\<int, int\>\}\|null\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/PublicCollectionController.php

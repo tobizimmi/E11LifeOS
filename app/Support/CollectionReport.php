@@ -140,19 +140,47 @@ class CollectionReport
             return null;
         }
 
-        if ($property->type === CollectionProperty::TYPE_IMAGE) {
-            $images = $attachments->map(function (Attachment $attachment) {
-                $data = $attachment->isImage() ? self::dataUri($attachment) : null;
+        // Pictures (and the poster of videos, where one has been captured) are embedded so the report
+        // reads like real documentation; videos without a poster get a labelled tile, other files a name.
+        $media = [];
+        $files = [];
 
-                return $data
-                    ? '<img src="'.$data.'" style="max-width:120px;max-height:120px;margin:0 6px 6px 0;border:1px solid #e5e5ea;" />'
-                    : '📎 '.e($attachment->original_name);
-            })->implode('');
-
-            return '<div>'.$images.'</div>';
+        foreach ($attachments as $attachment) {
+            if ($attachment->isImage() && ($data = self::dataUri($attachment)) !== null) {
+                $media[] = '<img src="'.$data.'" style="max-width:160px;max-height:160px;margin:0 8px 8px 0;border:1px solid #e5e5ea;border-radius:4px;" />';
+            } elseif ($attachment->isVideo()) {
+                $poster = ($posterData = self::posterDataUri($attachment)) !== null
+                    ? '<img src="'.$posterData.'" style="max-width:160px;max-height:160px;margin:0 8px 8px 0;border:1px solid #e5e5ea;border-radius:4px;" />'
+                    : '<span style="display:inline-block;width:160px;height:90px;line-height:90px;text-align:center;margin:0 8px 8px 0;border:1px solid #e5e5ea;border-radius:4px;background:#f2f2f7;color:#8e8e93;font-size:9pt;">&#9654; '.e($attachment->original_name).'</span>';
+                $media[] = $poster;
+            } else {
+                $files[] = '&#128206; '.e($attachment->original_name);
+            }
         }
 
-        return $attachments->map(fn (Attachment $attachment) => '📎 '.e($attachment->original_name))->implode('<br>');
+        return (($media !== [] ? '<div style="margin-top:2px;">'.implode('', $media).'</div>' : '')
+            .($files !== [] ? '<div>'.implode('<br>', $files).'</div>' : '')) ?: null;
+    }
+
+    /**
+     * A video's captured poster frame as a data URI, or null when none was stored (then a tile is shown).
+     * Reads the optional "poster_path" attribute so the report lights up automatically once posters exist.
+     */
+    private static function posterDataUri(Attachment $attachment): ?string
+    {
+        $path = $attachment->getAttribute('poster_path');
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        try {
+            $disk = Storage::disk(Attachment::DISK);
+
+            return $disk->exists($path) ? 'data:image/jpeg;base64,'.base64_encode((string) $disk->get($path)) : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

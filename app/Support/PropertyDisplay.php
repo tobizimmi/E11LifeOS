@@ -86,6 +86,15 @@ class PropertyDisplay
                 $result['text'] = implode(', ', array_column($result['nodes'], 'title'));
                 break;
 
+            case CollectionProperty::TYPE_RATING:
+                $stars = max(1, min(5, (int) $value));
+                $result['text'] = str_repeat('★', $stars).str_repeat('☆', 5 - $stars);
+                break;
+
+            case CollectionProperty::TYPE_PROGRESS:
+                $result['text'] = max(0, min(100, (int) $value)).' %';
+                break;
+
             case CollectionProperty::TYPE_FILE:
             case CollectionProperty::TYPE_IMAGE:
                 $result['files'] = collect((array) $value)->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id)->values()->all();

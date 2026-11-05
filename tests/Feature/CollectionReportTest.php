@@ -52,6 +52,35 @@ class CollectionReportTest extends TestCase
         $long = new CollectionProperty(['type' => CollectionProperty::TYPE_LONG_TEXT]);
         $this->assertFalse($long->isFiles());
         $this->assertSame('Zeile 1'."\n".'Zeile 2', $long->normalizeValue('  Zeile 1'."\n".'Zeile 2  '));
+
+        $rating = new CollectionProperty(['type' => CollectionProperty::TYPE_RATING]);
+        $this->assertSame(5, $rating->normalizeValue(9));
+        $this->assertSame(3, $rating->normalizeValue('3'));
+        $this->assertNull($rating->normalizeValue(''));
+
+        $progress = new CollectionProperty(['type' => CollectionProperty::TYPE_PROGRESS]);
+        $this->assertSame(0, $progress->normalizeValue('0'));
+        $this->assertSame(100, $progress->normalizeValue(140));
+        $this->assertSame(60, $progress->normalizeValue(60));
+    }
+
+    public function test_the_report_embeds_images_and_lists_other_files(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        [$collection, , $files] = $this->collectionWithFileColumn($household->id);
+        $entry = Item::factory()->for($household)->create([
+            'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Baustelle', 'created_by' => $user->id,
+        ]);
+        $image = Attachment::storeUpload(UploadedFile::fake()->image('foto.jpg', 20, 20), $household->id, $entry->id, $user->id);
+        $pdf = Attachment::storeUpload(UploadedFile::fake()->create('plan.pdf', 10, 'application/pdf'), $household->id, $entry->id, $user->id);
+        $entry->setPropertyValue($files, [$image->id, $pdf->id]);
+        $entry->save();
+
+        $html = CollectionReport::html($collection->fresh('properties'), Item::with('attachments')->where('id', $entry->id)->get(), $collection->properties);
+
+        $this->assertStringContainsString('<img src="data:image/jpeg;base64,', $html);
+        $this->assertStringContainsString('plan.pdf', $html);
     }
 
     public function test_editing_an_entry_with_a_file_column_does_not_error(): void

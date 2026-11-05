@@ -110,6 +110,22 @@
                 <textarea id="{{ $id }}" rows="4" wire:model="{{ $model }}" class="{{ $input }}"></textarea>
                 @break
 
+            @case(CollectionProperty::TYPE_RATING)
+                <select id="{{ $id }}" wire:model="{{ $model }}" class="{{ $input }}">
+                    <option value="">—</option>
+                    @for ($i = 1; $i <= 5; $i++)
+                        <option value="{{ $i }}">{{ str_repeat('★', $i) }}</option>
+                    @endfor
+                </select>
+                @break
+
+            @case(CollectionProperty::TYPE_PROGRESS)
+                <div class="flex items-center gap-2">
+                    <input id="{{ $id }}" type="number" min="0" max="100" step="5" inputmode="numeric" wire:model="{{ $model }}" class="{{ $input }}" />
+                    <span class="text-sm text-gray-400">%</span>
+                </div>
+                @break
+
             @case(CollectionProperty::TYPE_FILE)
             @case(CollectionProperty::TYPE_IMAGE)
                 <p class="rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-sm text-gray-400 dark:border-gray-600">

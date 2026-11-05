@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.84.0] – 2026-11-05
+
+### Neu
+- **Spaltentypen „Bewertung" (1–5 Sterne) und „Fortschritt" (0–100 %).** Für Status- und Fortschrittsübersichten in Sammlungen; filter- und sortierbar wie Zahlen.
+
+### Verbessert
+- **Bericht als echte Dokumentation.** Bilder aus Bild- und Datei-Spalten werden jetzt direkt ins PDF eingebettet (nicht nur als Dateiname gelistet). Videos erscheinen als beschriftete Kachel; sobald ein Startbild hinterlegt ist, wird dieses eingebettet.
+
 ## [1.83.1] – 2026-11-05
 
 ### Behoben

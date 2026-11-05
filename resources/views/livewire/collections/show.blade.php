@@ -1538,6 +1538,8 @@ new #[Layout('layouts.app')] class extends Component
                 CollectionProperty::TYPE_CHECKBOX => __('Checkbox'),
                 CollectionProperty::TYPE_PERSON => __('Person'),
                 CollectionProperty::TYPE_URL => __('Link'),
+                CollectionProperty::TYPE_RATING => __('Rating (stars)'),
+                CollectionProperty::TYPE_PROGRESS => __('Progress (%)'),
                 CollectionProperty::TYPE_IMAGE => __('Images'),
                 CollectionProperty::TYPE_FILE => __('Files / attachments'),
             ],

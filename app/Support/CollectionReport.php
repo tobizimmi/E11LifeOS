@@ -131,7 +131,7 @@ class CollectionReport
      */
     private static function filesHtml(CollectionProperty $property, Item $entry): ?string
     {
-        $ids = collect((array) $entry->propertyValue($property))->filter('is_numeric')->map(fn ($id) => (int) $id);
+        $ids = collect((array) $entry->propertyValue($property))->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id);
         $attachments = $entry->relationLoaded('attachments')
             ? $entry->attachments->whereIn('id', $ids->all())
             : Attachment::whereIn('id', $ids->all())->get();

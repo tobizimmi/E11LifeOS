@@ -88,7 +88,7 @@ class PropertyDisplay
 
             case CollectionProperty::TYPE_FILE:
             case CollectionProperty::TYPE_IMAGE:
-                $result['files'] = collect((array) $value)->filter('is_numeric')->map(fn ($id) => (int) $id)->values()->all();
+                $result['files'] = collect((array) $value)->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id)->values()->all();
 
                 if ($result['files'] === []) {
                     return null;

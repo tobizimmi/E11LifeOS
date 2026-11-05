@@ -146,6 +146,7 @@ class CollectionReport
         $files = [];
 
         foreach ($attachments as $attachment) {
+            /** @var Attachment $attachment */
             if ($attachment->isImage() && ($data = self::dataUri($attachment)) !== null) {
                 $media[] = '<img src="'.$data.'" style="max-width:160px;max-height:160px;margin:0 8px 8px 0;border:1px solid #e5e5ea;border-radius:4px;" />';
             } elseif ($attachment->isVideo()) {

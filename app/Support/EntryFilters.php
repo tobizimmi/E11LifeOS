@@ -21,8 +21,8 @@ class EntryFilters
     public static function operators(?CollectionProperty $property): array
     {
         return match ($property?->type) {
-            null, CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_URL => ['contains' => __('contains'), 'not_contains' => __('does not contain'), 'empty' => __('is empty'), 'not_empty' => __('is not empty')],
-            CollectionProperty::TYPE_NUMBER => ['eq' => '=', 'gt' => '>', 'lt' => '<', 'empty' => __('is empty'), 'not_empty' => __('is not empty')],
+            null, CollectionProperty::TYPE_TEXT, CollectionProperty::TYPE_LONG_TEXT, CollectionProperty::TYPE_URL => ['contains' => __('contains'), 'not_contains' => __('does not contain'), 'empty' => __('is empty'), 'not_empty' => __('is not empty')],
+            CollectionProperty::TYPE_NUMBER, CollectionProperty::TYPE_RATING, CollectionProperty::TYPE_PROGRESS => ['eq' => '=', 'gt' => '>', 'lt' => '<', 'empty' => __('is empty'), 'not_empty' => __('is not empty')],
             CollectionProperty::TYPE_DATE => ['today' => __('is today'), 'overdue' => __('is overdue'), 'next_7_days' => __('in the next 7 days'), 'this_month' => __('this month'), 'before' => __('before'), 'after' => __('after'), 'empty' => __('is empty'), 'not_empty' => __('is not empty')],
             CollectionProperty::TYPE_SELECT => ['is' => __('is'), 'is_not' => __('is not'), 'empty' => __('is empty'), 'not_empty' => __('is not empty')],
             CollectionProperty::TYPE_MULTI_SELECT => ['has' => __('contains'), 'has_not' => __('does not contain'), 'empty' => __('is empty'), 'not_empty' => __('is not empty')],

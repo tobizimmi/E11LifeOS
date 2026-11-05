@@ -28,7 +28,7 @@ class Attachment extends Model
     /**
      * Allowed extensions; no SVG/HTML, which a browser could run as a page.
      */
-    public const EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'zip'];
+    public const EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'zip', 'mp4', 'webm', 'mov', 'm4v'];
 
     /**
      * Matches attachment URLs in a page body; group 1 is the id.
@@ -92,6 +92,11 @@ class Attachment extends Model
     public function isImage(): bool
     {
         return in_array($this->mime_type, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true);
+    }
+
+    public function isVideo(): bool
+    {
+        return in_array($this->mime_type, ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v'], true);
     }
 
     public function url(): string

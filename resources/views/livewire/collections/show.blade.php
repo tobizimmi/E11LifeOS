@@ -196,11 +196,16 @@ new #[Layout('layouts.app')] class extends Component
     public array $documentUploads = [];
 
     /**
-     * Files picked for a file/image column in the detail popup, keyed by property id (stored right away).
+     * Files picked for the currently targeted file/image column in the detail popup (stored right away).
      *
      * @var array<int, mixed>
      */
-    public array $propertyUploads = [];
+    public array $columnUpload = [];
+
+    /**
+     * Which file/image column the next upload goes to (set when the user opens that column's picker).
+     */
+    public ?int $columnTargetId = null;
 
     public ?string $aiFillMessage = null;
 
@@ -714,32 +719,42 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Files picked for a file/image column of the open entry: stored and added to that column's value.
+     * Opens the file picker for one file/image column (the next upload is stored there).
      */
-    public function updatedPropertyUploads(): void
+    public function pickColumn(int $propertyId): void
     {
-        $this->validate(['propertyUploads.*' => ['array', 'max:20'], 'propertyUploads.*.*' => Attachment::rules()]);
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->isFiles(), 422);
+        $this->columnTargetId = $property->id;
+    }
+
+    /**
+     * Files picked for the targeted file/image column of the open entry: stored and added to its value.
+     */
+    public function updatedColumnUpload(): void
+    {
+        if ($this->columnTargetId === null || $this->columnUpload === []) {
+            return;
+        }
+
+        $this->validate(['columnUpload' => ['array', 'max:20'], 'columnUpload.*' => Attachment::rules()]);
+
         $entry = $this->findEntry((int) $this->openEntryId);
+        $property = $this->findCollection()->properties->firstWhere('id', $this->columnTargetId);
 
-        foreach ($this->propertyUploads as $propertyId => $uploads) {
-            $property = $this->findCollection()->properties->firstWhere('id', (int) $propertyId);
+        if ($property && $property->isFiles()) {
+            $ids = array_values(array_filter((array) $entry->propertyValue($property), fn ($id) => is_numeric($id)));
 
-            if (! $property || ! $property->isFiles() || ! is_array($uploads) || $uploads === []) {
-                continue;
-            }
-
-            $ids = array_values(array_filter((array) $entry->propertyValue($property), 'is_numeric'));
-
-            foreach ($uploads as $upload) {
+            foreach ($this->columnUpload as $upload) {
                 $ids[] = Attachment::storeUpload($upload, (int) $this->householdId, $entry->id, (int) Auth::id())->id;
             }
 
             $entry->setPropertyValue($property, $property->normalizeValue($ids));
             $entry->save();
-            $this->dispatch('toast', message: trans_choice(':count file added|:count files added', count($uploads)));
+            $this->dispatch('toast', message: trans_choice(':count file added|:count files added', count($this->columnUpload)));
         }
 
-        $this->reset('propertyUploads');
+        $this->reset('columnUpload', 'columnTargetId');
     }
 
     /**
@@ -885,9 +900,11 @@ new #[Layout('layouts.app')] class extends Component
         return $collection->properties->mapWithKeys(function (CollectionProperty $property) use ($values) {
             $value = $values[$property->id] ?? null;
 
-            return [$property->id => match ($property->type) {
-                CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION => array_values((array) $value),
-                CollectionProperty::TYPE_CHECKBOX => (bool) $value,
+            return [$property->id => match (true) {
+                in_array($property->type, [CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION], true) => array_values((array) $value),
+                $property->type === CollectionProperty::TYPE_CHECKBOX => (bool) $value,
+                // File/image columns are managed in the detail view, never bound in the form.
+                $property->isFiles() => '',
                 default => $value === null ? '' : (string) $value,
             }];
         })->all();
@@ -1511,7 +1528,8 @@ new #[Layout('layouts.app')] class extends Component
                 ->pluck('name'),
             'openEntryHtml' => $openEntry ? NoteMarkdown::toHtml($openEntry, Auth::user(), interactiveTasks: true) : null,
             'propertyTypes' => [
-                CollectionProperty::TYPE_TEXT => __('Text'),
+                CollectionProperty::TYPE_TEXT => __('Text (single line)'),
+                CollectionProperty::TYPE_LONG_TEXT => __('Text (multi-line)'),
                 CollectionProperty::TYPE_NUMBER => __('Number'),
                 CollectionProperty::TYPE_DATE => __('Date'),
                 CollectionProperty::TYPE_SELECT => __('Select'),
@@ -1520,6 +1538,8 @@ new #[Layout('layouts.app')] class extends Component
                 CollectionProperty::TYPE_CHECKBOX => __('Checkbox'),
                 CollectionProperty::TYPE_PERSON => __('Person'),
                 CollectionProperty::TYPE_URL => __('Link'),
+                CollectionProperty::TYPE_RATING => __('Rating (stars)'),
+                CollectionProperty::TYPE_PROGRESS => __('Progress (%)'),
                 CollectionProperty::TYPE_IMAGE => __('Images'),
                 CollectionProperty::TYPE_FILE => __('Files / attachments'),
             ],
@@ -2164,7 +2184,7 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($filled->isNotEmpty())
                     <dl class="grid gap-3 sm:grid-cols-2">
                         @foreach ($filled as $row)
-                            <div wire:key="detail-{{ $row['property']->id }}" @class(['rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-900/40', 'sm:col-span-2' => in_array($row['property']->type, [\App\Models\CollectionProperty::TYPE_MULTI_SELECT, \App\Models\CollectionProperty::TYPE_RELATION, \App\Models\CollectionProperty::TYPE_TEXT], true) && mb_strlen($row['display']['text']) > 40])>
+                            <div wire:key="detail-{{ $row['property']->id }}" @class(['rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-900/40', 'sm:col-span-2' => in_array($row['property']->type, [\App\Models\CollectionProperty::TYPE_MULTI_SELECT, \App\Models\CollectionProperty::TYPE_RELATION, \App\Models\CollectionProperty::TYPE_TEXT, \App\Models\CollectionProperty::TYPE_LONG_TEXT], true) && mb_strlen($row['display']['text']) > 40])>
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $row['property']->name }}</dt>
                                 <dd class="mt-1 {{ $detailTones[$row['display']['tone']] ?? '' }}">
                                     @if ($row['display']['options'] !== [])
@@ -2197,24 +2217,32 @@ new #[Layout('layouts.app')] class extends Component
                     <section wire:key="file-column-{{ $fileProperty->id }}">
                         <div class="mb-2 flex items-center justify-between gap-2">
                             <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE ? '🖼️' : '📎' }} {{ $fileProperty->name }}</h3>
-                            <label class="cursor-pointer text-sm text-indigo-600 hover:underline dark:text-indigo-400">
-                                + {{ __('Add') }}
-                                <input type="file" multiple wire:model="propertyUploads.{{ $fileProperty->id }}" accept="{{ $fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE ? 'image/*' : '.'.implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
-                            </label>
+                            @if ($columnTargetId === $fileProperty->id)
+                                <label class="cursor-pointer text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+                                    {{ __('Choose files …') }}
+                                    <input type="file" multiple autofocus x-init="$el.click()" wire:model="columnUpload" accept="{{ $fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE ? 'image/*,video/*' : '.'.implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
+                                </label>
+                            @else
+                                <button type="button" wire:click="pickColumn({{ $fileProperty->id }})" class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('Add') }}</button>
+                            @endif
                         </div>
-                        <p wire:loading wire:target="propertyUploads.{{ $fileProperty->id }}" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                        <p wire:loading wire:target="columnUpload" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
                         @if ($columnFiles->isNotEmpty())
                             @if ($fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE)
                                 <div class="flex flex-wrap gap-2">
                                     @foreach ($columnFiles->sortByDesc('id') as $file)
                                         <div wire:key="colfile-{{ $file->id }}" class="group relative">
-                                            <a href="{{ $file->url() }}" target="_blank" rel="noopener">
-                                                @if ($file->isImage())
-                                                    <img src="{{ $file->url() }}" alt="{{ $file->original_name }}" class="h-24 w-24 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700" loading="lazy" />
-                                                @else
-                                                    <span class="flex h-24 w-24 items-center justify-center rounded-lg bg-gray-50 text-2xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">📎</span>
-                                                @endif
-                                            </a>
+                                            @if ($file->isVideo())
+                                                <video src="{{ $file->url() }}" controls class="h-24 w-24 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700"></video>
+                                            @else
+                                                <a href="{{ $file->url() }}" target="_blank" rel="noopener">
+                                                    @if ($file->isImage())
+                                                        <img src="{{ $file->url() }}" alt="{{ $file->original_name }}" class="h-24 w-24 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700" loading="lazy" />
+                                                    @else
+                                                        <span class="flex h-24 w-24 items-center justify-center rounded-lg bg-gray-50 text-2xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">📎</span>
+                                                    @endif
+                                                </a>
+                                            @endif
                                             <button type="button" wire:click="removePropertyFile({{ $fileProperty->id }}, {{ $file->id }})" wire:confirm="{{ __('Remove this file?') }}" class="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-gray-700 text-xs text-white opacity-0 group-hover:opacity-100" aria-label="{{ __('Remove') }}">×</button>
                                         </div>
                                     @endforeach
@@ -2238,7 +2266,9 @@ new #[Layout('layouts.app')] class extends Component
                         @else
                             <p class="text-sm text-gray-400">{{ __('Nothing here yet.') }}</p>
                         @endif
-                        <x-input-error :messages="$errors->get('propertyUploads.'.$fileProperty->id.'.*')" class="mt-1" />
+                        @if ($columnTargetId === $fileProperty->id)
+                            <x-input-error :messages="array_merge($errors->get('columnUpload'), $errors->get('columnUpload.*'))" class="mt-1" />
+                        @endif
                     </section>
                 @endforeach
 

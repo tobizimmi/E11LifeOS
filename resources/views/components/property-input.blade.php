@@ -152,6 +152,26 @@
         </div>
         @break
 
+    @case(CollectionProperty::TYPE_LONG_TEXT)
+        <textarea aria-label="{{ $label }}" rows="{{ $compact ? 1 : 3 }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}">{{ $value }}</textarea>
+        @break
+
+    @case(CollectionProperty::TYPE_RATING)
+        <select aria-label="{{ $label }}" class="{{ $field }}" wire:change="{{ $call('$event.target.value') }}">
+            <option value="">—</option>
+            @for ($i = 1; $i <= 5; $i++)
+                <option value="{{ $i }}" @selected((int) $value === $i)>{{ str_repeat('★', $i) }}</option>
+            @endfor
+        </select>
+        @break
+
+    @case(CollectionProperty::TYPE_PROGRESS)
+        <div class="flex items-center gap-1">
+            <input type="number" min="0" max="100" step="5" aria-label="{{ $label }}" value="{{ $value }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}" />
+            <span class="text-xs text-gray-400">%</span>
+        </div>
+        @break
+
     @case(CollectionProperty::TYPE_FILE)
     @case(CollectionProperty::TYPE_IMAGE)
         {{-- Files are managed in the entry detail view; the cell shows how many there are. --}}

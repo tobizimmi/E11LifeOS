@@ -14,6 +14,11 @@ class CollectionProperty extends Model
 {
     public const TYPE_TEXT = 'text';
 
+    /**
+     * Multi-line free text (shown as a textarea), as opposed to the single-line {@see self::TYPE_TEXT}.
+     */
+    public const TYPE_LONG_TEXT = 'long_text';
+
     public const TYPE_NUMBER = 'number';
 
     public const TYPE_DATE = 'date';
@@ -37,6 +42,16 @@ class CollectionProperty extends Model
      * A column of attached files (any type); the value is a list of {@see Attachment} ids
      * belonging to the entry.
      */
+    /**
+     * A 1–5 star rating.
+     */
+    public const TYPE_RATING = 'rating';
+
+    /**
+     * A 0–100 % progress value (shown as a bar).
+     */
+    public const TYPE_PROGRESS = 'progress';
+
     public const TYPE_FILE = 'file';
 
     /**
@@ -46,6 +61,7 @@ class CollectionProperty extends Model
 
     public const TYPES = [
         self::TYPE_TEXT,
+        self::TYPE_LONG_TEXT,
         self::TYPE_NUMBER,
         self::TYPE_DATE,
         self::TYPE_SELECT,
@@ -54,6 +70,8 @@ class CollectionProperty extends Model
         self::TYPE_URL,
         self::TYPE_MULTI_SELECT,
         self::TYPE_RELATION,
+        self::TYPE_RATING,
+        self::TYPE_PROGRESS,
         self::TYPE_FILE,
         self::TYPE_IMAGE,
     ];
@@ -253,7 +271,10 @@ class CollectionProperty extends Model
 
         return match ($this->type) {
             self::TYPE_TEXT => mb_substr(trim((string) $value), 0, 1000) ?: null,
+            self::TYPE_LONG_TEXT => mb_substr(trim((string) $value), 0, 20000) ?: null,
             self::TYPE_NUMBER => is_numeric($value) ? $value + 0 : null,
+            self::TYPE_RATING => is_numeric($value) ? max(1, min(5, (int) round((float) $value))) : null,
+            self::TYPE_PROGRESS => is_numeric($value) ? max(0, min(100, (int) round((float) $value))) : null,
             self::TYPE_DATE => $this->normalizeDate((string) $value),
             self::TYPE_SELECT => $this->option((string) $value) ? (string) $value : null,
             self::TYPE_CHECKBOX => filter_var($value, FILTER_VALIDATE_BOOLEAN) ?: null,

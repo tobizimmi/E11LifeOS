@@ -793,6 +793,9 @@ new #[Layout('layouts.app')] class extends Component
             ->when($this->hideDone && $collection->isTasks(), fn ($entries) => $entries->reject(fn (Item $entry) => $entry->done))
             ->values();
 
+        // Share the loaded collection so formula columns can compute in the report.
+        $entries->each(fn (Item $entry) => $entry->setRelation('collection', $collection));
+
         $pdf = CollectionReport::pdf(
             $collection,
             $entries,
@@ -818,7 +821,7 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['form.title' => __('Title')]);
 
         $collection = $this->findCollection();
-        $missing = $collection->properties->filter(fn (CollectionProperty $property) => $property->required && ! $property->isFiles()
+        $missing = $collection->properties->filter(fn (CollectionProperty $property) => $property->required && ! $property->isFiles() && ! $property->isComputed()
             && $property->normalizeValue($this->form['values'][$property->id] ?? null, $this->memberIds()) === null);
 
         if ($missing->isNotEmpty()) {
@@ -841,9 +844,9 @@ new #[Layout('layouts.app')] class extends Component
         $entry->title = mb_substr(trim($this->form['title']), 0, 255);
 
         foreach ($collection->properties as $property) {
-            // File/image columns are managed in the detail view (upload stores files right away),
-            // so the form never overwrites their value.
-            if ($property->isFiles()) {
+            // File/image columns are managed in the detail view, formula columns are calculated —
+            // the form never writes either.
+            if ($property->isFiles() || $property->isComputed()) {
                 continue;
             }
 
@@ -1149,6 +1152,20 @@ new #[Layout('layouts.app')] class extends Component
             $this->findProperty($propertyId)->update(['name' => mb_substr($name, 0, 100)]);
             $this->schemaChanged();
         }
+    }
+
+    /**
+     * Stores the expression of a formula column, e.g. "{Preis} * {Menge}".
+     */
+    public function setPropertyFormula(int $propertyId, string $expression): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->type === CollectionProperty::TYPE_FORMULA, 422);
+
+        $options = $property->options ?? [];
+        $options['formula'] = mb_substr(trim($expression), 0, 500);
+        $property->update(['options' => $options]);
+        $this->schemaChanged();
     }
 
     /**
@@ -1496,6 +1513,11 @@ new #[Layout('layouts.app')] class extends Component
             ? $this->entries()->with('creator', 'tags', 'attachments')->find((int) $this->openEntryId)
             : null;
 
+        // Formula columns compute from the entry's collection; share the already-loaded collection
+        // with its properties so no extra query is needed per entry.
+        $entries->each(fn (Item $entry) => $entry->setRelation('collection', $collection));
+        $openEntry?->setRelation('collection', $collection);
+
         return [
             'collection' => $collection,
             'isContracts' => ContractAssistant::isContractCollection($collection),
@@ -1540,6 +1562,7 @@ new #[Layout('layouts.app')] class extends Component
                 CollectionProperty::TYPE_URL => __('Link'),
                 CollectionProperty::TYPE_RATING => __('Rating (stars)'),
                 CollectionProperty::TYPE_PROGRESS => __('Progress (%)'),
+                CollectionProperty::TYPE_FORMULA => __('Formula (calculated)'),
                 CollectionProperty::TYPE_IMAGE => __('Images'),
                 CollectionProperty::TYPE_FILE => __('Files / attachments'),
             ],

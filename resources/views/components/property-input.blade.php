@@ -172,6 +172,18 @@
         </div>
         @break
 
+    @case(CollectionProperty::TYPE_FORMULA)
+        {{-- Calculated from other columns; read-only. --}}
+        @php $formula = \App\Support\PropertyDisplay::format($property, $item); @endphp
+        <span class="inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-700 dark:text-gray-200" title="{{ $property->formulaExpression() }}">
+            @if ($formula)
+                ƒ {{ $formula['text'] }}
+            @else
+                <span class="text-gray-400">—</span>
+            @endif
+        </span>
+        @break
+
     @case(CollectionProperty::TYPE_FILE)
     @case(CollectionProperty::TYPE_IMAGE)
         {{-- Files are managed in the entry detail view; the cell shows how many there are. --}}

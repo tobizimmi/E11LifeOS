@@ -43,6 +43,12 @@ class CollectionProperty extends Model
      * belonging to the entry.
      */
     /**
+     * A computed column: an arithmetic expression over other numeric columns, stored in
+     * options['formula'] (e.g. "{Preis} * {Menge}"). The value is calculated on display, never stored.
+     */
+    public const TYPE_FORMULA = 'formula';
+
+    /**
      * A 1–5 star rating.
      */
     public const TYPE_RATING = 'rating';
@@ -72,6 +78,7 @@ class CollectionProperty extends Model
         self::TYPE_RELATION,
         self::TYPE_RATING,
         self::TYPE_PROGRESS,
+        self::TYPE_FORMULA,
         self::TYPE_FILE,
         self::TYPE_IMAGE,
     ];
@@ -109,6 +116,28 @@ class CollectionProperty extends Model
     public function isFiles(): bool
     {
         return in_array($this->type, [self::TYPE_FILE, self::TYPE_IMAGE], true);
+    }
+
+    /**
+     * Computed columns (formula, rollup) are calculated on display and never stored or edited.
+     */
+    public function isComputed(): bool
+    {
+        return in_array($this->type, [self::TYPE_FORMULA], true);
+    }
+
+    /**
+     * The formula expression of a formula column (empty string when none set).
+     */
+    public function formulaExpression(): string
+    {
+        if ($this->type !== self::TYPE_FORMULA) {
+            return '';
+        }
+
+        $formula = data_get($this->options, 'formula');
+
+        return is_string($formula) ? $formula : '';
     }
 
     public function isSystem(): bool

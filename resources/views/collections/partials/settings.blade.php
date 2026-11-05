@@ -143,6 +143,27 @@
                                             </label>
                                         @endif
                                     @endif
+                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_FORMULA)
+                                        @php
+                                            $numericColumns = $properties
+                                                ->filter(fn ($p) => in_array($p->type, [\App\Models\CollectionProperty::TYPE_NUMBER, \App\Models\CollectionProperty::TYPE_RATING, \App\Models\CollectionProperty::TYPE_PROGRESS], true))
+                                                ->pluck('name');
+                                        @endphp
+                                        <div class="flex flex-col gap-1 ps-2">
+                                            <label class="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                                ƒ {{ __('Formula') }}
+                                                <input type="text" value="{{ $property->formulaExpression() }}" wire:change="setPropertyFormula({{ $property->id }}, $event.target.value)" placeholder="{{ __('e.g. {Price} * {Quantity}') }}" aria-label="{{ __('Formula') }}" class="min-w-[14rem] flex-1 rounded-md border-gray-300 py-0.5 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                            </label>
+                                            <p class="text-xs text-gray-400">
+                                                {{ __('Use + − × ÷ and ( ). Reference columns in braces:') }}
+                                                @if ($numericColumns->isNotEmpty())
+                                                    <span class="font-mono">{{ $numericColumns->map(fn ($n) => '{'.$n.'}')->implode(' ') }}</span>
+                                                @else
+                                                    {{ __('(add number, rating or progress columns first)') }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                    @endif
                                     @if ($property->type === \App\Models\CollectionProperty::TYPE_NUMBER)
                                         <label class="flex flex-wrap items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
                                             Σ {{ __('Summary under the table') }}

@@ -7026,5 +7026,9 @@
     "no price found": "kein Preis gefunden",
     "No wishes in this category.": "Keine Wünsche in dieser Kategorie.",
     "Price dropped: :title": "Preis gefallen: :title",
-    "Now :price (saved at :saved).": "Jetzt :price (gespeichert bei :saved)."
+    "Now :price (saved at :saved).": "Jetzt :price (gespeichert bei :saved).",
+    "New subscription detected: :name": "Neues Abo erkannt: :name",
+    ":amount :frequency – add it as a contract or cancel it.": ":amount :frequency – als Vertrag erfassen oder kündigen.",
+    "Subscription got more expensive: :name": "Abo teurer geworden: :name",
+    "Now :new instead of :old.": "Jetzt :new statt :old."
 }

@@ -16,7 +16,7 @@ class PropertyDisplay
     /**
      * @param  array<int, string>  $members  Names by user id.
      * @param  array<string, array<string, mixed>>  $nodes  Link targets by "type:id".
-     * @return array{text: string, hint: ?string, tone: string, options: array<int, array<string, mixed>>, url: ?string, nodes: array<int, array<string, mixed>>}|null Null when empty.
+     * @return array{text: string, hint: ?string, tone: string, options: array<int, array<string, mixed>>, url: ?string, nodes: array<int, array<string, mixed>>, files: array<int, int>}|null Null when empty.
      */
     public static function format(CollectionProperty $property, Item $item, array $members = [], array $nodes = []): ?array
     {
@@ -26,7 +26,7 @@ class PropertyDisplay
             return null;
         }
 
-        $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => []];
+        $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => [], 'files' => []];
 
         switch ($property->type) {
             case CollectionProperty::TYPE_DATE:
@@ -84,6 +84,19 @@ class PropertyDisplay
                 }
 
                 $result['text'] = implode(', ', array_column($result['nodes'], 'title'));
+                break;
+
+            case CollectionProperty::TYPE_FILE:
+            case CollectionProperty::TYPE_IMAGE:
+                $result['files'] = collect((array) $value)->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id)->values()->all();
+
+                if ($result['files'] === []) {
+                    return null;
+                }
+
+                $result['text'] = $property->type === CollectionProperty::TYPE_IMAGE
+                    ? trans_choice(':count image|:count images', count($result['files']))
+                    : trans_choice(':count file|:count files', count($result['files']));
                 break;
 
             default:

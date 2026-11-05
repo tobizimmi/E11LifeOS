@@ -152,6 +152,22 @@
         </div>
         @break
 
+    @case(CollectionProperty::TYPE_FILE)
+    @case(CollectionProperty::TYPE_IMAGE)
+        {{-- Files are managed in the entry detail view; the cell shows how many there are. --}}
+        @php $count = count(array_filter((array) $value, 'is_numeric')); @endphp
+        <span class="inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
+            @if ($count > 0)
+                {{ $property->type === CollectionProperty::TYPE_IMAGE ? '🖼️' : '📎' }}
+                {{ $property->type === CollectionProperty::TYPE_IMAGE
+                    ? trans_choice(':count image|:count images', $count)
+                    : trans_choice(':count file|:count files', $count) }}
+            @else
+                <span class="text-gray-400">—</span>
+            @endif
+        </span>
+        @break
+
     @default
         <input type="text" aria-label="{{ $label }}" value="{{ $value }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}" />
 @endswitch

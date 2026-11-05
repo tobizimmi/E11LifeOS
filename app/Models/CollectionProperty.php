@@ -33,6 +33,17 @@ class CollectionProperty extends Model
      */
     public const TYPE_RELATION = 'relation';
 
+    /**
+     * A column of attached files (any type); the value is a list of {@see Attachment} ids
+     * belonging to the entry.
+     */
+    public const TYPE_FILE = 'file';
+
+    /**
+     * Like {@see self::TYPE_FILE} but meant for pictures, shown as thumbnails and embedded in reports.
+     */
+    public const TYPE_IMAGE = 'image';
+
     public const TYPES = [
         self::TYPE_TEXT,
         self::TYPE_NUMBER,
@@ -43,6 +54,8 @@ class CollectionProperty extends Model
         self::TYPE_URL,
         self::TYPE_MULTI_SELECT,
         self::TYPE_RELATION,
+        self::TYPE_FILE,
+        self::TYPE_IMAGE,
     ];
 
     /**
@@ -70,6 +83,14 @@ class CollectionProperty extends Model
     public function hasOptions(): bool
     {
         return in_array($this->type, [self::TYPE_SELECT, self::TYPE_MULTI_SELECT], true);
+    }
+
+    /**
+     * File and image columns store a list of attachment ids rather than a scalar value.
+     */
+    public function isFiles(): bool
+    {
+        return in_array($this->type, [self::TYPE_FILE, self::TYPE_IMAGE], true);
     }
 
     public function isSystem(): bool
@@ -216,6 +237,14 @@ class CollectionProperty extends Model
                 ->filter(fn ($key) => Links::parseKey($key) !== null)->unique()->take(50)->values()->all();
 
             return $keys ?: null;
+        }
+
+        if ($this->isFiles()) {
+            $ids = collect(is_array($value) ? $value : [$value])
+                ->filter(fn ($id) => is_numeric($id) && (int) $id > 0)
+                ->map(fn ($id) => (int) $id)->unique()->take(50)->values()->all();
+
+            return $ids ?: null;
         }
 
         if ($value === null || $value === '' || is_array($value)) {

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.85.0] – 2026-11-05
+
+### Neu
+- **Formel-Spalten in Sammlungen.** Berechnete Spalten mit Ausdrücken über andere Zahlen-, Bewertungs- und Fortschritts-Spalten: `+ − × ÷`, Klammern und `{Spaltenname}`-Referenzen (z. B. `{Preis} * {Menge}`). Der Wert wird automatisch berechnet (nie gespeichert) und erscheint in Tabelle, Detailansicht und PDF-Bericht. Sicherer Auswerter ohne `eval`; eine ungültige Formel oder Division durch 0 ergibt leer. (Rollups über Relationen folgen als nächster Schritt.)
+
 ## [1.84.0] – 2026-11-05
 
 ### Neu

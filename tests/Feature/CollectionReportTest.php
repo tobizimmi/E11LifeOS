@@ -7,6 +7,7 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Support\CollectionReport;
+use App\Support\PropertyDisplay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -62,6 +63,35 @@ class CollectionReportTest extends TestCase
         $this->assertSame(0, $progress->normalizeValue('0'));
         $this->assertSame(100, $progress->normalizeValue(140));
         $this->assertSame(60, $progress->normalizeValue(60));
+    }
+
+    public function test_formula_columns_are_computed_for_display_and_report(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $collection = Collection::factory()->create(['household_id' => $household->id, 'name' => 'Bestellungen']);
+        $price = $collection->properties()->create(['name' => 'Preis', 'type' => CollectionProperty::TYPE_NUMBER, 'position' => 0]);
+        $qty = $collection->properties()->create(['name' => 'Menge', 'type' => CollectionProperty::TYPE_NUMBER, 'position' => 1]);
+        $total = $collection->properties()->create(['name' => 'Gesamt', 'type' => CollectionProperty::TYPE_FORMULA, 'options' => ['formula' => '{Preis} * {Menge}'], 'position' => 2]);
+
+        $entry = Item::factory()->for($household)->create([
+            'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Schrauben', 'created_by' => $user->id,
+        ]);
+        $entry->setPropertyValue($price, 4);
+        $entry->setPropertyValue($qty, 3);
+        $entry->save();
+
+        $collection->load('properties');
+        $entry->setRelation('collection', $collection);
+
+        $display = PropertyDisplay::format($total, $entry);
+        $this->assertNotNull($display);
+        $this->assertSame('12', $display['text']);
+
+        $html = CollectionReport::html($collection, collect([$entry]), $collection->properties);
+        $this->assertStringContainsString('Gesamt', $html);
+        $this->assertStringContainsString('12', $html);
     }
 
     public function test_the_report_embeds_images_and_lists_other_files(): void

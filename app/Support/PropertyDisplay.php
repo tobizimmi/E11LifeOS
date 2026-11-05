@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\CollectionProperty;
 use App\Models\Item;
+use App\Support\Collections\FormulaEvaluator;
 use Illuminate\Support\Carbon;
 
 /**
@@ -20,13 +21,33 @@ class PropertyDisplay
      */
     public static function format(CollectionProperty $property, Item $item, array $members = [], array $nodes = []): ?array
     {
+        $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => [], 'files' => []];
+
+        // Formula columns store no value; they are computed from the entry's other columns on display,
+        // so they are handled before the "empty value" guard below.
+        if ($property->type === CollectionProperty::TYPE_FORMULA) {
+            $properties = $item->relationLoaded('collection') ? $item->collection?->properties : null;
+
+            if ($properties === null) {
+                return null;
+            }
+
+            $computed = FormulaEvaluator::forItem($property, $item, $properties);
+
+            if ($computed === null) {
+                return null;
+            }
+
+            $result['text'] = self::number($computed, self::isCurrency($property));
+
+            return $result;
+        }
+
         $value = $item->propertyValue($property);
 
         if ($value === null || $value === '' || $value === []) {
             return null;
         }
-
-        $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => [], 'files' => []];
 
         switch ($property->type) {
             case CollectionProperty::TYPE_DATE:

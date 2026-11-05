@@ -33,7 +33,9 @@ class PropertyDisplay
                 return null;
             }
 
-            $computed = FormulaEvaluator::forItem($property, $item, $collection->properties);
+            /** @var \Illuminate\Database\Eloquent\Collection<int, CollectionProperty> $columns */
+            $columns = $collection->properties;
+            $computed = FormulaEvaluator::forItem($property, $item, $columns);
 
             if ($computed === null) {
                 return null;

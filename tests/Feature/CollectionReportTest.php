@@ -48,6 +48,37 @@ class CollectionReportTest extends TestCase
         $this->assertSame([5], $image->normalizeValue(5));
         $this->assertNull($file->normalizeValue([]));
         $this->assertNull($file->normalizeValue('not-a-file'));
+
+        $long = new CollectionProperty(['type' => CollectionProperty::TYPE_LONG_TEXT]);
+        $this->assertFalse($long->isFiles());
+        $this->assertSame('Zeile 1'."\n".'Zeile 2', $long->normalizeValue('  Zeile 1'."\n".'Zeile 2  '));
+    }
+
+    public function test_editing_an_entry_with_a_file_column_does_not_error(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        [$collection, $note, $files] = $this->collectionWithFileColumn($household->id);
+        $entry = Item::factory()->for($household)->create([
+            'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Dach', 'created_by' => $user->id,
+        ]);
+        $attachment = Attachment::storeUpload(UploadedFile::fake()->create('a.pdf', 10, 'application/pdf'), $household->id, $entry->id, $user->id);
+        $entry->setPropertyValue($note, 'Hallo');
+        $entry->setPropertyValue($files, [$attachment->id]);
+        $entry->save();
+
+        Volt::test('collections.show', ['collection' => $collection->id])
+            ->call('openEntry', $entry->id)
+            ->call('editEntry', $entry->id)
+            ->assertHasNoErrors()
+            ->assertSet('showEntryForm', true)
+            ->set('form.title', 'Dach neu')
+            ->call('saveEntryForm')
+            ->assertHasNoErrors();
+
+        // The file column keeps its value after editing via the form.
+        $this->assertSame([$attachment->id], $entry->fresh()->propertyValue($files));
+        $this->assertSame('Dach neu', $entry->fresh()->title);
     }
 
     public function test_the_report_lists_entries_with_their_values_and_attachment_names(): void
@@ -85,7 +116,9 @@ class CollectionReportTest extends TestCase
 
         $component = Volt::test('collections.show', ['collection' => $collection->id])
             ->call('openEntry', $entry->id)
-            ->set('propertyUploads.'.$files->id, [UploadedFile::fake()->create('plan.pdf', 30, 'application/pdf')])
+            ->call('pickColumn', $files->id)
+            ->assertSet('columnTargetId', $files->id)
+            ->set('columnUpload', [UploadedFile::fake()->create('plan.pdf', 30, 'application/pdf')])
             ->assertHasNoErrors();
 
         $attachment = $entry->attachments()->sole();

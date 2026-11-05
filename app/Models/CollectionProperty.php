@@ -14,6 +14,11 @@ class CollectionProperty extends Model
 {
     public const TYPE_TEXT = 'text';
 
+    /**
+     * Multi-line free text (shown as a textarea), as opposed to the single-line {@see self::TYPE_TEXT}.
+     */
+    public const TYPE_LONG_TEXT = 'long_text';
+
     public const TYPE_NUMBER = 'number';
 
     public const TYPE_DATE = 'date';
@@ -46,6 +51,7 @@ class CollectionProperty extends Model
 
     public const TYPES = [
         self::TYPE_TEXT,
+        self::TYPE_LONG_TEXT,
         self::TYPE_NUMBER,
         self::TYPE_DATE,
         self::TYPE_SELECT,
@@ -253,6 +259,7 @@ class CollectionProperty extends Model
 
         return match ($this->type) {
             self::TYPE_TEXT => mb_substr(trim((string) $value), 0, 1000) ?: null,
+            self::TYPE_LONG_TEXT => mb_substr(trim((string) $value), 0, 20000) ?: null,
             self::TYPE_NUMBER => is_numeric($value) ? $value + 0 : null,
             self::TYPE_DATE => $this->normalizeDate((string) $value),
             self::TYPE_SELECT => $this->option((string) $value) ? (string) $value : null,

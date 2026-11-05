@@ -7,7 +7,7 @@
     $id = 'field-'.$property->id;
     $model = 'form.values.'.$property->id;
     $input = 'block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 shadow-xs focus:border-indigo-500 focus:ring-indigo-500';
-    $wide = in_array($property->type, [CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION], true);
+    $wide = in_array($property->type, [CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION, CollectionProperty::TYPE_LONG_TEXT], true);
 @endphp
 
 <div @class(['sm:col-span-2' => $wide])>
@@ -104,6 +104,10 @@
                         </ul>
                     </div>
                 </div>
+                @break
+
+            @case(CollectionProperty::TYPE_LONG_TEXT)
+                <textarea id="{{ $id }}" rows="4" wire:model="{{ $model }}" class="{{ $input }}"></textarea>
                 @break
 
             @case(CollectionProperty::TYPE_FILE)

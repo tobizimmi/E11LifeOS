@@ -152,6 +152,10 @@
         </div>
         @break
 
+    @case(CollectionProperty::TYPE_LONG_TEXT)
+        <textarea aria-label="{{ $label }}" rows="{{ $compact ? 1 : 3 }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}">{{ $value }}</textarea>
+        @break
+
     @case(CollectionProperty::TYPE_FILE)
     @case(CollectionProperty::TYPE_IMAGE)
         {{-- Files are managed in the entry detail view; the cell shows how many there are. --}}

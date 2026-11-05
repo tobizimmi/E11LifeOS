@@ -14,6 +14,7 @@ use App\Models\ShoppingListEntry;
 use App\Support\NoteMarkdown;
 use App\Models\CollectionView;
 use App\Support\BrainAi;
+use App\Support\CollectionReport;
 use App\Support\ContractAssistant;
 use App\Support\AiException;
 use App\Support\ConvertsToTask;
@@ -193,6 +194,18 @@ new #[Layout('layouts.app')] class extends Component
      * @var array<int, mixed>
      */
     public array $documentUploads = [];
+
+    /**
+     * Files picked for the currently targeted file/image column in the detail popup (stored right away).
+     *
+     * @var array<int, mixed>
+     */
+    public array $columnUpload = [];
+
+    /**
+     * Which file/image column the next upload goes to (set when the user opens that column's picker).
+     */
+    public ?int $columnTargetId = null;
 
     public ?string $aiFillMessage = null;
 
@@ -706,6 +719,95 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Opens the file picker for one file/image column (the next upload is stored there).
+     */
+    public function pickColumn(int $propertyId): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->isFiles(), 422);
+        $this->columnTargetId = $property->id;
+    }
+
+    /**
+     * Files picked for the targeted file/image column of the open entry: stored and added to its value.
+     */
+    public function updatedColumnUpload(): void
+    {
+        if ($this->columnTargetId === null || $this->columnUpload === []) {
+            return;
+        }
+
+        $this->validate(['columnUpload' => ['array', 'max:20'], 'columnUpload.*' => Attachment::rules()]);
+
+        $entry = $this->findEntry((int) $this->openEntryId);
+        $property = $this->findCollection()->properties->firstWhere('id', $this->columnTargetId);
+
+        if ($property && $property->isFiles()) {
+            $ids = array_values(array_filter((array) $entry->propertyValue($property), fn ($id) => is_numeric($id)));
+
+            foreach ($this->columnUpload as $upload) {
+                $ids[] = Attachment::storeUpload($upload, (int) $this->householdId, $entry->id, (int) Auth::id())->id;
+            }
+
+            $entry->setPropertyValue($property, $property->normalizeValue($ids));
+            $entry->save();
+            $this->dispatch('toast', message: trans_choice(':count file added|:count files added', count($this->columnUpload)));
+        }
+
+        $this->reset('columnUpload', 'columnTargetId');
+    }
+
+    /**
+     * Removes one file from a file/image column of the open entry (and deletes the stored file).
+     */
+    public function removePropertyFile(int $propertyId, int $attachmentId): void
+    {
+        $entry = $this->findEntry((int) $this->openEntryId);
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->isFiles(), 422);
+
+        $ids = array_values(array_filter(
+            (array) $entry->propertyValue($property),
+            fn ($id) => (int) $id !== $attachmentId,
+        ));
+
+        $entry->setPropertyValue($property, $property->normalizeValue($ids));
+        $entry->save();
+
+        $entry->attachments()->whereKey($attachmentId)->first()?->delete();
+    }
+
+    /**
+     * Downloads the current (filtered) entries of this collection as a PDF report.
+     */
+    public function downloadReport(): mixed
+    {
+        $collection = $this->findCollection();
+        $properties = $collection->properties;
+        $entries = $this->entries()->with('creator', 'tags', 'attachments')->orderBy('position')->orderBy('id')->get()
+            ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
+            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
+            ->when($this->search !== '', fn ($entries) => $entries->filter(
+                fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
+            ))
+            ->when($this->hideDone && $collection->isTasks(), fn ($entries) => $entries->reject(fn (Item $entry) => $entry->done))
+            ->values();
+
+        // Share the loaded collection so formula columns can compute in the report.
+        $entries->each(fn (Item $entry) => $entry->setRelation('collection', $collection));
+
+        $pdf = CollectionReport::pdf(
+            $collection,
+            $entries,
+            $properties,
+            \App\Models\User::whereIn('id', $this->memberIds())->pluck('name', 'id')->all(),
+            $this->relationNodes($properties, $entries),
+        );
+
+        return response()->streamDownload(fn () => print ($pdf), \Illuminate\Support\Str::slug($collection->name ?: __('Report')).'.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    /**
      * Saves the form; with $another the form stays open for the next new entry.
      */
     public function saveEntryForm(bool $another = false): void
@@ -719,7 +821,7 @@ new #[Layout('layouts.app')] class extends Component
         ], attributes: ['form.title' => __('Title')]);
 
         $collection = $this->findCollection();
-        $missing = $collection->properties->filter(fn (CollectionProperty $property) => $property->required
+        $missing = $collection->properties->filter(fn (CollectionProperty $property) => $property->required && ! $property->isFiles() && ! $property->isComputed()
             && $property->normalizeValue($this->form['values'][$property->id] ?? null, $this->memberIds()) === null);
 
         if ($missing->isNotEmpty()) {
@@ -742,6 +844,12 @@ new #[Layout('layouts.app')] class extends Component
         $entry->title = mb_substr(trim($this->form['title']), 0, 255);
 
         foreach ($collection->properties as $property) {
+            // File/image columns are managed in the detail view, formula columns are calculated —
+            // the form never writes either.
+            if ($property->isFiles() || $property->isComputed()) {
+                continue;
+            }
+
             $entry->setPropertyValue($property, $property->normalizeValue($this->form['values'][$property->id] ?? null, $this->memberIds()));
         }
 
@@ -795,9 +903,11 @@ new #[Layout('layouts.app')] class extends Component
         return $collection->properties->mapWithKeys(function (CollectionProperty $property) use ($values) {
             $value = $values[$property->id] ?? null;
 
-            return [$property->id => match ($property->type) {
-                CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION => array_values((array) $value),
-                CollectionProperty::TYPE_CHECKBOX => (bool) $value,
+            return [$property->id => match (true) {
+                in_array($property->type, [CollectionProperty::TYPE_MULTI_SELECT, CollectionProperty::TYPE_RELATION], true) => array_values((array) $value),
+                $property->type === CollectionProperty::TYPE_CHECKBOX => (bool) $value,
+                // File/image columns are managed in the detail view, never bound in the form.
+                $property->isFiles() => '',
                 default => $value === null ? '' : (string) $value,
             }];
         })->all();
@@ -1042,6 +1152,20 @@ new #[Layout('layouts.app')] class extends Component
             $this->findProperty($propertyId)->update(['name' => mb_substr($name, 0, 100)]);
             $this->schemaChanged();
         }
+    }
+
+    /**
+     * Stores the expression of a formula column, e.g. "{Preis} * {Menge}".
+     */
+    public function setPropertyFormula(int $propertyId, string $expression): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->type === CollectionProperty::TYPE_FORMULA, 422);
+
+        $options = $property->options ?? [];
+        $options['formula'] = mb_substr(trim($expression), 0, 500);
+        $property->update(['options' => $options]);
+        $this->schemaChanged();
     }
 
     /**
@@ -1389,6 +1513,11 @@ new #[Layout('layouts.app')] class extends Component
             ? $this->entries()->with('creator', 'tags', 'attachments')->find((int) $this->openEntryId)
             : null;
 
+        // Formula columns compute from the entry's collection; share the already-loaded collection
+        // with its properties so no extra query is needed per entry.
+        $entries->each(fn (Item $entry) => $entry->setRelation('collection', $collection));
+        $openEntry?->setRelation('collection', $collection);
+
         return [
             'collection' => $collection,
             'isContracts' => ContractAssistant::isContractCollection($collection),
@@ -1421,7 +1550,8 @@ new #[Layout('layouts.app')] class extends Component
                 ->pluck('name'),
             'openEntryHtml' => $openEntry ? NoteMarkdown::toHtml($openEntry, Auth::user(), interactiveTasks: true) : null,
             'propertyTypes' => [
-                CollectionProperty::TYPE_TEXT => __('Text'),
+                CollectionProperty::TYPE_TEXT => __('Text (single line)'),
+                CollectionProperty::TYPE_LONG_TEXT => __('Text (multi-line)'),
                 CollectionProperty::TYPE_NUMBER => __('Number'),
                 CollectionProperty::TYPE_DATE => __('Date'),
                 CollectionProperty::TYPE_SELECT => __('Select'),
@@ -1430,6 +1560,11 @@ new #[Layout('layouts.app')] class extends Component
                 CollectionProperty::TYPE_CHECKBOX => __('Checkbox'),
                 CollectionProperty::TYPE_PERSON => __('Person'),
                 CollectionProperty::TYPE_URL => __('Link'),
+                CollectionProperty::TYPE_RATING => __('Rating (stars)'),
+                CollectionProperty::TYPE_PROGRESS => __('Progress (%)'),
+                CollectionProperty::TYPE_FORMULA => __('Formula (calculated)'),
+                CollectionProperty::TYPE_IMAGE => __('Images'),
+                CollectionProperty::TYPE_FILE => __('Files / attachments'),
             ],
             'pageTitles' => $this->editingBody
                 ? Item::query()->forHousehold((int) $this->householdId)->visibleTo(Auth::user())->ofType(Item::TYPE_NOTE)->orderBy('title')->pluck('title')->unique()->values()->all()
@@ -1502,6 +1637,7 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     @endif
                     <x-secondary-button type="button" wire:click="$set('showImport', true)" title="{{ __('Import CSV or Excel') }}">⬆ <span class="ms-1 hidden sm:inline">{{ __('Import') }}</span></x-secondary-button>
+                    <x-secondary-button type="button" wire:click="downloadReport" wire:loading.attr="disabled" wire:target="downloadReport" title="{{ __('Download report as PDF') }}">📄 <span class="ms-1 hidden sm:inline">{{ __('Report') }}</span></x-secondary-button>
                     <x-secondary-button type="button" wire:click="$toggle('showSettings')">⚙ {{ __('Properties') }}</x-secondary-button>
                 </div>
             </div>
@@ -2034,7 +2170,9 @@ new #[Layout('layouts.app')] class extends Component
     {{-- Entry detail (popup) --}}
     @if ($openEntry && ! $showEntryForm)
         @php
-            $details = $properties->map(fn ($property) => ['property' => $property, 'display' => \App\Support\PropertyDisplay::format($property, $openEntry, $memberNames, $relationNodes)]);
+            $fileProperties = $properties->filter(fn ($property) => $property->isFiles())->values();
+            $details = $properties->reject(fn ($property) => $property->isFiles())
+                ->map(fn ($property) => ['property' => $property, 'display' => \App\Support\PropertyDisplay::format($property, $openEntry, $memberNames, $relationNodes)]);
             $filled = $details->filter(fn ($row) => $row['display'] !== null);
             $emptyCount = $details->count() - $filled->count();
             $detailTones = [
@@ -2069,7 +2207,7 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($filled->isNotEmpty())
                     <dl class="grid gap-3 sm:grid-cols-2">
                         @foreach ($filled as $row)
-                            <div wire:key="detail-{{ $row['property']->id }}" @class(['rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-900/40', 'sm:col-span-2' => in_array($row['property']->type, [\App\Models\CollectionProperty::TYPE_MULTI_SELECT, \App\Models\CollectionProperty::TYPE_RELATION, \App\Models\CollectionProperty::TYPE_TEXT], true) && mb_strlen($row['display']['text']) > 40])>
+                            <div wire:key="detail-{{ $row['property']->id }}" @class(['rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-900/40', 'sm:col-span-2' => in_array($row['property']->type, [\App\Models\CollectionProperty::TYPE_MULTI_SELECT, \App\Models\CollectionProperty::TYPE_RELATION, \App\Models\CollectionProperty::TYPE_TEXT, \App\Models\CollectionProperty::TYPE_LONG_TEXT], true) && mb_strlen($row['display']['text']) > 40])>
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $row['property']->name }}</dt>
                                 <dd class="mt-1 {{ $detailTones[$row['display']['tone']] ?? '' }}">
                                     @if ($row['display']['options'] !== [])
@@ -2096,6 +2234,66 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($emptyCount > 0)
                     <button type="button" wire:click="editEntry({{ $openEntry->id }})" class="-mt-3 text-sm text-gray-400 hover:text-indigo-600">{{ trans_choice(':count empty field – fill in|:count empty fields – fill in', $emptyCount) }} →</button>
                 @endif
+
+                @foreach ($fileProperties as $fileProperty)
+                    @php $columnFiles = $openEntry->attachments->whereIn('id', array_filter((array) $openEntry->propertyValue($fileProperty), 'is_numeric')); @endphp
+                    <section wire:key="file-column-{{ $fileProperty->id }}">
+                        <div class="mb-2 flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE ? '🖼️' : '📎' }} {{ $fileProperty->name }}</h3>
+                            @if ($columnTargetId === $fileProperty->id)
+                                <label class="cursor-pointer text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+                                    {{ __('Choose files …') }}
+                                    <input type="file" multiple autofocus x-init="$el.click()" wire:model="columnUpload" accept="{{ $fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE ? 'image/*,video/*' : '.'.implode(',.', \App\Models\Attachment::EXTENSIONS) }}" class="sr-only" />
+                                </label>
+                            @else
+                                <button type="button" wire:click="pickColumn({{ $fileProperty->id }})" class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('Add') }}</button>
+                            @endif
+                        </div>
+                        <p wire:loading wire:target="columnUpload" class="text-xs text-gray-500">{{ __('Uploading …') }}</p>
+                        @if ($columnFiles->isNotEmpty())
+                            @if ($fileProperty->type === \App\Models\CollectionProperty::TYPE_IMAGE)
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($columnFiles->sortByDesc('id') as $file)
+                                        <div wire:key="colfile-{{ $file->id }}" class="group relative">
+                                            @if ($file->isVideo())
+                                                <video src="{{ $file->url() }}" controls class="h-24 w-24 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700"></video>
+                                            @else
+                                                <a href="{{ $file->url() }}" target="_blank" rel="noopener">
+                                                    @if ($file->isImage())
+                                                        <img src="{{ $file->url() }}" alt="{{ $file->original_name }}" class="h-24 w-24 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700" loading="lazy" />
+                                                    @else
+                                                        <span class="flex h-24 w-24 items-center justify-center rounded-lg bg-gray-50 text-2xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">📎</span>
+                                                    @endif
+                                                </a>
+                                            @endif
+                                            <button type="button" wire:click="removePropertyFile({{ $fileProperty->id }}, {{ $file->id }})" wire:confirm="{{ __('Remove this file?') }}" class="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-gray-700 text-xs text-white opacity-0 group-hover:opacity-100" aria-label="{{ __('Remove') }}">×</button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <ul class="grid gap-2 sm:grid-cols-2">
+                                    @foreach ($columnFiles->sortByDesc('id') as $file)
+                                        <li wire:key="colfile-{{ $file->id }}" class="group flex items-center gap-3 rounded-xl bg-gray-50 p-2 dark:bg-gray-900/40">
+                                            <a href="{{ $file->url() }}" target="_blank" rel="noopener" class="flex min-w-0 flex-1 items-center gap-3">
+                                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" aria-hidden="true">{{ $file->isPdf() ? '📄' : ($file->isImage() ? '🖼️' : '📎') }}</span>
+                                                <span class="min-w-0">
+                                                    <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ $file->original_name }}</span>
+                                                    <span class="block text-xs text-gray-500">{{ $file->sizeLabel() }}</span>
+                                                </span>
+                                            </a>
+                                            <button type="button" wire:click="removePropertyFile({{ $fileProperty->id }}, {{ $file->id }})" wire:confirm="{{ __('Remove this file?') }}" class="px-1 text-gray-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label="{{ __('Remove') }}">×</button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @else
+                            <p class="text-sm text-gray-400">{{ __('Nothing here yet.') }}</p>
+                        @endif
+                        @if ($columnTargetId === $fileProperty->id)
+                            <x-input-error :messages="array_merge($errors->get('columnUpload'), $errors->get('columnUpload.*'))" class="mt-1" />
+                        @endif
+                    </section>
+                @endforeach
 
                 @if ($isContracts)
                     <div>

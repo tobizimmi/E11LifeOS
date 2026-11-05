@@ -152,6 +152,54 @@
         </div>
         @break
 
+    @case(CollectionProperty::TYPE_LONG_TEXT)
+        <textarea aria-label="{{ $label }}" rows="{{ $compact ? 1 : 3 }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}">{{ $value }}</textarea>
+        @break
+
+    @case(CollectionProperty::TYPE_RATING)
+        <select aria-label="{{ $label }}" class="{{ $field }}" wire:change="{{ $call('$event.target.value') }}">
+            <option value="">—</option>
+            @for ($i = 1; $i <= 5; $i++)
+                <option value="{{ $i }}" @selected((int) $value === $i)>{{ str_repeat('★', $i) }}</option>
+            @endfor
+        </select>
+        @break
+
+    @case(CollectionProperty::TYPE_PROGRESS)
+        <div class="flex items-center gap-1">
+            <input type="number" min="0" max="100" step="5" aria-label="{{ $label }}" value="{{ $value }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}" />
+            <span class="text-xs text-gray-400">%</span>
+        </div>
+        @break
+
+    @case(CollectionProperty::TYPE_FORMULA)
+        {{-- Calculated from other columns; read-only. --}}
+        @php $formula = \App\Support\PropertyDisplay::format($property, $item); @endphp
+        <span class="inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-700 dark:text-gray-200" title="{{ $property->formulaExpression() }}">
+            @if ($formula)
+                ƒ {{ $formula['text'] }}
+            @else
+                <span class="text-gray-400">—</span>
+            @endif
+        </span>
+        @break
+
+    @case(CollectionProperty::TYPE_FILE)
+    @case(CollectionProperty::TYPE_IMAGE)
+        {{-- Files are managed in the entry detail view; the cell shows how many there are. --}}
+        @php $count = count(array_filter((array) $value, 'is_numeric')); @endphp
+        <span class="inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
+            @if ($count > 0)
+                {{ $property->type === CollectionProperty::TYPE_IMAGE ? '🖼️' : '📎' }}
+                {{ $property->type === CollectionProperty::TYPE_IMAGE
+                    ? trans_choice(':count image|:count images', $count)
+                    : trans_choice(':count file|:count files', $count) }}
+            @else
+                <span class="text-gray-400">—</span>
+            @endif
+        </span>
+        @break
+
     @default
         <input type="text" aria-label="{{ $label }}" value="{{ $value }}" wire:change="{{ $call('$event.target.value') }}" class="{{ $field }}" />
 @endswitch

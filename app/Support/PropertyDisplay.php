@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
+use App\Support\Collections\FormulaEvaluator;
 use Illuminate\Support\Carbon;
 
 /**
@@ -16,17 +18,39 @@ class PropertyDisplay
     /**
      * @param  array<int, string>  $members  Names by user id.
      * @param  array<string, array<string, mixed>>  $nodes  Link targets by "type:id".
-     * @return array{text: string, hint: ?string, tone: string, options: array<int, array<string, mixed>>, url: ?string, nodes: array<int, array<string, mixed>>}|null Null when empty.
+     * @return array{text: string, hint: ?string, tone: string, options: array<int, array<string, mixed>>, url: ?string, nodes: array<int, array<string, mixed>>, files: array<int, int>}|null Null when empty.
      */
     public static function format(CollectionProperty $property, Item $item, array $members = [], array $nodes = []): ?array
     {
+        $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => [], 'files' => []];
+
+        // Formula columns store no value; they are computed from the entry's other columns on display,
+        // so they are handled before the "empty value" guard below.
+        if ($property->type === CollectionProperty::TYPE_FORMULA) {
+            $collection = $item->relationLoaded('collection') ? $item->collection : null;
+
+            if (! $collection instanceof Collection) {
+                return null;
+            }
+
+            /** @var \Illuminate\Database\Eloquent\Collection<int, CollectionProperty> $columns */
+            $columns = $collection->properties;
+            $computed = FormulaEvaluator::forItem($property, $item, $columns);
+
+            if ($computed === null) {
+                return null;
+            }
+
+            $result['text'] = self::number($computed, self::isCurrency($property));
+
+            return $result;
+        }
+
         $value = $item->propertyValue($property);
 
         if ($value === null || $value === '' || $value === []) {
             return null;
         }
-
-        $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => []];
 
         switch ($property->type) {
             case CollectionProperty::TYPE_DATE:
@@ -84,6 +108,28 @@ class PropertyDisplay
                 }
 
                 $result['text'] = implode(', ', array_column($result['nodes'], 'title'));
+                break;
+
+            case CollectionProperty::TYPE_RATING:
+                $stars = max(1, min(5, (int) $value));
+                $result['text'] = str_repeat('★', $stars).str_repeat('☆', 5 - $stars);
+                break;
+
+            case CollectionProperty::TYPE_PROGRESS:
+                $result['text'] = max(0, min(100, (int) $value)).' %';
+                break;
+
+            case CollectionProperty::TYPE_FILE:
+            case CollectionProperty::TYPE_IMAGE:
+                $result['files'] = collect((array) $value)->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id)->values()->all();
+
+                if ($result['files'] === []) {
+                    return null;
+                }
+
+                $result['text'] = $property->type === CollectionProperty::TYPE_IMAGE
+                    ? trans_choice(':count image|:count images', count($result['files']))
+                    : trans_choice(':count file|:count files', count($result['files']));
                 break;
 
             default:

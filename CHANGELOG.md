@@ -3,6 +3,39 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.85.0] – 2026-11-05
+
+### Neu
+- **Formel-Spalten in Sammlungen.** Berechnete Spalten mit Ausdrücken über andere Zahlen-, Bewertungs- und Fortschritts-Spalten: `+ − × ÷`, Klammern und `{Spaltenname}`-Referenzen (z. B. `{Preis} * {Menge}`). Der Wert wird automatisch berechnet (nie gespeichert) und erscheint in Tabelle, Detailansicht und PDF-Bericht. Sicherer Auswerter ohne `eval`; eine ungültige Formel oder Division durch 0 ergibt leer. (Rollups über Relationen folgen als nächster Schritt.)
+
+## [1.84.0] – 2026-11-05
+
+### Neu
+- **Spaltentypen „Bewertung" (1–5 Sterne) und „Fortschritt" (0–100 %).** Für Status- und Fortschrittsübersichten in Sammlungen; filter- und sortierbar wie Zahlen.
+
+### Verbessert
+- **Bericht als echte Dokumentation.** Bilder aus Bild- und Datei-Spalten werden jetzt direkt ins PDF eingebettet (nicht nur als Dateiname gelistet). Videos erscheinen als beschriftete Kachel; sobald ein Startbild hinterlegt ist, wird dieses eingebettet.
+
+## [1.83.1] – 2026-11-05
+
+### Behoben
+- **Sammlungen: „Bearbeiten" warf einen Server-Fehler (400).** Datei-/Bild-Spalten luden über ein verschachteltes Formularfeld hoch, das Livewire bei der nächsten Aktion abbrechen ließ. Auf ein robustes Upload-Verfahren umgestellt; Bearbeiten funktioniert wieder.
+
+### Neu
+- **Spaltentyp „Text (mehrzeilig)".** Zusätzlich zum einzeiligen Textfeld gibt es jetzt ein mehrzeiliges (Textarea) für längere Notizen.
+- **Videos in Bild-/Medienspalten.** Bildspalten nehmen jetzt auch Videos an (mp4, webm, mov, m4v) und zeigen eine abspielbare Vorschau.
+
+## [1.83.0] – 2026-11-05
+
+### Neu
+- **KI-Essensplaner.** Neuer Bereich `Rezepte → Planer`: aus den Vorlieben (Budget, Supermarkt, PLZ, Personen, Tage, gewünschte Mahlzeiten, Allergene, Gerichtsarten, Küchen, Abneigungen, vorhandene Küchengeräte, Meal-Prep) erstellt die KI einen Wochenplan für **einen** Supermarkt – inklusive erfundener Rezepte, konsolidierter Einkaufsliste mit Preisschätzung und Gesamtkosten gegen das Budget. Die Rezepte lassen sich in die Rezepte-App und den Wochenplan übernehmen, die Einkaufsliste wird direkt angelegt.
+- **Wunschliste: automatische Preis-Recherche und bessere Übersicht.** Aus der hinterlegten Artikel-URL wird je Wunsch regelmäßig der Online-Preis ermittelt (JSON-LD/OpenGraph) mit Tiefstpreis und Benachrichtigung bei Preisrückgang. Dazu Filtern nach Kategorie, Sortieren (Priorität, Preis, größte Ersparnis, neueste, Name) und ein „Preis prüfen"-Knopf.
+- **Abo-Radar.** Ein täglicher Abgleich der erkannten wiederkehrenden Zahlungen meldet proaktiv, wenn ein **neues Abo** auftaucht oder ein bekanntes **teurer** wird (ab +5 % und mindestens 1 €), mit Link zu den Vertragskosten. Der erste Lauf merkt sich nur den Stand, ohne zu benachrichtigen.
+- **Sammlungen wie in Notion: Datei-/Bild-Spalten und Bericht.** Die frei definierbaren Tabellen/Datenbanken lassen sich jetzt um Spalten vom Typ **Bilder** und **Dateien/Anhänge** erweitern (Upload je Eintrag, Bildvorschau als Miniatur). Zusätzlich erzeugt ein **PDF-Bericht** aus einer Sammlung alle (gefilterten) Einträge mit ihren Spaltenwerten, Notizen und eingebetteten Bildern im PDF-Design des Haushalts.
+
+### Sicherheit
+- **symfony-Komponenten auf v8.1.11.** Schließt zehn am 04.11.2026 gemeldete Sicherheitshinweise in `symfony/http-foundation`, `symfony/http-kernel`, `symfony/routing`, `symfony/serializer` und `symfony/yaml` (u. a. CVE-2026-118514, -118515 und -118516).
+
 ## [1.82.0] – 2026-10-29
 
 ### Neu

@@ -39,7 +39,7 @@ class SubscriptionAlerts
         foreach ($payees as $key => $payee) {
             $amount = (float) $payee['amount'];
             $name = (string) $payee['name'];
-            $frequency = is_string($payee['frequency'] ?? null) ? $payee['frequency'] : null;
+            $frequency = $payee['frequency'];
             $watch = $watches->get($key);
 
             if ($watch === null) {

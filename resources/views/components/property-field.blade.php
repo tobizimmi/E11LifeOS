@@ -106,6 +106,13 @@
                 </div>
                 @break
 
+            @case(CollectionProperty::TYPE_FILE)
+            @case(CollectionProperty::TYPE_IMAGE)
+                <p class="rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-sm text-gray-400 dark:border-gray-600">
+                    {{ $property->type === CollectionProperty::TYPE_IMAGE ? '🖼️' : '📎' }} {{ __('Add after saving (open the entry).') }}
+                </p>
+                @break
+
             @default
                 <input id="{{ $id }}" type="text" wire:model="{{ $model }}" class="{{ $input }}" />
         @endswitch

@@ -131,9 +131,13 @@ class CollectionProperty extends Model
      */
     public function formulaExpression(): string
     {
-        return $this->type === self::TYPE_FORMULA && is_array($this->options) && is_string($this->options['formula'] ?? null)
-            ? (string) $this->options['formula']
-            : '';
+        if ($this->type !== self::TYPE_FORMULA) {
+            return '';
+        }
+
+        $formula = data_get($this->options, 'formula');
+
+        return is_string($formula) ? $formula : '';
     }
 
     public function isSystem(): bool

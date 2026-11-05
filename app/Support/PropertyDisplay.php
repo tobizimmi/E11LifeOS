@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Support\Collections\FormulaEvaluator;
@@ -26,13 +27,13 @@ class PropertyDisplay
         // Formula columns store no value; they are computed from the entry's other columns on display,
         // so they are handled before the "empty value" guard below.
         if ($property->type === CollectionProperty::TYPE_FORMULA) {
-            $properties = $item->relationLoaded('collection') ? $item->collection?->properties : null;
+            $collection = $item->relationLoaded('collection') ? $item->collection : null;
 
-            if ($properties === null) {
+            if (! $collection instanceof Collection) {
                 return null;
             }
 
-            $computed = FormulaEvaluator::forItem($property, $item, $properties);
+            $computed = FormulaEvaluator::forItem($property, $item, $collection->properties);
 
             if ($computed === null) {
                 return null;

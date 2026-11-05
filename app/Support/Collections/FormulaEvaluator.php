@@ -46,7 +46,7 @@ class FormulaEvaluator
      */
     public static function forItem(CollectionProperty $formula, Item $item, iterable $properties): ?float
     {
-        $expression = is_array($formula->options) ? ($formula->options['formula'] ?? null) : null;
+        $expression = data_get($formula->options, 'formula');
 
         if (! is_string($expression) || trim($expression) === '') {
             return null;

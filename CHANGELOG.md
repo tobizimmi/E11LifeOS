@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.96.1] – 2026-11-06
+
+### Behoben
+- **Ticket-Antwort als Admin auf eigenes Ticket (Fehler 422).** Wer als Administrator ein selbst gemeldetes Ticket im Admin-Bereich beantwortete oder schloss, bekam einen 422-Fehler (bzw. 403 bei internen Notizen), weil die Person als Anfragender statt als Agent behandelt wurde. Der Admin-Bereich arbeitet jetzt immer als Agent. (Roadmap #5)
+
 ## [1.96.0] – 2026-11-06
 
 ### Neu

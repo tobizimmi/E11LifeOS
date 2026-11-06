@@ -71,7 +71,7 @@ new #[Layout('layouts.app')] class extends Component
             'files.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,webp,gif,pdf,txt,log'],
         ], attributes: ['body' => __('Answer'), 'files.*' => __('Attachment')]);
 
-        Tickets::reply($ticket, Auth::user(), $this->body, array_values($this->files), $this->internal, $this->submitAs);
+        Tickets::reply($ticket, Auth::user(), $this->body, array_values($this->files), $this->internal, $this->submitAs, asAgent: true);
         $this->reset('body', 'files');
         $this->dispatch('toast', message: $this->internal ? __('Note saved.') : __('Answer sent.'));
     }

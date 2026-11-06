@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\ActivityLog;
+use App\Support\VideoPoster;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['household_id', 'item_id', 'created_by', 'path', 'original_name', 'mime_type', 'size'])]
+#[Fillable(['household_id', 'item_id', 'created_by', 'path', 'poster_path', 'original_name', 'mime_type', 'size'])]
 class Attachment extends Model
 {
     /** @use HasFactory<AttachmentFactory> */
@@ -37,7 +38,13 @@ class Attachment extends Model
 
     protected static function booted(): void
     {
-        static::deleted(fn (Attachment $attachment) => Storage::disk(self::DISK)->delete($attachment->path));
+        static::deleted(function (Attachment $attachment) {
+            Storage::disk(self::DISK)->delete($attachment->path);
+
+            if (is_string($attachment->poster_path) && $attachment->poster_path !== '') {
+                Storage::disk(self::DISK)->delete($attachment->poster_path);
+            }
+        });
         static::created(fn (Attachment $attachment) => ActivityLog::documentAdded($attachment));
     }
 
@@ -48,7 +55,7 @@ class Attachment extends Model
     {
         $extension = strtolower($upload->guessExtension() ?: $upload->getClientOriginalExtension());
 
-        return self::create([
+        $attachment = self::create([
             'household_id' => $householdId,
             'item_id' => $itemId,
             'created_by' => $userId,
@@ -57,6 +64,13 @@ class Attachment extends Model
             'mime_type' => $upload->getMimeType() ?: 'application/octet-stream',
             'size' => $upload->getSize(),
         ]);
+
+        // Videos get a still poster (best-effort; needs ffmpeg on the server, otherwise skipped).
+        if ($attachment->isVideo() && ($poster = VideoPoster::generate($attachment)) !== null) {
+            $attachment->forceFill(['poster_path' => $poster])->save();
+        }
+
+        return $attachment;
     }
 
     /**

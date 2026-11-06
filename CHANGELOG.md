@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.88.0] – 2026-11-06
+
+### Neu
+- **Video-Startbild im PDF-Bericht.** Beim Hochladen eines Videos in eine Medienspalte extrahiert der Server mit **ffmpeg** automatisch ein Vorschaubild (erstes Bild). Der Bericht bettet dieses statt der Platzhalter-Kachel ein. Ist ffmpeg auf dem Server nicht installiert, bleibt es bei der Kachel – nichts bricht. (Server-Voraussetzung: `apt-get install -y ffmpeg`.)
+
 ## [1.87.0] – 2026-11-06
 
 ### Neu

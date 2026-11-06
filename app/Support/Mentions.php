@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Models\Household;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * @-mentions of household members in wiki pages. A mention is stored as "@[id:Name]" in the
@@ -29,7 +29,7 @@ class Mentions
             ->orderBy('name')
             ->limit($limit)
             ->get(['users.id', 'users.name'])
-            ->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name])
+            ->map(fn (Model $user): array => ['id' => (int) $user->getKey(), 'name' => (string) $user->getAttribute('name')])
             ->all();
     }
 

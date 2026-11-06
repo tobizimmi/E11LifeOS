@@ -91,9 +91,11 @@ class NoteMarkdown
         }, $note->body());
 
         $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks, $attributes);
-        $html = strtr(self::mentions(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))))), $links);
+        $html = strtr(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed)))), $links);
 
-        $html = self::decorateChecklists($html, $note, $viewer);
+        // After decorateChecklists so its "@Name" person pattern never fires inside an "@[id:Name]"
+        // mention token ("@[" is not a letter, so the two never collide).
+        $html = self::mentions(self::decorateChecklists($html, $note, $viewer));
 
         if ($interactiveTasks) {
             // Only the task-list renderer emits <input> tags: raw HTML from the note is stripped.

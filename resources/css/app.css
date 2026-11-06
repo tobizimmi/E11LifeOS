@@ -318,6 +318,11 @@
         @apply rounded-sm bg-indigo-50 px-0.5 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300;
     }
 
+    .note-content .mention,
+    .note-editor .mention {
+        @apply rounded-sm bg-emerald-50 px-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300;
+    }
+
     .note-editor ul[data-type='taskList'] {
         @apply list-none ps-0;
     }

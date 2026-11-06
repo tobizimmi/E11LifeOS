@@ -733,7 +733,7 @@ new #[Layout('layouts.app')] class extends Component
                             <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" x-on:input="scheduleAutosave()" x-on:page-title-typed.window="scheduleAutosave()" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-xs"></textarea>
 
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
+                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ and mention people with @ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
                                 {{ __('In checklists, “//15.10.” adds a due date and “@Name” a person; ↗ makes an item a task.') }}
                                 {{ __('Move a block with Alt + ↑ / ↓.') }}
                             </p>

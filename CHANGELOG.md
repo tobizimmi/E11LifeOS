@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.91.0] – 2026-11-06
+
+### Neu
+- **@-Erwähnungen im Seiten-Editor.** Mit `@` erscheint eine Vorschlagsliste der Haushaltsmitglieder; die gewählte Person wird als farbiger Chip in den Text eingefügt und bleibt stabil, auch wenn sich der angezeigte Name später ändert (gespeichert als `@[id:Name]`). Wird beim Anzeigen theme-sicher gerendert.
+
 ## [1.90.0] – 2026-11-06
 
 ### Neu

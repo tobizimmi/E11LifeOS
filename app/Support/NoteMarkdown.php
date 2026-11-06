@@ -91,7 +91,7 @@ class NoteMarkdown
         }, $note->body());
 
         $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks, $attributes);
-        $html = strtr(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed)))), $links);
+        $html = strtr(self::mentions(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))))), $links);
 
         $html = self::decorateChecklists($html, $note, $viewer);
 
@@ -508,6 +508,25 @@ class NoteMarkdown
                     return in_array($match[1], self::TEXT_SIZES, true)
                         ? '<span class="ts-'.$match[1].'">'.$match[2].'</span>'
                         : $match[0];
+                }, $part);
+            }
+        }
+
+        return implode('', $parts);
+    }
+
+    /**
+     * "@[id:Name]" becomes a mention chip <span class="mention" data-user="id">@Name</span>, except
+     * inside code. The name is taken from the stored token (already HTML-escaped by the renderer).
+     */
+    private static function mentions(string $html): string
+    {
+        $parts = preg_split('/(<pre[\s>].*?<\/pre>|<code[\s>].*?<\/code>)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$html];
+
+        foreach ($parts as $index => $part) {
+            if ($index % 2 === 0) {
+                $parts[$index] = (string) preg_replace_callback('/@\[(\d+):([^\]]+)\]/u', function (array $match) {
+                    return '<span class="mention" data-user="'.$match[1].'">@'.$match[2].'</span>';
                 }, $part);
             }
         }

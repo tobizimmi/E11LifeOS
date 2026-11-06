@@ -141,6 +141,7 @@ document.addEventListener('alpine:init', () => {
                         onPickFile: () => this.pickFile(),
                         onPickList: () => this.openListPicker(),
                         searchLinks: (term) => this.$wire.linkTargets(term),
+                        searchMentions: (term) => this.$wire.mentionTargets(term),
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
                     editor.on('transaction', () => this.selectionTick++);

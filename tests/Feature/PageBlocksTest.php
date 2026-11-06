@@ -77,6 +77,19 @@ class PageBlocksTest extends TestCase
         $this->assertStringNotContainsString('<span class="ts-large">Code', $html);
     }
 
+    public function test_mentions_render_as_chips_but_stay_literal_in_code(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $body = "Hallo @[7:Tobi Zimmermann], bitte prüfen.\n\n```\n@[7:Tobi]\n```";
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => $body]]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        $this->assertStringContainsString('<span class="mention" data-user="7">@Tobi Zimmermann</span>', $html);
+        $this->assertStringContainsString('@[7:Tobi]', $html);
+        $this->assertStringNotContainsString('<span class="mention" data-user="7">@Tobi</span>', $html);
+    }
+
     public function test_tasks_calendar_and_subpages_can_be_embedded_in_a_page(): void
     {
         [$user, $household] = $this->memberWithHousehold();

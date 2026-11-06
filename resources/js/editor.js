@@ -268,6 +268,63 @@ const TextSize = Mark.create({
 });
 
 /**
+ * An @-mention of a household member, stored as "@[id:Name]" in Markdown and rendered as a chip
+ * (<span class="mention" data-user="id">@Name</span>) by NoteMarkdown::mentions() on the server.
+ * The id keeps the link stable if the display name changes.
+ */
+const Mention = Node.create({
+    name: 'mention',
+    group: 'inline',
+    inline: true,
+    atom: true,
+    selectable: true,
+
+    addAttributes() {
+        return {
+            id: { default: null, rendered: false },
+            label: { default: '', rendered: false },
+        };
+    },
+
+    parseHTML() {
+        return [
+            {
+                tag: 'span[data-user]',
+                getAttrs: (element) => ({
+                    id: element.getAttribute('data-user'),
+                    label: (element.textContent || '').replace(/^@/, ''),
+                }),
+            },
+        ];
+    },
+
+    renderHTML({ node, HTMLAttributes }) {
+        return ['span', mergeAttributes(HTMLAttributes, { 'data-user': node.attrs.id, class: 'mention' }), `@${node.attrs.label}`];
+    },
+
+    renderText: ({ node }) => `@${node.attrs.label}`,
+
+    markdownTokenizer: {
+        name: 'mention',
+        level: 'inline',
+        start: (src) => src.indexOf('@['),
+        tokenize(src) {
+            const match = /^@\[(\d+):([^\]]+)\]/.exec(src);
+
+            if (!match) {
+                return undefined;
+            }
+
+            return { type: 'mention', raw: match[0], id: match[1], label: match[2].trim() };
+        },
+    },
+
+    parseMarkdown: (token, helpers) => helpers.createNode('mention', { id: token.id, label: token.label }),
+
+    renderMarkdown: (node) => `@[${node.attrs?.id}:${node.attrs?.label}]`,
+});
+
+/**
  * Coloured box (":::callout {type="tip"}" … ":::"); the symbol switches the colour.
  */
 const Callout = Node.create({
@@ -797,6 +854,59 @@ const PageLinkAutocomplete = Extension.create({
 });
 
 /**
+ * "@" autocomplete that mentions a household member. Members are fetched on the server
+ * (searchMentions), and the chosen one is inserted as a Mention node ("@[id:Name]" in Markdown).
+ */
+const MentionAutocomplete = Extension.create({
+    name: 'mentionAutocomplete',
+
+    addOptions() {
+        return { translations: {}, searchMentions: null };
+    },
+
+    addProseMirrorPlugins() {
+        const { searchMentions } = this.options;
+
+        return [
+            Suggestion({
+                editor: this.editor,
+                pluginKey: new PluginKey('mentionAutocomplete'),
+                char: '@',
+                allowSpaces: false,
+                items: async ({ query }) => {
+                    if (!searchMentions) {
+                        return [];
+                    }
+
+                    try {
+                        return (await searchMentions(query.trim())).slice(0, 6);
+                    } catch (error) {
+                        return [];
+                    }
+                },
+                command: ({ editor, range, props }) => {
+                    editor
+                        .chain()
+                        .focus()
+                        .insertContentAt({ from: range.from, to: range.to }, [
+                            { type: 'mention', attrs: { id: String(props.id), label: props.name } },
+                            { type: 'text', text: ' ' },
+                        ])
+                        .run();
+                },
+                render: () =>
+                    suggestionPopup((button, item) => {
+                        const hint = document.createElement('span');
+                        hint.className = 'editor-popup-hint';
+                        hint.textContent = '@';
+                        button.append(hint, document.createTextNode(item.name));
+                    }),
+            }),
+        ];
+    },
+});
+
+/**
  * Column widths of resizable tables: GFM/CommonMark tables have no syntax for a column's width,
  * so a plain pipe table round-tripped through Markdown would always lose a resize. Each table's
  * widths (one per column, 0 for "not resized") are instead carried in an HTML comment right
@@ -1003,7 +1113,7 @@ function injectColwidthHints(markdown, widthsByTable) {
  * @param {HTMLElement} bubbleMenu  Toolbar shown above selected text.
  * @param {object} options          { markdown, pageTitles, translations, onChange(markdown), onFiles(files), onPickFile(), onPickList(), searchLinks(term) }
  */
-export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile, onPickList, searchLinks }) {
+export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, translations, onChange, onFiles, onPickFile, onPickList, searchLinks, searchMentions }) {
     const { markdown: cleanedMarkdown, widthsByTable } = extractColwidthHints(markdown);
     // The bubble menu plugin attaches the toolbar itself when text is selected
     // (and only ever hides it after having shown it), so start detached.
@@ -1038,6 +1148,8 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             BlockMove,
             SlashMenu.configure({ translations, onPickFile, onPickList }),
             PageLinkAutocomplete.configure({ pageTitles, translations, searchLinks }),
+            Mention,
+            MentionAutocomplete.configure({ translations, searchMentions }),
         ],
         content: cleanedMarkdown,
         contentType: 'markdown',

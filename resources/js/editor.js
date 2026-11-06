@@ -578,6 +578,7 @@ function slashCommands(t, onPickFile, onPickList) {
         { title: t.quote, hint: '❝', run: (c) => c.toggleBlockquote() },
         { title: t.codeBlock, hint: '</>', run: (c) => c.toggleCodeBlock() },
         { title: t.divider, hint: '—', run: (c) => c.setHorizontalRule() },
+        { title: t.tableOfContents, hint: '≡', run: (c) => c.insertContent({ type: 'paragraph', content: [{ type: 'text', text: '[toc]' }] }) },
         { title: t.table, hint: '▦', run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
         ...['info', 'tip', 'warning', 'danger'].map((type) => ({
             title: t[`callout${type[0].toUpperCase()}${type.slice(1)}`],

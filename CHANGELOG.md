@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.87.0] – 2026-11-06
+
+### Neu
+- **Inhaltsverzeichnis & Überschriften-Anker in Seiten.** Überschriften (H1–H3) bekommen automatisch anklickbare Anker. Eine Zeile `[toc]` – oder der neue Slash-Befehl „Inhaltsverzeichnis" – wird beim Anzeigen zu einem automatischen Inhaltsverzeichnis, das zu den Abschnitten der Seite springt. (Callouts/Infoboxen, aufklappbare Toggles und Spaltenlayout gibt es im Seiten-Editor bereits.)
+
 ## [1.86.0] – 2026-11-06
 
 ### Neu

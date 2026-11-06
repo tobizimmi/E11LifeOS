@@ -125,7 +125,53 @@ class NoteMarkdown
             );
         }
 
-        return $html;
+        return self::headingsAndToc($html);
+    }
+
+    /**
+     * Gives headings (h1–h3) stable id anchors and, where the body contains a "[toc]" line on its
+     * own, replaces it with an automatically generated table of contents linking to those anchors.
+     */
+    private static function headingsAndToc(string $html): string
+    {
+        $toc = [];
+        $used = [];
+
+        $html = (string) preg_replace_callback('/<h([1-3])>(.*?)<\/h\1>/su', function (array $match) use (&$toc, &$used) {
+            $level = (int) $match[1];
+            $text = trim((string) preg_replace('/\s+/u', ' ', strip_tags($match[2])));
+
+            if ($text === '') {
+                return $match[0];
+            }
+
+            $slug = Str::slug($text) ?: 'abschnitt';
+            $base = $slug;
+            $n = 2;
+
+            while (isset($used[$slug])) {
+                $slug = $base.'-'.$n++;
+            }
+
+            $used[$slug] = true;
+            $toc[] = ['level' => $level, 'id' => $slug, 'text' => $text];
+
+            return sprintf('<h%d id="%s">%s</h%d>', $level, e($slug), $match[2], $level);
+        }, $html);
+
+        if ($toc === []) {
+            return (string) str_ireplace('<p>[toc]</p>', '', $html);
+        }
+
+        $items = '';
+
+        foreach ($toc as $entry) {
+            $items .= sprintf('<li class="page-toc-h%d"><a href="#%s">%s</a></li>', $entry['level'], e($entry['id']), e($entry['text']));
+        }
+
+        $nav = '<nav class="page-toc" aria-label="'.e(__('Table of contents')).'"><p class="page-toc-title">'.e(__('Contents')).'</p><ul>'.$items.'</ul></nav>';
+
+        return (string) str_ireplace('<p>[toc]</p>', $nav, $html);
     }
 
     /** "//15.10.2026", "//15.10." or "//2026-10-15" after a space: the due date of a checklist item. */

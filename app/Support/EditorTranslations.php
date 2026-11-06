@@ -27,6 +27,7 @@ class EditorTranslations
             'quote' => __('Quote'),
             'codeBlock' => __('Code'),
             'divider' => __('Divider'),
+            'tableOfContents' => __('Table of contents'),
             'table' => __('Table'),
             'pageLink' => __('Link to page'),
             'attachment' => __('Image or file'),

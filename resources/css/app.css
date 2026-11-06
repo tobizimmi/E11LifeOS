@@ -530,6 +530,22 @@
     }
 
     /* Named text colours ({color=…} / the editor's TextColor mark), tuned for light and dark. */
+    /* Named font sizes ("{size=…}"). */
+    .note-content .ts-small,
+    .note-editor .ts-small {
+        @apply text-sm;
+    }
+
+    .note-content .ts-large,
+    .note-editor .ts-large {
+        @apply text-xl;
+    }
+
+    .note-content .ts-xl,
+    .note-editor .ts-xl {
+        @apply text-3xl font-semibold;
+    }
+
     .note-content .tc-gray,
     .note-editor .tc-gray {
         @apply text-gray-500 dark:text-gray-400;

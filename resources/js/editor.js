@@ -225,6 +225,48 @@ const TextColor = Mark.create({
     renderMarkdown: (node, h) => `{color=${node.attrs?.color ?? 'gray'}}${h.renderChildren(node)}{/color}`,
 });
 
+const TEXT_SIZES = ['small', 'large', 'xl'];
+
+/**
+ * Sized text ("{size=large}text{/size}"), rendered as <span class="ts-large"> on the server.
+ * The size is a named step (not a free pixel value) so the Markdown stays short and the server
+ * maps it to a theme-aware CSS class (see NoteMarkdown::sizes()).
+ */
+const TextSize = Mark.create({
+    name: 'textSize',
+
+    addAttributes() {
+        return { size: { default: 'large' } };
+    },
+
+    parseHTML() {
+        return TEXT_SIZES.map((size) => ({ tag: `span.ts-${size}`, attrs: { size } }));
+    },
+
+    renderHTML({ mark, HTMLAttributes }) {
+        return ['span', mergeAttributes(HTMLAttributes, { class: `ts-${mark.attrs.size}` }), 0];
+    },
+
+    markdownTokenizer: {
+        name: 'textSize',
+        level: 'inline',
+        start: (src) => src.indexOf('{size='),
+        tokenize(src, _tokens, lexer) {
+            const match = /^\{size=([a-z]+)\}([\s\S]*?)\{\/size\}/.exec(src);
+
+            if (!match || !TEXT_SIZES.includes(match[1])) {
+                return undefined;
+            }
+
+            return { type: 'textSize', raw: match[0], size: match[1], text: match[2], tokens: lexer.inlineTokens(match[2]) };
+        },
+    },
+
+    parseMarkdown: (token, helpers) => helpers.applyMark('textSize', helpers.parseInline(token.tokens || []), { size: token.size }),
+
+    renderMarkdown: (node, h) => `{size=${node.attrs?.size ?? 'large'}}${h.renderChildren(node)}{/size}`,
+});
+
 /**
  * Coloured box (":::callout {type="tip"}" … ":::"); the symbol switches the colour.
  */
@@ -987,6 +1029,7 @@ export function createPageEditor(element, bubbleMenu, { markdown, pageTitles, tr
             MarkdownImage,
             Highlight,
             TextColor,
+            TextSize,
             Column,
             Columns,
             Callout.configure({ translations }),

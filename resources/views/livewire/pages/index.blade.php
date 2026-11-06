@@ -702,6 +702,11 @@ new #[Layout('layouts.app')] class extends Component
                                         <button type="button" x-on:click="setTextColor('{{ $tc }}')" class="tc-swatch tc-{{ $tc }}" title="{{ __('Text colour') }}">A</button>
                                     @endforeach
                                     <button type="button" x-on:click="setTextColor('')" title="{{ __('Remove colour') }}">A̶</button>
+                                    <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                    <button type="button" x-on:click="setTextSize('small')" class="text-xs" title="{{ __('Small text') }}">A</button>
+                                    <button type="button" x-on:click="setTextSize('large')" class="text-lg" title="{{ __('Large text') }}">A</button>
+                                    <button type="button" x-on:click="setTextSize('xl')" class="text-2xl leading-none" title="{{ __('Extra large text') }}">A</button>
+                                    <button type="button" x-on:click="setTextSize('')" title="{{ __('Reset size') }}">A↺</button>
                                 </div>
                                 <div x-ref="editor" class="editor-frame">
                                     <p x-show="mode === 'loading'" class="p-3 text-sm text-gray-400">{{ __('Loading editor …') }}</p>

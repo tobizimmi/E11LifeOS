@@ -54,6 +54,29 @@ class PageBlocksTest extends TestCase
         $this->assertSame(str_replace('- [ ]', '- [x]', $body), NoteMarkdown::toggleTask($body, 0));
     }
 
+    public function test_named_font_sizes_render_as_span_classes_but_unknown_sizes_pass_through(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $body = implode("\n", [
+            '{size=large}Überschrift{/size} und {size=small}Fußnote{/size}',
+            '',
+            '{size=huge}bleibt stehen{/size}',
+            '',
+            '```',
+            '{size=large}Code{/size}',
+            '```',
+        ]);
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'content' => ['body' => $body]]);
+
+        $html = NoteMarkdown::toHtml($page, $user);
+
+        $this->assertStringContainsString('<span class="ts-large">Überschrift</span>', $html);
+        $this->assertStringContainsString('<span class="ts-small">Fußnote</span>', $html);
+        $this->assertStringContainsString('{size=huge}bleibt stehen{/size}', $html);
+        $this->assertStringContainsString('{size=large}Code{/size}', $html);
+        $this->assertStringNotContainsString('<span class="ts-large">Code', $html);
+    }
+
     public function test_tasks_calendar_and_subpages_can_be_embedded_in_a_page(): void
     {
         [$user, $household] = $this->memberWithHousehold();

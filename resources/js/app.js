@@ -324,6 +324,19 @@ document.addEventListener('alpine:init', () => {
                     editor.chain().focus().unsetMark('textColor').run();
                 }
             },
+
+            // Font size of the selection; an empty value removes the size again.
+            setTextSize(size) {
+                if (!editor) {
+                    return;
+                }
+
+                if (size) {
+                    editor.chain().focus().setMark('textSize', { size }).run();
+                } else {
+                    editor.chain().focus().unsetMark('textSize').run();
+                }
+            },
         };
     });
 

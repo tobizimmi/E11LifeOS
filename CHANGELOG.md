@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.89.0] – 2026-11-06
+
+### Neu
+- **Schriftgrößen im Seiten-Editor.** Markierten Text im Rich-Text-Editor über die Mini-Werkzeugleiste auf drei Stufen bringen – **klein, groß, sehr groß** – oder auf Normalgröße zurücksetzen. Die Größe wird als `{size=…}`-Markdown gespeichert und theme-sicher gerendert (ergänzt die bereits vorhandenen Textfarben, Überschriften und Hervorhebungen). Gilt für Wiki-/Seiten-Editor und Notizen.
+
 ## [1.88.0] – 2026-11-06
 
 ### Neu

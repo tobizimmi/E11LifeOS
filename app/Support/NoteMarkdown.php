@@ -91,7 +91,7 @@ class NoteMarkdown
         }, $note->body());
 
         $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks, $attributes);
-        $html = strtr(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))), $links);
+        $html = strtr(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed)))), $links);
 
         $html = self::decorateChecklists($html, $note, $viewer);
 
@@ -470,6 +470,9 @@ class NoteMarkdown
      */
     public const TEXT_COLOURS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
 
+    /** Named font sizes a span can carry ("{size=large}…{/size}"), rendered as .ts-<name>. */
+    public const TEXT_SIZES = ['small', 'large', 'xl'];
+
     /**
      * "{color=green}text{/color}" becomes <span class="tc-green">, except inside code. Only the
      * fixed palette is accepted; anything else is left untouched.
@@ -483,6 +486,27 @@ class NoteMarkdown
                 $parts[$index] = (string) preg_replace_callback('/\{color=([a-z]+)\}(.+?)\{\/color\}/su', function (array $match) {
                     return in_array($match[1], self::TEXT_COLOURS, true)
                         ? '<span class="tc-'.$match[1].'">'.$match[2].'</span>'
+                        : $match[0];
+                }, $part);
+            }
+        }
+
+        return implode('', $parts);
+    }
+
+    /**
+     * "{size=large}text{/size}" becomes <span class="ts-large">, except inside code. Only the
+     * named sizes are accepted; anything else is left untouched.
+     */
+    private static function sizes(string $html): string
+    {
+        $parts = preg_split('/(<pre[\s>].*?<\/pre>|<code[\s>].*?<\/code>)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$html];
+
+        foreach ($parts as $index => $part) {
+            if ($index % 2 === 0) {
+                $parts[$index] = (string) preg_replace_callback('/\{size=([a-z]+)\}(.+?)\{\/size\}/su', function (array $match) {
+                    return in_array($match[1], self::TEXT_SIZES, true)
+                        ? '<span class="ts-'.$match[1].'">'.$match[2].'</span>'
                         : $match[0];
                 }, $part);
             }

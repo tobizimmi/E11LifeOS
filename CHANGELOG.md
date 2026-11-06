@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.94.0] – 2026-11-06
+
+### Neu
+- **UND/ODER-Verknüpfung von Filtern.** Bei mehreren Filtern lässt sich wählen, ob **alle** (UND) oder **mindestens einer** (ODER) erfüllt sein müssen. Die Einstellung wird in gespeicherten Ansichten und eingebetteten Datenbank-Ansichten mitgespeichert.
+
 ## [1.93.0] – 2026-11-06
 
 ### Neu

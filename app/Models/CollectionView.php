@@ -17,7 +17,7 @@ class CollectionView extends Model
     /**
      * Component properties a view stores and restores.
      */
-    public const SETTINGS = ['viewMode', 'search', 'tag', 'sort', 'direction', 'groupBy', 'hideDone', 'calendarRange', 'dateBy', 'filters', 'hiddenProperties'];
+    public const SETTINGS = ['viewMode', 'search', 'tag', 'sort', 'direction', 'groupBy', 'hideDone', 'calendarRange', 'dateBy', 'filters', 'filterMatch', 'hiddenProperties'];
 
     protected function casts(): array
     {

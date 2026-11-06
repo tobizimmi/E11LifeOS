@@ -626,7 +626,7 @@ class NoteMarkdown
         $settings = $view ? $view->settings : [];
 
         if (! empty($settings['filters'])) {
-            $entries = EntryFilters::apply($entries, EntryFilters::sanitize($settings['filters'], $properties), $properties, $viewer->id);
+            $entries = EntryFilters::apply($entries, EntryFilters::sanitize($settings['filters'], $properties), $properties, $viewer->id, ($settings['filterMatch'] ?? 'all') === 'any' ? 'or' : 'and');
         }
 
         if (! empty($settings['hideDone']) && $collection->isTasks()) {

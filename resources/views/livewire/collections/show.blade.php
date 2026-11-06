@@ -126,6 +126,12 @@ new #[Layout('layouts.app')] class extends Component
     public array $filters = [];
 
     /**
+     * How filters combine: "all" (AND, default) or "any" (OR).
+     */
+    #[Url(as: 'fm', except: 'all')]
+    public string $filterMatch = 'all';
+
+    /**
      * Saved view currently applied (id as string, empty = none).
      */
     #[Url(as: 'v', except: '')]
@@ -786,7 +792,7 @@ new #[Layout('layouts.app')] class extends Component
         $properties = $collection->properties;
         $entries = $this->entries()->with('creator', 'tags', 'attachments')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
-            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
+            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id(), $this->filterMatch === 'any' ? 'or' : 'and'))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
                 fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
             ))
@@ -1509,7 +1515,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $entries = $this->entries()->with('creator', 'tags')->withCount('attachments')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
-            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
+            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id(), $this->filterMatch === 'any' ? 'or' : 'and'))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
                 fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
             ))
@@ -1694,9 +1700,18 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($showFilters || $filterRows !== [])
                 <div class="rounded-lg bg-white dark:bg-gray-800 p-3 shadow-xs space-y-2" aria-label="{{ __('Filter') }}">
+                    @if (count($filterRows) > 1)
+                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{{ __('Match') }}</span>
+                            <select wire:model.live="filterMatch" class="rounded-md border-gray-300 py-0.5 text-xs dark:border-gray-700 dark:bg-gray-900" aria-label="{{ __('Match all or any filter') }}">
+                                <option value="all">{{ __('all filters (AND)') }}</option>
+                                <option value="any">{{ __('any filter (OR)') }}</option>
+                            </select>
+                        </div>
+                    @endif
                     @foreach ($filterRows as $index => $row)
                         <div wire:key="filter-{{ $index }}" class="flex flex-wrap items-center gap-2 text-sm">
-                            <span class="w-10 text-xs text-gray-500">{{ $index === 0 ? __('Where') : __('and') }}</span>
+                            <span class="w-10 text-xs text-gray-500">{{ $index === 0 ? __('Where') : ($filterMatch === 'any' ? __('or') : __('and')) }}</span>
                             <select wire:change="setFilterProperty({{ $index }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm" aria-label="{{ __('Property') }}">
                                 <option value="title" @selected($row['property'] === null)>{{ __('Title') }}</option>
                                 @foreach ($properties as $property)

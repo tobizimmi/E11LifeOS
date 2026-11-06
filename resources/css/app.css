@@ -318,6 +318,11 @@
         @apply rounded-sm bg-indigo-50 px-0.5 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300;
     }
 
+    .note-content .mention,
+    .note-editor .mention {
+        @apply rounded-sm bg-emerald-50 px-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300;
+    }
+
     .note-editor ul[data-type='taskList'] {
         @apply list-none ps-0;
     }
@@ -438,6 +443,31 @@
         @apply rounded-md border border-dashed border-gray-200 p-2 dark:border-gray-700;
     }
 
+    /* Automatic table of contents (from a "[toc]" line). */
+    .note-content .page-toc {
+        @apply my-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40;
+    }
+
+    .note-content .page-toc-title {
+        @apply mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400;
+    }
+
+    .note-content .page-toc ul {
+        @apply list-none space-y-0.5 pl-0;
+    }
+
+    .note-content .page-toc a {
+        @apply text-indigo-600 no-underline hover:underline dark:text-indigo-400;
+    }
+
+    .note-content .page-toc-h2 {
+        @apply pl-3;
+    }
+
+    .note-content .page-toc-h3 {
+        @apply pl-6;
+    }
+
     .note-content .page-embed {
         @apply rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40;
     }
@@ -505,6 +535,22 @@
     }
 
     /* Named text colours ({color=…} / the editor's TextColor mark), tuned for light and dark. */
+    /* Named font sizes ("{size=…}"). */
+    .note-content .ts-small,
+    .note-editor .ts-small {
+        @apply text-sm;
+    }
+
+    .note-content .ts-large,
+    .note-editor .ts-large {
+        @apply text-xl;
+    }
+
+    .note-content .ts-xl,
+    .note-editor .ts-xl {
+        @apply text-3xl font-semibold;
+    }
+
     .note-content .tc-gray,
     .note-editor .tc-gray {
         @apply text-gray-500 dark:text-gray-400;

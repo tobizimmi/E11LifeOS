@@ -29,7 +29,7 @@ class Collection extends Model
 
     public const DEFAULT_ICON = '🗂️';
 
-    public const VIEWS = ['table', 'board', 'calendar', 'cards', 'list'];
+    public const VIEWS = ['table', 'board', 'calendar', 'cards', 'list', 'timeline'];
 
     /**
      * Status option ids of the tasks collection; "done" mirrors items.done.

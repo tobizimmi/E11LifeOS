@@ -14,6 +14,7 @@ use App\Models\Tag;
 use App\Support\BrainAi;
 use App\Support\ConvertsToTask;
 use App\Support\NoteMarkdown;
+use App\Support\PageBookmarks;
 use App\Support\PageMover;
 use App\Support\PageRevisions;
 use App\Support\PageTemplates;
@@ -144,7 +145,9 @@ new #[Layout('layouts.app')] class extends Component
         $this->resolveHousehold();
 
         if ($item !== null) {
-            $this->selectedId = $this->findVisibleItem(Item::TYPE_NOTE, $item)->id;
+            $page = $this->findVisibleItem(Item::TYPE_NOTE, $item);
+            $this->selectedId = $page->id;
+            PageBookmarks::recordVisit($page, Auth::user());
 
             if (request()->query('edit') === '1') {
                 $this->edit($this->selectedId);
@@ -309,6 +312,39 @@ new #[Layout('layouts.app')] class extends Component
         $page = $this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null;
 
         return PageMover::parentIsAllowed($page, $parentId, Auth::user(), (int) $this->householdId);
+    }
+
+    public function toggleFavorite(int $id): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, $id);
+        $isFavorite = PageBookmarks::toggleFavorite($page, Auth::user());
+        $this->dispatch('toast', message: $isFavorite ? __('Added to favourites.') : __('Removed from favourites.'));
+    }
+
+    public function createPublicLink(): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+
+        if (! $page->public_token) {
+            $page->forceFill(['public_token' => \Illuminate\Support\Str::random(40)])->save();
+        }
+    }
+
+    /**
+     * Validity of the public link in days from now; empty = unlimited.
+     */
+    public function setPublicLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId)
+            ->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
+    public function revokePublicLink(): void
+    {
+        $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId)
+            ->forceFill(['public_token' => null, 'public_expires_at' => null])->save();
+        $this->dispatch('toast', message: __('The public link no longer works.'));
     }
 
     /** Page whose version history is shown. */
@@ -546,6 +582,9 @@ new #[Layout('layouts.app')] class extends Component
             'canChangeVisibility' => true,
             'aiAvailable' => BrainAi::isConfigured(),
             'spaces' => Space::query()->visibleTo(Auth::user(), (int) $this->householdId)->get()->keyBy('id'),
+            'favoritePages' => PageBookmarks::favorites(Auth::user(), (int) $this->householdId),
+            'recentPages' => PageBookmarks::recent(Auth::user(), (int) $this->householdId, excludeId: $this->selectedId),
+            'favoriteIds' => PageBookmarks::favoriteIds(Auth::user()),
         ];
 
         if ($this->showForm) {
@@ -702,6 +741,11 @@ new #[Layout('layouts.app')] class extends Component
                                         <button type="button" x-on:click="setTextColor('{{ $tc }}')" class="tc-swatch tc-{{ $tc }}" title="{{ __('Text colour') }}">A</button>
                                     @endforeach
                                     <button type="button" x-on:click="setTextColor('')" title="{{ __('Remove colour') }}">A̶</button>
+                                    <span class="editor-bubble-divider" aria-hidden="true"></span>
+                                    <button type="button" x-on:click="setTextSize('small')" class="text-xs" title="{{ __('Small text') }}">A</button>
+                                    <button type="button" x-on:click="setTextSize('large')" class="text-lg" title="{{ __('Large text') }}">A</button>
+                                    <button type="button" x-on:click="setTextSize('xl')" class="text-2xl leading-none" title="{{ __('Extra large text') }}">A</button>
+                                    <button type="button" x-on:click="setTextSize('')" title="{{ __('Reset size') }}">A↺</button>
                                 </div>
                                 <div x-ref="editor" class="editor-frame">
                                     <p x-show="mode === 'loading'" class="p-3 text-sm text-gray-400">{{ __('Loading editor …') }}</p>
@@ -715,7 +759,7 @@ new #[Layout('layouts.app')] class extends Component
                             <textarea x-show="mode === 'markdown'" x-cloak wire:model="body" x-on:input="scheduleAutosave()" x-on:page-title-typed.window="scheduleAutosave()" id="body" rows="14" class="block mt-1 w-full font-mono text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-xs"></textarea>
 
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
+                                {{ __('Type “/” for headings, lists, checklists and tables. Link other pages with [[ and mention people with @ – suggestions appear as you type. Drop or paste images and files right into the text.') }}
                                 {{ __('In checklists, “//15.10.” adds a due date and “@Name” a person; ↗ makes an item a task.') }}
                                 {{ __('Move a block with Alt + ↑ / ↓.') }}
                             </p>
@@ -798,6 +842,8 @@ new #[Layout('layouts.app')] class extends Component
                                 </p>
                             </div>
                             <div class="flex gap-3 shrink-0 text-sm">
+                                @php($isFavorite = in_array($selectedPage->id, $favoriteIds, true))
+                                <button type="button" wire:click="toggleFavorite({{ $selectedPage->id }})" class="{{ $isFavorite ? 'text-amber-500' : 'text-gray-500 dark:text-gray-400' }} underline" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}" title="{{ $isFavorite ? __('Remove from favourites') : __('Add to favourites') }}">{{ $isFavorite ? '★' : '☆' }} {{ __('Favourite') }}</button>
                                 <button type="button" wire:click="edit({{ $selectedPage->id }})" class="text-indigo-600 dark:text-indigo-400 underline">{{ __('Edit') }}</button>
                                 @php($revisionCount = \App\Models\PageRevision::where('item_id', $selectedPage->id)->count())
                                 @if ($revisionCount > 0)
@@ -895,6 +941,21 @@ new #[Layout('layouts.app')] class extends Component
 
                         <div class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
                             <livewire:sharing.panel type="page" :id="$selectedPage->id" :wire:key="'share-page-'.$selectedPage->id" />
+
+                            <div class="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-900/30">
+                                @if ($selectedPage->public_token)
+                                    <p class="text-gray-700 dark:text-gray-300">🌐 {{ __('Anyone with this link can read this page and its shared subpages (read-only, no private subpages).') }}</p>
+                                    <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                                        <x-text-input readonly value="{{ route('pages.public', $selectedPage->public_token) }}" class="block min-w-0 flex-1 text-sm" aria-label="{{ __('Public link') }}" x-on:focus="$el.select()" />
+                                        <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from(route('pages.public', $selectedPage->public_token)) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></x-secondary-button>
+                                        <button type="button" wire:click="revokePublicLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Turn off link') }}</button>
+                                    </div>
+                                    <x-share-expiry :expires="$selectedPage->public_expires_at" action="setPublicLinkExpiry" class="mt-2" />
+                                @else
+                                    <button type="button" wire:click="createPublicLink" class="text-emerald-700 underline dark:text-emerald-300">🌐 {{ __('Publish as public wiki link') }}</button>
+                                @endif
+                            </div>
+
                             <livewire:documents-panel type="item" :id="$selectedPage->id" :wire:key="'documents-page-'.$selectedPage->id" />
                             <livewire:links-panel type="item" :id="$selectedPage->id" :wire:key="'links-page-'.$selectedPage->id" />
                         </div>
@@ -966,6 +1027,43 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     @endif
                 </div>
+
+                @if ($search === '' && $tag === '' && $space === '' && ($favoritePages->isNotEmpty() || $recentPages->isNotEmpty()))
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @if ($favoritePages->isNotEmpty())
+                            <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4" aria-label="{{ __('Favourites') }}">
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">★ {{ __('Favourites') }}</h3>
+                                <ul class="mt-2 space-y-1">
+                                    @foreach ($favoritePages as $favorite)
+                                        <li wire:key="fav-{{ $favorite->id }}" class="flex items-center gap-2">
+                                            <a href="{{ route('pages.index', ['item' => $favorite->id]) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-800 dark:text-gray-200 hover:underline">
+                                                <span aria-hidden="true">{{ $favorite->displayIcon() }}</span>
+                                                <span class="truncate">{{ $favorite->title }}</span>
+                                            </a>
+                                            <button type="button" wire:click="toggleFavorite({{ $favorite->id }})" class="shrink-0 text-amber-500" title="{{ __('Remove from favourites') }}">★</button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </section>
+                        @endif
+
+                        @if ($recentPages->isNotEmpty())
+                            <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4" aria-label="{{ __('Recently visited') }}">
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">🕓 {{ __('Recently visited') }}</h3>
+                                <ul class="mt-2 space-y-1">
+                                    @foreach ($recentPages as $recent)
+                                        <li wire:key="recent-{{ $recent->id }}">
+                                            <a href="{{ route('pages.index', ['item' => $recent->id]) }}" wire:navigate class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 hover:underline">
+                                                <span aria-hidden="true">{{ $recent->displayIcon() }}</span>
+                                                <span class="truncate">{{ $recent->title }}</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </section>
+                        @endif
+                    </div>
+                @endif
 
                 <ul class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl divide-y divide-gray-100 dark:divide-gray-700" wire:loading.class="opacity-50">
                     @forelse ($pages as $page)

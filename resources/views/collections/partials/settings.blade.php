@@ -164,6 +164,38 @@
                                             </p>
                                         </div>
                                     @endif
+                                    @if ($property->type === \App\Models\CollectionProperty::TYPE_ROLLUP)
+                                        @php
+                                            $relationColumns = $properties->where('type', \App\Models\CollectionProperty::TYPE_RELATION);
+                                            $rollup = $property->rollupConfig();
+                                        @endphp
+                                        <div class="flex flex-col gap-1 ps-2">
+                                            @if ($relationColumns->isEmpty())
+                                                <p class="text-xs text-amber-700 dark:text-amber-300">{{ __('Add a relation column first; a rollup aggregates linked entries.') }}</p>
+                                            @else
+                                                <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                                    Σ {{ __('Rollup:') }}
+                                                    <select wire:change="setRollupOption({{ $property->id }}, 'aggregate', $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-0.5 text-xs">
+                                                        @foreach (['sum' => __('Sum'), 'avg' => __('Average'), 'min' => __('Minimum'), 'max' => __('Maximum'), 'count' => __('Count')] as $value => $label)
+                                                            <option value="{{ $value }}" @selected($rollup['aggregate'] === $value)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    {{ __('via') }}
+                                                    <select wire:change="setRollupOption({{ $property->id }}, 'relation', $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-0.5 text-xs">
+                                                        <option value="">{{ __('— relation —') }}</option>
+                                                        @foreach ($relationColumns as $relation)
+                                                            <option value="{{ $relation->id }}" @selected($rollup['relation'] === $relation->id)>{{ $relation->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    @if ($rollup['aggregate'] !== 'count')
+                                                        {{ __('of') }}
+                                                        <input type="text" value="{{ $rollup['target'] }}" wire:change="setRollupOption({{ $property->id }}, 'target', $event.target.value)" placeholder="{{ __('target column name') }}" aria-label="{{ __('Target column') }}" class="w-36 rounded-md border-gray-300 py-0.5 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                    @endif
+                                                </div>
+                                                <p class="text-xs text-gray-400">{{ __('Aggregates the linked entries of the chosen relation; for sum/average/min/max name a number column on those entries.') }}</p>
+                                            @endif
+                                        </div>
+                                    @endif
                                     @if ($property->type === \App\Models\CollectionProperty::TYPE_NUMBER)
                                         <label class="flex flex-wrap items-center gap-2 ps-2 text-xs text-gray-600 dark:text-gray-400">
                                             Σ {{ __('Summary under the table') }}

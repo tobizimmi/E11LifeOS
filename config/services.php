@@ -150,4 +150,10 @@ return [
         'redirect' => env('GOOGLE_CALENDAR_REDIRECT'),
     ],
 
+    // ffmpeg is used to extract a poster frame from uploaded videos (media columns). If it is not
+    // installed on the server, videos simply keep no poster. Install it with: apt-get install -y ffmpeg
+    'ffmpeg' => [
+        'binary' => env('FFMPEG_BINARY', 'ffmpeg'),
+    ],
+
 ];

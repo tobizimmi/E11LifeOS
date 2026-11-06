@@ -132,6 +132,12 @@
                 </p>
                 @break
 
+            @case(CollectionProperty::TYPE_ROLLUP)
+                <p class="rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-sm text-gray-400 dark:border-gray-600">
+                    Σ {{ __('Rollup from a relation · calculated automatically') }}
+                </p>
+                @break
+
             @case(CollectionProperty::TYPE_FILE)
             @case(CollectionProperty::TYPE_IMAGE)
                 <p class="rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-sm text-gray-400 dark:border-gray-600">

@@ -141,6 +141,7 @@ document.addEventListener('alpine:init', () => {
                         onPickFile: () => this.pickFile(),
                         onPickList: () => this.openListPicker(),
                         searchLinks: (term) => this.$wire.linkTargets(term),
+                        searchMentions: (term) => this.$wire.mentionTargets(term),
                     });
                     editor.on('selectionUpdate', () => this.selectionTick++);
                     editor.on('transaction', () => this.selectionTick++);
@@ -322,6 +323,19 @@ document.addEventListener('alpine:init', () => {
                     editor.chain().focus().setMark('textColor', { color }).run();
                 } else {
                     editor.chain().focus().unsetMark('textColor').run();
+                }
+            },
+
+            // Font size of the selection; an empty value removes the size again.
+            setTextSize(size) {
+                if (!editor) {
+                    return;
+                }
+
+                if (size) {
+                    editor.chain().focus().setMark('textSize', { size }).run();
+                } else {
+                    editor.chain().focus().unsetMark('textSize').run();
                 }
             },
         };

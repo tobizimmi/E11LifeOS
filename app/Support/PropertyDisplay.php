@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\CollectionProperty;
 use App\Models\Item;
 use App\Support\Collections\FormulaEvaluator;
+use App\Support\Collections\RollupResolver;
 use Illuminate\Support\Carbon;
 
 /**
@@ -24,9 +25,9 @@ class PropertyDisplay
     {
         $result = ['text' => '', 'hint' => null, 'tone' => 'normal', 'options' => [], 'url' => null, 'nodes' => [], 'files' => []];
 
-        // Formula columns store no value; they are computed from the entry's other columns on display,
-        // so they are handled before the "empty value" guard below.
-        if ($property->type === CollectionProperty::TYPE_FORMULA) {
+        // Formula and rollup columns store no value; they are computed from the entry's other columns
+        // (or its linked entries) on display, so they are handled before the "empty value" guard below.
+        if ($property->isComputed()) {
             $collection = $item->relationLoaded('collection') ? $item->collection : null;
 
             if (! $collection instanceof Collection) {
@@ -35,13 +36,19 @@ class PropertyDisplay
 
             /** @var \Illuminate\Database\Eloquent\Collection<int, CollectionProperty> $columns */
             $columns = $collection->properties;
-            $computed = FormulaEvaluator::forItem($property, $item, $columns);
+
+            $computed = $property->type === CollectionProperty::TYPE_ROLLUP
+                ? RollupResolver::forItem($property, $item, $columns)
+                : FormulaEvaluator::forItem($property, $item, $columns);
 
             if ($computed === null) {
                 return null;
             }
 
-            $result['text'] = self::number($computed, self::isCurrency($property));
+            // A "count" rollup is a whole number; other computed values keep their decimals.
+            $result['text'] = $property->type === CollectionProperty::TYPE_ROLLUP && $property->rollupConfig()['aggregate'] === 'count'
+                ? (string) (int) $computed
+                : self::number($computed, self::isCurrency($property));
 
             return $result;
         }

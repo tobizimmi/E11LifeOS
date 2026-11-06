@@ -3,6 +3,62 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.96.0] – 2026-11-06
+
+### Neu
+- **Zeitstrahl-/Gantt-Ansicht für Sammlungen.** Einträge mit einem Datum erscheinen als Balken auf einer Monats-Zeitachse. Optional lässt sich ein zweites Datumsfeld als Enddatum wählen, dann spannt der Balken von Start bis Ende (Gantt); sonst ein Ein-Tages-Marker. Ein Klick öffnet den Eintrag. (Damit sind die Sammlungs-Ansichten Tabelle, Board, Kalender, Karten, Liste und Zeitstrahl komplett.)
+
+## [1.95.0] – 2026-11-06
+
+### Neu
+- **Gruppierte Tabellenansicht.** Die Tabelle einer Sammlung lässt sich jetzt – wie das Board – nach einer Auswahl-Spalte gruppieren: pro Gruppe eine Zwischenüberschrift mit Anzahl, plus eine Gruppe „Ohne …" für Einträge ohne Wert. (Verknüpfte Datenbank-Ansichten lassen sich bereits über den Block „Datenbank einbetten" auf Seiten einfügen.)
+
+## [1.94.0] – 2026-11-06
+
+### Neu
+- **UND/ODER-Verknüpfung von Filtern.** Bei mehreren Filtern lässt sich wählen, ob **alle** (UND) oder **mindestens einer** (ODER) erfüllt sein müssen. Die Einstellung wird in gespeicherten Ansichten und eingebetteten Datenbank-Ansichten mitgespeichert.
+
+## [1.93.0] – 2026-11-06
+
+### Neu
+- **Spalte direkt in der Tabelle anlegen.** In der Tabellenansicht einer Sammlung legt ein „+" im Spaltenkopf eine neue Spalte an (Name + Typ), ohne den Umweg über die Einstellungen (nicht bei der System-Aufgabenliste).
+- **Erstellt/Bearbeitet-Infos je Eintrag.** Die Detailansicht eines Eintrags zeigt jetzt automatisch, wann und von wem er erstellt wurde und wann er zuletzt bearbeitet wurde.
+
+## [1.92.0] – 2026-11-06
+
+### Neu
+- **Öffentliches Wiki per Link.** Eine Seite lässt sich als schreibgeschützter öffentlicher Link veröffentlichen (`/w/<token>`). Die Freigabe umfasst die Seite und ihre freigegebenen Unterseiten als navigierbaren Baum mit Breadcrumbs; private Unterseiten bleiben außen vor. Interne Verweise bleiben innerhalb des öffentlichen Links, Einbettungen (Aufgaben/Kalender) werden ausgeblendet. Der Link ist optional mit Ablaufdatum (7/30/90 Tage) und jederzeit abschaltbar – wie bei den öffentlichen Sammlungen.
+
+## [1.91.0] – 2026-11-06
+
+### Neu
+- **@-Erwähnungen im Seiten-Editor.** Mit `@` erscheint eine Vorschlagsliste der Haushaltsmitglieder; die gewählte Person wird als farbiger Chip in den Text eingefügt und bleibt stabil, auch wenn sich der angezeigte Name später ändert (gespeichert als `@[id:Name]`). Wird beim Anzeigen theme-sicher gerendert.
+
+## [1.90.0] – 2026-11-06
+
+### Neu
+- **Favoriten & „Zuletzt besucht" für Seiten.** Jede Seite lässt sich mit einem Stern als Favorit anheften; die Seitenübersicht zeigt oben persönliche Favoriten und die zuletzt geöffneten Seiten als Schnellzugriff. Beides ist pro Person – jede/r sieht die eigenen. (Seitenbaum, Breadcrumbs und Seiten-Vorlagen gibt es bereits.)
+
+## [1.89.0] – 2026-11-06
+
+### Neu
+- **Schriftgrößen im Seiten-Editor.** Markierten Text im Rich-Text-Editor über die Mini-Werkzeugleiste auf drei Stufen bringen – **klein, groß, sehr groß** – oder auf Normalgröße zurücksetzen. Die Größe wird als `{size=…}`-Markdown gespeichert und theme-sicher gerendert (ergänzt die bereits vorhandenen Textfarben, Überschriften und Hervorhebungen). Gilt für Wiki-/Seiten-Editor und Notizen.
+
+## [1.88.0] – 2026-11-06
+
+### Neu
+- **Video-Startbild im PDF-Bericht.** Beim Hochladen eines Videos in eine Medienspalte extrahiert der Server mit **ffmpeg** automatisch ein Vorschaubild (erstes Bild). Der Bericht bettet dieses statt der Platzhalter-Kachel ein. Ist ffmpeg auf dem Server nicht installiert, bleibt es bei der Kachel – nichts bricht. (Server-Voraussetzung: `apt-get install -y ffmpeg`.)
+
+## [1.87.0] – 2026-11-06
+
+### Neu
+- **Inhaltsverzeichnis & Überschriften-Anker in Seiten.** Überschriften (H1–H3) bekommen automatisch anklickbare Anker. Eine Zeile `[toc]` – oder der neue Slash-Befehl „Inhaltsverzeichnis" – wird beim Anzeigen zu einem automatischen Inhaltsverzeichnis, das zu den Abschnitten der Seite springt. (Callouts/Infoboxen, aufklappbare Toggles und Spaltenlayout gibt es im Seiten-Editor bereits.)
+
+## [1.86.0] – 2026-11-06
+
+### Neu
+- **Rollup-Spalten in Sammlungen.** Eine Rollup-Spalte folgt einer Relations-Spalte zu den verknüpften Einträgen und aggregiert dort eine Zielspalte: **Summe, Durchschnitt, Minimum, Maximum** oder **Anzahl**. Der Wert wird automatisch berechnet (nie gespeichert) und erscheint in Tabelle, Detailansicht und PDF-Bericht. Eingestellt wird Relation, Zielspalte und Funktion in den Spalten-Einstellungen. (Ergänzt die Formel-Spalten um Notions zweites Datenbank-Kernfeature.)
+
 ## [1.85.0] – 2026-11-05
 
 ### Neu

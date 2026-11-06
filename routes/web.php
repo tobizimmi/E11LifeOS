@@ -29,6 +29,7 @@ use App\Http\Controllers\OfflineCaptureController;
 use App\Http\Controllers\PublicCollectionController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PublicRecipeController;
+use App\Http\Controllers\PublicWikiController;
 use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\RealEstateReceiptController;
@@ -269,6 +270,7 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::post('gp/{token}/feedback', 'participantFeedback')->middleware('throttle:10,1')->name('trips.participant.feedback');
     });
     Route::get('c/{token}', PublicCollectionController::class)->where('token', '[A-Za-z0-9]+')->name('collections.public');
+    Route::get('w/{token}', PublicWikiController::class)->where('token', '[A-Za-z0-9]+')->name('pages.public');
     Route::get('r/{token}/image', [PublicRecipeController::class, 'image'])->name('recipes.public.image');
     Volt::route('emergency/access/{token}', 'emergency.access')->where('token', '[A-Za-z0-9]+')->name('emergency.access');
     Route::get('emergency/access/{token}/pdf', [EmergencyFolderController::class, 'sharedPdf'])->where('token', '[A-Za-z0-9]+')->name('emergency.shared-pdf');

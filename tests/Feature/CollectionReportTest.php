@@ -94,6 +94,50 @@ class CollectionReportTest extends TestCase
         $this->assertStringContainsString('12', $html);
     }
 
+    public function test_rollup_columns_aggregate_linked_entries(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // Target collection with a number column the rollup aggregates.
+        $positions = Collection::factory()->create(['household_id' => $household->id, 'name' => 'Positionen']);
+        $amount = $positions->properties()->create(['name' => 'Betrag', 'type' => CollectionProperty::TYPE_NUMBER, 'position' => 0]);
+        $makePosition = function (float $value) use ($household, $positions, $amount, $user) {
+            $p = Item::factory()->for($household)->create(['collection_id' => $positions->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Pos', 'created_by' => $user->id]);
+            $p->setPropertyValue($amount, $value);
+            $p->save();
+
+            return $p;
+        };
+        $p1 = $makePosition(10);
+        $p2 = $makePosition(30);
+
+        // Source collection with a relation to positions + a rollup column.
+        $invoices = Collection::factory()->create(['household_id' => $household->id, 'name' => 'Rechnungen']);
+        $relation = $invoices->properties()->create(['name' => 'Positionen', 'type' => CollectionProperty::TYPE_RELATION, 'position' => 0]);
+        $rollup = $invoices->properties()->create(['name' => 'Summe', 'type' => CollectionProperty::TYPE_ROLLUP, 'options' => ['relation' => $relation->id, 'target' => 'Betrag', 'aggregate' => 'sum'], 'position' => 1]);
+
+        $invoice = Item::factory()->for($household)->create(['collection_id' => $invoices->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Rechnung 1', 'created_by' => $user->id]);
+        $invoice->setPropertyValue($relation, ['item:'.$p1->id, 'item:'.$p2->id]);
+        $invoice->save();
+
+        $invoices->load('properties');
+        $invoice->setRelation('collection', $invoices);
+
+        $this->assertSame('40', PropertyDisplay::format($rollup, $invoice)['text']);
+
+        // Average and count of the same two linked entries.
+        $rollup->update(['options' => ['relation' => $relation->id, 'target' => 'Betrag', 'aggregate' => 'avg']]);
+        $invoices->load('properties');
+        $invoice->setRelation('collection', $invoices);
+        $this->assertSame('20', PropertyDisplay::format($invoices->properties->firstWhere('id', $rollup->id), $invoice)['text']);
+
+        $rollup->update(['options' => ['relation' => $relation->id, 'aggregate' => 'count']]);
+        $invoices->load('properties');
+        $invoice->setRelation('collection', $invoices);
+        $this->assertSame('2', PropertyDisplay::format($invoices->properties->firstWhere('id', $rollup->id), $invoice)['text']);
+    }
+
     public function test_the_report_embeds_images_and_lists_other_files(): void
     {
         [$user, $household] = $this->memberWithHousehold();
@@ -111,6 +155,31 @@ class CollectionReportTest extends TestCase
 
         $this->assertStringContainsString('<img src="data:image/jpeg;base64,', $html);
         $this->assertStringContainsString('plan.pdf', $html);
+    }
+
+    public function test_the_report_embeds_a_video_poster_when_present(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        [$collection, , $files] = $this->collectionWithFileColumn($household->id);
+        $entry = Item::factory()->for($household)->create([
+            'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Clip', 'created_by' => $user->id,
+        ]);
+
+        $disk = Storage::disk('secure');
+        $disk->put('attachments/'.$household->id.'/clip.mp4', 'VIDEOBYTES');
+        $disk->put('attachments/'.$household->id.'/clip-poster.jpg', 'POSTERBYTES');
+        $video = Attachment::create([
+            'household_id' => $household->id, 'item_id' => $entry->id, 'created_by' => $user->id,
+            'path' => 'attachments/'.$household->id.'/clip.mp4', 'poster_path' => 'attachments/'.$household->id.'/clip-poster.jpg',
+            'original_name' => 'clip.mp4', 'mime_type' => 'video/mp4', 'size' => 10,
+        ]);
+        $entry->setPropertyValue($files, [$video->id]);
+        $entry->save();
+
+        $html = CollectionReport::html($collection->fresh('properties'), Item::with('attachments')->where('id', $entry->id)->get(), $collection->properties);
+
+        $this->assertStringContainsString('data:image/jpeg;base64,'.base64_encode('POSTERBYTES'), $html);
     }
 
     public function test_editing_an_entry_with_a_file_column_does_not_error(): void

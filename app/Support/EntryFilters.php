@@ -68,20 +68,41 @@ class EntryFilters
     }
 
     /**
+     * Apply the filters. $conjunction "and" (default) keeps entries matching every active filter;
+     * "or" keeps entries matching at least one.
+     *
      * @param  SupportCollection<int, Item>  $entries
      * @param  array<int, array{property: string, operator: string, value: string}>  $filters
      * @param  SupportCollection<int, CollectionProperty>  $properties
      * @return SupportCollection<int, Item>
      */
-    public static function apply(SupportCollection $entries, array $filters, SupportCollection $properties, int $userId): SupportCollection
+    public static function apply(SupportCollection $entries, array $filters, SupportCollection $properties, int $userId, string $conjunction = 'and'): SupportCollection
     {
-        foreach ($filters as $filter) {
-            if (self::needsValue($filter['operator']) && trim($filter['value']) === '') {
-                continue;
-            }
+        $active = array_values(array_filter(
+            $filters,
+            fn (array $filter) => ! (self::needsValue($filter['operator']) && trim($filter['value']) === ''),
+        ));
 
-            $property = $filter['property'] === 'title' ? null : $properties->firstWhere('id', (int) $filter['property']);
-            $entries = $entries->filter(fn (Item $entry) => self::matches($entry, $property, $filter['operator'], $filter['value'], $userId));
+        if ($active === []) {
+            return $entries->values();
+        }
+
+        $property = fn (array $filter) => $filter['property'] === 'title' ? null : $properties->firstWhere('id', (int) $filter['property']);
+
+        if ($conjunction === 'or') {
+            return $entries->filter(function (Item $entry) use ($active, $property, $userId) {
+                foreach ($active as $filter) {
+                    if (self::matches($entry, $property($filter), $filter['operator'], $filter['value'], $userId)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })->values();
+        }
+
+        foreach ($active as $filter) {
+            $entries = $entries->filter(fn (Item $entry) => self::matches($entry, $property($filter), $filter['operator'], $filter['value'], $userId));
         }
 
         return $entries->values();

@@ -189,6 +189,80 @@ class CollectionsTest extends TestCase
         $this->assertDatabaseMissing('collection_properties', ['id' => $priority->id]);
     }
 
+    public function test_the_table_offers_inline_add_column_on_a_custom_collection(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $collection = Collection::factory()->for($household)->create();
+
+        // The inline "+" add-column control is offered on a non-system collection.
+        Volt::test('collections.show', ['collection' => $collection->id])
+            ->assertSee(__('Add column'))
+            ->set('newPropertyName', 'Priorität')
+            ->set('newPropertyType', CollectionProperty::TYPE_SELECT)
+            ->call('addProperty');
+
+        $this->assertDatabaseHas('collection_properties', ['collection_id' => $collection->id, 'name' => 'Priorität']);
+    }
+
+    public function test_the_table_can_be_grouped_by_a_select_property(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $collection = Collection::factory()->for($household)->create();
+
+        $component = Volt::test('collections.show', ['collection' => $collection->id])
+            ->set('newPropertyName', 'Status')
+            ->set('newPropertyType', CollectionProperty::TYPE_SELECT)
+            ->call('addProperty');
+        $status = $collection->properties()->where('name', 'Status')->firstOrFail();
+        $component->call('addOption', $status->id, 'Offen');
+        $optionId = $status->fresh()->selectOptions()[0]['id'];
+
+        $withStatus = Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Mit Status']);
+        Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Ohne Status gesetzt']);
+        $component->call('updateProperty', $withStatus->id, $status->id, $optionId);
+
+        // Grouping the table shows both the option group and the "no value" group header.
+        $component->set('viewMode', 'table')->set('groupBy', (string) $status->id)
+            ->assertSee('Offen')
+            ->assertSee('Ohne Status');
+    }
+
+    public function test_the_timeline_view_renders_bars_for_dated_entries(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $collection = Collection::factory()->for($household)->create();
+
+        $component = Volt::test('collections.show', ['collection' => $collection->id])
+            ->set('newPropertyName', 'Termin')
+            ->set('newPropertyType', CollectionProperty::TYPE_DATE)
+            ->call('addProperty');
+        $date = $collection->properties()->where('name', 'Termin')->firstOrFail();
+
+        $entry = Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Meilenstein']);
+        $component->call('updateProperty', $entry->id, $date->id, '2026-11-10');
+
+        $component->set('viewMode', 'timeline')
+            ->assertSee(__('Timeline'))
+            ->assertSee('Meilenstein');
+    }
+
+    public function test_the_entry_detail_shows_created_and_edited_metadata(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $collection = Collection::factory()->for($household)->create();
+        $entry = Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'created_by' => $user->id, 'title' => 'Datensatz']);
+
+        Volt::test('collections.show', ['collection' => $collection->id])
+            ->call('openEntry', $entry->id)
+            ->assertSee(__('Created'))
+            ->assertSee(__('Last edited'))
+            ->assertSee($user->name);
+    }
+
     public function test_built_in_task_properties_cannot_be_deleted(): void
     {
         [$user, $household] = $this->memberWithHousehold();

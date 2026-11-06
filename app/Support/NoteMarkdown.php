@@ -91,9 +91,11 @@ class NoteMarkdown
         }, $note->body());
 
         $embed = fn (array $attributes): string => self::embed($note, $viewer, (string) ($attributes['type'] ?? ''), $interactiveTasks, $attributes);
-        $html = strtr(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))), $links);
+        $html = strtr(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed)))), $links);
 
-        $html = self::decorateChecklists($html, $note, $viewer);
+        // After decorateChecklists so its "@Name" person pattern never fires inside an "@[id:Name]"
+        // mention token ("@[" is not a letter, so the two never collide).
+        $html = self::mentions(self::decorateChecklists($html, $note, $viewer));
 
         if ($interactiveTasks) {
             // Only the task-list renderer emits <input> tags: raw HTML from the note is stripped.
@@ -124,6 +126,37 @@ class NoteMarkdown
                 $html,
             );
         }
+
+        return self::headingsAndToc($html);
+    }
+
+    /**
+     * Read-only HTML for the public wiki. Reuses the blocks/colour/size/highlight/mention pipeline
+     * and the table of contents, but embeds (tasks/calendar/subpages) are dropped and wiki links
+     * resolve within the published subtree (to "?p=<id>" under the public token) or, when the target
+     * is not public, render as plain text. No viewer-specific or interactive markup is produced.
+     *
+     * @param  array<string, int>  $idsByTitle  lower-case page title => id, for pages in the subtree
+     */
+    public static function publicToHtml(Item $note, string $token, array $idsByTitle): string
+    {
+        $links = [];
+
+        $markdown = preg_replace_callback(Item::WIKI_LINK_PATTERN, function (array $match) use (&$links, $idsByTitle, $token) {
+            $title = trim($match[1]);
+            $label = trim($match[2] ?? '') ?: $title;
+            $targetId = $idsByTitle[mb_strtolower($title)] ?? null;
+            $placeholder = 'E11WIKILINK'.count($links).'X';
+
+            $links[$placeholder] = $targetId
+                ? sprintf('<a href="%s" class="wiki-link">%s</a>', e(route('pages.public', ['token' => $token]).'?p='.$targetId), e($label))
+                : e($label);
+
+            return $placeholder;
+        }, $note->body());
+
+        $embed = fn (array $attributes): string => '';
+        $html = strtr(self::mentions(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))))), $links);
 
         return self::headingsAndToc($html);
     }
@@ -470,6 +503,9 @@ class NoteMarkdown
      */
     public const TEXT_COLOURS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
 
+    /** Named font sizes a span can carry ("{size=large}…{/size}"), rendered as .ts-<name>. */
+    public const TEXT_SIZES = ['small', 'large', 'xl'];
+
     /**
      * "{color=green}text{/color}" becomes <span class="tc-green">, except inside code. Only the
      * fixed palette is accepted; anything else is left untouched.
@@ -484,6 +520,46 @@ class NoteMarkdown
                     return in_array($match[1], self::TEXT_COLOURS, true)
                         ? '<span class="tc-'.$match[1].'">'.$match[2].'</span>'
                         : $match[0];
+                }, $part);
+            }
+        }
+
+        return implode('', $parts);
+    }
+
+    /**
+     * "{size=large}text{/size}" becomes <span class="ts-large">, except inside code. Only the
+     * named sizes are accepted; anything else is left untouched.
+     */
+    private static function sizes(string $html): string
+    {
+        $parts = preg_split('/(<pre[\s>].*?<\/pre>|<code[\s>].*?<\/code>)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$html];
+
+        foreach ($parts as $index => $part) {
+            if ($index % 2 === 0) {
+                $parts[$index] = (string) preg_replace_callback('/\{size=([a-z]+)\}(.+?)\{\/size\}/su', function (array $match) {
+                    return in_array($match[1], self::TEXT_SIZES, true)
+                        ? '<span class="ts-'.$match[1].'">'.$match[2].'</span>'
+                        : $match[0];
+                }, $part);
+            }
+        }
+
+        return implode('', $parts);
+    }
+
+    /**
+     * "@[id:Name]" becomes a mention chip <span class="mention" data-user="id">@Name</span>, except
+     * inside code. The name is taken from the stored token (already HTML-escaped by the renderer).
+     */
+    private static function mentions(string $html): string
+    {
+        $parts = preg_split('/(<pre[\s>].*?<\/pre>|<code[\s>].*?<\/code>)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$html];
+
+        foreach ($parts as $index => $part) {
+            if ($index % 2 === 0) {
+                $parts[$index] = (string) preg_replace_callback('/@\[(\d+):([^\]]+)\]/u', function (array $match) {
+                    return '<span class="mention" data-user="'.$match[1].'">@'.$match[2].'</span>';
                 }, $part);
             }
         }
@@ -550,7 +626,7 @@ class NoteMarkdown
         $settings = $view ? $view->settings : [];
 
         if (! empty($settings['filters'])) {
-            $entries = EntryFilters::apply($entries, EntryFilters::sanitize($settings['filters'], $properties), $properties, $viewer->id);
+            $entries = EntryFilters::apply($entries, EntryFilters::sanitize($settings['filters'], $properties), $properties, $viewer->id, ($settings['filterMatch'] ?? 'all') === 'any' ? 'or' : 'and');
         }
 
         if (! empty($settings['hideDone']) && $collection->isTasks()) {

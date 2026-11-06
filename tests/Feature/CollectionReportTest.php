@@ -157,6 +157,31 @@ class CollectionReportTest extends TestCase
         $this->assertStringContainsString('plan.pdf', $html);
     }
 
+    public function test_the_report_embeds_a_video_poster_when_present(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        [$collection, , $files] = $this->collectionWithFileColumn($household->id);
+        $entry = Item::factory()->for($household)->create([
+            'collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Clip', 'created_by' => $user->id,
+        ]);
+
+        $disk = Storage::disk('secure');
+        $disk->put('attachments/'.$household->id.'/clip.mp4', 'VIDEOBYTES');
+        $disk->put('attachments/'.$household->id.'/clip-poster.jpg', 'POSTERBYTES');
+        $video = Attachment::create([
+            'household_id' => $household->id, 'item_id' => $entry->id, 'created_by' => $user->id,
+            'path' => 'attachments/'.$household->id.'/clip.mp4', 'poster_path' => 'attachments/'.$household->id.'/clip-poster.jpg',
+            'original_name' => 'clip.mp4', 'mime_type' => 'video/mp4', 'size' => 10,
+        ]);
+        $entry->setPropertyValue($files, [$video->id]);
+        $entry->save();
+
+        $html = CollectionReport::html($collection->fresh('properties'), Item::with('attachments')->where('id', $entry->id)->get(), $collection->properties);
+
+        $this->assertStringContainsString('data:image/jpeg;base64,'.base64_encode('POSTERBYTES'), $html);
+    }
+
     public function test_editing_an_entry_with_a_file_column_does_not_error(): void
     {
         [$user, $household] = $this->memberWithHousehold();

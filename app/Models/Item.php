@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasShareTokens;
 use App\Models\Concerns\SharedWithGroups;
 use App\Observers\ItemObserver;
 use App\Support\Recurrence;
@@ -24,7 +25,15 @@ use Illuminate\Support\Carbon;
 class Item extends Model
 {
     /** @use HasFactory<ItemFactory> */
-    use HasFactory, SharedWithGroups;
+    use HasFactory, HasShareTokens, SharedWithGroups;
+
+    /**
+     * @return list<string>
+     */
+    protected function shareTokenAttributes(): array
+    {
+        return ['public_token'];
+    }
 
     public const TYPE_NOTE = 'note';
 
@@ -66,6 +75,7 @@ class Item extends Model
             'done' => 'boolean',
             'reminded_at' => 'datetime',
             'completed_at' => 'datetime',
+            'public_expires_at' => 'datetime',
         ];
     }
 

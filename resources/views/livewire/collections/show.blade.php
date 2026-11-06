@@ -109,6 +109,10 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(as: 'date', except: '')]
     public string $dateBy = '';
 
+    /** Optional end-date property for the timeline/Gantt bars (empty = single-day marker). */
+    #[Url(as: 'date2', except: '')]
+    public string $endDateBy = '';
+
     public bool $hideDone = false;
 
     /**
@@ -124,6 +128,12 @@ new #[Layout('layouts.app')] class extends Component
      */
     #[Url(as: 'f', except: [])]
     public array $filters = [];
+
+    /**
+     * How filters combine: "all" (AND, default) or "any" (OR).
+     */
+    #[Url(as: 'fm', except: 'all')]
+    public string $filterMatch = 'all';
 
     /**
      * Saved view currently applied (id as string, empty = none).
@@ -786,7 +796,7 @@ new #[Layout('layouts.app')] class extends Component
         $properties = $collection->properties;
         $entries = $this->entries()->with('creator', 'tags', 'attachments')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
-            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
+            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id(), $this->filterMatch === 'any' ? 'or' : 'and'))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
                 fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
             ))
@@ -1409,6 +1419,76 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Timeline/Gantt layout: each dated entry becomes a bar positioned within the full date range
+     * (month columns). The optional end-date property makes a bar span start→end; otherwise it is a
+     * single-day marker.
+     *
+     * @param  \Illuminate\Support\Collection<int, Item>  $entries
+     * @return ?array{rows: array<int, array{entry: Item, left: float, width: float, startLabel: string, endLabel: ?string}>, months: array<int, array{label: string, width: float}>}
+     */
+    private function timelineData(\Illuminate\Support\Collection $entries, ?CollectionProperty $startProperty, ?CollectionProperty $endProperty): ?array
+    {
+        if (! $startProperty) {
+            return null;
+        }
+
+        $dateAt = function (Item $entry, ?CollectionProperty $property): ?Carbon {
+            $value = $property ? $entry->propertyValue($property) : null;
+
+            if (! is_string($value) || trim($value) === '') {
+                return null;
+            }
+
+            try {
+                return Carbon::parse($value)->startOfDay();
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+
+        $dated = $entries->filter(fn (Item $entry) => $dateAt($entry, $startProperty) !== null)->values();
+
+        if ($dated->isEmpty()) {
+            return ['rows' => [], 'months' => []];
+        }
+
+        $spans = $dated->map(function (Item $entry) use ($dateAt, $startProperty, $endProperty) {
+            $start = $dateAt($entry, $startProperty);
+            $end = $endProperty ? $dateAt($entry, $endProperty) : null;
+            $end = ($end !== null && $end->gte($start)) ? $end : $start;
+
+            return ['entry' => $entry, 'start' => $start, 'end' => $end];
+        });
+
+        $rangeStart = $spans->map(fn ($span) => $span['start'])->sort()->first()->copy()->startOfMonth();
+        $rangeEnd = $spans->map(fn ($span) => $span['end'])->sort()->last()->copy()->endOfMonth();
+        $totalDays = max(1, $rangeStart->diffInDays($rangeEnd) + 1);
+
+        $rows = $spans->map(function (array $span) use ($rangeStart, $totalDays) {
+            $offset = $rangeStart->diffInDays($span['start']);
+            $length = $span['start']->diffInDays($span['end']) + 1;
+
+            return [
+                'entry' => $span['entry'],
+                'left' => round($offset / $totalDays * 100, 3),
+                'width' => round(max($length / $totalDays * 100, 1.5), 3),
+                'startLabel' => $span['start']->translatedFormat('j. M Y'),
+                'endLabel' => $span['end']->ne($span['start']) ? $span['end']->translatedFormat('j. M Y') : null,
+            ];
+        })->all();
+
+        $months = [];
+        $cursor = $rangeStart->copy();
+
+        while ($cursor->lte($rangeEnd)) {
+            $months[] = ['label' => $cursor->translatedFormat('M Y'), 'width' => round($cursor->daysInMonth / $totalDays * 100, 3)];
+            $cursor->addMonthNoOverflow()->startOfMonth();
+        }
+
+        return ['rows' => $rows, 'months' => $months];
+    }
+
+    /**
      * Weeks (Monday first) covering the calendar month (or the one week), each day with its
      * entries and, for repeating tasks, a preview of their upcoming dates.
      *
@@ -1500,16 +1580,18 @@ new #[Layout('layouts.app')] class extends Component
                 default => 'table',
             });
 
-        if (($view === 'board' && ! $groupProperty) || ($view === 'calendar' && ! $dateProperty)) {
+        if (($view === 'board' && ! $groupProperty) || (in_array($view, ['calendar', 'timeline'], true) && ! $dateProperty)) {
             $view = 'table';
         }
+
+        $endDateProperty = $this->endDateBy !== '' ? $properties->firstWhere('id', (int) $this->endDateBy) : null;
 
         $hidden = array_map('intval', $this->hiddenProperties);
         $visibleProperties = $properties->reject(fn (CollectionProperty $property) => in_array($property->id, $hidden, true))->values();
 
         $entries = $this->entries()->with('creator', 'tags')->withCount('attachments')->orderBy('position')->orderBy('id')->get()
             ->when($this->tag !== '', fn ($entries) => $entries->filter(fn (Item $entry) => $entry->tags->contains('name', $this->tag)))
-            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id()))
+            ->pipe(fn ($entries) => EntryFilters::apply($entries, EntryFilters::sanitize($this->filters, $properties), $properties, (int) Auth::id(), $this->filterMatch === 'any' ? 'or' : 'and'))
             ->when($this->search !== '', fn ($entries) => $entries->filter(
                 fn (Item $entry) => str_contains(mb_strtolower($entry->title), mb_strtolower(trim($this->search)))
             ))
@@ -1558,6 +1640,7 @@ new #[Layout('layouts.app')] class extends Component
             'dateProperty' => $dateProperty,
             'dateProperties' => $properties->where('type', CollectionProperty::TYPE_DATE)->values(),
             'calendar' => $view === 'calendar' ? $this->calendarData($entries->values(), $dateProperty, $collection->isTasks() ? $collection->systemProperty('repeat') : null) : null,
+            'timeline' => $view === 'timeline' ? $this->timelineData($entries->values(), $dateProperty, $endDateProperty) : null,
             'groupProperty' => $groupProperty,
             'selectProperties' => $properties->where('type', CollectionProperty::TYPE_SELECT)->values(),
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
@@ -1639,6 +1722,7 @@ new #[Layout('layouts.app')] class extends Component
                             'table' => '▤ '.__('Table'),
                             'board' => $selectProperties->isNotEmpty() ? '▥ '.__('Board') : null,
                             'calendar' => $dateProperty ? '📅 '.__('Calendar') : null,
+                            'timeline' => $dateProperty ? '📊 '.__('Timeline') : null,
                         ]);
                     @endphp
                     @if (count($views) > 1)
@@ -1694,9 +1778,18 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($showFilters || $filterRows !== [])
                 <div class="rounded-lg bg-white dark:bg-gray-800 p-3 shadow-xs space-y-2" aria-label="{{ __('Filter') }}">
+                    @if (count($filterRows) > 1)
+                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{{ __('Match') }}</span>
+                            <select wire:model.live="filterMatch" class="rounded-md border-gray-300 py-0.5 text-xs dark:border-gray-700 dark:bg-gray-900" aria-label="{{ __('Match all or any filter') }}">
+                                <option value="all">{{ __('all filters (AND)') }}</option>
+                                <option value="any">{{ __('any filter (OR)') }}</option>
+                            </select>
+                        </div>
+                    @endif
                     @foreach ($filterRows as $index => $row)
                         <div wire:key="filter-{{ $index }}" class="flex flex-wrap items-center gap-2 text-sm">
-                            <span class="w-10 text-xs text-gray-500">{{ $index === 0 ? __('Where') : __('and') }}</span>
+                            <span class="w-10 text-xs text-gray-500">{{ $index === 0 ? __('Where') : ($filterMatch === 'any' ? __('or') : __('and')) }}</span>
                             <select wire:change="setFilterProperty({{ $index }}, $event.target.value)" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 py-1 text-sm" aria-label="{{ __('Property') }}">
                                 <option value="title" @selected($row['property'] === null)>{{ __('Title') }}</option>
                                 @foreach ($properties as $property)
@@ -1766,6 +1859,16 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                         {{ __('Group by') }}
                         <select wire:model.live="groupBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                            @foreach ($selectProperties as $selectProperty)
+                                <option value="{{ $selectProperty->id }}">{{ $selectProperty->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                @elseif ($currentView === 'table' && $selectProperties->isNotEmpty())
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        {{ __('Group by') }}
+                        <select wire:model.live="groupBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                            <option value="">{{ __('No grouping') }}</option>
                             @foreach ($selectProperties as $selectProperty)
                                 <option value="{{ $selectProperty->id }}">{{ $selectProperty->name }}</option>
                             @endforeach
@@ -1934,49 +2037,62 @@ new #[Layout('layouts.app')] class extends Component
                                         </button>
                                     </th>
                                 @endforeach
+                                @if ($collection->system_key === null)
+                                    <th class="w-10 px-3 py-2">
+                                        <div x-data="{ open: false }" class="relative">
+                                            <button type="button" x-on:click="open = !open" class="rounded-md px-1.5 text-base leading-none text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Add column') }}" aria-label="{{ __('Add column') }}">+</button>
+                                            <div x-show="open" x-cloak x-on:click.outside="open = false" x-transition class="absolute end-0 z-20 mt-1 w-60 rounded-lg bg-white p-3 text-start shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                                <form wire:submit="addProperty" x-on:submit="open = false" class="space-y-2">
+                                                    <x-text-input wire:model="newPropertyName" class="block w-full text-sm" placeholder="{{ __('e.g. Priority') }}" aria-label="{{ __('New property') }}" />
+                                                    <select wire:model="newPropertyType" class="block w-full rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Type') }}">
+                                                        @foreach ($propertyTypes as $type => $typeLabel)
+                                                            <option value="{{ $type }}">{{ $typeLabel }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <x-primary-button type="submit" class="w-full justify-center">{{ __('Add column') }}</x-primary-button>
+                                                </form>
+                                                <x-input-error :messages="$errors->get('newPropertyName')" class="mt-1 normal-case" />
+                                            </div>
+                                        </div>
+                                    </th>
+                                @endif
                                 <th class="w-10 px-3 py-2"><span class="sr-only">{{ __('Actions') }}</span></th>
                             </tr>
                         </thead>
+                        @php $tableColspan = $visibleProperties->count() + ($collection->isTasks() ? 3 : 2) + ($collection->system_key === null ? 1 : 0); @endphp
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @forelse ($entries as $entry)
-                                <tr wire:key="row-{{ $entry->id }}" @class(['hover:bg-gray-50 dark:hover:bg-gray-700/40', 'bg-indigo-50/60 dark:bg-gray-700/60' => $openEntry?->id === $entry->id])>
-                                    @if ($collection->isTasks())
-                                        <td class="px-3 py-1.5">
-                                            <input type="checkbox" wire:key="done-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}-{{ (int) $entry->done }}" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) aria-label="{{ __('Mark as done') }}" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
-                                        </td>
-                                    @endif
-                                    <td class="px-3 py-1.5">
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" wire:click="openEntry({{ $entry->id }})" @class(['text-start font-medium hover:underline', 'line-through text-gray-400' => $collection->isTasks() && $entry->done, 'text-gray-900 dark:text-gray-100' => ! ($collection->isTasks() && $entry->done)])>
-                                                {{ $entry->title }}
-                                            </button>
-                                            @foreach ($entry->tags->sortBy('name') as $entryTag)
-                                                <span class="text-xs text-indigo-600 dark:text-indigo-300">#{{ $entryTag->name }}</span>
-                                            @endforeach
-                                            @if ($entry->isPrivate() && ! $collection->isPrivate())
-                                                <x-private-badge />
-                                            @endif
-                                            @if ($entry->body() !== '')
-                                                <span class="text-gray-400" title="{{ __('Has notes') }}" aria-hidden="true">≡</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    @foreach ($visibleProperties as $property)
-                                        <td class="px-1 py-1" wire:key="cell-{{ $entry->id }}-{{ $property->id }}">
-                                            <x-property-input :property="$property" :item="$entry" :members="$members" :nodes="$relationNodes" compact />
-                                        </td>
-                                    @endforeach
-                                    <td class="px-3 py-1.5 text-end">
-                                        <button type="button" wire:click="deleteEntry({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-gray-400 hover:text-red-600" title="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
-                                    </td>
-                                </tr>
-                            @empty
+                            @if ($entries->isEmpty())
                                 <tr>
-                                    <td colspan="{{ $visibleProperties->count() + 3 }}" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="{{ $tableColspan }}" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
                                         {{ $search !== '' ? __('No entries match your filter.') : __('No entries yet.') }}
                                     </td>
                                 </tr>
-                            @endforelse
+                            @elseif ($groupBy !== '' && $groupProperty)
+                                @php $tableGroups = collect($groupProperty->selectOptions())->map(fn ($option) => ['id' => (string) $option['id'], 'option' => $option])->push(['id' => '', 'option' => null]); @endphp
+                                @foreach ($tableGroups as $tableGroup)
+                                    @php $groupEntries = $entries->filter(fn ($entry) => (string) $entry->propertyValue($groupProperty) === $tableGroup['id']); @endphp
+                                    @continue($groupEntries->isEmpty())
+                                    <tr wire:key="group-{{ $groupProperty->id }}-{{ $tableGroup['id'] ?: 'none' }}" class="bg-gray-50 dark:bg-gray-900/40">
+                                        <td colspan="{{ $tableColspan }}" class="px-3 py-1.5">
+                                            <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                                                @if ($tableGroup['option'])
+                                                    <x-option-badge :option="$tableGroup['option']" />
+                                                @else
+                                                    {{ __('No :name', ['name' => $groupProperty->name]) }}
+                                                @endif
+                                                <span class="font-normal text-gray-400">{{ $groupEntries->count() }}</span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @foreach ($groupEntries as $entry)
+                                        @include('collections.partials.table-row')
+                                    @endforeach
+                                @endforeach
+                            @else
+                                @foreach ($entries as $entry)
+                                    @include('collections.partials.table-row')
+                                @endforeach
+                            @endif
                         </tbody>
                         @if ($entries->isNotEmpty() && $visibleProperties->contains(fn ($property) => in_array($property->type, [\App\Models\CollectionProperty::TYPE_NUMBER, \App\Models\CollectionProperty::TYPE_CHECKBOX], true)))
                             <tfoot class="border-t-2 border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
@@ -2094,6 +2210,56 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Drag entries onto a day to give them a date.') }}</p>
                     </div>
+                </section>
+            @elseif ($currentView === 'timeline')
+                {{-- Timeline / Gantt --}}
+                <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-3 sm:p-4 space-y-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        @if ($dateProperties->count() > 1)
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ __('Start date') }}
+                                <select wire:model.live="dateBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                                    @foreach ($dateProperties as $candidate)
+                                        <option value="{{ $candidate->id }}" @selected($candidate->id === $dateProperty?->id)>{{ $candidate->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ __('End date') }}
+                                <select wire:model.live="endDateBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                                    <option value="">{{ __('none (single day)') }}</option>
+                                    @foreach ($dateProperties as $candidate)
+                                        <option value="{{ $candidate->id }}">{{ $candidate->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endif
+                    </div>
+
+                    @if (! $timeline || $timeline['rows'] === [])
+                        <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">{{ __('No entries with a date in this view yet.') }}</p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <div class="min-w-[48rem]">
+                                <div class="flex border-b border-gray-200 pb-1 text-xs font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                                    @foreach ($timeline['months'] as $month)
+                                        <div class="shrink-0 border-s border-gray-100 ps-1 dark:border-gray-700" style="width: {{ $month['width'] }}%">{{ $month['label'] }}</div>
+                                    @endforeach
+                                </div>
+                                <ul class="mt-1 space-y-1">
+                                    @foreach ($timeline['rows'] as $row)
+                                        <li wire:key="tl-{{ $row['entry']->id }}" class="relative h-8">
+                                            <div class="absolute inset-y-0 flex items-center" style="left: {{ $row['left'] }}%; width: {{ $row['width'] }}%">
+                                                <button type="button" wire:click="openEntry({{ $row['entry']->id }})" class="flex h-6 w-full items-center gap-1 overflow-hidden rounded-md bg-indigo-500/90 px-2 text-xs font-medium text-white hover:bg-indigo-600" title="{{ $row['entry']->title }} · {{ $row['startLabel'] }}{{ $row['endLabel'] ? ' – '.$row['endLabel'] : '' }}">
+                                                    <span class="truncate">{{ $row['entry']->title }}</span>
+                                                </button>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
                 </section>
             @else
                 {{-- Board --}}
@@ -2410,6 +2576,17 @@ new #[Layout('layouts.app')] class extends Component
                     <livewire:documents-panel type="item" :id="$openEntry->id" :wire:key="'documents-entry-'.$openEntry->id" />
                     <livewire:links-panel type="item" :id="$openEntry->id" :wire:key="'links-entry-'.$openEntry->id" />
                 </div>
+
+                <dl class="border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-gray-700 dark:text-gray-500">
+                    <div class="flex flex-wrap gap-x-1">
+                        <dt>{{ __('Created') }}:</dt>
+                        <dd>{{ $openEntry->created_at?->translatedFormat('j. M Y, H:i') }}@if ($openEntry->creator) · {{ __('by :name', ['name' => $openEntry->creator->name]) }}@endif</dd>
+                    </div>
+                    <div class="flex flex-wrap gap-x-1">
+                        <dt>{{ __('Last edited') }}:</dt>
+                        <dd>{{ $openEntry->updated_at?->translatedFormat('j. M Y, H:i') }}</dd>
+                    </div>
+                </dl>
 
                 <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
                     @if ($editingBody)

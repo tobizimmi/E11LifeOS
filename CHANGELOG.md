@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.96.0] – 2026-11-06
+
+### Neu
+- **Zeitstrahl-/Gantt-Ansicht für Sammlungen.** Einträge mit einem Datum erscheinen als Balken auf einer Monats-Zeitachse. Optional lässt sich ein zweites Datumsfeld als Enddatum wählen, dann spannt der Balken von Start bis Ende (Gantt); sonst ein Ein-Tages-Marker. Ein Klick öffnet den Eintrag. (Damit sind die Sammlungs-Ansichten Tabelle, Board, Kalender, Karten, Liste und Zeitstrahl komplett.)
+
 ## [1.95.0] – 2026-11-06
 
 ### Neu

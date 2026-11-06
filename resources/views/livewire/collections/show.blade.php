@@ -109,6 +109,10 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(as: 'date', except: '')]
     public string $dateBy = '';
 
+    /** Optional end-date property for the timeline/Gantt bars (empty = single-day marker). */
+    #[Url(as: 'date2', except: '')]
+    public string $endDateBy = '';
+
     public bool $hideDone = false;
 
     /**
@@ -1415,6 +1419,76 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Timeline/Gantt layout: each dated entry becomes a bar positioned within the full date range
+     * (month columns). The optional end-date property makes a bar span start→end; otherwise it is a
+     * single-day marker.
+     *
+     * @param  \Illuminate\Support\Collection<int, Item>  $entries
+     * @return ?array{rows: array<int, array{entry: Item, left: float, width: float, startLabel: string, endLabel: ?string}>, months: array<int, array{label: string, width: float}>}
+     */
+    private function timelineData(\Illuminate\Support\Collection $entries, ?CollectionProperty $startProperty, ?CollectionProperty $endProperty): ?array
+    {
+        if (! $startProperty) {
+            return null;
+        }
+
+        $dateAt = function (Item $entry, ?CollectionProperty $property): ?Carbon {
+            $value = $property ? $entry->propertyValue($property) : null;
+
+            if (! is_string($value) || trim($value) === '') {
+                return null;
+            }
+
+            try {
+                return Carbon::parse($value)->startOfDay();
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+
+        $dated = $entries->filter(fn (Item $entry) => $dateAt($entry, $startProperty) !== null)->values();
+
+        if ($dated->isEmpty()) {
+            return ['rows' => [], 'months' => []];
+        }
+
+        $spans = $dated->map(function (Item $entry) use ($dateAt, $startProperty, $endProperty) {
+            $start = $dateAt($entry, $startProperty);
+            $end = $endProperty ? $dateAt($entry, $endProperty) : null;
+            $end = ($end !== null && $end->gte($start)) ? $end : $start;
+
+            return ['entry' => $entry, 'start' => $start, 'end' => $end];
+        });
+
+        $rangeStart = $spans->map(fn ($span) => $span['start'])->sort()->first()->copy()->startOfMonth();
+        $rangeEnd = $spans->map(fn ($span) => $span['end'])->sort()->last()->copy()->endOfMonth();
+        $totalDays = max(1, $rangeStart->diffInDays($rangeEnd) + 1);
+
+        $rows = $spans->map(function (array $span) use ($rangeStart, $totalDays) {
+            $offset = $rangeStart->diffInDays($span['start']);
+            $length = $span['start']->diffInDays($span['end']) + 1;
+
+            return [
+                'entry' => $span['entry'],
+                'left' => round($offset / $totalDays * 100, 3),
+                'width' => round(max($length / $totalDays * 100, 1.5), 3),
+                'startLabel' => $span['start']->translatedFormat('j. M Y'),
+                'endLabel' => $span['end']->ne($span['start']) ? $span['end']->translatedFormat('j. M Y') : null,
+            ];
+        })->all();
+
+        $months = [];
+        $cursor = $rangeStart->copy();
+
+        while ($cursor->lte($rangeEnd)) {
+            $months[] = ['label' => $cursor->translatedFormat('M Y'), 'width' => round($cursor->daysInMonth / $totalDays * 100, 3)];
+            $cursor->addMonthNoOverflow()->startOfMonth();
+        }
+
+        return ['rows' => $rows, 'months' => $months];
+    }
+
+    /**
      * Weeks (Monday first) covering the calendar month (or the one week), each day with its
      * entries and, for repeating tasks, a preview of their upcoming dates.
      *
@@ -1506,9 +1580,11 @@ new #[Layout('layouts.app')] class extends Component
                 default => 'table',
             });
 
-        if (($view === 'board' && ! $groupProperty) || ($view === 'calendar' && ! $dateProperty)) {
+        if (($view === 'board' && ! $groupProperty) || (in_array($view, ['calendar', 'timeline'], true) && ! $dateProperty)) {
             $view = 'table';
         }
+
+        $endDateProperty = $this->endDateBy !== '' ? $properties->firstWhere('id', (int) $this->endDateBy) : null;
 
         $hidden = array_map('intval', $this->hiddenProperties);
         $visibleProperties = $properties->reject(fn (CollectionProperty $property) => in_array($property->id, $hidden, true))->values();
@@ -1564,6 +1640,7 @@ new #[Layout('layouts.app')] class extends Component
             'dateProperty' => $dateProperty,
             'dateProperties' => $properties->where('type', CollectionProperty::TYPE_DATE)->values(),
             'calendar' => $view === 'calendar' ? $this->calendarData($entries->values(), $dateProperty, $collection->isTasks() ? $collection->systemProperty('repeat') : null) : null,
+            'timeline' => $view === 'timeline' ? $this->timelineData($entries->values(), $dateProperty, $endDateProperty) : null,
             'groupProperty' => $groupProperty,
             'selectProperties' => $properties->where('type', CollectionProperty::TYPE_SELECT)->values(),
             'members' => \App\Models\User::whereIn('id', $this->memberIds())->orderBy('name')->get(['id', 'name']),
@@ -1645,6 +1722,7 @@ new #[Layout('layouts.app')] class extends Component
                             'table' => '▤ '.__('Table'),
                             'board' => $selectProperties->isNotEmpty() ? '▥ '.__('Board') : null,
                             'calendar' => $dateProperty ? '📅 '.__('Calendar') : null,
+                            'timeline' => $dateProperty ? '📊 '.__('Timeline') : null,
                         ]);
                     @endphp
                     @if (count($views) > 1)
@@ -2132,6 +2210,56 @@ new #[Layout('layouts.app')] class extends Component
                         </ul>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Drag entries onto a day to give them a date.') }}</p>
                     </div>
+                </section>
+            @elseif ($currentView === 'timeline')
+                {{-- Timeline / Gantt --}}
+                <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-3 sm:p-4 space-y-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        @if ($dateProperties->count() > 1)
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ __('Start date') }}
+                                <select wire:model.live="dateBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                                    @foreach ($dateProperties as $candidate)
+                                        <option value="{{ $candidate->id }}" @selected($candidate->id === $dateProperty?->id)>{{ $candidate->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ __('End date') }}
+                                <select wire:model.live="endDateBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                                    <option value="">{{ __('none (single day)') }}</option>
+                                    @foreach ($dateProperties as $candidate)
+                                        <option value="{{ $candidate->id }}">{{ $candidate->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endif
+                    </div>
+
+                    @if (! $timeline || $timeline['rows'] === [])
+                        <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">{{ __('No entries with a date in this view yet.') }}</p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <div class="min-w-[48rem]">
+                                <div class="flex border-b border-gray-200 pb-1 text-xs font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                                    @foreach ($timeline['months'] as $month)
+                                        <div class="shrink-0 border-s border-gray-100 ps-1 dark:border-gray-700" style="width: {{ $month['width'] }}%">{{ $month['label'] }}</div>
+                                    @endforeach
+                                </div>
+                                <ul class="mt-1 space-y-1">
+                                    @foreach ($timeline['rows'] as $row)
+                                        <li wire:key="tl-{{ $row['entry']->id }}" class="relative h-8">
+                                            <div class="absolute inset-y-0 flex items-center" style="left: {{ $row['left'] }}%; width: {{ $row['width'] }}%">
+                                                <button type="button" wire:click="openEntry({{ $row['entry']->id }})" class="flex h-6 w-full items-center gap-1 overflow-hidden rounded-md bg-indigo-500/90 px-2 text-xs font-medium text-white hover:bg-indigo-600" title="{{ $row['entry']->title }} · {{ $row['startLabel'] }}{{ $row['endLabel'] ? ' – '.$row['endLabel'] : '' }}">
+                                                    <span class="truncate">{{ $row['entry']->title }}</span>
+                                                </button>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
                 </section>
             @else
                 {{-- Board --}}

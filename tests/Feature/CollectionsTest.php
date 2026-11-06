@@ -229,6 +229,26 @@ class CollectionsTest extends TestCase
             ->assertSee('Ohne Status');
     }
 
+    public function test_the_timeline_view_renders_bars_for_dated_entries(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $collection = Collection::factory()->for($household)->create();
+
+        $component = Volt::test('collections.show', ['collection' => $collection->id])
+            ->set('newPropertyName', 'Termin')
+            ->set('newPropertyType', CollectionProperty::TYPE_DATE)
+            ->call('addProperty');
+        $date = $collection->properties()->where('name', 'Termin')->firstOrFail();
+
+        $entry = Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Meilenstein']);
+        $component->call('updateProperty', $entry->id, $date->id, '2026-11-10');
+
+        $component->set('viewMode', 'timeline')
+            ->assertSee(__('Timeline'))
+            ->assertSee('Meilenstein');
+    }
+
     public function test_the_entry_detail_shows_created_and_edited_metadata(): void
     {
         [$user, $household] = $this->memberWithHousehold();

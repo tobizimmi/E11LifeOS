@@ -173,11 +173,12 @@
         @break
 
     @case(CollectionProperty::TYPE_FORMULA)
-        {{-- Calculated from other columns; read-only. --}}
-        @php $formula = \App\Support\PropertyDisplay::format($property, $item); @endphp
-        <span class="inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-700 dark:text-gray-200" title="{{ $property->formulaExpression() }}">
-            @if ($formula)
-                ƒ {{ $formula['text'] }}
+    @case(CollectionProperty::TYPE_ROLLUP)
+        {{-- Calculated from other columns / linked entries; read-only. --}}
+        @php $computed = \App\Support\PropertyDisplay::format($property, $item); @endphp
+        <span class="inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-700 dark:text-gray-200" title="{{ $property->type === CollectionProperty::TYPE_FORMULA ? $property->formulaExpression() : __('Rollup') }}">
+            @if ($computed)
+                {{ $property->type === CollectionProperty::TYPE_FORMULA ? 'ƒ' : 'Σ' }} {{ $computed['text'] }}
             @else
                 <span class="text-gray-400">—</span>
             @endif

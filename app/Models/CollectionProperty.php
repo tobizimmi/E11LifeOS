@@ -49,6 +49,18 @@ class CollectionProperty extends Model
     public const TYPE_FORMULA = 'formula';
 
     /**
+     * A computed column that aggregates a numeric target property of the entries linked through a
+     * relation column. Config in options: relation (relation column id), target (target property
+     * name), aggregate (see {@see self::ROLLUP_AGGREGATES}). Calculated on display, never stored.
+     */
+    public const TYPE_ROLLUP = 'rollup';
+
+    /**
+     * Aggregate functions a rollup column can use.
+     */
+    public const ROLLUP_AGGREGATES = ['sum', 'avg', 'min', 'max', 'count'];
+
+    /**
      * A 1–5 star rating.
      */
     public const TYPE_RATING = 'rating';
@@ -79,6 +91,7 @@ class CollectionProperty extends Model
         self::TYPE_RATING,
         self::TYPE_PROGRESS,
         self::TYPE_FORMULA,
+        self::TYPE_ROLLUP,
         self::TYPE_FILE,
         self::TYPE_IMAGE,
     ];
@@ -123,7 +136,25 @@ class CollectionProperty extends Model
      */
     public function isComputed(): bool
     {
-        return in_array($this->type, [self::TYPE_FORMULA], true);
+        return in_array($this->type, [self::TYPE_FORMULA, self::TYPE_ROLLUP], true);
+    }
+
+    /**
+     * The configuration of a rollup column.
+     *
+     * @return array{relation: ?int, target: string, aggregate: string}
+     */
+    public function rollupConfig(): array
+    {
+        $relation = data_get($this->options, 'relation');
+        $target = data_get($this->options, 'target');
+        $aggregate = data_get($this->options, 'aggregate');
+
+        return [
+            'relation' => is_numeric($relation) ? (int) $relation : null,
+            'target' => is_string($target) ? $target : '',
+            'aggregate' => is_string($aggregate) && in_array($aggregate, self::ROLLUP_AGGREGATES, true) ? $aggregate : 'sum',
+        ];
     }
 
     /**

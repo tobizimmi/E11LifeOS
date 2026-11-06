@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.86.0] – 2026-11-06
+
+### Neu
+- **Rollup-Spalten in Sammlungen.** Eine Rollup-Spalte folgt einer Relations-Spalte zu den verknüpften Einträgen und aggregiert dort eine Zielspalte: **Summe, Durchschnitt, Minimum, Maximum** oder **Anzahl**. Der Wert wird automatisch berechnet (nie gespeichert) und erscheint in Tabelle, Detailansicht und PDF-Bericht. Eingestellt wird Relation, Zielspalte und Funktion in den Spalten-Einstellungen. (Ergänzt die Formel-Spalten um Notions zweites Datenbank-Kernfeature.)
+
 ## [1.85.0] – 2026-11-05
 
 ### Neu

@@ -1169,6 +1169,34 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Stores one setting of a rollup column: 'relation' (a relation column id), 'target' (the name
+     * of the aggregated property on the linked entries) or 'aggregate' (sum/avg/min/max/count).
+     */
+    public function setRollupOption(int $propertyId, string $key, string $value): void
+    {
+        $property = $this->findProperty($propertyId);
+        abort_unless($property->type === CollectionProperty::TYPE_ROLLUP, 422);
+
+        $options = $property->options ?? [];
+
+        if ($key === 'relation') {
+            $relationIds = $this->findCollection()->properties
+                ->where('type', CollectionProperty::TYPE_RELATION)
+                ->map(fn (CollectionProperty $relation) => (string) $relation->id)->all();
+            $options['relation'] = $value !== '' && in_array($value, $relationIds, true) ? (int) $value : null;
+        } elseif ($key === 'target') {
+            $options['target'] = mb_substr(trim($value), 0, 100);
+        } elseif ($key === 'aggregate') {
+            $options['aggregate'] = in_array($value, CollectionProperty::ROLLUP_AGGREGATES, true) ? $value : 'sum';
+        } else {
+            abort(422);
+        }
+
+        $property->update(['options' => $options]);
+        $this->schemaChanged();
+    }
+
+    /**
      * Moves a property one place up (-1) or down (1) in forms and views.
      */
     public function moveProperty(int $propertyId, int $direction): void
@@ -1563,6 +1591,7 @@ new #[Layout('layouts.app')] class extends Component
                 CollectionProperty::TYPE_RATING => __('Rating (stars)'),
                 CollectionProperty::TYPE_PROGRESS => __('Progress (%)'),
                 CollectionProperty::TYPE_FORMULA => __('Formula (calculated)'),
+                CollectionProperty::TYPE_ROLLUP => __('Rollup (from relations)'),
                 CollectionProperty::TYPE_IMAGE => __('Images'),
                 CollectionProperty::TYPE_FILE => __('Files / attachments'),
             ],

@@ -94,6 +94,50 @@ class CollectionReportTest extends TestCase
         $this->assertStringContainsString('12', $html);
     }
 
+    public function test_rollup_columns_aggregate_linked_entries(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // Target collection with a number column the rollup aggregates.
+        $positions = Collection::factory()->create(['household_id' => $household->id, 'name' => 'Positionen']);
+        $amount = $positions->properties()->create(['name' => 'Betrag', 'type' => CollectionProperty::TYPE_NUMBER, 'position' => 0]);
+        $makePosition = function (float $value) use ($household, $positions, $amount, $user) {
+            $p = Item::factory()->for($household)->create(['collection_id' => $positions->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Pos', 'created_by' => $user->id]);
+            $p->setPropertyValue($amount, $value);
+            $p->save();
+
+            return $p;
+        };
+        $p1 = $makePosition(10);
+        $p2 = $makePosition(30);
+
+        // Source collection with a relation to positions + a rollup column.
+        $invoices = Collection::factory()->create(['household_id' => $household->id, 'name' => 'Rechnungen']);
+        $relation = $invoices->properties()->create(['name' => 'Positionen', 'type' => CollectionProperty::TYPE_RELATION, 'position' => 0]);
+        $rollup = $invoices->properties()->create(['name' => 'Summe', 'type' => CollectionProperty::TYPE_ROLLUP, 'options' => ['relation' => $relation->id, 'target' => 'Betrag', 'aggregate' => 'sum'], 'position' => 1]);
+
+        $invoice = Item::factory()->for($household)->create(['collection_id' => $invoices->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Rechnung 1', 'created_by' => $user->id]);
+        $invoice->setPropertyValue($relation, ['item:'.$p1->id, 'item:'.$p2->id]);
+        $invoice->save();
+
+        $invoices->load('properties');
+        $invoice->setRelation('collection', $invoices);
+
+        $this->assertSame('40', PropertyDisplay::format($rollup, $invoice)['text']);
+
+        // Average and count of the same two linked entries.
+        $rollup->update(['options' => ['relation' => $relation->id, 'target' => 'Betrag', 'aggregate' => 'avg']]);
+        $invoices->load('properties');
+        $invoice->setRelation('collection', $invoices);
+        $this->assertSame('20', PropertyDisplay::format($invoices->properties->firstWhere('id', $rollup->id), $invoice)['text']);
+
+        $rollup->update(['options' => ['relation' => $relation->id, 'aggregate' => 'count']]);
+        $invoices->load('properties');
+        $invoice->setRelation('collection', $invoices);
+        $this->assertSame('2', PropertyDisplay::format($invoices->properties->firstWhere('id', $rollup->id), $invoice)['text']);
+    }
+
     public function test_the_report_embeds_images_and_lists_other_files(): void
     {
         [$user, $household] = $this->memberWithHousehold();

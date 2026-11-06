@@ -14,6 +14,7 @@ use App\Models\Tag;
 use App\Support\BrainAi;
 use App\Support\ConvertsToTask;
 use App\Support\NoteMarkdown;
+use App\Support\PageBookmarks;
 use App\Support\PageMover;
 use App\Support\PageRevisions;
 use App\Support\PageTemplates;
@@ -144,7 +145,9 @@ new #[Layout('layouts.app')] class extends Component
         $this->resolveHousehold();
 
         if ($item !== null) {
-            $this->selectedId = $this->findVisibleItem(Item::TYPE_NOTE, $item)->id;
+            $page = $this->findVisibleItem(Item::TYPE_NOTE, $item);
+            $this->selectedId = $page->id;
+            PageBookmarks::recordVisit($page, Auth::user());
 
             if (request()->query('edit') === '1') {
                 $this->edit($this->selectedId);
@@ -309,6 +312,13 @@ new #[Layout('layouts.app')] class extends Component
         $page = $this->editingId ? $this->findVisibleItem(Item::TYPE_NOTE, $this->editingId) : null;
 
         return PageMover::parentIsAllowed($page, $parentId, Auth::user(), (int) $this->householdId);
+    }
+
+    public function toggleFavorite(int $id): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, $id);
+        $isFavorite = PageBookmarks::toggleFavorite($page, Auth::user());
+        $this->dispatch('toast', message: $isFavorite ? __('Added to favourites.') : __('Removed from favourites.'));
     }
 
     /** Page whose version history is shown. */
@@ -546,6 +556,9 @@ new #[Layout('layouts.app')] class extends Component
             'canChangeVisibility' => true,
             'aiAvailable' => BrainAi::isConfigured(),
             'spaces' => Space::query()->visibleTo(Auth::user(), (int) $this->householdId)->get()->keyBy('id'),
+            'favoritePages' => PageBookmarks::favorites(Auth::user(), (int) $this->householdId),
+            'recentPages' => PageBookmarks::recent(Auth::user(), (int) $this->householdId, excludeId: $this->selectedId),
+            'favoriteIds' => PageBookmarks::favoriteIds(Auth::user()),
         ];
 
         if ($this->showForm) {
@@ -803,6 +816,8 @@ new #[Layout('layouts.app')] class extends Component
                                 </p>
                             </div>
                             <div class="flex gap-3 shrink-0 text-sm">
+                                @php($isFavorite = in_array($selectedPage->id, $favoriteIds, true))
+                                <button type="button" wire:click="toggleFavorite({{ $selectedPage->id }})" class="{{ $isFavorite ? 'text-amber-500' : 'text-gray-500 dark:text-gray-400' }} underline" aria-pressed="{{ $isFavorite ? 'true' : 'false' }}" title="{{ $isFavorite ? __('Remove from favourites') : __('Add to favourites') }}">{{ $isFavorite ? '★' : '☆' }} {{ __('Favourite') }}</button>
                                 <button type="button" wire:click="edit({{ $selectedPage->id }})" class="text-indigo-600 dark:text-indigo-400 underline">{{ __('Edit') }}</button>
                                 @php($revisionCount = \App\Models\PageRevision::where('item_id', $selectedPage->id)->count())
                                 @if ($revisionCount > 0)
@@ -971,6 +986,43 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     @endif
                 </div>
+
+                @if ($search === '' && $tag === '' && $space === '' && ($favoritePages->isNotEmpty() || $recentPages->isNotEmpty()))
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @if ($favoritePages->isNotEmpty())
+                            <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4" aria-label="{{ __('Favourites') }}">
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">★ {{ __('Favourites') }}</h3>
+                                <ul class="mt-2 space-y-1">
+                                    @foreach ($favoritePages as $favorite)
+                                        <li wire:key="fav-{{ $favorite->id }}" class="flex items-center gap-2">
+                                            <a href="{{ route('pages.index', ['item' => $favorite->id]) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-800 dark:text-gray-200 hover:underline">
+                                                <span aria-hidden="true">{{ $favorite->displayIcon() }}</span>
+                                                <span class="truncate">{{ $favorite->title }}</span>
+                                            </a>
+                                            <button type="button" wire:click="toggleFavorite({{ $favorite->id }})" class="shrink-0 text-amber-500" title="{{ __('Remove from favourites') }}">★</button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </section>
+                        @endif
+
+                        @if ($recentPages->isNotEmpty())
+                            <section class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl p-4" aria-label="{{ __('Recently visited') }}">
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">🕓 {{ __('Recently visited') }}</h3>
+                                <ul class="mt-2 space-y-1">
+                                    @foreach ($recentPages as $recent)
+                                        <li wire:key="recent-{{ $recent->id }}">
+                                            <a href="{{ route('pages.index', ['item' => $recent->id]) }}" wire:navigate class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 hover:underline">
+                                                <span aria-hidden="true">{{ $recent->displayIcon() }}</span>
+                                                <span class="truncate">{{ $recent->title }}</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </section>
+                        @endif
+                    </div>
+                @endif
 
                 <ul class="bg-white dark:bg-gray-800 shadow-xs rounded-2xl divide-y divide-gray-100 dark:divide-gray-700" wire:loading.class="opacity-50">
                     @forelse ($pages as $page)

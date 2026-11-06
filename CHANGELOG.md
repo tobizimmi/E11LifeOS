@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.90.0] – 2026-11-06
+
+### Neu
+- **Favoriten & „Zuletzt besucht" für Seiten.** Jede Seite lässt sich mit einem Stern als Favorit anheften; die Seitenübersicht zeigt oben persönliche Favoriten und die zuletzt geöffneten Seiten als Schnellzugriff. Beides ist pro Person – jede/r sieht die eigenen. (Seitenbaum, Breadcrumbs und Seiten-Vorlagen gibt es bereits.)
+
 ## [1.89.0] – 2026-11-06
 
 ### Neu

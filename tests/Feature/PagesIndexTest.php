@@ -424,4 +424,42 @@ class PagesIndexTest extends TestCase
 
         $this->assertSame($markdown, Item::where('title', 'Aus dem Editor')->firstOrFail()->body());
     }
+
+    public function test_opening_a_page_records_a_visit_and_it_appears_under_recently_visited(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $open = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'title' => 'Gerade offen']);
+        $earlier = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'title' => 'Vorher besucht']);
+
+        // Visiting the earlier page records it; the overview then lists it (the open page is excluded).
+        Volt::test('pages.index', ['item' => $earlier->id]);
+
+        $this->assertDatabaseHas('page_user_states', ['user_id' => $user->id, 'item_id' => $earlier->id]);
+
+        Volt::test('pages.index', ['item' => $open->id])
+            ->assertSet('selectedId', $open->id);
+
+        Volt::test('pages.index')
+            ->assertSee('Zuletzt besucht')
+            ->assertSee('Vorher besucht');
+    }
+
+    public function test_a_page_can_be_favourited_and_shows_under_favourites(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $page = Item::factory()->create(['household_id' => $household->id, 'type' => Item::TYPE_NOTE, 'title' => 'Wichtige Seite']);
+
+        Volt::test('pages.index', ['item' => $page->id])->call('toggleFavorite', $page->id);
+        $this->assertDatabaseHas('page_user_states', ['user_id' => $user->id, 'item_id' => $page->id, 'favorite' => true]);
+
+        Volt::test('pages.index')->assertSee('Favoriten')->assertSee('Wichtige Seite');
+
+        // Toggling again removes it.
+        Volt::test('pages.index', ['item' => $page->id])->call('toggleFavorite', $page->id);
+        $this->assertDatabaseHas('page_user_states', ['user_id' => $user->id, 'item_id' => $page->id, 'favorite' => false]);
+    }
 }

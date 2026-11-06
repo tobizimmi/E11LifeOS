@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.92.0] – 2026-11-06
+
+### Neu
+- **Öffentliches Wiki per Link.** Eine Seite lässt sich als schreibgeschützter öffentlicher Link veröffentlichen (`/w/<token>`). Die Freigabe umfasst die Seite und ihre freigegebenen Unterseiten als navigierbaren Baum mit Breadcrumbs; private Unterseiten bleiben außen vor. Interne Verweise bleiben innerhalb des öffentlichen Links, Einbettungen (Aufgaben/Kalender) werden ausgeblendet. Der Link ist optional mit Ablaufdatum (7/30/90 Tage) und jederzeit abschaltbar – wie bei den öffentlichen Sammlungen.
+
 ## [1.91.0] – 2026-11-06
 
 ### Neu

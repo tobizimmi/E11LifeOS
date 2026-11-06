@@ -129,6 +129,37 @@ class NoteMarkdown
     }
 
     /**
+     * Read-only HTML for the public wiki. Reuses the blocks/colour/size/highlight/mention pipeline
+     * and the table of contents, but embeds (tasks/calendar/subpages) are dropped and wiki links
+     * resolve within the published subtree (to "?p=<id>" under the public token) or, when the target
+     * is not public, render as plain text. No viewer-specific or interactive markup is produced.
+     *
+     * @param  array<string, int>  $idsByTitle  lower-case page title => id, for pages in the subtree
+     */
+    public static function publicToHtml(Item $note, string $token, array $idsByTitle): string
+    {
+        $links = [];
+
+        $markdown = preg_replace_callback(Item::WIKI_LINK_PATTERN, function (array $match) use (&$links, $idsByTitle, $token) {
+            $title = trim($match[1]);
+            $label = trim($match[2] ?? '') ?: $title;
+            $targetId = $idsByTitle[mb_strtolower($title)] ?? null;
+            $placeholder = 'E11WIKILINK'.count($links).'X';
+
+            $links[$placeholder] = $targetId
+                ? sprintf('<a href="%s" class="wiki-link">%s</a>', e(route('pages.public', ['token' => $token]).'?p='.$targetId), e($label))
+                : e($label);
+
+            return $placeholder;
+        }, $note->body());
+
+        $embed = fn (array $attributes): string => '';
+        $html = strtr(self::mentions(self::sizes(self::colours(self::highlight(self::renderBlocks((string) $markdown, $embed))))), $links);
+
+        return self::headingsAndToc($html);
+    }
+
+    /**
      * Gives headings (h1–h3) stable id anchors and, where the body contains a "[toc]" line on its
      * own, replaces it with an automatically generated table of contents linking to those anchors.
      */

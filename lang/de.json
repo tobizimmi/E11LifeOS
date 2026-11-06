@@ -6846,6 +6846,8 @@
     "Database (new or existing)": "Datenbank (neu oder vorhanden)",
     "Text colour": "Textfarbe",
     "Remove colour": "Farbe entfernen",
+    "Anyone with this link can read this page and its shared subpages (read-only, no private subpages).": "Jede Person mit diesem Link kann diese Seite und ihre freigegebenen Unterseiten lesen (schreibgeschützt, ohne private Unterseiten).",
+    "Publish as public wiki link": "Als öffentlichen Wiki-Link veröffentlichen",
     "Added to favourites.": "Zu Favoriten hinzugefügt.",
     "Removed from favourites.": "Aus Favoriten entfernt.",
     "Favourite": "Favorit",

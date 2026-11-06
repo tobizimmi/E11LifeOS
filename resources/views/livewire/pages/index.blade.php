@@ -321,6 +321,32 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: $isFavorite ? __('Added to favourites.') : __('Removed from favourites.'));
     }
 
+    public function createPublicLink(): void
+    {
+        $page = $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId);
+
+        if (! $page->public_token) {
+            $page->forceFill(['public_token' => \Illuminate\Support\Str::random(40)])->save();
+        }
+    }
+
+    /**
+     * Validity of the public link in days from now; empty = unlimited.
+     */
+    public function setPublicLinkExpiry(string $days = ''): void
+    {
+        abort_unless(in_array($days, ['', '7', '30', '90'], true), 422);
+        $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId)
+            ->forceFill(['public_expires_at' => $days === '' ? null : now()->addDays((int) $days)])->save();
+    }
+
+    public function revokePublicLink(): void
+    {
+        $this->findVisibleItem(Item::TYPE_NOTE, (int) $this->selectedId)
+            ->forceFill(['public_token' => null, 'public_expires_at' => null])->save();
+        $this->dispatch('toast', message: __('The public link no longer works.'));
+    }
+
     /** Page whose version history is shown. */
     public ?int $historyFor = null;
 
@@ -915,6 +941,21 @@ new #[Layout('layouts.app')] class extends Component
 
                         <div class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
                             <livewire:sharing.panel type="page" :id="$selectedPage->id" :wire:key="'share-page-'.$selectedPage->id" />
+
+                            <div class="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-900/30">
+                                @if ($selectedPage->public_token)
+                                    <p class="text-gray-700 dark:text-gray-300">🌐 {{ __('Anyone with this link can read this page and its shared subpages (read-only, no private subpages).') }}</p>
+                                    <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                                        <x-text-input readonly value="{{ route('pages.public', $selectedPage->public_token) }}" class="block min-w-0 flex-1 text-sm" aria-label="{{ __('Public link') }}" x-on:focus="$el.select()" />
+                                        <x-secondary-button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from(route('pages.public', $selectedPage->public_token)) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></x-secondary-button>
+                                        <button type="button" wire:click="revokePublicLink" wire:confirm="{{ __('Turn off the public link?') }}" class="text-red-600 underline dark:text-red-400">{{ __('Turn off link') }}</button>
+                                    </div>
+                                    <x-share-expiry :expires="$selectedPage->public_expires_at" action="setPublicLinkExpiry" class="mt-2" />
+                                @else
+                                    <button type="button" wire:click="createPublicLink" class="text-emerald-700 underline dark:text-emerald-300">🌐 {{ __('Publish as public wiki link') }}</button>
+                                @endif
+                            </div>
+
                             <livewire:documents-panel type="item" :id="$selectedPage->id" :wire:key="'documents-page-'.$selectedPage->id" />
                             <livewire:links-panel type="item" :id="$selectedPage->id" :wire:key="'links-page-'.$selectedPage->id" />
                         </div>

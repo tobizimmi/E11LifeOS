@@ -205,6 +205,30 @@ class CollectionsTest extends TestCase
         $this->assertDatabaseHas('collection_properties', ['collection_id' => $collection->id, 'name' => 'Priorität']);
     }
 
+    public function test_the_table_can_be_grouped_by_a_select_property(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $collection = Collection::factory()->for($household)->create();
+
+        $component = Volt::test('collections.show', ['collection' => $collection->id])
+            ->set('newPropertyName', 'Status')
+            ->set('newPropertyType', CollectionProperty::TYPE_SELECT)
+            ->call('addProperty');
+        $status = $collection->properties()->where('name', 'Status')->firstOrFail();
+        $component->call('addOption', $status->id, 'Offen');
+        $optionId = $status->fresh()->selectOptions()[0]['id'];
+
+        $withStatus = Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Mit Status']);
+        Item::factory()->for($household)->create(['collection_id' => $collection->id, 'type' => Item::TYPE_ENTRY, 'title' => 'Ohne Status gesetzt']);
+        $component->call('updateProperty', $withStatus->id, $status->id, $optionId);
+
+        // Grouping the table shows both the option group and the "no value" group header.
+        $component->set('viewMode', 'table')->set('groupBy', (string) $status->id)
+            ->assertSee('Offen')
+            ->assertSee('Ohne Status');
+    }
+
     public function test_the_entry_detail_shows_created_and_edited_metadata(): void
     {
         [$user, $household] = $this->memberWithHousehold();

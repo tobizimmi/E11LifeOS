@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.95.0] – 2026-11-06
+
+### Neu
+- **Gruppierte Tabellenansicht.** Die Tabelle einer Sammlung lässt sich jetzt – wie das Board – nach einer Auswahl-Spalte gruppieren: pro Gruppe eine Zwischenüberschrift mit Anzahl, plus eine Gruppe „Ohne …" für Einträge ohne Wert. (Verknüpfte Datenbank-Ansichten lassen sich bereits über den Block „Datenbank einbetten" auf Seiten einfügen.)
+
 ## [1.94.0] – 2026-11-06
 
 ### Neu

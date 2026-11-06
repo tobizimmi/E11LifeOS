@@ -1786,6 +1786,16 @@ new #[Layout('layouts.app')] class extends Component
                             @endforeach
                         </select>
                     </label>
+                @elseif ($currentView === 'table' && $selectProperties->isNotEmpty())
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        {{ __('Group by') }}
+                        <select wire:model.live="groupBy" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm">
+                            <option value="">{{ __('No grouping') }}</option>
+                            @foreach ($selectProperties as $selectProperty)
+                                <option value="{{ $selectProperty->id }}">{{ $selectProperty->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 @endif
             </div>
             <x-input-error :messages="$errors->get('newTitle')" />
@@ -1971,46 +1981,40 @@ new #[Layout('layouts.app')] class extends Component
                                 <th class="w-10 px-3 py-2"><span class="sr-only">{{ __('Actions') }}</span></th>
                             </tr>
                         </thead>
+                        @php $tableColspan = $visibleProperties->count() + ($collection->isTasks() ? 3 : 2) + ($collection->system_key === null ? 1 : 0); @endphp
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @forelse ($entries as $entry)
-                                <tr wire:key="row-{{ $entry->id }}" @class(['hover:bg-gray-50 dark:hover:bg-gray-700/40', 'bg-indigo-50/60 dark:bg-gray-700/60' => $openEntry?->id === $entry->id])>
-                                    @if ($collection->isTasks())
-                                        <td class="px-3 py-1.5">
-                                            <input type="checkbox" wire:key="done-{{ $entry->id }}-{{ $entry->updated_at?->timestamp }}-{{ (int) $entry->done }}" wire:click="toggleDone({{ $entry->id }})" @checked($entry->done) aria-label="{{ __('Mark as done') }}" class="rounded-sm border-gray-300 dark:border-gray-600 text-indigo-600" />
-                                        </td>
-                                    @endif
-                                    <td class="px-3 py-1.5">
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" wire:click="openEntry({{ $entry->id }})" @class(['text-start font-medium hover:underline', 'line-through text-gray-400' => $collection->isTasks() && $entry->done, 'text-gray-900 dark:text-gray-100' => ! ($collection->isTasks() && $entry->done)])>
-                                                {{ $entry->title }}
-                                            </button>
-                                            @foreach ($entry->tags->sortBy('name') as $entryTag)
-                                                <span class="text-xs text-indigo-600 dark:text-indigo-300">#{{ $entryTag->name }}</span>
-                                            @endforeach
-                                            @if ($entry->isPrivate() && ! $collection->isPrivate())
-                                                <x-private-badge />
-                                            @endif
-                                            @if ($entry->body() !== '')
-                                                <span class="text-gray-400" title="{{ __('Has notes') }}" aria-hidden="true">≡</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    @foreach ($visibleProperties as $property)
-                                        <td class="px-1 py-1" wire:key="cell-{{ $entry->id }}-{{ $property->id }}">
-                                            <x-property-input :property="$property" :item="$entry" :members="$members" :nodes="$relationNodes" compact />
-                                        </td>
-                                    @endforeach
-                                    <td class="px-3 py-1.5 text-end">
-                                        <button type="button" wire:click="deleteEntry({{ $entry->id }})" wire:confirm="{{ __('Delete this entry?') }}" class="text-gray-400 hover:text-red-600" title="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
-                                    </td>
-                                </tr>
-                            @empty
+                            @if ($entries->isEmpty())
                                 <tr>
-                                    <td colspan="{{ $visibleProperties->count() + 3 }}" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="{{ $tableColspan }}" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
                                         {{ $search !== '' ? __('No entries match your filter.') : __('No entries yet.') }}
                                     </td>
                                 </tr>
-                            @endforelse
+                            @elseif ($groupBy !== '' && $groupProperty)
+                                @php $tableGroups = collect($groupProperty->selectOptions())->map(fn ($option) => ['id' => (string) $option['id'], 'option' => $option])->push(['id' => '', 'option' => null]); @endphp
+                                @foreach ($tableGroups as $tableGroup)
+                                    @php $groupEntries = $entries->filter(fn ($entry) => (string) $entry->propertyValue($groupProperty) === $tableGroup['id']); @endphp
+                                    @continue($groupEntries->isEmpty())
+                                    <tr wire:key="group-{{ $groupProperty->id }}-{{ $tableGroup['id'] ?: 'none' }}" class="bg-gray-50 dark:bg-gray-900/40">
+                                        <td colspan="{{ $tableColspan }}" class="px-3 py-1.5">
+                                            <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                                                @if ($tableGroup['option'])
+                                                    <x-option-badge :option="$tableGroup['option']" />
+                                                @else
+                                                    {{ __('No :name', ['name' => $groupProperty->name]) }}
+                                                @endif
+                                                <span class="font-normal text-gray-400">{{ $groupEntries->count() }}</span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @foreach ($groupEntries as $entry)
+                                        @include('collections.partials.table-row')
+                                    @endforeach
+                                @endforeach
+                            @else
+                                @foreach ($entries as $entry)
+                                    @include('collections.partials.table-row')
+                                @endforeach
+                            @endif
                         </tbody>
                         @if ($entries->isNotEmpty() && $visibleProperties->contains(fn ($property) => in_array($property->type, [\App\Models\CollectionProperty::TYPE_NUMBER, \App\Models\CollectionProperty::TYPE_CHECKBOX], true)))
                             <tfoot class="border-t-2 border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">

@@ -1934,6 +1934,25 @@ new #[Layout('layouts.app')] class extends Component
                                         </button>
                                     </th>
                                 @endforeach
+                                @if ($collection->system_key === null)
+                                    <th class="w-10 px-3 py-2">
+                                        <div x-data="{ open: false }" class="relative">
+                                            <button type="button" x-on:click="open = !open" class="rounded-md px-1.5 text-base leading-none text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Add column') }}" aria-label="{{ __('Add column') }}">+</button>
+                                            <div x-show="open" x-cloak x-on:click.outside="open = false" x-transition class="absolute end-0 z-20 mt-1 w-60 rounded-lg bg-white p-3 text-start shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                                                <form wire:submit="addProperty" x-on:submit="open = false" class="space-y-2">
+                                                    <x-text-input wire:model="newPropertyName" class="block w-full text-sm" placeholder="{{ __('e.g. Priority') }}" aria-label="{{ __('New property') }}" />
+                                                    <select wire:model="newPropertyType" class="block w-full rounded-md border-gray-300 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Type') }}">
+                                                        @foreach ($propertyTypes as $type => $typeLabel)
+                                                            <option value="{{ $type }}">{{ $typeLabel }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <x-primary-button type="submit" class="w-full justify-center">{{ __('Add column') }}</x-primary-button>
+                                                </form>
+                                                <x-input-error :messages="$errors->get('newPropertyName')" class="mt-1 normal-case" />
+                                            </div>
+                                        </div>
+                                    </th>
+                                @endif
                                 <th class="w-10 px-3 py-2"><span class="sr-only">{{ __('Actions') }}</span></th>
                             </tr>
                         </thead>
@@ -2410,6 +2429,17 @@ new #[Layout('layouts.app')] class extends Component
                     <livewire:documents-panel type="item" :id="$openEntry->id" :wire:key="'documents-entry-'.$openEntry->id" />
                     <livewire:links-panel type="item" :id="$openEntry->id" :wire:key="'links-entry-'.$openEntry->id" />
                 </div>
+
+                <dl class="border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-gray-700 dark:text-gray-500">
+                    <div class="flex flex-wrap gap-x-1">
+                        <dt>{{ __('Created') }}:</dt>
+                        <dd>{{ $openEntry->created_at?->translatedFormat('j. M Y, H:i') }}@if ($openEntry->creator) · {{ __('by :name', ['name' => $openEntry->creator->name]) }}@endif</dd>
+                    </div>
+                    <div class="flex flex-wrap gap-x-1">
+                        <dt>{{ __('Last edited') }}:</dt>
+                        <dd>{{ $openEntry->updated_at?->translatedFormat('j. M Y, H:i') }}</dd>
+                    </div>
+                </dl>
 
                 <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
                     @if ($editingBody)

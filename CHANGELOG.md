@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.93.0] – 2026-11-06
+
+### Neu
+- **Spalte direkt in der Tabelle anlegen.** In der Tabellenansicht einer Sammlung legt ein „+" im Spaltenkopf eine neue Spalte an (Name + Typ), ohne den Umweg über die Einstellungen (nicht bei der System-Aufgabenliste).
+- **Erstellt/Bearbeitet-Infos je Eintrag.** Die Detailansicht eines Eintrags zeigt jetzt automatisch, wann und von wem er erstellt wurde und wann er zuletzt bearbeitet wurde.
+
 ## [1.92.0] – 2026-11-06
 
 ### Neu

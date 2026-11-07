@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.98.0] – 2026-11-07
+
+### Neu (Admin, Roadmap #4)
+- **Nutzer direkt im Admin anlegen.** Im Haushalt lässt sich ein neues Konto mit Name und E-Mail anlegen; die Person setzt ihr Passwort selbst über einen Link (wird angezeigt und per E-Mail verschickt) – es wird nie ein Passwort im Admin vergeben. Das erste Konto eines Haushalts wird automatisch Eigentümer.
+- **Einladung per E-Mail.** Ein Einladungslink lässt sich direkt an eine E-Mail-Adresse verschicken (zusätzlich zum anzeigbaren Link). Voraussetzung ist ein eingerichteter Mailversand auf dem Server.
+
 ## [1.97.0] – 2026-11-06
 
 ### Geändert / Neu (Admin & Registrierung, Roadmap #4)

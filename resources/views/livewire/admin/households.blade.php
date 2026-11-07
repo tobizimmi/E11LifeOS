@@ -4,9 +4,15 @@ use App\Models\Household;
 use App\Models\HouseholdInvite;
 use App\Models\HouseholdMember;
 use App\Models\User;
+use App\Notifications\HouseholdInviteMail;
 use App\Support\Admin\HouseholdAdmin;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -28,6 +34,17 @@ new #[Layout('layouts.app')] class extends Component
     public ?int $openId = null;
 
     public string $memberEmail = '';
+
+    /** Send an invite link to this e-mail. */
+    public string $inviteEmail = '';
+
+    /** Create a brand-new account directly in a household. */
+    public string $newUserName = '';
+
+    public string $newUserEmail = '';
+
+    /** Password-set link for the account just created (shown once, also e-mailed). */
+    public ?string $passwordLink = null;
 
     public string $renameTo = '';
 
@@ -104,12 +121,62 @@ new #[Layout('layouts.app')] class extends Component
         $this->inviteLink = route('register', ['code' => $invite->code]);
     }
 
+    /**
+     * Creates an invite for the household and e-mails the link to someone without an account yet.
+     */
+    public function inviteByEmail(int $id): void
+    {
+        $household = $this->household($id);
+        $validated = $this->validate(['inviteEmail' => ['required', 'string', 'email', 'max:255']]);
+
+        $invite = HouseholdInvite::create(['household_id' => $household->id, 'code' => HouseholdInvite::generateCode(), 'created_by' => Auth::id(), 'expires_at' => now()->addDays(14)]);
+        $url = route('register', ['code' => $invite->code]);
+        Notification::route('mail', $validated['inviteEmail'])->notify(new HouseholdInviteMail($url, $household->name));
+
+        \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'invite_emailed #'.$household->id);
+        $this->inviteLink = $url;
+        $this->reset('inviteEmail');
+        $this->dispatch('toast', message: __('Invitation sent to :email.', ['email' => $validated['inviteEmail']]));
+    }
+
     public function revokeInvite(int $inviteId): void
     {
         $invite = HouseholdInvite::whereNull('used_at')->findOrFail($inviteId);
         $invite->forceFill(['expires_at' => now()->subSecond()])->save();
         \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'invite_revoked #'.($invite->household_id ?? 0));
         $this->dispatch('toast', message: __('The invite link no longer works.'));
+    }
+
+    /**
+     * Creates a brand-new account and adds it to the household. The person sets their own password
+     * via a link (shown to the admin and e-mailed); no password is ever set by the admin.
+     */
+    public function createUser(int $id): void
+    {
+        $household = $this->household($id);
+        $validated = $this->validate([
+            'newUserName' => ['required', 'string', 'max:255'],
+            'newUserEmail' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class, 'email')],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['newUserName'],
+            'email' => $validated['newUserEmail'],
+            'password' => Hash::make(Str::random(40)),
+        ]);
+
+        // The first account an administrator adds to a household becomes its owner.
+        $role = $household->members()->where('role', 'owner')->exists() ? 'member' : 'owner';
+        HouseholdMember::create(['household_id' => $household->id, 'user_id' => $user->id, 'role' => $role, 'joined_at' => now()]);
+
+        // One token drives both the shown link and the e-mail, so they never disagree.
+        $token = Password::broker()->createToken($user);
+        $this->passwordLink = route('password.reset', ['token' => $token, 'email' => $user->email]);
+        $user->sendPasswordResetNotification($token);
+
+        \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'user_created #'.$household->id);
+        $this->reset('newUserName', 'newUserEmail');
+        $this->dispatch('toast', message: __('Account created – :name sets a password via the link.', ['name' => $user->name]));
     }
 
     public function addMember(int $id): void
@@ -334,6 +401,31 @@ new #[Layout('layouts.app')] class extends Component
                                             <x-secondary-button type="button" wire:click="invite({{ $household->id }})">🔗 {{ __('Invite link') }}</x-secondary-button>
                                         </form>
                                         <x-input-error :messages="$errors->get('memberEmail')" />
+
+                                        <form wire:submit="inviteByEmail({{ $household->id }})" class="mt-2 flex flex-wrap gap-2">
+                                            <input type="email" wire:model="inviteEmail" class="{{ $input }} max-w-xs" placeholder="{{ __('Invite by e-mail') }}" aria-label="{{ __('Invite by e-mail') }}">
+                                            <x-secondary-button type="submit">✉️ {{ __('Send invitation') }}</x-secondary-button>
+                                        </form>
+                                        <x-input-error :messages="$errors->get('inviteEmail')" />
+
+                                        <details class="mt-2 text-sm">
+                                            <summary class="cursor-pointer text-indigo-600 dark:text-indigo-400">👤 {{ __('Create a new account directly') }}</summary>
+                                            <form wire:submit="createUser({{ $household->id }})" class="mt-2 flex flex-wrap gap-2">
+                                                <input type="text" wire:model="newUserName" class="{{ $input }} max-w-[12rem]" placeholder="{{ __('Name') }}" aria-label="{{ __('Name') }}">
+                                                <input type="email" wire:model="newUserEmail" class="{{ $input }} max-w-xs" placeholder="{{ __('E-mail') }}" aria-label="{{ __('E-mail') }}">
+                                                <x-primary-button type="submit">+ {{ __('Create account') }}</x-primary-button>
+                                            </form>
+                                            <x-input-error :messages="$errors->get('newUserName')" />
+                                            <x-input-error :messages="$errors->get('newUserEmail')" />
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('The person gets an e-mail to set their own password. No password is set here.') }}</p>
+                                            @if ($passwordLink)
+                                                <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-emerald-50 p-2 dark:bg-emerald-900/20" x-data="{ copied: false }">
+                                                    <span class="text-xs text-emerald-900 dark:text-emerald-100">{{ __('Password link:') }}</span>
+                                                    <input type="text" readonly value="{{ $passwordLink }}" class="{{ $input }} min-w-0 flex-1 text-xs" x-on:focus="$el.select()" aria-label="{{ __('Password link') }}">
+                                                    <button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($passwordLink) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="shrink-0 rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></button>
+                                                </div>
+                                            @endif
+                                        </details>
                                     </div>
 
                                     <div>

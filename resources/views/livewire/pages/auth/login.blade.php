@@ -29,7 +29,7 @@ new #[Layout('layouts.guest')] class extends Component
         // lock itself out). A pending user is always brand-new, so this never clashes with 2FA.
         $user = Auth::user();
 
-        if ($user && ! $user->isAdmin() && ! $user->hasApprovedHousehold()) {
+        if ($user && $user->awaitsHouseholdApproval()) {
             Auth::logout();
             Session::invalidate();
             Session::regenerateToken();

@@ -27,13 +27,33 @@ new #[Layout('layouts.guest')] class extends Component
     /**
      * Invite links (/register?code=ABC123) fill in the code.
      */
+    /** The invite code came prefilled from an invite link (/register?code=…), so hide that field. */
+    public bool $codeFromLink = false;
+
     public function mount(): void
     {
         $code = request()->query('code');
 
         if (is_string($code) && preg_match('/^[A-Za-z0-9]{4,32}$/', $code)) {
             $this->invite_code = strtoupper($code);
+            $this->codeFromLink = true;
         }
+    }
+
+    /**
+     * Resolves the entered invite code so the form can hide the household-name field when the
+     * invite is for an existing household (asking for it there only confuses people).
+     *
+     * @return array{needsHouseholdName: bool}
+     */
+    public function with(): array
+    {
+        $invite = trim($this->invite_code) !== ''
+            ? HouseholdInvite::where('code', strtoupper(trim($this->invite_code)))->first()
+            : null;
+
+        // Only a "new household" invite (or a not-yet-recognised code) needs the household name.
+        return ['needsHouseholdName' => ! $invite || $invite->isForNewHousehold()];
     }
 
     /**
@@ -123,19 +143,21 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     <form wire:submit="register">
-        <!-- Invite Code -->
-        <div>
+        <!-- Invite Code — hidden (but still submitted) when it came from an invite link -->
+        <div @class(['hidden' => $codeFromLink])>
             <x-input-label for="invite_code" :value="__('Invite code')" />
-            <x-text-input wire:model="invite_code" id="invite_code" class="block mt-1 w-full uppercase" type="text" name="invite_code" required autofocus autocomplete="off" />
+            <x-text-input wire:model.live.debounce.400ms="invite_code" id="invite_code" class="block mt-1 w-full uppercase" type="text" name="invite_code" required autocomplete="off" />
             <x-input-error :messages="$errors->get('invite_code')" class="mt-2" />
         </div>
 
-        <!-- Household Name (only relevant for "new household" invites; harmless to submit otherwise) -->
-        <div class="mt-4">
-            <x-input-label for="household_name" :value="__('Household name (only needed when starting a new household)')" />
-            <x-text-input wire:model="household_name" id="household_name" class="block mt-1 w-full" type="text" name="household_name" autocomplete="off" />
-            <x-input-error :messages="$errors->get('household_name')" class="mt-2" />
-        </div>
+        <!-- Household Name: only for "new household" invites; hidden when joining an existing household -->
+        @if ($needsHouseholdName)
+            <div class="mt-4">
+                <x-input-label for="household_name" :value="__('Household name')" />
+                <x-text-input wire:model="household_name" id="household_name" class="block mt-1 w-full" type="text" name="household_name" autocomplete="off" />
+                <x-input-error :messages="$errors->get('household_name')" class="mt-2" />
+            </div>
+        @endif
 
         <!-- Name -->
         <div class="mt-4">

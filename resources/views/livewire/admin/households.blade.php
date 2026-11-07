@@ -104,6 +104,14 @@ new #[Layout('layouts.app')] class extends Component
         $this->inviteLink = route('register', ['code' => $invite->code]);
     }
 
+    public function revokeInvite(int $inviteId): void
+    {
+        $invite = HouseholdInvite::whereNull('used_at')->findOrFail($inviteId);
+        $invite->forceFill(['expires_at' => now()->subSecond()])->save();
+        \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'invite_revoked #'.($invite->household_id ?? 0));
+        $this->dispatch('toast', message: __('The invite link no longer works.'));
+    }
+
     public function addMember(int $id): void
     {
         $household = $this->household($id);
@@ -229,7 +237,7 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'households' => $households,
             'stats' => HouseholdAdmin::stats($households),
-            'openInvites' => HouseholdInvite::whereNull('used_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))->get()->groupBy(fn (HouseholdInvite $invite) => $invite->household_id ?? 0)->map->count(),
+            'openInvites' => HouseholdInvite::whereNull('used_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))->orderByDesc('id')->get()->groupBy(fn (HouseholdInvite $invite) => $invite->household_id ?? 0),
         ];
     }
 }; ?>
@@ -300,9 +308,26 @@ new #[Layout('layouts.app')] class extends Component
                                                     <button type="button" wire:click="removeMember({{ $household->id }}, {{ $member->user_id }})" wire:confirm="{{ __('Remove :name from the household? The account and its data stay.', ['name' => $member->user?->name]) }}" class="text-xs text-red-600 underline dark:text-red-400">{{ __('Remove') }}</button>
                                                 </li>
                                             @empty
-                                                <li class="text-gray-500">{{ __('No members yet.') }} @if ($openInvites[$household->id] ?? 0) {{ trans_choice(':count open invite|:count open invites', $openInvites[$household->id]) }} @endif</li>
+                                                <li class="text-gray-500">{{ __('No members yet.') }}</li>
                                             @endforelse
                                         </ul>
+                                        @php($householdInvites = $openInvites[$household->id] ?? collect())
+                                        @if ($householdInvites->isNotEmpty())
+                                            <div class="mt-2 rounded-lg bg-indigo-50 p-2 text-xs dark:bg-indigo-900/20">
+                                                <p class="mb-1 font-medium text-indigo-900 dark:text-indigo-100">🔗 {{ trans_choice(':count active invite link|:count active invite links', $householdInvites->count()) }}</p>
+                                                <ul class="space-y-1">
+                                                    @foreach ($householdInvites as $openInvite)
+                                                        @php($openInviteUrl = route('register', ['code' => $openInvite->code]))
+                                                        <li wire:key="invite-{{ $openInvite->id }}" class="flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                                                            <input type="text" readonly value="{{ $openInviteUrl }}" class="{{ $input }} min-w-0 flex-1 text-xs" x-on:focus="$el.select()" aria-label="{{ __('Invite link') }}">
+                                                            <button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($openInviteUrl) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="shrink-0 rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></button>
+                                                            <span class="shrink-0 text-gray-500 dark:text-gray-400">{{ $openInvite->expires_at ? __('until :date', ['date' => $openInvite->expires_at->format('d.m.Y')]) : __('no expiry') }}</span>
+                                                            <button type="button" wire:click="revokeInvite({{ $openInvite->id }})" wire:confirm="{{ __('Deactivate this invite link?') }}" class="shrink-0 text-red-600 underline dark:text-red-400">{{ __('Deactivate') }}</button>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
                                         <form wire:submit="addMember({{ $household->id }})" class="mt-2 flex flex-wrap gap-2">
                                             <input type="email" wire:model="memberEmail" class="{{ $input }} max-w-xs" placeholder="{{ __('E-mail of an existing account') }}" aria-label="{{ __('E-mail') }}">
                                             <x-secondary-button type="submit">+ {{ __('Add') }}</x-secondary-button>

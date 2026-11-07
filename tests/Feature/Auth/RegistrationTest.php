@@ -51,6 +51,21 @@ class RegistrationTest extends TestCase
         $this->assertNotNull($invite->fresh()->used_at);
     }
 
+    public function test_the_household_name_field_is_hidden_when_joining_an_existing_household(): void
+    {
+        $household = Household::create(['name' => 'Bestandshaushalt']);
+        $existing = HouseholdInvite::create(['household_id' => $household->id, 'code' => HouseholdInvite::generateCode()]);
+        $new = HouseholdInvite::create(['household_id' => null, 'code' => HouseholdInvite::generateCode()]);
+
+        // Joining an existing household: no household-name field (it only confused people).
+        Volt::test('pages.auth.register')->set('invite_code', $existing->code)
+            ->assertDontSee(__('Household name'));
+
+        // Starting a new household: the field is shown.
+        Volt::test('pages.auth.register')->set('invite_code', $new->code)
+            ->assertSee(__('Household name'));
+    }
+
     public function test_only_the_first_account_of_an_installation_becomes_administrator(): void
     {
         foreach (['erste@example.com', 'zweite@example.com'] as $email) {

@@ -79,11 +79,17 @@ class Tickets
     /**
      * A public reply or an internal note. Agents choose the status the ticket gets ("submit as").
      *
+     * $asAgent is set by the admin ticket view so an administrator handling a ticket they opened
+     * themselves still acts as the agent (otherwise replying to their own closed ticket, or adding
+     * an internal note, was wrongly blocked). The requester view leaves it false.
+     *
      * @param  list<UploadedFile>  $files
      */
-    public static function reply(SupportTicket $ticket, User $author, string $body, array $files = [], bool $internal = false, ?string $status = null): SupportMessage
+    public static function reply(SupportTicket $ticket, User $author, string $body, array $files = [], bool $internal = false, ?string $status = null, bool $asAgent = false): SupportMessage
     {
-        $isAgent = $author->isAdmin() && ! $author->is($ticket->requester);
+        // An admin is the agent when they are not the requester; $asAgent additionally lets the
+        // admin ticket view act as agent even on a ticket the admin opened themselves.
+        $isAgent = $author->isAdmin() && ($asAgent || ! $author->is($ticket->requester));
         abort_if($ticket->status === 'closed' && ! $isAgent, 422, __('This ticket is closed – please open a new request.'));
         abort_if($internal && ! $isAgent, 403);
 

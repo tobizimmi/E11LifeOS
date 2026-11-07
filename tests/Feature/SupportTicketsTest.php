@@ -101,6 +101,33 @@ class SupportTicketsTest extends TestCase
         Tickets::reply($ticket, $member, 'heimlich', internal: true);
     }
 
+    public function test_an_admin_can_close_and_reply_to_a_ticket_they_opened_themselves(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        // The admin is also the requester (e.g. reported a bug through the app themselves).
+        $ticket = Tickets::open($admin, ['subject' => 'Eigener Bug', 'body' => 'Fehler X', 'type' => 'bug']);
+
+        $this->actingAs($admin);
+        // Closing and then answering from the admin view used to raise a 422.
+        Volt::test('admin.support-ticket', ['ticket' => $ticket])
+            ->call('setField', 'status', 'closed')
+            ->set('submitAs', 'solved')
+            ->set('body', 'Erledigt und geschlossen.')
+            ->call('send')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(SupportMessage::where('support_ticket_id', $ticket->id)->where('kind', SupportMessage::REPLY)->where('body', 'Erledigt und geschlossen.')->exists());
+
+        // An internal note on their own ticket works too (was wrongly blocked as 403 before).
+        Volt::test('admin.support-ticket', ['ticket' => $ticket])
+            ->set('internal', true)
+            ->set('body', 'Interne Notiz')
+            ->call('send')
+            ->assertHasNoErrors();
+        $this->assertTrue(SupportMessage::where('support_ticket_id', $ticket->id)->where('kind', SupportMessage::NOTE)->exists());
+    }
+
     public function test_fields_are_changed_with_history_solved_tickets_reopen_and_close_after_a_week(): void
     {
         Notification::fake();

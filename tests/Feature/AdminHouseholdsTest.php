@@ -9,9 +9,12 @@ use App\Models\Item;
 use App\Models\SecurityEvent;
 use App\Models\SmartHomeConnection;
 use App\Models\User;
+use App\Notifications\HouseholdInviteMail;
 use App\Support\Admin\HouseholdAdmin;
 use App\Support\WebPush;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Mockery\MockInterface;
@@ -94,6 +97,54 @@ class AdminHouseholdsTest extends TestCase
         Volt::test('admin.households')->call('revokeInvite', $invite->id);
         $this->assertTrue($invite->fresh()->expires_at->isPast());
         $this->assertFalse($invite->fresh()->isValid());
+    }
+
+    public function test_the_admin_creates_a_new_account_in_a_household_with_a_password_link(): void
+    {
+        Notification::fake();
+        $this->admin();
+        $household = Household::create(['name' => 'Familie Neu']);
+
+        $page = Volt::test('admin.households')->call('toggle', $household->id)
+            ->set('newUserName', 'Nina Neu')->set('newUserEmail', 'nina@example.com')
+            ->call('createUser', $household->id)->assertHasNoErrors();
+
+        $user = User::where('email', 'nina@example.com')->sole();
+        // First account becomes the owner; the admin never sets a password.
+        $this->assertSame('owner', $household->members()->where('user_id', $user->id)->value('role'));
+        $this->assertNotNull($page->get('passwordLink'));
+        Notification::assertSentTo($user, ResetPassword::class);
+
+        // A duplicate e-mail is rejected.
+        Volt::test('admin.households')->call('toggle', $household->id)
+            ->set('newUserName', 'Doppelt')->set('newUserEmail', 'nina@example.com')
+            ->call('createUser', $household->id)->assertHasErrors('newUserEmail');
+    }
+
+    public function test_the_admin_invites_someone_by_e_mail_and_the_link_is_sent(): void
+    {
+        Notification::fake();
+        $this->admin();
+        $household = Household::create(['name' => 'Familie Mail']);
+
+        Volt::test('admin.households')->call('toggle', $household->id)
+            ->set('inviteEmail', 'gast@example.com')
+            ->call('inviteByEmail', $household->id)->assertHasNoErrors();
+
+        $invite = HouseholdInvite::where('household_id', $household->id)->sole();
+        $this->assertNull($invite->used_at);
+        Notification::assertSentOnDemand(HouseholdInviteMail::class);
+    }
+
+    public function test_a_self_registered_household_is_shown_as_pending_and_can_be_approved(): void
+    {
+        $this->admin();
+        $pending = Household::create(['name' => 'Selbsthaushalt', 'approved_at' => null]);
+
+        Volt::test('admin.households')->assertSee(__('Waiting for approval'))
+            ->call('approveHousehold', $pending->id);
+
+        $this->assertNotNull($pending->fresh()->approved_at);
     }
 
     public function test_the_export_is_encrypted_holds_only_shared_data_and_tells_the_owners(): void

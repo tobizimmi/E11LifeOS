@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.99.0] – 2026-11-07
+
+### Neu (Registrierung & Admin, Roadmap #4)
+- **Offene Selbstregistrierung mit Admin-Freigabe.** Die Registrierung funktioniert jetzt auch **ohne** Einladungscode: Name, E-Mail, Passwort und ein Haushaltsname genügen. Ein so angelegter Haushalt wird als „wartet auf Freigabe" markiert; die Anmeldung ist erst nach Freigabe durch einen Administrator möglich (Administratoren selbst sind ausgenommen, damit sich das erste Konto nicht aussperrt). Im Admin-Bereich werden wartende Haushalte mit einem Hinweis und einem **Freigeben**-Button angezeigt. Einladungs-Registrierungen bleiben sofort freigeschaltet.
+
+## [1.98.0] – 2026-11-07
+
+### Neu (Admin, Roadmap #4)
+- **Nutzer direkt im Admin anlegen.** Im Haushalt lässt sich ein neues Konto mit Name und E-Mail anlegen; die Person setzt ihr Passwort selbst über einen Link (wird angezeigt und per E-Mail verschickt) – es wird nie ein Passwort im Admin vergeben. Das erste Konto eines Haushalts wird automatisch Eigentümer.
+- **Einladung per E-Mail.** Ein Einladungslink lässt sich direkt an eine E-Mail-Adresse verschicken (zusätzlich zum anzeigbaren Link). Voraussetzung ist ein eingerichteter Mailversand auf dem Server.
+
 ## [1.97.0] – 2026-11-06
 
 ### Geändert / Neu (Admin & Registrierung, Roadmap #4)

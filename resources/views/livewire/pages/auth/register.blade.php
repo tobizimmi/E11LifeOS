@@ -81,24 +81,29 @@ new #[Layout('layouts.guest')] class extends Component
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-            'invite_code' => ['required', 'string'],
+            'invite_code' => ['nullable', 'string'],
         ]);
 
-        $invite = HouseholdInvite::where('code', strtoupper(trim($validated['invite_code'])))->first();
+        // An invite code is optional: without one, this is an open self-registration that creates a
+        // new household waiting for an administrator to approve it.
+        $invite = trim((string) $validated['invite_code']) !== ''
+            ? HouseholdInvite::where('code', strtoupper(trim($validated['invite_code'])))->first()
+            : null;
 
-        if (! $invite || ! $invite->isValid()) {
+        if (trim((string) $validated['invite_code']) !== '' && (! $invite || ! $invite->isValid())) {
             $this->addError('invite_code', __('This invite code is invalid or has expired.'));
 
             return;
         }
 
-        if ($invite->isForNewHousehold()) {
-            $this->validate([
-                'household_name' => ['required', 'string', 'max:255'],
-            ]);
+        // A new household is needed both for a "new household" invite and for open self-registration.
+        if (! $invite || $invite->isForNewHousehold()) {
+            $this->validate(['household_name' => ['required', 'string', 'max:255']]);
         }
 
-        $user = DB::transaction(function () use ($validated, $invite) {
+        $pendingApproval = false;
+
+        $user = DB::transaction(function () use ($validated, $invite, &$pendingApproval) {
             // On a fresh installation the first account becomes the administrator.
             $isFirstAccount = ! User::query()->exists();
 
@@ -112,8 +117,17 @@ new #[Layout('layouts.guest')] class extends Component
                 $user->forceFill(['is_admin' => true])->save();
             }
 
-            if ($invite->isForNewHousehold()) {
-                $household = Household::create(['name' => $this->household_name]);
+            if (! $invite) {
+                // Open self-registration: a new household that an administrator must approve first
+                // (the very first account of an installation is trusted and approved at once).
+                $household = Household::create([
+                    'name' => $this->household_name,
+                    'approved_at' => $isFirstAccount ? now() : null,
+                ]);
+                $role = 'owner';
+                $pendingApproval = ! $isFirstAccount;
+            } elseif ($invite->isForNewHousehold()) {
+                $household = Household::create(['name' => $this->household_name, 'approved_at' => now()]);
                 $role = 'owner';
             } else {
                 $household = $invite->household;
@@ -128,12 +142,20 @@ new #[Layout('layouts.guest')] class extends Component
                 'joined_at' => now(),
             ]);
 
-            $invite->update(['used_at' => now()]);
+            $invite?->update(['used_at' => now()]);
 
             return $user;
         });
 
         event(new Registered($user));
+
+        // A household that still needs approval must not get a session yet.
+        if ($pendingApproval) {
+            session()->flash('status', __('Thanks! Your account was created and is waiting for an administrator to approve it. You will be able to sign in once it is approved.'));
+            $this->redirect(route('login'), navigate: true);
+
+            return;
+        }
 
         Auth::login($user);
 
@@ -143,10 +165,11 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     <form wire:submit="register">
-        <!-- Invite Code — hidden (but still submitted) when it came from an invite link -->
+        <!-- Invite Code — optional; hidden (but still submitted) when it came from an invite link -->
         <div @class(['hidden' => $codeFromLink])>
-            <x-input-label for="invite_code" :value="__('Invite code')" />
-            <x-text-input wire:model.live.debounce.400ms="invite_code" id="invite_code" class="block mt-1 w-full uppercase" type="text" name="invite_code" required autocomplete="off" />
+            <x-input-label for="invite_code" :value="__('Invite code (optional)')" />
+            <x-text-input wire:model.live.debounce.400ms="invite_code" id="invite_code" class="block mt-1 w-full uppercase" type="text" name="invite_code" autocomplete="off" />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Leave empty to register a new household – an administrator approves it before you can sign in.') }}</p>
             <x-input-error :messages="$errors->get('invite_code')" class="mt-2" />
         </div>
 

@@ -86,8 +86,9 @@ class AdminHouseholdsTest extends TestCase
         $household = Household::create(['name' => 'Familie Aktiv']);
         $invite = HouseholdInvite::create(['household_id' => $household->id, 'code' => HouseholdInvite::generateCode(), 'expires_at' => now()->addDays(14)]);
 
-        // The active link is listed for its household …
-        Volt::test('admin.households')->assertSee(route('register', ['code' => $invite->code]));
+        // The active link is listed for its household (once the household card is expanded) …
+        Volt::test('admin.households')->call('toggle', $household->id)
+            ->assertSee(route('register', ['code' => $invite->code]));
 
         // … and deactivating it expires the invite so it no longer counts as open.
         Volt::test('admin.households')->call('revokeInvite', $invite->id);

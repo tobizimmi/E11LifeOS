@@ -1,7 +1,9 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -20,6 +22,21 @@ new #[Layout('layouts.guest')] class extends Component
             $this->redirectRoute('two-factor.challenge', navigate: true);
 
             return;
+        }
+
+        // Open self-registration creates an account whose household waits for admin approval; such a
+        // user may not get in yet. Administrators are exempt (otherwise a first self-signup could
+        // lock itself out). A pending user is always brand-new, so this never clashes with 2FA.
+        $user = Auth::user();
+
+        if ($user && ! $user->isAdmin() && ! $user->hasApprovedHousehold()) {
+            Auth::logout();
+            Session::invalidate();
+            Session::regenerateToken();
+
+            throw ValidationException::withMessages([
+                'form.email' => __('Your account is waiting for an administrator to approve it.'),
+            ]);
         }
 
         Session::regenerate();

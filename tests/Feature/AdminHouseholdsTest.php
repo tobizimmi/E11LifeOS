@@ -136,6 +136,17 @@ class AdminHouseholdsTest extends TestCase
         Notification::assertSentOnDemand(HouseholdInviteMail::class);
     }
 
+    public function test_a_self_registered_household_is_shown_as_pending_and_can_be_approved(): void
+    {
+        $this->admin();
+        $pending = Household::create(['name' => 'Selbsthaushalt', 'approved_at' => null]);
+
+        Volt::test('admin.households')->assertSee(__('Waiting for approval'))
+            ->call('approveHousehold', $pending->id);
+
+        $this->assertNotNull($pending->fresh()->approved_at);
+    }
+
     public function test_the_export_is_encrypted_holds_only_shared_data_and_tells_the_owners(): void
     {
         $admin = $this->admin();

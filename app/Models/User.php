@@ -169,6 +169,15 @@ class User extends Authenticatable implements HasPasskeys
         return (bool) $this->is_admin;
     }
 
+    /**
+     * Whether the user belongs to at least one approved household. A user whose only household is
+     * still waiting for admin approval (open self-registration) has no access yet.
+     */
+    public function hasApprovedHousehold(): bool
+    {
+        return $this->households()->whereNotNull('approved_at')->exists();
+    }
+
     public function currentHousehold(): ?Household
     {
         return $this->households()->first();

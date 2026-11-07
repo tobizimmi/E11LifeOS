@@ -139,6 +139,20 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: __('Invitation sent to :email.', ['email' => $validated['inviteEmail']]));
     }
 
+    /**
+     * Approves a household that came from open self-registration, so its members can sign in.
+     */
+    public function approveHousehold(int $id): void
+    {
+        $household = $this->household($id);
+
+        if (! $household->isApproved()) {
+            $household->forceFill(['approved_at' => now()])->save();
+            \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'household_approved #'.$household->id);
+            $this->dispatch('toast', message: __(':name is approved and can sign in now.', ['name' => $household->name]));
+        }
+    }
+
     public function revokeInvite(int $inviteId): void
     {
         $invite = HouseholdInvite::whereNull('used_at')->findOrFail($inviteId);
@@ -347,12 +361,23 @@ new #[Layout('layouts.app')] class extends Component
                         @php($stat = $stats[$household->id])
                         <li wire:key="household-{{ $household->id }}" class="px-5 py-3">
                             <button type="button" wire:click="toggle({{ $household->id }})" aria-expanded="{{ $openId === $household->id ? 'true' : 'false' }}" class="flex w-full flex-wrap items-baseline justify-between gap-2 text-start">
-                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $household->name }}</span>
+                                <span class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $household->name }}
+                                    @unless ($household->isApproved())
+                                        <span class="ms-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">⏳ {{ __('Waiting for approval') }}</span>
+                                    @endunless
+                                </span>
                                 <span class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ trans_choice(':count member|:count members', $household->members->count()) }} · {{ trans_choice(':count entry|:count entries', $stat['entries']) }} · {{ trans_choice(':count recipe|:count recipes', $stat['recipes']) }} · {{ trans_choice(':count file|:count files', $stat['files']) }} ({{ number_format($stat['bytes'] / 1048576, 1, ',', '.') }} MB)
                                     @if ($stat['last_activity']) · {{ __('active :time', ['time' => \Illuminate\Support\Carbon::parse($stat['last_activity'])->diffForHumans()]) }} @endif
                                 </span>
                             </button>
+                            @unless ($household->isApproved())
+                                <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-2 text-xs dark:bg-amber-900/20">
+                                    <span class="text-amber-900 dark:text-amber-100">{{ __('This household registered itself and is waiting for approval.') }}</span>
+                                    <x-primary-button type="button" wire:click="approveHousehold({{ $household->id }})">✓ {{ __('Approve') }}</x-primary-button>
+                                </div>
+                            @endunless
 
                             @if ($openId === $household->id)
                                 <div class="mt-3 space-y-4 rounded-xl bg-gray-50 p-4 text-sm dark:bg-gray-900/40">

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.99.0] – 2026-11-07
+
+### Neu (Registrierung & Admin, Roadmap #4)
+- **Offene Selbstregistrierung mit Admin-Freigabe.** Die Registrierung funktioniert jetzt auch **ohne** Einladungscode: Name, E-Mail, Passwort und ein Haushaltsname genügen. Ein so angelegter Haushalt wird als „wartet auf Freigabe" markiert; die Anmeldung ist erst nach Freigabe durch einen Administrator möglich (Administratoren selbst sind ausgenommen, damit sich das erste Konto nicht aussperrt). Im Admin-Bereich werden wartende Haushalte mit einem Hinweis und einem **Freigeben**-Button angezeigt. Einladungs-Registrierungen bleiben sofort freigeschaltet.
+
 ## [1.98.0] – 2026-11-07
 
 ### Neu (Admin, Roadmap #4)

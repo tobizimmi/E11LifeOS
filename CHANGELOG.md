@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.5] – 2026-11-08
+
+### Verbessert (Banking-Diagnose)
+- **Bankverbindungen zeigen ihren echten Status.** Statt pauschal „Noch nicht bestätigt" wird jetzt unterschieden: „Warten auf Bestätigung bei der Bank" (Rückruf steht noch aus), ein konkreter Fehlertext (wenn die Bank die Verbindung abgelehnt hat) sowie der Anbieter (Enable Banking / GoCardless). Nicht abgeschlossene Verbindungen haben einen **↻ Erneut verbinden**-Knopf.
+- **Nicht bestätigte Rückrufe werden protokolliert** (Admin → System), auch wenn kein Fehler geworfen wird – so ist sichtbar, ob der Rückruf der Bank überhaupt ankam.
+
 ## [1.101.4] – 2026-11-08
 
 ### Behoben (KI)

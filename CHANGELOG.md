@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.6] – 2026-11-08
+
+### Behoben (Banking)
+- **Bankverbindung blieb auf „angelegt" hängen.** Die PSD2-Rückruf-Route lag hinter der Passwort-Bestätigung (sensibler Bereich, 15 Minuten). Kam man von der Bank zurück und war die Bestätigung abgelaufen, fing die Middleware den Rückruf ab und leitete zur Passwort-Eingabe um – der Abschluss lief nie, die Verbindung blieb „angelegt", ohne Fehlermeldung. Der Rückruf (externe Rückleitung von der Bank) braucht diese Bestätigung nicht mehr; die Connect-Route bleibt abgesichert.
+
 ## [1.101.5] – 2026-11-08
 
 ### Verbessert (Banking-Diagnose)

@@ -141,6 +141,33 @@ class FinanceAnalysisTest extends TestCase
         $this->assertSame(['imported' => 0, 'skipped' => 2, 'errors' => 0], $second);
     }
 
+    public function test_a_quoted_multiline_purpose_and_dash_dates_are_imported_as_one_booking(): void
+    {
+        $account = BankAccount::factory()->create();
+
+        // The purpose spans two lines inside quotes, and the delimiter appears inside it. The old
+        // line-by-line parser tore this apart; the stream parser keeps it in one booking.
+        $csv = "Datum;Betrag;Verwendungszweck\n24-09-2026;-19,99;\"Rechnung 5\nKunde; Nr 7\"\n";
+
+        $result = (new BankCsvImporter)->import($account, $csv, new Categorizer($account->user_id));
+
+        $this->assertSame(['imported' => 1, 'skipped' => 0, 'errors' => 0], $result);
+        $transaction = $account->transactions()->sole();
+        $this->assertSame('2026-09-24', $transaction->booked_on->toDateString());
+        $this->assertSame(-19.99, (float) $transaction->amount);
+        $this->assertSame('Rechnung 5 Kunde; Nr 7', $transaction->purpose);
+    }
+
+    public function test_the_date_parser_handles_several_common_formats(): void
+    {
+        $this->assertSame('2026-09-24', BankCsvImporter::parseDate('24.09.2026'));
+        $this->assertSame('2026-09-24', BankCsvImporter::parseDate('2026-09-24T10:30:00'));
+        $this->assertSame('2026-09-24', BankCsvImporter::parseDate('24-09-2026'));
+        $this->assertSame('2026-09-24', BankCsvImporter::parseDate('2026/09/24'));
+        $this->assertSame('2026-09-24', BankCsvImporter::parseDate('24/09/2026'));
+        $this->assertNull(BankCsvImporter::parseDate('kein Datum'));
+    }
+
     public function test_a_fints_booking_already_imported_under_the_old_shorter_hash_is_not_duplicated(): void
     {
         $account = BankAccount::factory()->create();

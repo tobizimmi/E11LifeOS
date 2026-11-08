@@ -5,12 +5,13 @@ namespace App\Models;
 use App\Support\Addons;
 use Database\Factories\HouseholdFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'mail_address', 'addons', 'offers_zip', 'offers_chains'])]
+#[Fillable(['name', 'approved_at', 'mail_address', 'addons', 'offers_zip', 'offers_chains'])]
 class Household extends Model
 {
     /** @use HasFactory<HouseholdFactory> */
@@ -21,7 +22,24 @@ class Household extends Model
         return [
             'addons' => 'array',
             'offers_chains' => 'array',
+            'approved_at' => 'datetime',
         ];
+    }
+
+    /**
+     * A household from open self-registration is approved once an administrator lets it in.
+     */
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
+    }
+
+    /**
+     * @param  Builder<Household>  $query
+     */
+    public function scopePending(Builder $query): void
+    {
+        $query->whereNull('approved_at');
     }
 
     public function hasAddon(string $addon): bool

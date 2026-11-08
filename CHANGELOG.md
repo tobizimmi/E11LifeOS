@@ -3,6 +3,50 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.1] – 2026-11-08
+
+### Behoben (KI)
+- **KI-Essensplaner (und andere KI-Funktionen) brachen mit „KI-Dienst nicht erreichbar" ab.** Die Anthropic-API verlangt für strukturierte Antworten, dass jedes Objekt im JSON-Schema `additionalProperties: false` ausdrücklich setzt (sonst HTTP 400). Das Schema wird jetzt zentral vor dem Senden entsprechend ergänzt, sodass alle KI-Funktionen wieder durchlaufen.
+
+## [1.101.0] – 2026-11-08
+
+### Neu (Admin, Roadmap #1)
+- **Enable-Banking-Zugänge in den Servereinstellungen.** Application-ID und RSA-Privatschlüssel für Enable Banking lassen sich jetzt bequem unter **Servereinstellungen → Portfolio** eintragen (verschlüsselt gespeichert, Vorrang vor der `.env`) – kein SSH-Zugriff auf die Server-`.env` mehr nötig. Sobald beide Werte gesetzt sind, erscheint die Enable-Banking-Bankauswahl auf der Banking-Seite.
+
+## [1.100.1] – 2026-11-08
+
+### Verbessert (Roadmap #1)
+- **Stabilerer CSV-Import von Kontoauszügen.** Der Parser liest die Datei jetzt als Datenstrom statt Zeile für Zeile: mehrzeilige Verwendungszwecke in Anführungszeichen (und darin enthaltene Trennzeichen) bleiben korrekt einer Buchung zugeordnet. Zusätzlich werden mehr Datumsformate erkannt (`2026/09/24`, `24-09-2026`, ISO mit Uhrzeit).
+
+## [1.100.0] – 2026-11-08
+
+### Neu (Banking, Roadmap #1)
+- **Enable Banking als PSD2-Kontoanbindung.** Da GoCardless keine neuen Zugänge mehr vergibt, kann der Kontoimport jetzt alternativ über **Enable Banking** laufen (eigener lizenzierter AISP, kein eigenes Zertifikat nötig). Auf der Banking-Seite erscheint – sobald in den Servereinstellungen hinterlegt – eine Enable-Banking-Bankauswahl; der Verbindungs-, Freigabe- und Sync-Fluss (Salden + Buchungen in die Finanzen) funktioniert wie bei GoCardless. Depots bleiben wie gehabt bei FinTS (PSD2 deckt keine Depots ab). Einrichtung: App auf enablebanking.com registrieren und `ENABLEBANKING_APPLICATION_ID` + `ENABLEBANKING_PRIVATE_KEY` setzen.
+
+## [1.99.0] – 2026-11-07
+
+### Neu (Registrierung & Admin, Roadmap #4)
+- **Offene Selbstregistrierung mit Admin-Freigabe.** Die Registrierung funktioniert jetzt auch **ohne** Einladungscode: Name, E-Mail, Passwort und ein Haushaltsname genügen. Ein so angelegter Haushalt wird als „wartet auf Freigabe" markiert; die Anmeldung ist erst nach Freigabe durch einen Administrator möglich (Administratoren selbst sind ausgenommen, damit sich das erste Konto nicht aussperrt). Im Admin-Bereich werden wartende Haushalte mit einem Hinweis und einem **Freigeben**-Button angezeigt. Einladungs-Registrierungen bleiben sofort freigeschaltet.
+
+## [1.98.0] – 2026-11-07
+
+### Neu (Admin, Roadmap #4)
+- **Nutzer direkt im Admin anlegen.** Im Haushalt lässt sich ein neues Konto mit Name und E-Mail anlegen; die Person setzt ihr Passwort selbst über einen Link (wird angezeigt und per E-Mail verschickt) – es wird nie ein Passwort im Admin vergeben. Das erste Konto eines Haushalts wird automatisch Eigentümer.
+- **Einladung per E-Mail.** Ein Einladungslink lässt sich direkt an eine E-Mail-Adresse verschicken (zusätzlich zum anzeigbaren Link). Voraussetzung ist ein eingerichteter Mailversand auf dem Server.
+
+## [1.97.0] – 2026-11-06
+
+### Geändert / Neu (Admin & Registrierung, Roadmap #4)
+- **Aktive Einladungslinks je Haushalt sichtbar.** Im Admin-Bereich werden pro Haushalt alle aktiven Einladungslinks aufgelistet (Link kopierbar, mit Ablaufdatum) und lassen sich einzeln **deaktivieren** – statt nur einer Zählung.
+- **Registrierung ohne verwirrendes Haushalt-Feld.** Wird über einen Einladungslink für einen bestehenden Haushalt registriert, erscheint kein Feld „Name des Haushalts" mehr; es kommt nur noch beim Gründen eines neuen Haushalts. Der per Link vorausgefüllte Einladungscode wird ausgeblendet.
+
+_Noch offen aus Roadmap #4 (benötigt Abstimmung): Nutzer direkt im Admin anlegen, Einladung per E-Mail versenden, offene Selbstregistrierung mit Admin-Freigabe._
+
+## [1.96.1] – 2026-11-06
+
+### Behoben
+- **Ticket-Antwort als Admin auf eigenes Ticket (Fehler 422).** Wer als Administrator ein selbst gemeldetes Ticket im Admin-Bereich beantwortete oder schloss, bekam einen 422-Fehler (bzw. 403 bei internen Notizen), weil die Person als Anfragender statt als Agent behandelt wurde. Der Admin-Bereich arbeitet jetzt immer als Agent. (Roadmap #5)
+
 ## [1.96.0] – 2026-11-06
 
 ### Neu

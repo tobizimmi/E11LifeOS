@@ -12,16 +12,17 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Drives the PSD2 account sync through GoCardless: starts a consent, completes it after the user
- * came back from the bank, and pulls balances and bookings into the finance module. Depots are not
- * covered by PSD2 and stay with FinTS.
+ * Drives the PSD2 account sync: starts a consent, completes it after the user came back from the
+ * bank, and pulls balances and bookings into the finance module. Works with two providers –
+ * GoCardless (requisition flow) and Enable Banking (auth + session flow) – chosen per bank link.
+ * Depots are not covered by PSD2 and stay with FinTS.
  */
 class BankLinkSync
 {
-    public function __construct(private GoCardlessClient $client) {}
+    public function __construct(private GoCardlessClient $client, private EnableBankingClient $enableBanking) {}
 
     /**
-     * Creates a consent for the chosen bank and returns the hosted link the user is redirected to.
+     * GoCardless: create a consent for the chosen bank and return the hosted link.
      */
     public function connect(User $user, string $institutionId, string $institutionName, ?string $logo, string $redirect): string
     {
@@ -31,6 +32,7 @@ class BankLinkSync
         BankLink::create([
             'user_id' => $user->id,
             'household_id' => $user->currentHousehold()?->id,
+            'provider' => BankLink::PROVIDER_GOCARDLESS,
             'institution_id' => $institutionId,
             'institution_name' => $institutionName,
             'logo' => $logo,
@@ -43,9 +45,41 @@ class BankLinkSync
     }
 
     /**
-     * After the user returns from the bank: store the granted accounts and the consent window.
+     * Enable Banking: start an authorization for the chosen bank (by ASPSP name + country) and
+     * return the hosted link. `reference` is the state echoed back on the redirect.
      */
-    public function complete(BankLink $link): bool
+    public function connectEnableBanking(User $user, string $aspspName, string $country, ?string $logo, string $redirect): string
+    {
+        $reference = (string) Str::uuid();
+        $authorization = $this->enableBanking->startAuthorization($aspspName, $country, $redirect, $reference);
+
+        BankLink::create([
+            'user_id' => $user->id,
+            'household_id' => $user->currentHousehold()?->id,
+            'provider' => BankLink::PROVIDER_ENABLEBANKING,
+            'institution_id' => $aspspName,
+            'institution_name' => $aspspName,
+            'logo' => $logo,
+            'reference' => $reference,
+            'requisition_id' => $authorization['authorization_id'],
+            'status' => BankLink::STATUS_CREATED,
+        ]);
+
+        return $authorization['url'];
+    }
+
+    /**
+     * After the user returns from the bank: store the granted accounts and the consent window.
+     * $code is the authorization code Enable Banking appends to the redirect (unused by GoCardless).
+     */
+    public function complete(BankLink $link, ?string $code = null): bool
+    {
+        return $link->provider === BankLink::PROVIDER_ENABLEBANKING
+            ? $this->completeEnableBanking($link, $code)
+            : $this->completeGoCardless($link);
+    }
+
+    private function completeGoCardless(BankLink $link): bool
     {
         if (! $link->requisition_id) {
             return false;
@@ -69,6 +103,38 @@ class BankLinkSync
         return true;
     }
 
+    private function completeEnableBanking(BankLink $link, ?string $code): bool
+    {
+        if (! $code) {
+            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => __('The bank did not confirm the connection.')]);
+
+            return false;
+        }
+
+        $session = $this->enableBanking->createSession($code);
+
+        if ($session['accounts'] === []) {
+            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => __('The bank did not confirm the connection.')]);
+
+            return false;
+        }
+
+        $meta = [];
+
+        foreach ($session['accounts'] as $account) {
+            $meta[$account['uid']] = ['iban' => $account['iban'] ?? null, 'name' => $account['name'] ?? null];
+        }
+
+        $link->update([
+            'status' => BankLink::STATUS_LINKED,
+            'account_ids' => array_keys($meta),
+            'accounts_meta' => $meta,
+            'consent_expires_at' => now()->addDays(90),
+        ]);
+
+        return true;
+    }
+
     /**
      * Pulls balances and new bookings of every linked account into the finance module.
      *
@@ -84,12 +150,21 @@ class BankLinkSync
 
         $importer = app(BankCsvImporter::class);
         $categorizer = new Categorizer($link->user_id);
+        $isEnableBanking = $link->provider === BankLink::PROVIDER_ENABLEBANKING;
+        $client = $isEnableBanking ? $this->enableBanking : $this->client;
         $imported = 0;
         $accounts = 0;
 
         try {
             foreach ($link->account_ids ?? [] as $accountId) {
-                $details = $this->client->accountDetails($accountId);
+                // Account IBAN/name: Enable Banking returned it on the session; GoCardless has a
+                // dedicated details call.
+                if ($isEnableBanking) {
+                    $details = ((array) $link->accounts_meta)[$accountId] ?? ['iban' => null, 'name' => null];
+                } else {
+                    $details = $this->client->accountDetails($accountId);
+                }
+
                 $iban = $details['iban'] ?: $accountId;
 
                 $account = BankAccount::firstOrCreate(
@@ -97,13 +172,13 @@ class BankLinkSync
                     ['household_id' => $link->household_id, 'name' => trim($link->institution_name.' '.($details['name'] ?? '')).' '.substr((string) $iban, -4)],
                 );
 
-                $balance = $this->client->balance($accountId);
+                $balance = $client->balance($accountId);
 
                 if ($balance) {
                     $account->update(['balance' => $balance['amount'], 'balance_on' => $balance['date'] ?: Carbon::now()->toDateString()]);
                 }
 
-                $bookings = $this->client->transactions($accountId, now()->subDays(90)->toDateString());
+                $bookings = $client->transactions($accountId, now()->subDays(90)->toDateString());
                 $imported += $importer->importBookings($account, $bookings, $categorizer)['imported'];
                 $accounts++;
             }

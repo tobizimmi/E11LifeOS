@@ -4,8 +4,10 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Household;
 use App\Models\HouseholdInvite;
+use App\Models\HouseholdMember;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -49,6 +51,62 @@ class RegistrationTest extends TestCase
         $this->assertTrue($user->households->contains($household));
         $this->assertSame('owner', $user->householdMemberships()->first()->role);
         $this->assertNotNull($invite->fresh()->used_at);
+    }
+
+    public function test_open_self_registration_creates_a_pending_household_and_waits_for_approval(): void
+    {
+        // An existing account first, so this registrant is not the trusted "first account".
+        User::factory()->create();
+
+        $component = Volt::test('pages.auth.register')
+            ->set('name', 'Selbst Register')
+            ->set('email', 'selbst@example.com')
+            ->set('password', 'sicheres-Passwort-2026')
+            ->set('password_confirmation', 'sicheres-Passwort-2026')
+            ->set('household_name', 'Neuer Haushalt')
+            ->set('invite_code', '')
+            ->call('register');
+
+        $component->assertRedirect(route('login'));
+        $this->assertGuest();
+
+        $user = User::where('email', 'selbst@example.com')->firstOrFail();
+        $household = Household::where('name', 'Neuer Haushalt')->firstOrFail();
+        $this->assertNull($household->approved_at);
+        $this->assertFalse($user->hasApprovedHousehold());
+    }
+
+    public function test_a_pending_user_cannot_sign_in_until_an_admin_approves(): void
+    {
+        $user = User::factory()->create(['email' => 'warte@example.com', 'password' => Hash::make('passwort-123456')]);
+        $household = Household::create(['name' => 'Wartend', 'approved_at' => null]);
+        HouseholdMember::create(['household_id' => $household->id, 'user_id' => $user->id, 'role' => 'owner', 'joined_at' => now()]);
+
+        // Blocked while the household waits for approval.
+        Volt::test('pages.auth.login')->set('form.email', 'warte@example.com')->set('form.password', 'passwort-123456')
+            ->call('login')->assertHasErrors('form.email');
+        $this->assertGuest();
+
+        // After approval, sign-in works.
+        $household->forceFill(['approved_at' => now()])->save();
+        Volt::test('pages.auth.login')->set('form.email', 'warte@example.com')->set('form.password', 'passwort-123456')
+            ->call('login')->assertHasNoErrors();
+        $this->assertAuthenticated();
+    }
+
+    public function test_the_household_name_field_is_hidden_when_joining_an_existing_household(): void
+    {
+        $household = Household::create(['name' => 'Bestandshaushalt']);
+        $existing = HouseholdInvite::create(['household_id' => $household->id, 'code' => HouseholdInvite::generateCode()]);
+        $new = HouseholdInvite::create(['household_id' => null, 'code' => HouseholdInvite::generateCode()]);
+
+        // Joining an existing household: no household-name field (it only confused people).
+        Volt::test('pages.auth.register')->set('invite_code', $existing->code)
+            ->assertDontSee(__('Household name'));
+
+        // Starting a new household: the field is shown.
+        Volt::test('pages.auth.register')->set('invite_code', $new->code)
+            ->assertSee(__('Household name'));
     }
 
     public function test_only_the_first_account_of_an_installation_becomes_administrator(): void

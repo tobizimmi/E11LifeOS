@@ -16,10 +16,14 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $last_synced_at
  * @property list<string>|null $account_ids
  */
-#[Fillable(['user_id', 'household_id', 'institution_id', 'institution_name', 'logo', 'reference', 'requisition_id', 'status', 'account_ids', 'consent_expires_at', 'auto_sync', 'last_synced_at', 'sync_status', 'sync_message'])]
-#[Hidden(['account_ids'])]
+#[Fillable(['user_id', 'household_id', 'provider', 'institution_id', 'institution_name', 'logo', 'reference', 'requisition_id', 'status', 'account_ids', 'accounts_meta', 'consent_expires_at', 'auto_sync', 'last_synced_at', 'sync_status', 'sync_message'])]
+#[Hidden(['account_ids', 'accounts_meta'])]
 class BankLink extends Model
 {
+    public const PROVIDER_GOCARDLESS = 'gocardless';
+
+    public const PROVIDER_ENABLEBANKING = 'enablebanking';
+
     public const STATUS_CREATED = 'created';
 
     public const STATUS_LINKED = 'linked';
@@ -32,6 +36,7 @@ class BankLink extends Model
     {
         return [
             'account_ids' => 'encrypted:array',
+            'accounts_meta' => 'encrypted:array',
             'consent_expires_at' => 'datetime',
             'last_synced_at' => 'datetime',
             'auto_sync' => 'boolean',

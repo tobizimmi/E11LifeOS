@@ -4,9 +4,15 @@ use App\Models\Household;
 use App\Models\HouseholdInvite;
 use App\Models\HouseholdMember;
 use App\Models\User;
+use App\Notifications\HouseholdInviteMail;
 use App\Support\Admin\HouseholdAdmin;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -28,6 +34,17 @@ new #[Layout('layouts.app')] class extends Component
     public ?int $openId = null;
 
     public string $memberEmail = '';
+
+    /** Send an invite link to this e-mail. */
+    public string $inviteEmail = '';
+
+    /** Create a brand-new account directly in a household. */
+    public string $newUserName = '';
+
+    public string $newUserEmail = '';
+
+    /** Password-set link for the account just created (shown once, also e-mailed). */
+    public ?string $passwordLink = null;
 
     public string $renameTo = '';
 
@@ -102,6 +119,78 @@ new #[Layout('layouts.app')] class extends Component
         $invite = HouseholdInvite::create(['household_id' => $household->id, 'code' => HouseholdInvite::generateCode(), 'created_by' => Auth::id(), 'expires_at' => now()->addDays(14)]);
         \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'invite_created #'.$household->id);
         $this->inviteLink = route('register', ['code' => $invite->code]);
+    }
+
+    /**
+     * Creates an invite for the household and e-mails the link to someone without an account yet.
+     */
+    public function inviteByEmail(int $id): void
+    {
+        $household = $this->household($id);
+        $validated = $this->validate(['inviteEmail' => ['required', 'string', 'email', 'max:255']]);
+
+        $invite = HouseholdInvite::create(['household_id' => $household->id, 'code' => HouseholdInvite::generateCode(), 'created_by' => Auth::id(), 'expires_at' => now()->addDays(14)]);
+        $url = route('register', ['code' => $invite->code]);
+        Notification::route('mail', $validated['inviteEmail'])->notify(new HouseholdInviteMail($url, $household->name));
+
+        \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'invite_emailed #'.$household->id);
+        $this->inviteLink = $url;
+        $this->reset('inviteEmail');
+        $this->dispatch('toast', message: __('Invitation sent to :email.', ['email' => $validated['inviteEmail']]));
+    }
+
+    /**
+     * Approves a household that came from open self-registration, so its members can sign in.
+     */
+    public function approveHousehold(int $id): void
+    {
+        $household = $this->household($id);
+
+        if (! $household->isApproved()) {
+            $household->forceFill(['approved_at' => now()])->save();
+            \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'household_approved #'.$household->id);
+            $this->dispatch('toast', message: __(':name is approved and can sign in now.', ['name' => $household->name]));
+        }
+    }
+
+    public function revokeInvite(int $inviteId): void
+    {
+        $invite = HouseholdInvite::whereNull('used_at')->findOrFail($inviteId);
+        $invite->forceFill(['expires_at' => now()->subSecond()])->save();
+        \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'invite_revoked #'.($invite->household_id ?? 0));
+        $this->dispatch('toast', message: __('The invite link no longer works.'));
+    }
+
+    /**
+     * Creates a brand-new account and adds it to the household. The person sets their own password
+     * via a link (shown to the admin and e-mailed); no password is ever set by the admin.
+     */
+    public function createUser(int $id): void
+    {
+        $household = $this->household($id);
+        $validated = $this->validate([
+            'newUserName' => ['required', 'string', 'max:255'],
+            'newUserEmail' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class, 'email')],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['newUserName'],
+            'email' => $validated['newUserEmail'],
+            'password' => Hash::make(Str::random(40)),
+        ]);
+
+        // The first account an administrator adds to a household becomes its owner.
+        $role = $household->members()->where('role', 'owner')->exists() ? 'member' : 'owner';
+        HouseholdMember::create(['household_id' => $household->id, 'user_id' => $user->id, 'role' => $role, 'joined_at' => now()]);
+
+        // One token drives both the shown link and the e-mail, so they never disagree.
+        $token = Password::broker()->createToken($user);
+        $this->passwordLink = route('password.reset', ['token' => $token, 'email' => $user->email]);
+        $user->sendPasswordResetNotification($token);
+
+        \App\Support\Security\SecurityLog::record(Auth::user(), 'admin_action', details: 'user_created #'.$household->id);
+        $this->reset('newUserName', 'newUserEmail');
+        $this->dispatch('toast', message: __('Account created – :name sets a password via the link.', ['name' => $user->name]));
     }
 
     public function addMember(int $id): void
@@ -229,7 +318,7 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'households' => $households,
             'stats' => HouseholdAdmin::stats($households),
-            'openInvites' => HouseholdInvite::whereNull('used_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))->get()->groupBy(fn (HouseholdInvite $invite) => $invite->household_id ?? 0)->map->count(),
+            'openInvites' => HouseholdInvite::whereNull('used_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))->orderByDesc('id')->get()->groupBy(fn (HouseholdInvite $invite) => $invite->household_id ?? 0),
         ];
     }
 }; ?>
@@ -272,12 +361,23 @@ new #[Layout('layouts.app')] class extends Component
                         @php($stat = $stats[$household->id])
                         <li wire:key="household-{{ $household->id }}" class="px-5 py-3">
                             <button type="button" wire:click="toggle({{ $household->id }})" aria-expanded="{{ $openId === $household->id ? 'true' : 'false' }}" class="flex w-full flex-wrap items-baseline justify-between gap-2 text-start">
-                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $household->name }}</span>
+                                <span class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $household->name }}
+                                    @unless ($household->isApproved())
+                                        <span class="ms-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">⏳ {{ __('Waiting for approval') }}</span>
+                                    @endunless
+                                </span>
                                 <span class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ trans_choice(':count member|:count members', $household->members->count()) }} · {{ trans_choice(':count entry|:count entries', $stat['entries']) }} · {{ trans_choice(':count recipe|:count recipes', $stat['recipes']) }} · {{ trans_choice(':count file|:count files', $stat['files']) }} ({{ number_format($stat['bytes'] / 1048576, 1, ',', '.') }} MB)
                                     @if ($stat['last_activity']) · {{ __('active :time', ['time' => \Illuminate\Support\Carbon::parse($stat['last_activity'])->diffForHumans()]) }} @endif
                                 </span>
                             </button>
+                            @unless ($household->isApproved())
+                                <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-2 text-xs dark:bg-amber-900/20">
+                                    <span class="text-amber-900 dark:text-amber-100">{{ __('This household registered itself and is waiting for approval.') }}</span>
+                                    <x-primary-button type="button" wire:click="approveHousehold({{ $household->id }})">✓ {{ __('Approve') }}</x-primary-button>
+                                </div>
+                            @endunless
 
                             @if ($openId === $household->id)
                                 <div class="mt-3 space-y-4 rounded-xl bg-gray-50 p-4 text-sm dark:bg-gray-900/40">
@@ -300,15 +400,57 @@ new #[Layout('layouts.app')] class extends Component
                                                     <button type="button" wire:click="removeMember({{ $household->id }}, {{ $member->user_id }})" wire:confirm="{{ __('Remove :name from the household? The account and its data stay.', ['name' => $member->user?->name]) }}" class="text-xs text-red-600 underline dark:text-red-400">{{ __('Remove') }}</button>
                                                 </li>
                                             @empty
-                                                <li class="text-gray-500">{{ __('No members yet.') }} @if ($openInvites[$household->id] ?? 0) {{ trans_choice(':count open invite|:count open invites', $openInvites[$household->id]) }} @endif</li>
+                                                <li class="text-gray-500">{{ __('No members yet.') }}</li>
                                             @endforelse
                                         </ul>
+                                        @php($householdInvites = $openInvites[$household->id] ?? collect())
+                                        @if ($householdInvites->isNotEmpty())
+                                            <div class="mt-2 rounded-lg bg-indigo-50 p-2 text-xs dark:bg-indigo-900/20">
+                                                <p class="mb-1 font-medium text-indigo-900 dark:text-indigo-100">🔗 {{ trans_choice(':count active invite link|:count active invite links', $householdInvites->count()) }}</p>
+                                                <ul class="space-y-1">
+                                                    @foreach ($householdInvites as $openInvite)
+                                                        @php($openInviteUrl = route('register', ['code' => $openInvite->code]))
+                                                        <li wire:key="invite-{{ $openInvite->id }}" class="flex flex-wrap items-center gap-2" x-data="{ copied: false }">
+                                                            <input type="text" readonly value="{{ $openInviteUrl }}" class="{{ $input }} min-w-0 flex-1 text-xs" x-on:focus="$el.select()" aria-label="{{ __('Invite link') }}">
+                                                            <button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($openInviteUrl) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="shrink-0 rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></button>
+                                                            <span class="shrink-0 text-gray-500 dark:text-gray-400">{{ $openInvite->expires_at ? __('until :date', ['date' => $openInvite->expires_at->format('d.m.Y')]) : __('no expiry') }}</span>
+                                                            <button type="button" wire:click="revokeInvite({{ $openInvite->id }})" wire:confirm="{{ __('Deactivate this invite link?') }}" class="shrink-0 text-red-600 underline dark:text-red-400">{{ __('Deactivate') }}</button>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
                                         <form wire:submit="addMember({{ $household->id }})" class="mt-2 flex flex-wrap gap-2">
                                             <input type="email" wire:model="memberEmail" class="{{ $input }} max-w-xs" placeholder="{{ __('E-mail of an existing account') }}" aria-label="{{ __('E-mail') }}">
                                             <x-secondary-button type="submit">+ {{ __('Add') }}</x-secondary-button>
                                             <x-secondary-button type="button" wire:click="invite({{ $household->id }})">🔗 {{ __('Invite link') }}</x-secondary-button>
                                         </form>
                                         <x-input-error :messages="$errors->get('memberEmail')" />
+
+                                        <form wire:submit="inviteByEmail({{ $household->id }})" class="mt-2 flex flex-wrap gap-2">
+                                            <input type="email" wire:model="inviteEmail" class="{{ $input }} max-w-xs" placeholder="{{ __('Invite by e-mail') }}" aria-label="{{ __('Invite by e-mail') }}">
+                                            <x-secondary-button type="submit">✉️ {{ __('Send invitation') }}</x-secondary-button>
+                                        </form>
+                                        <x-input-error :messages="$errors->get('inviteEmail')" />
+
+                                        <details class="mt-2 text-sm">
+                                            <summary class="cursor-pointer text-indigo-600 dark:text-indigo-400">👤 {{ __('Create a new account directly') }}</summary>
+                                            <form wire:submit="createUser({{ $household->id }})" class="mt-2 flex flex-wrap gap-2">
+                                                <input type="text" wire:model="newUserName" class="{{ $input }} max-w-[12rem]" placeholder="{{ __('Name') }}" aria-label="{{ __('Name') }}">
+                                                <input type="email" wire:model="newUserEmail" class="{{ $input }} max-w-xs" placeholder="{{ __('E-mail') }}" aria-label="{{ __('E-mail') }}">
+                                                <x-primary-button type="submit">+ {{ __('Create account') }}</x-primary-button>
+                                            </form>
+                                            <x-input-error :messages="$errors->get('newUserName')" />
+                                            <x-input-error :messages="$errors->get('newUserEmail')" />
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('The person gets an e-mail to set their own password. No password is set here.') }}</p>
+                                            @if ($passwordLink)
+                                                <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-emerald-50 p-2 dark:bg-emerald-900/20" x-data="{ copied: false }">
+                                                    <span class="text-xs text-emerald-900 dark:text-emerald-100">{{ __('Password link:') }}</span>
+                                                    <input type="text" readonly value="{{ $passwordLink }}" class="{{ $input }} min-w-0 flex-1 text-xs" x-on:focus="$el.select()" aria-label="{{ __('Password link') }}">
+                                                    <button type="button" x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($passwordLink) }}).then(() => { copied = true; setTimeout(() => copied = false, 2000) })" class="shrink-0 rounded-md px-2 py-1 ring-1 ring-gray-300 dark:ring-gray-600"><span x-text="copied ? @js(__('Copied!')) : @js(__('Copy'))"></span></button>
+                                                </div>
+                                            @endif
+                                        </details>
                                     </div>
 
                                     <div>

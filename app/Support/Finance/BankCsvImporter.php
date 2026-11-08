@@ -217,12 +217,33 @@ class BankCsvImporter
             $contents = mb_convert_encoding($contents, 'UTF-8', 'Windows-1252');
         }
 
-        $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents);
-        $lines = preg_split('/\r\n|\r|\n/', trim($contents));
-        $sample = implode("\n", array_slice($lines, 0, 30));
-        $delimiter = collect([';', ',', "\t"])->sortByDesc(fn (string $candidate) => substr_count($sample, $candidate))->first();
+        $contents = (string) preg_replace('/^\xEF\xBB\xBF/', '', $contents);
+        // Normalise line endings so a quoted field that spans several lines survives the parser.
+        $contents = str_replace(["\r\n", "\r"], "\n", $contents);
 
-        return array_map(fn (string $line) => array_map(fn ($cell) => trim((string) $cell), str_getcsv($line, $delimiter, '"', '')), $lines);
+        $sample = implode("\n", array_slice(explode("\n", $contents), 0, 30));
+        $delimiter = collect([';', ',', "\t", '|'])->sortByDesc(fn (string $candidate) => substr_count($sample, $candidate))->first() ?? ';';
+
+        // Stream through fgetcsv rather than splitting on newlines first: that way a quoted
+        // "Verwendungszweck" containing a line break or the delimiter stays in one cell.
+        $stream = fopen('php://temp', 'r+');
+        fwrite($stream, $contents);
+        rewind($stream);
+        $rows = [];
+
+        while (($row = fgetcsv($stream, 0, $delimiter, '"', '')) !== false) {
+            // A blank line comes back as [null]; keep it as an empty row so the header scan and the
+            // "skip near-empty rows" guard behave as before.
+            $rows[] = $row === [null] ? [''] : array_map(fn ($cell) => trim((string) $cell), $row);
+
+            if (count($rows) > self::MAX_ROWS + 50) {
+                break;
+            }
+        }
+
+        fclose($stream);
+
+        return $rows;
     }
 
     /**
@@ -354,13 +375,22 @@ class BankCsvImporter
     }
 
     /**
-     * "24.09.2026", "24.09.26", "2026-09-24", "24/09/2026".
+     * "24.09.2026", "24.09.26", "2026-09-24", "2026-09-24T10:00", "24/09/2026", "24-09-2026",
+     * "2026/09/24". A trailing time is ignored (the patterns match only the leading date).
      */
     public static function parseDate(string $value): ?string
     {
         $value = trim($value);
 
-        foreach (['d.m.Y' => '/^\d{2}\.\d{2}\.\d{4}/', 'd.m.y' => '/^\d{2}\.\d{2}\.\d{2}(?!\d)/', 'Y-m-d' => '/^\d{4}-\d{2}-\d{2}/', 'd/m/Y' => '/^\d{2}\/\d{2}\/\d{4}/'] as $format => $pattern) {
+        foreach ([
+            'd.m.Y' => '/^\d{2}\.\d{2}\.\d{4}/',
+            'd.m.y' => '/^\d{2}\.\d{2}\.\d{2}(?!\d)/',
+            'Y-m-d' => '/^\d{4}-\d{2}-\d{2}/',
+            'Y/m/d' => '/^\d{4}\/\d{2}\/\d{2}/',
+            'd/m/Y' => '/^\d{2}\/\d{2}\/\d{4}/',
+            'd-m-Y' => '/^\d{2}-\d{2}-\d{4}/',
+            'd-m-y' => '/^\d{2}-\d{2}-\d{2}(?!\d)/',
+        ] as $format => $pattern) {
             if (preg_match($pattern, $value, $match)) {
                 try {
                     return Carbon::createFromFormat('!'.$format, $match[0])->toDateString();

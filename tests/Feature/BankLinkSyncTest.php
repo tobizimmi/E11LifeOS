@@ -188,11 +188,12 @@ class BankLinkSyncTest extends TestCase
         $this->fakeGoCardless();
         [$user] = $this->memberWithHousehold();
         $this->actingAs($user);
-        $this->withSession(['auth.password_confirmed_at' => time()]);
 
         $link = app(BankLinkSync::class)->connect($user, 'SANDBOX', 'Sandbox Bank', null, 'https://app.test/callback');
         $reference = BankLink::sole()->reference;
 
+        // No password confirmation in the session: the external return must still complete
+        // (the callback route is not behind password.confirm).
         $this->get(route('portfolio.banking.link.callback', ['ref' => $reference]))
             ->assertRedirect(route('portfolio.banking'));
 

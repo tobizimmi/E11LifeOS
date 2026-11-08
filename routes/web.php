@@ -246,7 +246,9 @@ Route::middleware(['auth', 'addon:portfolio'])->prefix('portfolio')->name('portf
     Volt::route('watchlist', 'portfolio.watchlist')->name('watchlist');
     Volt::route('banking', 'portfolio.banking')->middleware([Security::SENSITIVE, 'sensitive.log:banking'])->name('banking');
     Route::get('banking/link/connect', BankLinkConnectController::class)->middleware([Security::SENSITIVE, 'sensitive.log:banking'])->name('banking.link.connect');
-    Route::get('banking/link/callback', BankLinkCallbackController::class)->middleware([Security::SENSITIVE, 'sensitive.log:banking'])->name('banking.link.callback');
+    // No password.confirm here: this is the external return from the bank. A re-confirmation prompt
+    // would silently swallow the callback (link stays "created") – the connect route already gated it.
+    Route::get('banking/link/callback', BankLinkCallbackController::class)->middleware(['sensitive.log:banking'])->name('banking.link.callback');
     Volt::route('instagram', 'portfolio.instagram')->name('instagram');
     Volt::route('import', 'portfolio.import')->name('import');
     Volt::route('settings', 'portfolio.settings')->name('settings');

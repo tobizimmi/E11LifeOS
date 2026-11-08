@@ -1969,6 +1969,7 @@
     "Keys for bank sync, Instagram analysis and optional data sources. For connecting bank accounts via Open Banking (PSD2), register a free application at enablebanking.com and enter its application ID and RSA private key here; depots keep syncing via FinTS. Without these keys the Enable Banking option stays hidden.": "Schlüssel für Banksync, Instagram-Analyse und optionale Datenquellen. Zum Verbinden von Bankkonten per Open Banking (PSD2) eine kostenlose Anwendung auf enablebanking.com registrieren und hier die Application-ID und den privaten RSA-Schlüssel eintragen; Depots laufen weiter über FinTS. Ohne diese Schlüssel bleibt die Enable-Banking-Option ausgeblendet.",
     "Waiting for confirmation at the bank – not finished yet.": "Warten auf Bestätigung bei der Bank – noch nicht abgeschlossen.",
     "No authorisation code came back from the bank – the approval was not completed.": "Von der Bank kam kein Freigabe-Code zurück – die Freigabe wurde nicht abgeschlossen.",
+    "The bank declined the authorisation: :error": "Die Bank hat die Freigabe abgelehnt: :error",
     "The bank granted no account for access. Please reconnect and tick the account(s) to share.": "Die Bank hat kein Konto zum Zugriff freigegeben. Bitte erneut verbinden und die zu teilenden Konten anhaken.",
     "Enable Banking application ID": "Enable-Banking-Application-ID",
     "Enable Banking private key (PEM)": "Enable-Banking-Privatschlüssel (PEM)",

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.102.1] – 2026-11-08
+
+### Verbessert (Banking Enable Banking)
+- **Abgelehnte Bank-Freigabe nennt den Grund.** Schickt die Bank/Enable Banking beim Rückruf einen Fehler statt eines Freigabe-Codes zurück (Freigabe abgebrochen, abgelehnt oder falsch konfiguriert), zeigt die Verbindung jetzt den konkreten Fehlertext der Bank an (und protokolliert ihn in Admin → System), statt nur „kein Code".
+
 ## [1.102.0] – 2026-11-08
 
 ### Neu (Rezepte / Wochenplan)

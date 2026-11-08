@@ -7,7 +7,6 @@ use App\Models\BankLink;
 use App\Support\Banking\BankAlerts;
 use App\Support\Banking\BankLinkSync;
 use App\Support\Banking\BankSync;
-use App\Support\Banking\GoCardlessClient;
 use App\Support\Security\UrlGuard;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -50,7 +49,7 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $alerts = [];
 
-    /** PSD2 connect panel (GoCardless) */
+    /** PSD2 connect panel (Enable Banking) */
     public bool $showConnect = false;
 
     public string $bankSearch = '';
@@ -334,28 +333,13 @@ new #[Layout('layouts.app')] class extends Component
         $this->bankLinks()->findOrFail($linkId)->delete();
     }
 
-    public function with(BankSync $sync, GoCardlessClient $gocardless, \App\Support\Banking\EnableBankingClient $enableBanking): array
+    public function with(BankSync $sync, \App\Support\Banking\EnableBankingClient $enableBanking): array
     {
         $connections = $this->connections()->with(['portfolio', 'depotPositions'])->orderBy('bank_name')->get();
 
-        $institutions = [];
         $enablebankingInstitutions = [];
-        $connectError = null;
+        $enablebankingError = null;
         $search = trim(mb_strtolower($this->bankSearch));
-
-        if ($this->showConnect && $gocardless->configured()) {
-            try {
-                $institutions = collect($gocardless->institutions('DE'))
-                    ->when($search !== '', fn ($banks) => $banks->filter(fn (array $bank) => str_contains(mb_strtolower($bank['name']), $search)))
-                    ->take(60)
-                    ->values()
-                    ->all();
-            } catch (\Throwable $exception) {
-                report($exception);
-                // Usually wrong or missing GoCardless credentials (401) – show a hint instead of a 500.
-                $connectError = __('The bank list could not be loaded. Please check the GoCardless access data (Secret ID / key) in the server settings and try again.');
-            }
-        }
 
         if ($this->showConnect && $enableBanking->configured()) {
             try {
@@ -366,22 +350,20 @@ new #[Layout('layouts.app')] class extends Component
                     ->all();
             } catch (\Throwable $exception) {
                 report($exception);
-                $connectError ??= __('The bank list could not be loaded. Please check the Enable Banking access data in the server settings and try again.');
+                $enablebankingError = __('The bank list could not be loaded. Please check the Enable Banking access data in the server settings and try again.');
             }
         }
 
         return [
             'connections' => $connections,
-            'connectError' => $connectError,
+            'enablebankingError' => $enablebankingError,
             'comparisons' => $connections->filter(fn (BankConnection $connection) => $connection->depotPositions->isNotEmpty())
                 ->mapWithKeys(fn (BankConnection $connection) => [$connection->id => $sync->compare($connection)]),
             'portfolioList' => $this->portfolios()->orderBy('id')->get(),
             'banks' => BankSync::BANKS,
             'productConfigured' => filled(config('services.fints.product_id')),
             'bankLinks' => $this->bankLinks()->orderBy('institution_name')->get(),
-            'gocardlessConfigured' => $gocardless->configured(),
             'enablebankingConfigured' => $enableBanking->configured(),
-            'institutions' => $institutions,
             'enablebankingInstitutions' => $enablebankingInstitutions,
         ];
     }
@@ -410,38 +392,26 @@ new #[Layout('layouts.app')] class extends Component
                 <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ session('bankLinkStatus') }}</div>
             @endif
 
-            @if ($gocardlessConfigured || $enablebankingConfigured)
+            @if ($enablebankingConfigured || $bankLinks->isNotEmpty())
                 <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h3 class="font-semibold text-gray-900 dark:text-gray-100">🔗 {{ __('Connect bank (without FinTS)') }}</h3>
                             <p class="mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-400">{{ __('Connect your bank securely via the official PSD2 interface – also for banks that dropped FinTS. You confirm once at your bank; balances and bookings then land in Finances. Note: this covers payment accounts, not securities depots.') }}</p>
                         </div>
-                        <x-primary-button type="button" wire:click="$toggle('showConnect')">＋ {{ __('Connect bank') }}</x-primary-button>
+                        @if ($enablebankingConfigured)
+                            <x-primary-button type="button" wire:click="$toggle('showConnect')">＋ {{ __('Connect bank') }}</x-primary-button>
+                        @endif
                     </div>
 
                     @if ($showConnect)
                         <div class="mt-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-900/40">
-                            @if ($connectError)
-                                <div class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-200">⚠️ {{ $connectError }}</div>
-                            @endif
                             <input type="text" wire:model.live.debounce.400ms="bankSearch" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('Search your bank (e.g. Sparkasse Köln, N26, DKB) …') }}" aria-label="{{ __('Search bank') }}">
 
-                            @if ($gocardlessConfigured)
-                                <div class="mt-3 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
-                                    @forelse ($institutions as $bank)
-                                        <a href="{{ route('portfolio.banking.link.connect', ['institution' => $bank['id']]) }}" wire:key="inst-{{ $bank['id'] }}" class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-gray-800 ring-1 ring-gray-200 transition hover:ring-indigo-300 active:scale-[0.99] dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-700">
-                                            @if (! empty($bank['logo']))<img src="{{ $bank['logo'] }}" alt="" class="h-6 w-6 rounded object-contain">@else<span class="flex h-6 w-6 items-center justify-center rounded bg-gray-100 text-xs dark:bg-gray-700">🏦</span>@endif
-                                            <span class="truncate">{{ $bank['name'] }}</span>
-                                        </a>
-                                    @empty
-                                        <p class="col-span-full py-4 text-center text-sm text-gray-500 dark:text-gray-400">{{ $bankSearch === '' ? __('Start typing to find your bank.') : __('No bank found.') }}</p>
-                                    @endforelse
-                                </div>
-                            @endif
-
                             @if ($enablebankingConfigured)
-                                <p class="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Enable Banking</p>
+                                @if ($enablebankingError)
+                                    <div class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-200">⚠️ {{ $enablebankingError }}</div>
+                                @endif
                                 <div class="mt-2 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
                                     @forelse ($enablebankingInstitutions as $bank)
                                         <a href="{{ route('portfolio.banking.link.connect', ['provider' => 'enablebanking', 'institution' => $bank['id']]) }}" wire:key="eb-{{ $bank['id'] }}" class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-gray-800 ring-1 ring-gray-200 transition hover:ring-indigo-300 active:scale-[0.99] dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-700">

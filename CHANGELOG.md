@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.3] – 2026-11-08
+
+### Geändert (Banking)
+- **GoCardless aus der Bankanbindung entfernt.** Da GoCardless keine neuen Zugänge mehr vergibt, bietet die Banking-Seite zum Verbinden nur noch **Enable Banking** an (Depots weiterhin über FinTS). Die GoCardless-Bankliste und der zugehörige Fehlerhinweis entfallen damit; bereits verbundene Konten bleiben sichtbar.
+- **Fehler beim Bankverbinden werden jetzt protokolliert.** Brach das Verbinden oder der Rückruf einer PSD2-Bank ab (z. B. nicht registrierte Redirect-URL, ungültiger Schlüssel), landete man kommentarlos wieder auf der Übersicht. Der echte Fehler wird jetzt geloggt und erscheint unter **Admin → System → letzte Fehler**.
+
 ## [1.101.2] – 2026-11-08
 
 ### Behoben (Admin)

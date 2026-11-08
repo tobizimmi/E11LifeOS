@@ -40,7 +40,10 @@ class BankLinkCallbackController extends Controller
                 __(':bank connected.', ['bank' => $link->institution_name]).' '.
                 trans_choice(':count booking imported into Finances.|:count bookings imported into Finances.', $result['imported'])
             ));
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            // Log it so the real reason shows under Admin › System instead of being swallowed.
+            report($exception);
+
             return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank connection was set up, but the first sync failed. Please try "Sync now".'));
         }
     }

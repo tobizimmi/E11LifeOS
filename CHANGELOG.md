@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.102.0] – 2026-11-08
+
+### Neu (Rezepte / Wochenplan)
+- **Wochenplan-Vorschläge für jeden Gang.** Die „Woche vorschlagen"-Funktion schlug bisher nur **Abendessen** aus den eigenen Rezepten vor. Jetzt lässt sich daneben der **Gang auswählen** (Frühstück, Mittagessen, Abendessen, Snack); die Vorschläge und das Einplanen gelten dann für den gewählten Gang – und blockieren sich gegenseitig nicht (ein Tag mit Abendessen kann z. B. trotzdem einen Frühstücksvorschlag bekommen).
+
 ## [1.101.7] – 2026-11-08
 
 ### Verbessert (Banking Enable Banking)

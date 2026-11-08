@@ -82,7 +82,9 @@ class AdminSettingsTest extends TestCase
         $this->admin();
         config(['services.enablebanking.application_id' => null, 'services.enablebanking.private_key' => null]);
 
-        openssl_pkey_export(openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]), $pem);
+        // A 4096-bit PEM is well over 2000 chars – the textarea limit must allow it.
+        openssl_pkey_export(openssl_pkey_new(['private_key_bits' => 4096, 'private_key_type' => OPENSSL_KEYTYPE_RSA]), $pem);
+        $this->assertGreaterThan(2000, mb_strlen($pem));
 
         Volt::test('admin.settings')
             ->assertSee('Enable-Banking-Application-ID')

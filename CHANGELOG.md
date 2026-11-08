@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.2] – 2026-11-08
+
+### Behoben (Admin)
+- **Enable-Banking-Privatschlüssel ließ sich nicht speichern** („darf höchstens 2000 Zeichen lang sein"). Das Längenlimit der Servereinstellungen gilt jetzt feldabhängig: mehrzeilige Felder (RSA-Privatschlüssel, WireGuard-Konfiguration) erlauben bis zu 8000 Zeichen, sodass auch 4096-Bit-Schlüssel passen.
+
 ## [1.101.1] – 2026-11-08
 
 ### Behoben (KI)

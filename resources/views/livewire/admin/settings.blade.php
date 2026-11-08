@@ -139,7 +139,15 @@ new #[Layout('layouts.app')] class extends Component
             'form.vpn_socks_port' => ['nullable', 'integer', 'between:1024,65535'],
             'form.vpn_wireguard_config' => ['nullable', 'string', fn ($attribute, $value, $fail) => filled($value) && Vpn::parse((string) $value) === null ? $fail(__('This is not a complete WireGuard configuration ([Interface] with PrivateKey and Address, [Peer] with PublicKey and Endpoint).')) : null],
             // Length limit for the text fields ("max" would compare the value of numeric ones).
-            'form.*' => ['nullable', 'string', fn ($attribute, $value, $fail) => mb_strlen((string) $value) > 2000 ? $fail(__('validation.max.string', ['attribute' => $attribute, 'max' => 2000])) : null],
+            // Multi-line fields (WireGuard config, RSA private key) need more room than short values.
+            'form.*' => ['nullable', 'string', function ($attribute, $value, $fail) {
+                $key = str_replace('form.', '', $attribute);
+                $max = (AppSettings::FIELDS[$key]['type'] ?? '') === 'textarea' ? 8000 : 2000;
+
+                if (mb_strlen((string) $value) > $max) {
+                    $fail(__('validation.max.string', ['attribute' => $attribute, 'max' => $max]));
+                }
+            }],
         ], attributes: ['form.mail_from_address' => __('Sender address'), 'form.vapid_subject' => __('Contact')]);
 
         // "none" (instead of empty) so that "all switched on" also overrides AI_DISABLED_FEATURES in .env.

@@ -26,21 +26,25 @@ class BankLinkConnectController extends Controller
         $institutionId = (string) $request->query('institution');
         $callback = route('portfolio.banking.link.callback');
 
+        // Outside the try: a 404 for an unconfigured provider must surface, not be swallowed as a redirect.
+        abort_unless(
+            $provider === BankLink::PROVIDER_ENABLEBANKING ? $enableBanking->configured() : $gocardless->configured(),
+            404
+        );
+
         try {
             if ($provider === BankLink::PROVIDER_ENABLEBANKING) {
-                abort_unless($enableBanking->configured(), 404);
                 $bank = collect($enableBanking->institutions('DE'))->firstWhere('id', $institutionId);
 
                 if (! $bank) {
                     return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('Please choose a bank.'));
                 }
 
-                $link = $sync->connectEnableBanking($request->user(), $bank['id'], $bank['country'] ?? 'DE', $bank['logo'] ?? null, $callback);
+                $link = $sync->connectEnableBanking($request->user(), $bank['id'], $bank['country'], $bank['logo'] ?? null, $callback);
 
                 return redirect()->away($link);
             }
 
-            abort_unless($gocardless->configured(), 404);
             $institution = $institutionId !== '' ? $gocardless->institution($institutionId) : null;
 
             if (! $institution) {

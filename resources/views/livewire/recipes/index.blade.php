@@ -117,6 +117,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $recipes = Recipe::query()
             ->visibleTo($user, $this->householdId)
+            ->cookbook()
             ->with(['categories', 'shareGroups', 'creator', 'favoritedBy' => fn ($query) => $query->whereKey($user->id)])
             ->withAvg('ratings', 'rating')
             ->when($this->archived, fn ($query) => $query->whereNotNull('archived_at'), fn ($query) => $query->whereNull('archived_at'))
@@ -151,12 +152,12 @@ new #[Layout('layouts.app')] class extends Component
             'pantryMatches' => $pantryMatches,
             'expiring' => Pantry::expiring($user, $this->householdId)->take(6),
             'forgotten' => ! $this->archived && $this->search === '' && $this->category === '' && $this->tag === '' && ! $this->favorites && $pantryTerms === [] && $this->sort === 'newest'
-                ? Recipe::query()->visibleTo($user, $this->householdId)->forgotten()->orderByRaw('last_cooked_at IS NOT NULL')->orderBy('last_cooked_at')->limit(6)->get()
+                ? Recipe::query()->visibleTo($user, $this->householdId)->cookbook()->forgotten()->orderByRaw('last_cooked_at IS NOT NULL')->orderBy('last_cooked_at')->limit(6)->get()
                 : collect(),
             'hasPantry' => Pantry::collectionFor($this->householdId) !== null,
             'categories' => RecipeCategory::where('household_id', $this->householdId)->orderBy('position')->orderBy('name')->get(),
             'tags' => Tag::where('household_id', $this->householdId)
-                ->whereHas('recipes', fn ($query) => $query->visibleTo($user, $this->householdId))
+                ->whereHas('recipes', fn ($query) => $query->visibleTo($user, $this->householdId)->cookbook())
                 ->orderBy('name')
                 ->pluck('name'),
             'filtered' => $this->search !== '' || $this->category !== '' || $this->tag !== '' || $this->favorites || $pantryTerms !== [],

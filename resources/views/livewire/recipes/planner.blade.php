@@ -55,6 +55,14 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $error = '';
 
+    /**
+     * Canonical indexes of the generated recipes the user wants to keep permanently (import into
+     * the cookbook). The rest are added to the plan only and pruned after the week.
+     *
+     * @var array<int, int>
+     */
+    public array $keep = [];
+
     public function mount(): void
     {
         $this->resolveHousehold();
@@ -141,6 +149,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->savePreferences();
         $this->error = '';
         $this->result = null;
+        $this->keep = [];
 
         try {
             $this->result = $ai->generate($this->prefsArray(), $this->offersText !== '' ? $this->offersText : null);
@@ -154,19 +163,29 @@ new #[Layout('layouts.app')] class extends Component
         return ($this->week !== '' ? Carbon::parse($this->week) : now())->startOfWeek();
     }
 
-    public function applyPlan(bool $saveRecipes = true): void
+    /**
+     * Adds the generated recipes to the week plan. By default they are temporary: viewable through
+     * the plan, pruned once the week is over. Recipes the user ticked ($keep) – or all, with
+     * $keepAll – are saved to the cookbook permanently instead.
+     */
+    public function addToPlan(bool $keepAll = false): void
     {
         if ($this->result === null) {
             return;
         }
 
         $user = $this->currentUser();
-        $saved = $saveRecipes ? MealPlanBuilder::createRecipes($user, (int) $this->householdId, $this->result) : [];
+        // Temporary recipes linger one day past the planned week, then the pruner removes them.
+        $expiresAt = $keepAll ? null : $this->weekStart()->copy()->addDays(8)->startOfDay();
+        $keepIndexes = $keepAll ? [] : array_map('intval', $this->keep);
+
+        $saved = MealPlanBuilder::createRecipes($user, (int) $this->householdId, $this->result, $expiresAt, $keepIndexes);
         $count = MealPlanBuilder::addToPlan($user, (int) $this->householdId, $this->weekStart(), $this->result, $saved);
 
-        $this->dispatch('toast', message: $saveRecipes
-            ? __(':count meals added and recipes saved.', ['count' => $count])
-            : __(':count meals added to the plan.', ['count' => $count]));
+        $keptCount = $keepAll ? count($saved) : count($keepIndexes);
+        $this->dispatch('toast', message: $keptCount > 0
+            ? __(':count meals added to the plan, :kept recipe(s) saved to the cookbook.', ['count' => $count, 'kept' => $keptCount])
+            : __(':count meals added to the plan (recipes are kept for this week).', ['count' => $count]));
     }
 
     public function createList(): void
@@ -184,7 +203,10 @@ new #[Layout('layouts.app')] class extends Component
      */
     public function with(): array
     {
-        return ['aiReady' => MealPlanAi::isConfigured()];
+        return [
+            'aiReady' => MealPlanAi::isConfigured(),
+            'planRecipes' => $this->result !== null ? MealPlanBuilder::plannedRecipes($this->result) : [],
+        ];
     }
 }; ?>
 
@@ -196,7 +218,8 @@ new #[Layout('layouts.app')] class extends Component
     $applianceOptions = ['oven' => __('Oven'), 'stove' => __('Stove'), 'microwave' => __('Microwave'), 'air_fryer' => __('Air fryer'), 'thermomix' => __('Thermomix'), 'slow_cooker' => __('Slow cooker'), 'grill' => __('Grill'), 'blender' => __('Blender')];
     $mealLabel = fn ($type) => $mealOptions[$type] ?? $type;
     $euro = fn ($value) => number_format((float) $value, 2, ',', '.').' €';
-    $recipesByDay = collect(is_array($result ?? null) ? ($result['recipes'] ?? []) : [])->groupBy('day')->sortKeys();
+    // Group by day while keeping the canonical index (the key the "keep" checkboxes use).
+    $recipesByDay = collect($planRecipes)->groupBy('day')->sortKeys();
 @endphp
 
 <div>
@@ -333,10 +356,11 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
 
                     <div class="mt-4 flex flex-wrap gap-3">
-                        <x-primary-button wire:click="applyPlan(true)">✅ {{ __('Save recipes & add to plan') }}</x-primary-button>
-                        <button type="button" wire:click="applyPlan(false)" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">{{ __('Add to plan only') }}</button>
+                        <x-primary-button wire:click="addToPlan(false)">📅 {{ __('Add to plan') }}</x-primary-button>
+                        <button type="button" wire:click="addToPlan(true)" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">✅ {{ __('Save all recipes & add to plan') }}</button>
                         <button type="button" wire:click="createList" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">🧾 {{ __('Create shopping list') }}</button>
                     </div>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Added recipes stay linked in the week plan and are removed after the week. Tick ⭐ to keep single recipes in the cookbook, or save them all.') }}</p>
                 </section>
 
                 <section class="grid gap-4 lg:grid-cols-2">
@@ -344,8 +368,8 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
                             <h4 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Day :n', ['n' => $day]) }}</h4>
                             <div class="mt-3 space-y-4">
-                                @foreach ($dayRecipes as $recipe)
-                                    <div class="rounded-xl border border-gray-100 p-3 dark:border-gray-700">
+                                @foreach ($dayRecipes as $index => $recipe)
+                                    <div @class(['rounded-xl border p-3', 'border-amber-300 bg-amber-50/40 dark:border-amber-500/50 dark:bg-amber-900/10' => in_array((string) $index, array_map('strval', $keep), true), 'border-gray-100 dark:border-gray-700' => ! in_array((string) $index, array_map('strval', $keep), true)])>
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-xs font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-300">{{ $mealLabel($recipe['meal_type'] ?? 'dinner') }}</span>
                                             <span class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -362,6 +386,10 @@ new #[Layout('layouts.app')] class extends Component
                                             @if (! empty($recipe['prep_time'])) · {{ __('prep') }} {{ $recipe['prep_time'] }} min @endif
                                             @if (! empty($recipe['cook_time'])) · {{ __('cook') }} {{ $recipe['cook_time'] }} min @endif
                                         </p>
+                                        <label class="mt-2 flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                            <input type="checkbox" wire:model="keep" value="{{ $index }}" class="rounded-sm border-gray-300 text-amber-500 dark:border-gray-600 dark:bg-gray-900">
+                                            ⭐ {{ __('Keep in cookbook') }}
+                                        </label>
                                     </div>
                                 @endforeach
                             </div>

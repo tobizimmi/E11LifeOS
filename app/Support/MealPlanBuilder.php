@@ -16,20 +16,39 @@ use Illuminate\Support\Carbon;
 class MealPlanBuilder
 {
     /**
-     * Creates a cookbook recipe per entry of the result.
+     * Creates a recipe per entry of the result.
+     *
+     * With an `$expiresAt` the recipes are temporary (only added to the week plan, not the
+     * cookbook); they are pruned once they expire. Entries whose index is in `$keepIndexes` are
+     * still created permanently, so the user can keep a few of a temporary plan's recipes.
      *
      * @param  array<string, mixed>  $result
-     * @return array<int, Recipe> keyed by the result recipe index
+     * @param  array<int, int>  $keepIndexes  canonical indexes (see {@see self::recipes()}) to keep permanently
+     * @return array<int, Recipe> keyed by the canonical recipe index
      */
-    public static function createRecipes(User $user, int $householdId, array $result): array
+    public static function createRecipes(User $user, int $householdId, array $result, ?Carbon $expiresAt = null, array $keepIndexes = []): array
     {
         $recipes = [];
 
         foreach (self::recipes($result) as $index => $data) {
-            $recipes[$index] = Recipe::create(self::recipeAttributes($data, $householdId, $user->id));
+            $recipeExpiry = $expiresAt !== null && ! in_array($index, $keepIndexes, true) ? $expiresAt : null;
+            $recipes[$index] = Recipe::create(self::recipeAttributes($data, $householdId, $user->id, $recipeExpiry));
         }
 
         return $recipes;
+    }
+
+    /**
+     * The result's recipe entries in their canonical order (empty-title entries removed), keyed by
+     * the same index {@see self::createRecipes()} and {@see self::addToPlan()} use – so the UI can
+     * offer a per-recipe "keep permanently" choice that lines up with the created recipes.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<int, array<string, mixed>>
+     */
+    public static function plannedRecipes(array $result): array
+    {
+        return self::recipes($result);
     }
 
     /**
@@ -97,7 +116,7 @@ class MealPlanBuilder
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    public static function recipeAttributes(array $data, int $householdId, int $userId): array
+    public static function recipeAttributes(array $data, int $householdId, int $userId, ?Carbon $expiresAt = null): array
     {
         $ingredients = array_values(array_filter(array_map(function (mixed $ingredient): ?array {
             if (! is_array($ingredient) || trim((string) ($ingredient['name'] ?? '')) === '') {
@@ -127,6 +146,7 @@ class MealPlanBuilder
             'difficulty' => $difficulty,
             'nutrition' => isset($data['calories']) && $data['calories'] ? ['calories' => (int) $data['calories']] : null,
             'source_type' => 'ai',
+            'expires_at' => $expiresAt,
         ];
     }
 

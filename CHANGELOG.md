@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.100.0] – 2026-11-08
+
+### Neu (Banking, Roadmap #1)
+- **Enable Banking als PSD2-Kontoanbindung.** Da GoCardless keine neuen Zugänge mehr vergibt, kann der Kontoimport jetzt alternativ über **Enable Banking** laufen (eigener lizenzierter AISP, kein eigenes Zertifikat nötig). Auf der Banking-Seite erscheint – sobald in den Servereinstellungen hinterlegt – eine Enable-Banking-Bankauswahl; der Verbindungs-, Freigabe- und Sync-Fluss (Salden + Buchungen in die Finanzen) funktioniert wie bei GoCardless. Depots bleiben wie gehabt bei FinTS (PSD2 deckt keine Depots ab). Einrichtung: App auf enablebanking.com registrieren und `ENABLEBANKING_APPLICATION_ID` + `ENABLEBANKING_PRIVATE_KEY` setzen.
+
 ## [1.99.0] – 2026-11-07
 
 ### Neu (Registrierung & Admin, Roadmap #4)

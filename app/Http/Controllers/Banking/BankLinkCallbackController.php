@@ -17,8 +17,11 @@ class BankLinkCallbackController extends Controller
 {
     public function __invoke(Request $request, BankLinkSync $sync): RedirectResponse
     {
+        // GoCardless echoes our reference as "ref"; Enable Banking echoes it as "state".
+        $reference = (string) ($request->query('ref') ?: $request->query('state'));
+
         $link = BankLink::where('user_id', $request->user()->id)
-            ->where('reference', (string) $request->query('ref'))
+            ->where('reference', $reference)
             ->latest('id')
             ->first();
 
@@ -27,7 +30,7 @@ class BankLinkCallbackController extends Controller
         }
 
         try {
-            if (! $sync->complete($link)) {
+            if (! $sync->complete($link, (string) $request->query('code') ?: null)) {
                 return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank did not confirm the connection.'));
             }
 

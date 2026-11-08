@@ -91,4 +91,23 @@ class MealSuggestionsTest extends TestCase
 
         $this->assertSame(['2026-09-23', 'dinner', 2], [MealPlan::where('recipe_id', $risotto->id)->sole()->date->toDateString(), MealPlan::where('recipe_id', $risotto->id)->sole()->meal_type, MealPlan::where('recipe_id', $risotto->id)->sole()->servings]);
     }
+
+    public function test_another_course_than_dinner_can_be_suggested_and_planned(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $pancakes = Recipe::factory()->for($household)->create(['title' => 'Pfannkuchen', 'servings' => 2]);
+        // A dinner on Wednesday must not block a breakfast suggestion for the same day.
+        MealPlan::factory()->for($household)->create(['date' => '2026-09-23', 'meal_type' => 'dinner', 'title' => 'Essen gehen']);
+
+        Volt::test('recipes.plan')
+            ->set('suggestMealType', 'breakfast')
+            ->call('suggestWeek')
+            ->assertSee('Vorschläge für Frühstück')
+            ->assertSee('Pfannkuchen')
+            ->call('applySuggestions');
+
+        $planned = MealPlan::where('recipe_id', $pancakes->id)->sole();
+        $this->assertSame(['2026-09-23', 'breakfast'], [$planned->date->toDateString(), $planned->meal_type]);
+    }
 }

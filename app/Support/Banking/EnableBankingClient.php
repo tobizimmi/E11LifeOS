@@ -92,15 +92,29 @@ class EnableBankingClient
         $response = $this->request()->post('/sessions', ['code' => $code])->throw()->json();
 
         $accounts = collect($response['accounts'] ?? [])
-            ->map(fn (array $account) => [
-                'uid' => (string) ($account['uid'] ?? ''),
-                'iban' => $account['account_id']['iban'] ?? $account['iban'] ?? null,
-                'name' => $account['name'] ?? $account['product'] ?? null,
-                'currency' => $account['currency'] ?? null,
-            ])
+            ->map(function (mixed $account): array {
+                // Enable Banking returns either a plain account UID string or a detailed object.
+                if (is_string($account)) {
+                    return ['uid' => $account, 'iban' => null, 'name' => null, 'currency' => null];
+                }
+
+                $account = (array) $account;
+
+                return [
+                    'uid' => (string) ($account['uid'] ?? $account['account_uid'] ?? ''),
+                    'iban' => $account['account_id']['iban'] ?? $account['iban'] ?? null,
+                    'name' => $account['name'] ?? $account['product'] ?? null,
+                    'currency' => $account['currency'] ?? null,
+                ];
+            })
             ->filter(fn (array $account) => $account['uid'] !== '')
             ->values()
             ->all();
+
+        // The bank returned accounts, but in a shape we did not recognise – surface it for diagnosis.
+        if ($accounts === [] && ($response['accounts'] ?? []) !== []) {
+            report(new RuntimeException('Enable Banking session returned accounts in an unexpected shape: '.json_encode(array_slice((array) $response['accounts'], 0, 1))));
+        }
 
         return ['session_id' => (string) ($response['session_id'] ?? ''), 'accounts' => $accounts];
     }

@@ -43,6 +43,9 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $addingMealType = 'dinner';
 
+    /** Which course the week-suggestion fills (breakfast, lunch, dinner, snack). */
+    public string $suggestMealType = 'dinner';
+
     public string $recipeSearch = '';
 
     public string $customTitle = '';
@@ -298,11 +301,16 @@ new #[Layout('layouts.app')] class extends Component
     // ── Suggestions ──────────────────────────────────────────────────────
 
     /**
-     * Suggests a dinner for every day of the shown week (from today) that has none yet.
+     * Suggests a recipe for the chosen course on every day of the shown week (from today) that has
+     * none of that course yet.
      */
     public function suggestWeek(): void
     {
-        $planned = $this->entriesOfWeek->where('meal_type', 'dinner')->map(fn (MealPlan $entry) => $entry->date->toDateString())->all();
+        if (! in_array($this->suggestMealType, MealPlan::MEAL_TYPES, true)) {
+            $this->suggestMealType = 'dinner';
+        }
+
+        $planned = $this->entriesOfWeek->where('meal_type', $this->suggestMealType)->map(fn (MealPlan $entry) => $entry->date->toDateString())->all();
         $dates = collect(range(0, 6))->map(fn (int $offset) => $this->weekStart()->addDays($offset)->toDateString())
             ->filter(fn (string $date) => $date >= today()->toDateString() && ! in_array($date, $planned, true))
             ->values()->all();
@@ -310,7 +318,9 @@ new #[Layout('layouts.app')] class extends Component
         $this->suggestions = $this->toSuggestionState(MealSuggestions::forDates(Auth::user(), (int) $this->householdId, $dates));
 
         if ($this->suggestions === []) {
-            $this->dispatch('toast', message: $dates === [] ? __('Every day of this week already has a dinner.') : __('Add some recipes first.'));
+            $this->dispatch('toast', message: $dates === []
+                ? __('Every day of this week already has a :meal.', ['meal' => MealPlan::mealTypeLabel($this->suggestMealType)])
+                : __('Add some recipes first.'));
         }
     }
 
@@ -331,10 +341,12 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Plans the suggested dinners and offers their ingredients for the shopping list.
+     * Plans the suggested recipes for the chosen course and offers their ingredients for the shopping list.
      */
     public function applySuggestions(): void
     {
+        $mealType = in_array($this->suggestMealType, MealPlan::MEAL_TYPES, true) ? $this->suggestMealType : 'dinner';
+
         $recipes = Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->whereIn('id', array_column($this->suggestions, 'id'))->get()->keyBy('id');
 
         foreach ($this->suggestions as $date => $suggestion) {
@@ -349,7 +361,7 @@ new #[Layout('layouts.app')] class extends Component
                 'created_by' => Auth::id(),
                 'visibility' => $recipe->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
                 'date' => $date,
-                'meal_type' => 'dinner',
+                'meal_type' => $mealType,
                 'recipe_id' => $recipe->id,
                 'title' => $recipe->title,
                 'servings' => $recipe->servings,
@@ -478,7 +490,14 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="$set('week', '')" class="text-sm text-indigo-600 dark:text-indigo-400 underline">{{ __('This week') }}</button>
                 @endunless
                 <span class="flex-1"></span>
-                <button type="button" wire:click="suggestWeek" wire:loading.attr="disabled" wire:target="suggestWeek" class="rounded-md px-3 py-2 text-sm font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">✨ {{ __('Suggest the week') }}</button>
+                <div class="inline-flex items-stretch overflow-hidden rounded-md ring-1 ring-indigo-200 dark:ring-indigo-800">
+                    <select wire:model="suggestMealType" aria-label="{{ __('Course to suggest') }}" class="border-0 bg-white py-2 pl-3 pr-8 text-sm text-indigo-700 focus:ring-0 dark:bg-gray-800 dark:text-indigo-300">
+                        @foreach (\App\Models\MealPlan::MEAL_TYPES as $mealType)
+                            <option value="{{ $mealType }}">{{ \App\Models\MealPlan::mealTypeLabel($mealType) }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" wire:click="suggestWeek" wire:loading.attr="disabled" wire:target="suggestWeek" class="border-l border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-gray-700">✨ {{ __('Suggest the week') }}</button>
+                </div>
                 @if ($hasRecipes)
                     <button type="button" wire:click="chooseShopping" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">🛒 {{ __('Ingredients of the week to shopping list') }}</button>
                 @endif
@@ -487,7 +506,7 @@ new #[Layout('layouts.app')] class extends Component
 
             @if ($suggestions !== [])
                 <section class="rounded-lg bg-white p-5 shadow-xs dark:bg-gray-800" aria-labelledby="suggestions-heading">
-                    <h3 id="suggestions-heading" class="font-medium text-gray-900 dark:text-gray-100">✨ {{ __('Suggestions for dinner') }}</h3>
+                    <h3 id="suggestions-heading" class="font-medium text-gray-900 dark:text-gray-100">✨ {{ __('Suggestions for :meal', ['meal' => \App\Models\MealPlan::mealTypeLabel($suggestMealType)]) }}</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('From your favorites, well-rated recipes and what is in the pantry – recently planned recipes come last.') }}</p>
                     <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach ($suggestions as $date => $suggestion)

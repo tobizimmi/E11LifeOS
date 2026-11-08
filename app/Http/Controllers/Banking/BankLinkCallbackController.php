@@ -7,7 +7,7 @@ use App\Models\BankLink;
 use App\Support\Banking\BankLinkSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -32,13 +32,14 @@ class BankLinkCallbackController extends Controller
 
         try {
             if (! $sync->complete($link, (string) $request->query('code') ?: null)) {
-                // Not an exception, but worth a trace so it shows under Admin › System.
-                Log::warning('Bank link not confirmed on callback', [
-                    'link_id' => $link->id,
-                    'provider' => $link->provider,
-                    'has_code' => $request->query('code') !== null,
-                    'bank' => $link->institution_name,
-                ]);
+                // Not an exception, but report it so it shows under Admin › System. The parameter
+                // names (not values) reveal whether the bank sent a code back at all.
+                report(new RuntimeException(sprintf(
+                    'Bank link not confirmed (%s, bank %s). Callback parameters: %s',
+                    $link->provider,
+                    $link->institution_name,
+                    implode(', ', array_keys($request->query())) ?: 'none'
+                )));
 
                 return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank did not confirm the connection.'));
             }

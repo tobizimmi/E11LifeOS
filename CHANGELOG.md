@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.7] – 2026-11-08
+
+### Verbessert (Banking Enable Banking)
+- **Klarere Ursache, wenn die Bank die Verbindung nicht bestätigt.** Statt eines pauschalen Hinweises zeigt die Verbindung jetzt, ob **kein Freigabe-Code** zurückkam (Freigabe nicht abgeschlossen) oder die Bank **kein Konto** zum Zugriff freigegeben hat. Der nicht-bestätigte Rückruf wird zudem in **Admin → System** protokolliert (inkl. der zurückgegebenen Parameter), damit sich der Grund eindeutig bestimmen lässt.
+- **Enable-Banking-Konten in beiden Antwortformaten gelesen.** Gibt Enable Banking die freigegebenen Konten als reine UID-Liste statt als Objekte zurück, werden sie jetzt trotzdem korrekt übernommen; ein unerwartetes Format wird protokolliert.
+
 ## [1.101.6] – 2026-11-08
 
 ### Behoben (Banking)

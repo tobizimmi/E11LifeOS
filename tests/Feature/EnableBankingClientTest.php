@@ -66,6 +66,16 @@ class EnableBankingClientTest extends TestCase
         });
     }
 
+    public function test_create_session_accepts_accounts_as_uid_strings(): void
+    {
+        // Enable Banking may return the authorized accounts as a list of UID strings.
+        Http::fake(['*/sessions' => Http::response(['session_id' => 'sess-2', 'accounts' => ['uid-a', 'uid-b']])]);
+
+        $session = $this->client()->createSession('the-code');
+
+        $this->assertSame(['uid-a', 'uid-b'], array_column($session['accounts'], 'uid'));
+    }
+
     public function test_it_reports_not_configured_without_credentials(): void
     {
         $this->assertFalse((new EnableBankingClient('', '', 'https://api.enablebanking.com'))->configured());

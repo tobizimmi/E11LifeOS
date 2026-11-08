@@ -77,6 +77,34 @@ class AdminSettingsTest extends TestCase
         Volt::test('admin.settings')->set('form.mail_from_address', 'kein-mail')->call('save')->assertHasErrors('form.mail_from_address');
     }
 
+    public function test_enable_banking_keys_are_saved_encrypted_and_override_the_env(): void
+    {
+        $this->admin();
+        config(['services.enablebanking.application_id' => null, 'services.enablebanking.private_key' => null]);
+
+        openssl_pkey_export(openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]), $pem);
+
+        Volt::test('admin.settings')
+            ->assertSee('Enable-Banking-Application-ID')
+            ->set('form.enablebanking_application_id', 'app-123')
+            ->set('form.enablebanking_private_key', $pem)
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('form.enablebanking_application_id', '')
+            ->assertSet('form.enablebanking_private_key', '');
+
+        $raw = DB::table('app_settings')->where('key', 'enablebanking_private_key')->value('value');
+        $this->assertStringNotContainsString('BEGIN', (string) $raw);
+
+        // A new request reads them from the database and they win over the .env.
+        config(['services.enablebanking.application_id' => null, 'services.enablebanking.private_key' => null]);
+        AppSettings::apply();
+        $this->assertSame('app-123', config('services.enablebanking.application_id'));
+        // save() trims stored values; the key stays a valid PEM without the trailing newline.
+        $this->assertSame(trim($pem), config('services.enablebanking.private_key'));
+        $this->assertNotFalse(openssl_pkey_get_private((string) config('services.enablebanking.private_key')));
+    }
+
     public function test_ai_functions_can_be_switched_off_one_by_one(): void
     {
         $this->admin();

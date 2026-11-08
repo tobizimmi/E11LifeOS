@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.0] – 2026-11-08
+
+### Neu (Admin, Roadmap #1)
+- **Enable-Banking-Zugänge in den Servereinstellungen.** Application-ID und RSA-Privatschlüssel für Enable Banking lassen sich jetzt bequem unter **Servereinstellungen → Portfolio** eintragen (verschlüsselt gespeichert, Vorrang vor der `.env`) – kein SSH-Zugriff auf die Server-`.env` mehr nötig. Sobald beide Werte gesetzt sind, erscheint die Enable-Banking-Bankauswahl auf der Banking-Seite.
+
 ## [1.100.1] – 2026-11-08
 
 ### Verbessert (Roadmap #1)

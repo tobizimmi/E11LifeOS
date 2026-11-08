@@ -39,6 +39,8 @@ class AppSettings
         'vapid_subject' => ['group' => 'push', 'config' => ['services.webpush.subject'], 'secret' => false, 'type' => 'text'],
 
         'fints_product_id' => ['group' => 'portfolio', 'config' => ['services.fints.product_id'], 'secret' => true, 'type' => 'text'],
+        'enablebanking_application_id' => ['group' => 'portfolio', 'config' => ['services.enablebanking.application_id'], 'secret' => true, 'type' => 'text'],
+        'enablebanking_private_key' => ['group' => 'portfolio', 'config' => ['services.enablebanking.private_key'], 'secret' => true, 'type' => 'textarea'],
         'apify_api_key' => ['group' => 'portfolio', 'config' => ['services.instagram.apify_key'], 'secret' => true, 'type' => 'text'],
         'instagram_profile' => ['group' => 'portfolio', 'config' => ['services.instagram.profile'], 'secret' => false, 'type' => 'text'],
         'instagram_limit' => ['group' => 'portfolio', 'config' => ['services.instagram.limit'], 'secret' => false, 'type' => 'number'],

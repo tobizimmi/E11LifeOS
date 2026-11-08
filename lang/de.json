@@ -1970,6 +1970,7 @@
     "Waiting for confirmation at the bank – not finished yet.": "Warten auf Bestätigung bei der Bank – noch nicht abgeschlossen.",
     "No authorisation code came back from the bank – the approval was not completed.": "Von der Bank kam kein Freigabe-Code zurück – die Freigabe wurde nicht abgeschlossen.",
     "The bank declined the authorisation: :error": "Die Bank hat die Freigabe abgelehnt: :error",
+    "The bank's daily access limit is reached. Please try again tomorrow (the bank limits how often it can be queried without a new login).": "Das Tageslimit der Bank ist erreicht. Bitte morgen erneut versuchen (die Bank begrenzt, wie oft sie ohne neuen Login abgefragt werden darf).",
     "The bank granted no account for access. Please reconnect and tick the account(s) to share.": "Die Bank hat kein Konto zum Zugriff freigegeben. Bitte erneut verbinden und die zu teilenden Konten anhaken.",
     "Enable Banking application ID": "Enable-Banking-Application-ID",
     "Enable Banking private key (PEM)": "Enable-Banking-Privatschlüssel (PEM)",

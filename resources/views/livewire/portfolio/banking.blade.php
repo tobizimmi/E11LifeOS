@@ -320,7 +320,14 @@ new #[Layout('layouts.app')] class extends Component
         } catch (\Throwable $exception) {
             // Log it so the real reason shows under Admin › System instead of being swallowed.
             report($exception);
-            $this->dispatch('toast', message: __('The bank sync failed. Please try again later.'));
+
+            // PSD2 lets a bank be queried only a few times per day without a fresh login (429).
+            $rateLimited = $exception instanceof \Illuminate\Http\Client\RequestException
+                && $exception->response->status() === 429;
+
+            $this->dispatch('toast', message: $rateLimited
+                ? __('The bank\'s daily access limit is reached. Please try again tomorrow (the bank limits how often it can be queried without a new login).')
+                : __('The bank sync failed. Please try again later.'));
         }
     }
 

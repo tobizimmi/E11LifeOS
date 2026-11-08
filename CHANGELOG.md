@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.102.4] – 2026-11-08
+
+### Verbessert (Banking)
+- **Klarer Hinweis beim Tageslimit der Bank.** PSD2 erlaubt nur wenige Konto-Abrufe pro Tag ohne neuen Login; danach antwortet die Bank mit „429". Statt „Bankabruf fehlgeschlagen" erscheint jetzt „Tageslimit erreicht – bitte morgen erneut".
+
 ## [1.102.3] – 2026-11-08
 
 ### Behoben (Banking Enable Banking)

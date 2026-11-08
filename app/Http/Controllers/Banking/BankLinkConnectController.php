@@ -54,7 +54,10 @@ class BankLinkConnectController extends Controller
             $link = $sync->connect($request->user(), $institution['id'], $institution['name'], $institution['logo'], $callback);
 
             return redirect()->away($link);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            // Log it so the real reason (e.g. redirect URL not registered, invalid key) shows under Admin › System.
+            report($exception);
+
             return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank connection could not be started. Please try again.'));
         }
     }

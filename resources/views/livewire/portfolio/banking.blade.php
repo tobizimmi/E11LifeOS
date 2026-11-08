@@ -437,16 +437,19 @@ new #[Layout('layouts.app')] class extends Component
                                                 <span class="text-red-600 dark:text-red-400">{{ __('Expired – please reconnect') }}</span>
                                             @elseif ($link->status === 'linked')
                                                 {{ __('Active') }}@if ($link->last_synced_at) · {{ __('last sync :date', ['date' => $link->last_synced_at->format('d.m.Y H:i')]) }}@endif@if ($link->consent_expires_at) · {{ __('valid until :date', ['date' => $link->consent_expires_at->format('d.m.Y')]) }}@endif
+                                            @elseif ($link->status === 'error')
+                                                <span class="text-red-600 dark:text-red-400">{{ $link->sync_message ?: __('The bank did not confirm the connection.') }}</span>
                                             @else
-                                                {{ __('Not confirmed yet') }}
+                                                {{ __('Waiting for confirmation at the bank – not finished yet.') }}
                                             @endif
+                                            · {{ $link->provider === 'enablebanking' ? 'Enable Banking' : 'GoCardless' }}
                                         </span>
                                     </span>
-                                    @if ($link->isExpired())
-                                        <a href="{{ route('portfolio.banking.link.connect', ['provider' => $link->provider, 'institution' => $link->institution_id]) }}" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">↻ {{ __('Reconnect') }}</a>
-                                    @elseif ($link->status === 'linked')
+                                    @if ($link->status === 'linked')
                                         <button type="button" wire:click="syncBankLink({{ $link->id }})" wire:loading.attr="disabled" wire:target="syncBankLink" class="rounded-lg px-3 py-1.5 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-800 dark:hover:bg-gray-700">💶 {{ __('Sync now') }}</button>
                                         <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" @checked($link->auto_sync) wire:click="toggleBankLinkAutoSync({{ $link->id }})" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Daily') }}</label>
+                                    @else
+                                        <a href="{{ route('portfolio.banking.link.connect', ['provider' => $link->provider, 'institution' => $link->institution_id]) }}" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">↻ {{ __('Reconnect') }}</a>
                                     @endif
                                     <button type="button" wire:click="deleteBankLink({{ $link->id }})" wire:confirm="{{ __('Remove this bank connection?') }}" class="rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700" aria-label="{{ __('Delete') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
                                 </li>

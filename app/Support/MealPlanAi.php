@@ -112,10 +112,10 @@ class MealPlanAi extends StructuredAi
         }
 
         if (! empty($prefs['meal_prep'])) {
-            $lines[] = 'MEAL-PREP-Modus: bevorzuge vorkochbare, gut lagerbare Gerichte, die sich für mehrere Portionen und Aufbewahrung eignen; setze meal_prep=true bei passenden Rezepten.';
+            $lines[] = 'MEAL-PREP-Modus: bevorzuge vorkochbare, gut lagerbare Gerichte, die sich für mehrere Portionen und Aufbewahrung eignen.';
         }
 
-        $lines[] = 'Erzeuge für jedes geplante Mahlzeiten-Slot ein vollständiges Rezept (Zutaten mit Mengen, Schritt-für-Schritt-Anleitung, Zubereitungs-/Kochzeit, Schwierigkeit, Kalorien pro Portion).';
+        $lines[] = 'Erzeuge für jedes geplante Mahlzeiten-Slot ein vollständiges Rezept (Zutaten mit Mengen, Schritt-für-Schritt-Anleitung, Zubereitungs-/Kochzeit, Schwierigkeit easy/medium/hard, Kalorien pro Portion).';
         $lines[] = 'Fasse am Ende ALLE Zutaten aller Rezepte zu EINER Einkaufsliste zusammen (Mengen addieren, nach Kategorie gruppieren, geschätzter Preis in Euro, on_offer=true wenn ein Angebot genutzt wurde).';
 
         return implode("\n", $lines);
@@ -140,16 +140,14 @@ class MealPlanAi extends StructuredAi
                         'type' => 'object',
                         'properties' => [
                             'day' => ['type' => 'integer'],
-                            'meal_type' => ['type' => 'string', 'enum' => ['breakfast', 'lunch', 'dinner', 'snack']],
+                            'meal_type' => ['type' => 'string'],
                             'title' => ['type' => 'string'],
                             'description' => ['type' => 'string'],
                             'servings' => ['type' => 'integer'],
                             'prep_time' => ['type' => 'integer'],
                             'cook_time' => ['type' => 'integer'],
-                            'difficulty' => ['type' => 'string', 'enum' => ['easy', 'medium', 'hard']],
+                            'difficulty' => ['type' => 'string'],
                             'calories' => ['type' => 'integer'],
-                            'meal_prep' => ['type' => 'boolean'],
-                            'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'ingredients' => [
                                 'type' => 'array',
                                 'items' => [

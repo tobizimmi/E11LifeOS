@@ -141,6 +141,16 @@ return [
         'base_url' => env('GOCARDLESS_BASE_URL', 'https://bankaccountdata.gocardless.com/api/v2'),
     ],
 
+    // Enable Banking: PSD2 account aggregation (the open successor since GoCardless stopped new
+    // signups). Register a free application at enablebanking.com, set the application id and point
+    // ENABLEBANKING_PRIVATE_KEY at the RSA private key (file path or the PEM contents). API auth is
+    // a self-signed RS256 JWT (kid = application id). Without a key the feature stays hidden.
+    'enablebanking' => [
+        'application_id' => env('ENABLEBANKING_APPLICATION_ID'),
+        'private_key' => env('ENABLEBANKING_PRIVATE_KEY'),
+        'base_url' => env('ENABLEBANKING_BASE_URL', 'https://api.enablebanking.com'),
+    ],
+
     // Two-way calendar sync with Google Calendar. Create an OAuth client at
     // console.cloud.google.com (Calendar API), add the redirect URI and put the keys in the
     // environment. Without them the "connect Google Calendar" feature stays hidden.

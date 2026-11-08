@@ -82,6 +82,59 @@ class BankLinkSyncTest extends TestCase
         $this->assertSame(2, Transaction::where('bank_account_id', $account->id)->count());
     }
 
+    private function configureEnableBanking(): void
+    {
+        openssl_pkey_export(openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]), $pem);
+        config()->set('services.enablebanking.application_id', 'app-123');
+        config()->set('services.enablebanking.private_key', $pem);
+        config()->set('services.enablebanking.base_url', 'https://api.enablebanking.com');
+    }
+
+    private function fakeEnableBanking(): void
+    {
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+
+            return match (true) {
+                str_contains($url, '/aspsps') => Http::response(['aspsps' => [['name' => 'Test Bank', 'country' => 'DE', 'logo' => 'https://logo.test/eb.png']]]),
+                str_contains($url, '/auth') => Http::response(['url' => 'https://auth.enablebanking.com/consent/abc', 'authorization_id' => 'authz-1']),
+                str_contains($url, '/sessions') => Http::response(['session_id' => 'sess-1', 'accounts' => [['uid' => 'eb-acc-1', 'account_id' => ['iban' => 'DE89370400440532013000'], 'name' => 'Girokonto']]]),
+                str_contains($url, '/accounts/eb-acc-1/balances') => Http::response(['balances' => [['balance_type' => 'CLBD', 'balance_amount' => ['amount' => '987.65', 'currency' => 'EUR'], 'reference_date' => '2026-11-06']]]),
+                str_contains($url, '/accounts/eb-acc-1/transactions') => Http::response(['transactions' => [
+                    ['booking_date' => '2026-11-05', 'transaction_amount' => ['amount' => '20.00', 'currency' => 'EUR'], 'credit_debit_indicator' => 'DBIT', 'creditor' => ['name' => 'REWE'], 'remittance_information' => ['Einkauf']],
+                    ['booking_date' => '2026-11-01', 'transaction_amount' => ['amount' => '2500.00', 'currency' => 'EUR'], 'credit_debit_indicator' => 'CRDT', 'debtor' => ['name' => 'Arbeitgeber'], 'remittance_information' => 'Gehalt'],
+                ]]),
+                default => Http::response([], 404),
+            };
+        });
+    }
+
+    public function test_enable_banking_connect_complete_and_sync_imports_bookings(): void
+    {
+        $this->configureEnableBanking();
+        $this->fakeEnableBanking();
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $sync = app(BankLinkSync::class);
+
+        $url = $sync->connectEnableBanking($user, 'Test Bank', 'DE', null, 'https://app.test/callback');
+        $this->assertStringContainsString('auth.enablebanking.com', $url);
+
+        $model = BankLink::sole();
+        $this->assertSame([BankLink::PROVIDER_ENABLEBANKING, 'Test Bank', 'authz-1', BankLink::STATUS_CREATED], [$model->provider, $model->institution_id, $model->requisition_id, $model->status]);
+
+        $this->assertTrue($sync->complete($model, 'the-code'));
+        $model->refresh();
+        $this->assertSame([BankLink::STATUS_LINKED, ['eb-acc-1']], [$model->status, $model->account_ids]);
+
+        $result = $sync->sync($model);
+        $this->assertSame(['imported' => 2, 'accounts' => 1], $result);
+
+        $account = BankAccount::where('user_id', $user->id)->where('iban', 'DE89370400440532013000')->sole();
+        $this->assertSame(987.65, (float) $account->balance);
+        $this->assertSame(2, $account->transactions()->count());
+    }
+
     public function test_invalid_gocardless_credentials_show_a_hint_instead_of_crashing(): void
     {
         // GoCardless rejects the secret pair when minting the token (401).

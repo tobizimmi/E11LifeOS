@@ -175,7 +175,7 @@ class EnableBankingClient
 
         // Nothing parsed: surface what the bank actually returned so we can tell "empty" from "wrong shape".
         if ($rows === []) {
-            report(new RuntimeException('Enable Banking: 0 transactions for '.$accountUid.' (from '.($dateFrom ?? 'n/a').'). Response keys: '.(implode(',', $firstKeys ?? []) ?: 'none')));
+            report(new RuntimeException('Enable Banking: 0 transactions for '.$accountUid.' (from '.($dateFrom ?? 'n/a').'). Response keys: '.(implode(',', $firstKeys) ?: 'none')));
         }
 
         return collect($rows)->map(function (mixed $transaction): array {

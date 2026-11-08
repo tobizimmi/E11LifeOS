@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.4] – 2026-11-08
+
+### Behoben (KI)
+- **Essensplaner brach mit „Schema is too complex" (HTTP 400) ab.** Das an die Anthropic-API gesendete JSON-Schema des Wochenplans war zu umfangreich. Es wurde verschlankt (feste Auswahllisten/`enum` für Mahlzeit und Schwierigkeit sowie die ungenutzten Felder `tags`/`meal_prep` entfernt), ohne dass im Plan sichtbare Felder wegfallen. Mahlzeitentyp und Schwierigkeit steuert jetzt der Prompt statt eines Schema-Enums.
+
 ## [1.101.3] – 2026-11-08
 
 ### Geändert (Banking)

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.102.3] – 2026-11-08
+
+### Behoben (Banking Enable Banking)
+- **Bankabruf schlug nach dem Transaktions-Update fehl.** Lieferte die Bank einen leeren Fortsetzungs-Schlüssel (`continuation_key`) für die Seiten-Navigation zurück, lief der Abruf in eine Endlosschleife und brach mit „Bankabruf fehlgeschlagen" ab. Die Paginierung endet jetzt zuverlässig (bei leerem Schlüssel und spätestens nach 50 Seiten).
+
 ## [1.102.2] – 2026-11-08
 
 ### Behoben (Banking Enable Banking)

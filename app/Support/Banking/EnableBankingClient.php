@@ -92,15 +92,29 @@ class EnableBankingClient
         $response = $this->request()->post('/sessions', ['code' => $code])->throw()->json();
 
         $accounts = collect($response['accounts'] ?? [])
-            ->map(fn (array $account) => [
-                'uid' => (string) ($account['uid'] ?? ''),
-                'iban' => $account['account_id']['iban'] ?? $account['iban'] ?? null,
-                'name' => $account['name'] ?? $account['product'] ?? null,
-                'currency' => $account['currency'] ?? null,
-            ])
+            ->map(function (mixed $account): array {
+                // Enable Banking returns either a plain account UID string or a detailed object.
+                if (is_string($account)) {
+                    return ['uid' => $account, 'iban' => null, 'name' => null, 'currency' => null];
+                }
+
+                $account = (array) $account;
+
+                return [
+                    'uid' => (string) ($account['uid'] ?? $account['account_uid'] ?? ''),
+                    'iban' => $account['account_id']['iban'] ?? $account['iban'] ?? null,
+                    'name' => $account['name'] ?? $account['product'] ?? null,
+                    'currency' => $account['currency'] ?? null,
+                ];
+            })
             ->filter(fn (array $account) => $account['uid'] !== '')
             ->values()
             ->all();
+
+        // The bank returned accounts, but in a shape we did not recognise – surface it for diagnosis.
+        if ($accounts === [] && ($response['accounts'] ?? []) !== []) {
+            report(new RuntimeException('Enable Banking session returned accounts in an unexpected shape: '.json_encode(array_slice((array) $response['accounts'], 0, 1))));
+        }
 
         return ['session_id' => (string) ($response['session_id'] ?? ''), 'accounts' => $accounts];
     }
@@ -138,9 +152,37 @@ class EnableBankingClient
     public function transactions(string $accountUid, ?string $dateFrom = null): array
     {
         $query = $dateFrom ? ['date_from' => $dateFrom] : [];
-        $response = $this->request()->get("/accounts/{$accountUid}/transactions", $query)->throw()->json();
+        $rows = [];
+        $continuationKey = null;
+        $firstKeys = null;
+        $pages = 0;
 
-        return collect($response['transactions'] ?? [])->map(function (array $transaction) {
+        // Follow pagination (continuation_key) so later pages are not missed. The page cap and
+        // filled() guard stop the loop even if the bank keeps returning an empty/constant key.
+        do {
+            $params = filled($continuationKey) ? $query + ['continuation_key' => $continuationKey] : $query;
+            $response = $this->request()->get("/accounts/{$accountUid}/transactions", $params)->throw()->json();
+            $firstKeys ??= array_keys($response);
+
+            $list = $response['transactions'] ?? [];
+
+            // Berlin Group shape: {booked: [...], pending: [...]} instead of a flat list.
+            if (is_array($list) && (array_key_exists('booked', $list) || array_key_exists('pending', $list))) {
+                $list = array_merge($list['booked'] ?? [], $list['pending'] ?? []);
+            }
+
+            $rows = array_merge($rows, array_values(is_array($list) ? $list : []));
+            $continuationKey = $response['continuation_key'] ?? null;
+            $pages++;
+        } while (filled($continuationKey) && $pages < 50 && count($rows) < 5000);
+
+        // Nothing parsed: surface what the bank actually returned so we can tell "empty" from "wrong shape".
+        if ($rows === []) {
+            report(new RuntimeException('Enable Banking: 0 transactions for '.$accountUid.' (from '.($dateFrom ?? 'n/a').'). Response keys: '.(implode(',', $firstKeys) ?: 'none')));
+        }
+
+        return collect($rows)->map(function (mixed $transaction): array {
+            $transaction = (array) $transaction;
             $amount = (float) ($transaction['transaction_amount']['amount'] ?? 0);
 
             if (($transaction['credit_debit_indicator'] ?? '') === 'DBIT') {

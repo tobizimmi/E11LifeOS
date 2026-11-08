@@ -3,6 +3,38 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.102.4] – 2026-11-08
+
+### Verbessert (Banking)
+- **Klarer Hinweis beim Tageslimit der Bank.** PSD2 erlaubt nur wenige Konto-Abrufe pro Tag ohne neuen Login; danach antwortet die Bank mit „429". Statt „Bankabruf fehlgeschlagen" erscheint jetzt „Tageslimit erreicht – bitte morgen erneut".
+
+## [1.102.3] – 2026-11-08
+
+### Behoben (Banking Enable Banking)
+- **Bankabruf schlug nach dem Transaktions-Update fehl.** Lieferte die Bank einen leeren Fortsetzungs-Schlüssel (`continuation_key`) für die Seiten-Navigation zurück, brach der Abruf mit „Bankabruf fehlgeschlagen" ab (bzw. lief in eine Schleife). Die Paginierung endet jetzt zuverlässig (bei leerem Schlüssel und spätestens nach 50 Seiten).
+- **Fehler bei „Sync now" werden protokolliert.** Ein fehlgeschlagener manueller Bankabruf landete bisher nur als Hinweis, nicht im Protokoll – der echte Grund erscheint jetzt unter **Admin → System → letzte Fehler**.
+
+## [1.102.2] – 2026-11-08
+
+### Behoben (Banking Enable Banking)
+- **Buchungen wurden teils nicht importiert (0 Buchungen).** Manche Banken (z. B. DKB, Berlin-Group-Standard) liefern Transaktionen als `{booked, pending}` statt als flache Liste und/oder über mehrere Seiten (`continuation_key`). Beides wird jetzt gelesen: gebuchte und vorgemerkte Umsätze werden zusammengeführt und alle Seiten abgerufen. Kommt trotzdem nichts an, wird die Antwortstruktur in Admin → System protokolliert.
+
+## [1.102.1] – 2026-11-08
+
+### Verbessert (Banking Enable Banking)
+- **Abgelehnte Bank-Freigabe nennt den Grund.** Schickt die Bank/Enable Banking beim Rückruf einen Fehler statt eines Freigabe-Codes zurück (Freigabe abgebrochen, abgelehnt oder falsch konfiguriert), zeigt die Verbindung jetzt den konkreten Fehlertext der Bank an (und protokolliert ihn in Admin → System), statt nur „kein Code".
+
+## [1.102.0] – 2026-11-08
+
+### Neu (Rezepte / Wochenplan)
+- **Wochenplan-Vorschläge für jeden Gang.** Die „Woche vorschlagen"-Funktion schlug bisher nur **Abendessen** aus den eigenen Rezepten vor. Jetzt lässt sich daneben der **Gang auswählen** (Frühstück, Mittagessen, Abendessen, Snack); die Vorschläge und das Einplanen gelten dann für den gewählten Gang – und blockieren sich gegenseitig nicht (ein Tag mit Abendessen kann z. B. trotzdem einen Frühstücksvorschlag bekommen).
+
+## [1.101.7] – 2026-11-08
+
+### Verbessert (Banking Enable Banking)
+- **Klarere Ursache, wenn die Bank die Verbindung nicht bestätigt.** Statt eines pauschalen Hinweises zeigt die Verbindung jetzt, ob **kein Freigabe-Code** zurückkam (Freigabe nicht abgeschlossen) oder die Bank **kein Konto** zum Zugriff freigegeben hat. Der nicht-bestätigte Rückruf wird zudem in **Admin → System** protokolliert (inkl. der zurückgegebenen Parameter), damit sich der Grund eindeutig bestimmen lässt.
+- **Enable-Banking-Konten in beiden Antwortformaten gelesen.** Gibt Enable Banking die freigegebenen Konten als reine UID-Liste statt als Objekte zurück, werden sie jetzt trotzdem korrekt übernommen; ein unerwartetes Format wird protokolliert.
+
 ## [1.101.6] – 2026-11-08
 
 ### Behoben (Banking)

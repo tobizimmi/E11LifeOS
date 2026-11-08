@@ -106,7 +106,7 @@ class BankLinkSync
     private function completeEnableBanking(BankLink $link, ?string $code): bool
     {
         if (! $code) {
-            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => __('The bank did not confirm the connection.')]);
+            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => __('No authorisation code came back from the bank – the approval was not completed.')]);
 
             return false;
         }
@@ -114,7 +114,7 @@ class BankLinkSync
         $session = $this->enableBanking->createSession($code);
 
         if ($session['accounts'] === []) {
-            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => __('The bank did not confirm the connection.')]);
+            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => __('The bank granted no account for access. Please reconnect and tick the account(s) to share.')]);
 
             return false;
         }

@@ -7,7 +7,7 @@ use App\Models\BankLink;
 use App\Support\Banking\BankLinkSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -30,15 +30,28 @@ class BankLinkCallbackController extends Controller
             return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank connection could not be found.'));
         }
 
+        // The bank/aggregator redirects back with an "error" instead of a "code" when the approval was
+        // declined, cancelled or misconfigured – surface the actual reason instead of a generic hint.
+        $error = trim((string) ($request->query('error') ?: $request->query('error_description') ?: $request->query('message') ?: ''));
+
+        if ($error !== '' && ! $request->query('code')) {
+            report(new RuntimeException(sprintf('Bank authorisation declined (%s, bank %s): %s', $link->provider, $link->institution_name, $error)));
+            $message = __('The bank declined the authorisation: :error', ['error' => $error]);
+            $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => $message]);
+
+            return redirect()->route('portfolio.banking')->with('bankLinkStatus', $message);
+        }
+
         try {
             if (! $sync->complete($link, (string) $request->query('code') ?: null)) {
-                // Not an exception, but worth a trace so it shows under Admin › System.
-                Log::warning('Bank link not confirmed on callback', [
-                    'link_id' => $link->id,
-                    'provider' => $link->provider,
-                    'has_code' => $request->query('code') !== null,
-                    'bank' => $link->institution_name,
-                ]);
+                // Not an exception, but report it so it shows under Admin › System. The parameter
+                // names (not values) reveal whether the bank sent a code back at all.
+                report(new RuntimeException(sprintf(
+                    'Bank link not confirmed (%s, bank %s). Callback parameters: %s',
+                    $link->provider,
+                    $link->institution_name,
+                    implode(', ', array_keys($request->query())) ?: 'none'
+                )));
 
                 return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank did not confirm the connection.'));
             }

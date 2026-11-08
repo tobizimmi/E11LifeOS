@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.100.1] – 2026-11-08
+
+### Verbessert (Roadmap #1)
+- **Stabilerer CSV-Import von Kontoauszügen.** Der Parser liest die Datei jetzt als Datenstrom statt Zeile für Zeile: mehrzeilige Verwendungszwecke in Anführungszeichen (und darin enthaltene Trennzeichen) bleiben korrekt einer Buchung zugeordnet. Zusätzlich werden mehr Datumsformate erkannt (`2026/09/24`, `24-09-2026`, ISO mit Uhrzeit).
+
 ## [1.100.0] – 2026-11-08
 
 ### Neu (Banking, Roadmap #1)

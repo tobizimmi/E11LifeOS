@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.101.1] – 2026-11-08
+
+### Behoben (KI)
+- **KI-Essensplaner (und andere KI-Funktionen) brachen mit „KI-Dienst nicht erreichbar" ab.** Die Anthropic-API verlangt für strukturierte Antworten, dass jedes Objekt im JSON-Schema `additionalProperties: false` ausdrücklich setzt (sonst HTTP 400). Das Schema wird jetzt zentral vor dem Senden entsprechend ergänzt, sodass alle KI-Funktionen wieder durchlaufen.
+
 ## [1.101.0] – 2026-11-08
 
 ### Neu (Admin, Roadmap #1)

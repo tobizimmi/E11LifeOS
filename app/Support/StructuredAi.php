@@ -66,7 +66,7 @@ abstract class StructuredAi
             $arguments = [
                 'maxTokens' => $maxTokens,
                 'messages' => [['role' => 'user', 'content' => $content]],
-                'outputConfig' => ['effort' => 'low', 'format' => ['type' => 'json_schema', 'schema' => $schema]],
+                'outputConfig' => ['effort' => 'low', 'format' => ['type' => 'json_schema', 'schema' => self::strictSchema($schema)]],
             ];
 
             if ($system !== null) {
@@ -109,6 +109,29 @@ abstract class StructuredAi
     protected function fail(string $message, ?Throwable $previous = null): never
     {
         throw new AiException($message, previous: $previous);
+    }
+
+    /**
+     * Anthropic's structured output rejects a schema whose every `object` does not explicitly set
+     * `additionalProperties: false`. This walks the schema and adds it wherever it is missing, so
+     * each feature only has to declare its own properties.
+     *
+     * @param  array<string, mixed>  $schema
+     * @return array<string, mixed>
+     */
+    public static function strictSchema(array $schema): array
+    {
+        foreach ($schema as $key => $value) {
+            if (is_array($value)) {
+                $schema[$key] = self::strictSchema($value);
+            }
+        }
+
+        if (($schema['type'] ?? null) === 'object' && ! array_key_exists('additionalProperties', $schema)) {
+            $schema['additionalProperties'] = false;
+        }
+
+        return $schema;
     }
 
     private function anthropicClient(): Client

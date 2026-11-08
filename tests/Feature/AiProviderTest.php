@@ -3,11 +3,38 @@
 namespace Tests\Feature;
 
 use App\Support\BrainAi;
+use App\Support\StructuredAi;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AiProviderTest extends TestCase
 {
+    #[Test]
+    public function the_schema_gets_additional_properties_false_on_every_object(): void
+    {
+        // Anthropic structured output rejects objects without additionalProperties:false.
+        $strict = StructuredAi::strictSchema([
+            'type' => 'object',
+            'properties' => [
+                'title' => ['type' => 'string'],
+                'recipes' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => ['name' => ['type' => 'string']],
+                    ],
+                ],
+                'meta' => ['type' => 'object', 'additionalProperties' => true],
+            ],
+        ]);
+
+        $this->assertFalse($strict['additionalProperties']);
+        $this->assertFalse($strict['properties']['recipes']['items']['additionalProperties']);
+        // A string property is left untouched; an explicit setting is kept.
+        $this->assertArrayNotHasKey('additionalProperties', $strict['properties']['title']);
+        $this->assertTrue($strict['properties']['meta']['additionalProperties']);
+    }
+
     #[Test]
     public function the_anthropic_provider_needs_an_api_key(): void
     {

@@ -317,7 +317,9 @@ new #[Layout('layouts.app')] class extends Component
             $this->dispatch('toast', message: trim(
                 trans_choice(':count new booking imported into Finances.|:count new bookings imported into Finances.', $result['imported'])
             ));
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            // Log it so the real reason shows under Admin › System instead of being swallowed.
+            report($exception);
             $this->dispatch('toast', message: __('The bank sync failed. Please try again later.'));
         }
     }

@@ -155,10 +155,12 @@ class EnableBankingClient
         $rows = [];
         $continuationKey = null;
         $firstKeys = null;
+        $pages = 0;
 
-        // Follow pagination (continuation_key) so later pages are not missed.
+        // Follow pagination (continuation_key) so later pages are not missed. The page cap and
+        // filled() guard stop the loop even if the bank keeps returning an empty/constant key.
         do {
-            $params = $continuationKey !== null ? $query + ['continuation_key' => $continuationKey] : $query;
+            $params = filled($continuationKey) ? $query + ['continuation_key' => $continuationKey] : $query;
             $response = $this->request()->get("/accounts/{$accountUid}/transactions", $params)->throw()->json();
             $firstKeys ??= array_keys($response);
 
@@ -171,7 +173,8 @@ class EnableBankingClient
 
             $rows = array_merge($rows, array_values(is_array($list) ? $list : []));
             $continuationKey = $response['continuation_key'] ?? null;
-        } while ($continuationKey !== null && count($rows) < 5000);
+            $pages++;
+        } while (filled($continuationKey) && $pages < 50 && count($rows) < 5000);
 
         // Nothing parsed: surface what the bank actually returned so we can tell "empty" from "wrong shape".
         if ($rows === []) {

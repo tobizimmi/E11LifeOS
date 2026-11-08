@@ -91,6 +91,20 @@ class EnableBankingClientTest extends TestCase
         $this->assertSame(99.0, $rows[1]['amount']);   // pending, CRDT → positive
     }
 
+    public function test_transactions_stop_on_an_empty_continuation_key(): void
+    {
+        // An empty-string continuation_key must end pagination (not loop forever).
+        Http::fake(['*/accounts/acc-7/transactions*' => Http::response([
+            'transactions' => [['booking_date' => '2026-11-05', 'transaction_amount' => ['amount' => '5.00'], 'credit_debit_indicator' => 'CRDT']],
+            'continuation_key' => '',
+        ])]);
+
+        $rows = $this->client()->transactions('acc-7', '2026-10-01');
+
+        $this->assertCount(1, $rows);
+        Http::assertSentCount(1);
+    }
+
     public function test_it_reports_not_configured_without_credentials(): void
     {
         $this->assertFalse((new EnableBankingClient('', '', 'https://api.enablebanking.com'))->configured());

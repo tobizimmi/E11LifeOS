@@ -295,6 +295,15 @@ new #[Layout('layouts.app')] class extends Component
         $recipe->update(['archived_at' => $recipe->isArchived() ? null : now()]);
     }
 
+    /**
+     * Keeps a temporary AI-planner recipe in the cookbook permanently (it is no longer pruned).
+     */
+    public function keepPermanently(): void
+    {
+        $this->ownRecipe()->keepPermanently();
+        $this->dispatch('toast', message: __('Recipe saved to the cookbook.'));
+    }
+
     public function delete(): void
     {
         $this->ownRecipe()->delete();
@@ -337,6 +346,15 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6 sm:py-8">
         <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <a href="{{ route('recipes.index') }}" wire:navigate class="text-sm text-gray-500 dark:text-gray-400 hover:underline">&larr; {{ __('All recipes') }}</a>
+
+            @if ($recipe->isTemporary())
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                    <span>⏳ {{ __('This recipe is only kept for this week\'s plan and will be removed on :date.', ['date' => $recipe->expires_at->translatedFormat('d.m.Y')]) }}</span>
+                    @if ($recipe->household_id === (int) $this->householdId)
+                        <x-primary-button type="button" wire:click="keepPermanently">⭐ {{ __('Keep in cookbook') }}</x-primary-button>
+                    @endif
+                </div>
+            @endif
 
             <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs">
                 @if ($recipe->imageUrl())

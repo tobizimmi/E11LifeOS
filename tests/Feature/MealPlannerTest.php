@@ -89,12 +89,13 @@ class MealPlannerTest extends TestCase
         $component->call('generate')->assertHasNoErrors();
         $this->assertSame('Rewe', $component->get('result')['supermarket']);
 
-        // Save recipes + add to the weekly plan.
-        $component->call('applyPlan', true);
+        // Save all recipes permanently + add to the weekly plan.
+        $component->call('addToPlan', true);
 
         $this->assertSame(2, Recipe::where('household_id', $household->id)->count());
         $pasta = Recipe::where('title', 'Pasta Pomodoro')->sole();
         $this->assertSame('ai', $pasta->source_type);
+        $this->assertNull($pasta->expires_at); // kept permanently
         $this->assertCount(2, $pasta->ingredients);
         $this->assertSame('Spaghetti', $pasta->ingredients[0]['name']);
 
@@ -110,17 +111,80 @@ class MealPlannerTest extends TestCase
         $this->assertSame(2, ShoppingListEntry::count());
     }
 
-    public function test_plan_can_be_added_without_saving_recipes(): void
+    public function test_add_to_plan_creates_temporary_recipes_that_stay_linked_but_out_of_the_cookbook(): void
     {
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
         $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->andReturn($this->aiResult()));
 
-        Volt::test('recipes.planner')->call('generate')->call('applyPlan', false);
+        Volt::test('recipes.planner')->call('generate')->call('addToPlan', false);
 
-        $this->assertSame(0, Recipe::where('household_id', $household->id)->count());
+        // Recipes are created but temporary (expire after the week) so the plan can link to them …
+        $recipes = Recipe::where('household_id', $household->id)->get();
+        $this->assertCount(2, $recipes);
+        $recipes->each(fn (Recipe $recipe) => $this->assertNotNull($recipe->expires_at));
+        $this->assertTrue($recipes->first()->expires_at->gt(now()));
+
+        // … the plan entries link to them (so there is a recipe to open) …
         $this->assertSame(2, MealPlan::count());
-        $this->assertNull(MealPlan::orderBy('date')->first()->recipe_id);
+        $this->assertNotNull(MealPlan::orderBy('date')->first()->recipe_id);
+
+        // … but they do not show up in the cookbook listing.
+        $this->assertSame(0, Recipe::query()->cookbook()->count());
+    }
+
+    public function test_only_ticked_recipes_are_kept_permanently(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->andReturn($this->aiResult()));
+
+        // Keep only the first generated recipe (canonical index 0).
+        Volt::test('recipes.planner')->call('generate')->set('keep', [0])->call('addToPlan', false);
+
+        $this->assertNull(Recipe::where('title', 'Pasta Pomodoro')->sole()->expires_at);
+        $this->assertNotNull(Recipe::where('title', 'Gemüsecurry')->sole()->expires_at);
+        $this->assertSame(1, Recipe::query()->cookbook()->count());
+    }
+
+    public function test_prune_command_removes_expired_temporary_recipes_and_keeps_the_plan_title(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $expired = Recipe::factory()->for($household)->create(['title' => 'Alt-KI', 'expires_at' => now()->subDay()]);
+        $future = Recipe::factory()->for($household)->create(['title' => 'Diese Woche', 'expires_at' => now()->addDay()]);
+        $permanent = Recipe::factory()->for($household)->create(['title' => 'Kochbuch', 'expires_at' => null]);
+
+        $entry = MealPlan::create([
+            'household_id' => $household->id, 'created_by' => $user->id,
+            'date' => today()->toDateString(), 'meal_type' => 'dinner',
+            'recipe_id' => $expired->id, 'title' => 'Alt-KI',
+        ]);
+
+        $this->artisan('recipes:prune-temporary')->assertSuccessful();
+
+        $this->assertNull(Recipe::find($expired->id));
+        $this->assertNotNull(Recipe::find($future->id));
+        $this->assertNotNull(Recipe::find($permanent->id));
+
+        // The plan entry survives with its title; only the recipe link is cleared.
+        $entry->refresh();
+        $this->assertNull($entry->recipe_id);
+        $this->assertSame('Alt-KI', $entry->title);
+    }
+
+    public function test_a_temporary_recipe_can_be_kept_from_its_page(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $recipe = Recipe::factory()->for($household)->create(['expires_at' => now()->addDay()]);
+
+        Volt::test('recipes.show', ['recipe' => $recipe->id])->call('keepPermanently');
+
+        $this->assertNull($recipe->fresh()->expires_at);
     }
 }

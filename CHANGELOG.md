@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.102.2] – 2026-11-08
+
+### Behoben (Banking Enable Banking)
+- **Buchungen wurden teils nicht importiert (0 Buchungen).** Manche Banken (z. B. DKB, Berlin-Group-Standard) liefern Transaktionen als `{booked, pending}` statt als flache Liste und/oder über mehrere Seiten (`continuation_key`). Beides wird jetzt gelesen: gebuchte und vorgemerkte Umsätze werden zusammengeführt und alle Seiten abgerufen. Kommt trotzdem nichts an, wird die Antwortstruktur in Admin → System protokolliert.
+
 ## [1.102.1] – 2026-11-08
 
 ### Verbessert (Banking Enable Banking)

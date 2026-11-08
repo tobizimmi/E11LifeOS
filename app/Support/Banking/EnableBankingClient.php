@@ -152,9 +152,34 @@ class EnableBankingClient
     public function transactions(string $accountUid, ?string $dateFrom = null): array
     {
         $query = $dateFrom ? ['date_from' => $dateFrom] : [];
-        $response = $this->request()->get("/accounts/{$accountUid}/transactions", $query)->throw()->json();
+        $rows = [];
+        $continuationKey = null;
+        $firstKeys = null;
 
-        return collect($response['transactions'] ?? [])->map(function (array $transaction) {
+        // Follow pagination (continuation_key) so later pages are not missed.
+        do {
+            $params = $continuationKey !== null ? $query + ['continuation_key' => $continuationKey] : $query;
+            $response = $this->request()->get("/accounts/{$accountUid}/transactions", $params)->throw()->json();
+            $firstKeys ??= array_keys($response);
+
+            $list = $response['transactions'] ?? [];
+
+            // Berlin Group shape: {booked: [...], pending: [...]} instead of a flat list.
+            if (is_array($list) && (array_key_exists('booked', $list) || array_key_exists('pending', $list))) {
+                $list = array_merge($list['booked'] ?? [], $list['pending'] ?? []);
+            }
+
+            $rows = array_merge($rows, array_values(is_array($list) ? $list : []));
+            $continuationKey = $response['continuation_key'] ?? null;
+        } while ($continuationKey !== null && count($rows) < 5000);
+
+        // Nothing parsed: surface what the bank actually returned so we can tell "empty" from "wrong shape".
+        if ($rows === []) {
+            report(new RuntimeException('Enable Banking: 0 transactions for '.$accountUid.' (from '.($dateFrom ?? 'n/a').'). Response keys: '.(implode(',', $firstKeys) ?: 'none')));
+        }
+
+        return collect($rows)->map(function (mixed $transaction): array {
+            $transaction = (array) $transaction;
             $amount = (float) ($transaction['transaction_amount']['amount'] ?? 0);
 
             if (($transaction['credit_debit_indicator'] ?? '') === 'DBIT') {

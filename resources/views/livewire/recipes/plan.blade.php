@@ -442,6 +442,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $recipeResults = $this->addingDate !== null && $this->editingId === null
             ? Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)
+                ->cookbook()
                 ->whereNull('archived_at')
                 ->when(trim($this->recipeSearch) !== '', fn ($query) => $query->matching($this->recipeSearch))
                 ->orderByDesc('cooked_count')
@@ -456,7 +457,7 @@ new #[Layout('layouts.app')] class extends Component
             'isCurrentWeek' => $start->isSameDay(today()->startOfWeek(Carbon::MONDAY)),
             'hasRecipes' => $entries->contains(fn (MealPlan $entry) => $entry->recipe !== null),
             'recipeResults' => $recipeResults,
-            'dragRecipes' => Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->whereNull('archived_at')
+            'dragRecipes' => Recipe::query()->visibleTo(Auth::user(), (int) $this->householdId)->cookbook()->whereNull('archived_at')
                 ->withExists(['favoritedBy as is_favorite' => fn ($query) => $query->whereKey(Auth::id())])
                 ->orderByDesc('is_favorite')->orderByDesc('cooked_count')->orderBy('title')->limit(12)->get(['id', 'title', 'image_path', 'servings']),
             'weekIngredients' => $this->choosingShopping ? $this->weekIngredients() : [],

@@ -29,7 +29,7 @@ class MealSuggestions
         $recentlyPlanned = MealPlan::query()->visibleTo($user, $householdId)->whereNotNull('recipe_id')
             ->whereDate('date', '>=', today()->subDays(14)->toDateString())->pluck('recipe_id')->all();
 
-        $candidates = Recipe::query()->visibleTo($user, $householdId)->whereNull('archived_at')
+        $candidates = Recipe::query()->visibleTo($user, $householdId)->cookbook()->whereNull('archived_at')
             ->whereNotIn('id', $exclude)
             ->with(['favoritedBy' => fn ($query) => $query->whereKey($user->id)])
             ->withAvg('ratings', 'rating')

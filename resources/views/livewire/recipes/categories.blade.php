@@ -80,7 +80,7 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         return [
-            'categories' => RecipeCategory::where('household_id', $this->householdId)->withCount('recipes')->orderBy('position')->orderBy('name')->get(),
+            'categories' => RecipeCategory::where('household_id', $this->householdId)->withCount(['recipes' => fn ($query) => $query->cookbook()])->orderBy('position')->orderBy('name')->get(),
         ];
     }
 }; ?>

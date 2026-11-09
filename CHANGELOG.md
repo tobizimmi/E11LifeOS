@@ -3,6 +3,18 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.103.1] – 2026-11-09
+
+### Neu (KI-Essensplaner)
+- **Doppelte Gerichte werden vor dem Einfügen abgefragt.** Übernimmt man einen KI-Plan in den Wochenplan und ist ein Gericht mit demselben Titel in dieser Woche bereits eingeplant, wird nicht sofort eingefügt: Alle Dubletten (über alle betroffenen Tage) erscheinen als gesammelte Liste. Standardmäßig werden sie übersprungen; per Häkchen lässt sich einzeln wählen, welches trotzdem ein zweites Mal eingefügt werden soll. Die übrigen (eindeutigen) Gerichte werden normal übernommen.
+
+## [1.103.0] – 2026-11-08
+
+### Neu (KI-Essensplaner)
+- **KI-Rezepte in den Wochenplan übernehmen, ohne sie ins Kochbuch zu importieren.** Bisher gingen beim „Nur in Plan übernehmen" alle KI-Details verloren – im Plan stand nur der Titel. Jetzt werden die generierten Rezepte **zwischengespeichert** und im Wochenplan verlinkt: Du kannst das vollständige Rezept (Zutaten, Schritte) jederzeit öffnen. Diese temporären Rezepte erscheinen **nicht** im Kochbuch und werden nach Ablauf der Woche automatisch wieder gelöscht (täglicher Aufräum-Lauf).
+- **Einzelne Rezepte dauerhaft behalten.** In der Ergebnisliste lässt sich pro Rezept ⭐ „Im Kochbuch behalten" anhaken – nur diese werden dauerhaft importiert, der Rest bleibt temporär. Alternativ „Alle Rezepte speichern & übernehmen".
+- **Nachträglich behalten.** Öffnet man ein temporäres Rezept über den Wochenplan, weist ein Hinweis auf das Löschdatum hin und bietet „Im Kochbuch behalten" an.
+
 ## [1.102.4] – 2026-11-08
 
 ### Verbessert (Banking)

@@ -176,6 +176,58 @@ class MealPlannerTest extends TestCase
         $this->assertSame('Alt-KI', $entry->title);
     }
 
+    public function test_duplicate_titles_are_collected_and_skipped_by_default(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // "Pasta Pomodoro" is already planned this week (Mon 2026-09-21).
+        MealPlan::create([
+            'household_id' => $household->id, 'created_by' => $user->id,
+            'date' => '2026-09-21', 'meal_type' => 'lunch', 'title' => 'Pasta Pomodoro',
+        ]);
+
+        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->andReturn($this->aiResult()));
+
+        $component = Volt::test('recipes.planner')->call('generate')->call('addToPlan', false);
+
+        // Nothing inserted yet – the duplicate is surfaced for confirmation.
+        $this->assertSame(1, MealPlan::count());
+        $this->assertSame(0, Recipe::where('household_id', $household->id)->count());
+        $duplicates = $component->get('duplicates');
+        $this->assertCount(1, $duplicates);
+        $this->assertSame('Pasta Pomodoro', $duplicates[0]['title']);
+
+        // Confirm without ticking: the duplicate is skipped, only the other recipe is added.
+        $component->call('confirmPlan');
+        $this->assertSame(2, MealPlan::count());
+        $this->assertSame(['Gemüsecurry'], Recipe::where('household_id', $household->id)->pluck('title')->all());
+        $this->assertSame(1, MealPlan::where('title', 'Pasta Pomodoro')->count());
+    }
+
+    public function test_a_confirmed_duplicate_is_added_again(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        MealPlan::create([
+            'household_id' => $household->id, 'created_by' => $user->id,
+            'date' => '2026-09-21', 'meal_type' => 'lunch', 'title' => 'Pasta Pomodoro',
+        ]);
+
+        $this->mock(MealPlanAi::class, fn (MockInterface $ai) => $ai->shouldReceive('generate')->andReturn($this->aiResult()));
+
+        Volt::test('recipes.planner')
+            ->call('generate')
+            ->call('addToPlan', false)
+            ->set('confirmDuplicates', [0]) // tick the Pasta duplicate
+            ->call('confirmPlan');
+
+        // Both generated recipes are added; Pasta now appears twice in the plan.
+        $this->assertSame(2, Recipe::where('household_id', $household->id)->count());
+        $this->assertSame(2, MealPlan::where('title', 'Pasta Pomodoro')->count());
+    }
+
     public function test_a_temporary_recipe_can_be_kept_from_its_page(): void
     {
         [$user, $household] = $this->memberWithHousehold();

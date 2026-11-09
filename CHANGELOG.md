@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.103.1] – 2026-11-09
+
+### Neu (KI-Essensplaner)
+- **Doppelte Gerichte werden vor dem Einfügen abgefragt.** Übernimmt man einen KI-Plan in den Wochenplan und ist ein Gericht mit demselben Titel in dieser Woche bereits eingeplant, wird nicht sofort eingefügt: Alle Dubletten (über alle betroffenen Tage) erscheinen als gesammelte Liste. Standardmäßig werden sie übersprungen; per Häkchen lässt sich einzeln wählen, welches trotzdem ein zweites Mal eingefügt werden soll. Die übrigen (eindeutigen) Gerichte werden normal übernommen.
+
 ## [1.103.0] – 2026-11-08
 
 ### Neu (KI-Essensplaner)

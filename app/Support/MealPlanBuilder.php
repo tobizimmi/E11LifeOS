@@ -24,13 +24,18 @@ class MealPlanBuilder
      *
      * @param  array<string, mixed>  $result
      * @param  array<int, int>  $keepIndexes  canonical indexes (see {@see self::recipes()}) to keep permanently
+     * @param  array<int, int>  $skipIndexes  canonical indexes to leave out entirely (e.g. skipped duplicates)
      * @return array<int, Recipe> keyed by the canonical recipe index
      */
-    public static function createRecipes(User $user, int $householdId, array $result, ?Carbon $expiresAt = null, array $keepIndexes = []): array
+    public static function createRecipes(User $user, int $householdId, array $result, ?Carbon $expiresAt = null, array $keepIndexes = [], array $skipIndexes = []): array
     {
         $recipes = [];
 
         foreach (self::recipes($result) as $index => $data) {
+            if (in_array($index, $skipIndexes, true)) {
+                continue;
+            }
+
             $recipeExpiry = $expiresAt !== null && ! in_array($index, $keepIndexes, true) ? $expiresAt : null;
             $recipes[$index] = Recipe::create(self::recipeAttributes($data, $householdId, $user->id, $recipeExpiry));
         }
@@ -52,17 +57,51 @@ class MealPlanBuilder
     }
 
     /**
+     * Canonical indexes of the result's recipes whose title already appears in `$existingTitles`
+     * (trimmed, case-insensitive) – so the planner can ask before inserting a duplicate.
+     *
+     * @param  array<string, mixed>  $result
+     * @param  array<int, string>  $existingTitles  titles already in the plan for the target week
+     * @return array<int, array{index: int, title: string, day: int}>
+     */
+    public static function duplicatesAgainst(array $result, array $existingTitles): array
+    {
+        $normalised = array_map(self::normaliseTitle(...), $existingTitles);
+        $duplicates = [];
+
+        foreach (self::recipes($result) as $index => $data) {
+            $title = trim((string) ($data['title'] ?? ''));
+
+            if ($title !== '' && in_array(self::normaliseTitle($title), $normalised, true)) {
+                $duplicates[] = ['index' => $index, 'title' => $title, 'day' => max(1, min(7, (int) ($data['day'] ?? 1)))];
+            }
+        }
+
+        return $duplicates;
+    }
+
+    private static function normaliseTitle(string $title): string
+    {
+        return mb_strtolower(trim($title));
+    }
+
+    /**
      * Adds the plan entries to the weekly meal plan, linking to a saved recipe where one was created.
      *
      * @param  array<string, mixed>  $result
      * @param  array<int, Recipe>  $savedRecipes  from {@see self::createRecipes()} (empty = plan by title only)
+     * @param  array<int, int>  $skipIndexes  canonical indexes to leave out entirely (e.g. skipped duplicates)
      * @return int the number of entries created
      */
-    public static function addToPlan(User $user, int $householdId, Carbon $weekStart, array $result, array $savedRecipes = []): int
+    public static function addToPlan(User $user, int $householdId, Carbon $weekStart, array $result, array $savedRecipes = [], array $skipIndexes = []): int
     {
         $count = 0;
 
         foreach (self::recipes($result) as $index => $data) {
+            if (in_array($index, $skipIndexes, true)) {
+                continue;
+            }
+
             $day = max(1, min(7, (int) ($data['day'] ?? 1)));
             $mealType = in_array($data['meal_type'] ?? '', MealPlan::MEAL_TYPES, true) ? $data['meal_type'] : 'dinner';
             $recipe = $savedRecipes[$index] ?? null;

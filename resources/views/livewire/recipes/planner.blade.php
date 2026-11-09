@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\MealPlan;
 use App\Models\MealPlanPreference;
+use App\Models\Recipe;
 use App\Support\AiException;
 use App\Support\MealPlanAi;
 use App\Support\MealPlanBuilder;
@@ -62,6 +63,26 @@ new #[Layout('layouts.app')] class extends Component
      * @var array<int, int>
      */
     public array $keep = [];
+
+    /**
+     * Generated recipes whose title is already in the plan for the week (shown for confirmation
+     * before inserting a duplicate). Empty = no pending duplicate dialog.
+     *
+     * @var array<int, array{index: int, title: string, day: int}>
+     */
+    public array $duplicates = [];
+
+    /**
+     * Canonical indexes of the duplicates the user wants to insert anyway.
+     *
+     * @var array<int, int>
+     */
+    public array $confirmDuplicates = [];
+
+    /**
+     * Whether the pending (duplicate-confirmed) add should keep all recipes permanently.
+     */
+    public bool $duplicateKeepAll = false;
 
     public function mount(): void
     {
@@ -150,6 +171,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->error = '';
         $this->result = null;
         $this->keep = [];
+        $this->cancelDuplicates();
 
         try {
             $this->result = $ai->generate($this->prefsArray(), $this->offersText !== '' ? $this->offersText : null);
@@ -164,11 +186,75 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Titles already in the plan for the week being filled (trimmed), used for the duplicate check.
+     *
+     * @return array<int, string>
+     */
+    private function plannedTitlesOfWeek(): array
+    {
+        $start = $this->weekStart();
+
+        return MealPlan::query()
+            ->visibleTo($this->currentUser(), (int) $this->householdId)
+            ->whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<=', $start->copy()->addDays(6)->toDateString())
+            ->pluck('title')
+            ->all();
+    }
+
+    /**
      * Adds the generated recipes to the week plan. By default they are temporary: viewable through
      * the plan, pruned once the week is over. Recipes the user ticked ($keep) – or all, with
      * $keepAll – are saved to the cookbook permanently instead.
+     *
+     * If a generated recipe's title is already in the plan for that week, nothing is inserted yet:
+     * the duplicates are collected and the user decides which to add anyway ({@see confirmPlan()}).
      */
     public function addToPlan(bool $keepAll = false): void
+    {
+        if ($this->result === null) {
+            return;
+        }
+
+        $duplicates = MealPlanBuilder::duplicatesAgainst($this->result, $this->plannedTitlesOfWeek());
+
+        if ($duplicates !== []) {
+            $this->duplicates = $duplicates;
+            $this->duplicateKeepAll = $keepAll;
+            $this->confirmDuplicates = [];
+
+            return;
+        }
+
+        $this->performAddToPlan($keepAll);
+    }
+
+    /**
+     * Confirms the plan after the duplicate check: duplicates the user ticked ($confirmDuplicates)
+     * are added as well, the rest are skipped.
+     */
+    public function confirmPlan(): void
+    {
+        $skip = array_values(array_diff(
+            array_map(fn (array $row) => $row['index'], $this->duplicates),
+            array_map('intval', $this->confirmDuplicates),
+        ));
+
+        $this->performAddToPlan($this->duplicateKeepAll, $skip);
+        $this->cancelDuplicates();
+    }
+
+    public function cancelDuplicates(): void
+    {
+        $this->duplicates = [];
+        $this->confirmDuplicates = [];
+        $this->duplicateKeepAll = false;
+    }
+
+    /**
+     * @param  array<int, int>  $skipIndexes  canonical indexes to leave out (skipped duplicates)
+     */
+    private function performAddToPlan(bool $keepAll, array $skipIndexes = []): void
     {
         if ($this->result === null) {
             return;
@@ -179,10 +265,10 @@ new #[Layout('layouts.app')] class extends Component
         $expiresAt = $keepAll ? null : $this->weekStart()->copy()->addDays(8)->startOfDay();
         $keepIndexes = $keepAll ? [] : array_map('intval', $this->keep);
 
-        $saved = MealPlanBuilder::createRecipes($user, (int) $this->householdId, $this->result, $expiresAt, $keepIndexes);
-        $count = MealPlanBuilder::addToPlan($user, (int) $this->householdId, $this->weekStart(), $this->result, $saved);
+        $saved = MealPlanBuilder::createRecipes($user, (int) $this->householdId, $this->result, $expiresAt, $keepIndexes, $skipIndexes);
+        $count = MealPlanBuilder::addToPlan($user, (int) $this->householdId, $this->weekStart(), $this->result, $saved, $skipIndexes);
 
-        $keptCount = $keepAll ? count($saved) : count($keepIndexes);
+        $keptCount = count($saved) - count(array_filter($saved, fn (Recipe $recipe) => $recipe->isTemporary()));
         $this->dispatch('toast', message: $keptCount > 0
             ? __(':count meals added to the plan, :kept recipe(s) saved to the cookbook.', ['count' => $count, 'kept' => $keptCount])
             : __(':count meals added to the plan (recipes are kept for this week).', ['count' => $count]));
@@ -362,6 +448,27 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Added recipes stay linked in the week plan and are removed after the week. Tick ⭐ to keep single recipes in the cookbook, or save them all.') }}</p>
                 </section>
+
+                @if ($duplicates !== [])
+                    <section class="rounded-2xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-500/50 dark:bg-amber-900/20" aria-labelledby="duplicates-heading">
+                        <h3 id="duplicates-heading" class="font-semibold text-amber-900 dark:text-amber-100">⚠️ {{ __('Some dishes are already in this week\'s plan') }}</h3>
+                        <p class="mt-1 text-sm text-amber-800 dark:text-amber-200">{{ __('They are skipped by default. Tick the ones you want to add a second time.') }}</p>
+                        <ul class="mt-3 space-y-1">
+                            @foreach ($duplicates as $duplicate)
+                                <li wire:key="dup-{{ $duplicate['index'] }}">
+                                    <label class="flex items-center gap-2 text-sm text-amber-900 dark:text-amber-100">
+                                        <input type="checkbox" wire:model="confirmDuplicates" value="{{ $duplicate['index'] }}" class="rounded-sm border-amber-400 text-amber-600 dark:bg-gray-900">
+                                        <span><span class="font-medium">{{ $duplicate['title'] }}</span> <span class="text-amber-700 dark:text-amber-300">· {{ __('Day :n', ['n' => $duplicate['day']]) }}</span></span>
+                                    </label>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <div class="mt-4 flex flex-wrap gap-3">
+                            <x-primary-button type="button" wire:click="confirmPlan">{{ __('Add to plan') }}</x-primary-button>
+                            <button type="button" wire:click="cancelDuplicates" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">{{ __('Cancel') }}</button>
+                        </div>
+                    </section>
+                @endif
 
                 <section class="grid gap-4 lg:grid-cols-2">
                     @foreach ($recipesByDay as $day => $dayRecipes)

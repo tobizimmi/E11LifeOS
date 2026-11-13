@@ -4,14 +4,16 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Item;
 use App\Models\LoyaltyCard;
 use App\Support\CardCode;
+use App\Support\CardImages;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] class extends Component
 {
-    use InteractsWithHousehold;
+    use InteractsWithHousehold, WithFileUploads;
 
     public bool $adding = false;
 
@@ -32,6 +34,19 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $private = false;
 
+    public string $linkUrl = '';
+
+    /** @var array<int, array{label: string, value: string}> */
+    public array $details = [];
+
+    public $frontImage = null;
+
+    public $backImage = null;
+
+    public bool $removeFront = false;
+
+    public bool $removeBack = false;
+
     private function find(int $id): LoyaltyCard
     {
         return LoyaltyCard::query()->visibleTo(Auth::user(), (int) $this->householdId)->findOrFail($id);
@@ -39,7 +54,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function resetForm(): void
     {
-        $this->reset('adding', 'editingId', 'name', 'code', 'codeFormat', 'color', 'notes', 'private');
+        $this->reset('adding', 'editingId', 'name', 'code', 'codeFormat', 'color', 'notes', 'private', 'linkUrl', 'details', 'frontImage', 'backImage', 'removeFront', 'removeBack');
         $this->resetValidation();
     }
 
@@ -60,9 +75,23 @@ new #[Layout('layouts.app')] class extends Component
         $this->color = (string) $card->color;
         $this->notes = (string) $card->notes;
         $this->private = $card->isPrivate();
+        $this->linkUrl = (string) $card->link_url;
+        $this->details = $card->detailRows();
+        $this->reset('frontImage', 'backImage', 'removeFront', 'removeBack');
         $this->adding = true;
         $this->showingId = null;
         $this->resetValidation();
+    }
+
+    public function addDetail(): void
+    {
+        $this->details[] = ['label' => '', 'value' => ''];
+    }
+
+    public function removeDetail(int $index): void
+    {
+        unset($this->details[$index]);
+        $this->details = array_values($this->details);
     }
 
     /**
@@ -91,28 +120,62 @@ new #[Layout('layouts.app')] class extends Component
             'codeFormat' => ['required', Rule::in(CardCode::FORMATS)],
             'color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'linkUrl' => ['nullable', 'string', 'max:500'],
+            'frontImage' => ['nullable', 'image', 'max:8192'],
+            'backImage' => ['nullable', 'image', 'max:8192'],
+            'details' => ['array', 'max:20'],
+            'details.*.label' => ['nullable', 'string', 'max:60'],
+            'details.*.value' => ['nullable', 'string', 'max:200'],
         ]);
 
-        $attributes = [
+        $card = $this->editingId
+            ? $this->find($this->editingId)
+            : new LoyaltyCard(['household_id' => $this->householdId, 'created_by' => Auth::id()]);
+
+        $card->fill([
             'name' => trim($this->name),
             'code' => trim($this->code),
             'code_format' => $this->codeFormat,
             'color' => $this->color !== '' ? $this->color : null,
             'notes' => $this->notes !== '' ? trim($this->notes) : null,
+            'link_url' => trim($this->linkUrl) !== '' ? trim($this->linkUrl) : null,
+            'details' => $this->cleanedDetails() ?: null,
             'visibility' => $this->private ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
-        ];
+        ]);
 
-        if ($this->editingId) {
-            $this->find($this->editingId)->update($attributes);
-        } else {
-            LoyaltyCard::create($attributes + [
-                'household_id' => $this->householdId,
-                'created_by' => Auth::id(),
-            ]);
-        }
+        $this->applyImage($card, 'front_image_path', $this->frontImage, $this->removeFront);
+        $this->applyImage($card, 'back_image_path', $this->backImage, $this->removeBack);
+
+        $card->save();
 
         $this->resetForm();
         $this->dispatch('toast', message: __('Saved.'));
+    }
+
+    /**
+     * Stores a new upload (replacing any old file) or removes the current one.
+     */
+    private function applyImage(LoyaltyCard $card, string $column, $upload, bool $remove): void
+    {
+        if ($upload) {
+            CardImages::delete($card->{$column});
+            $card->{$column} = CardImages::store($upload, (int) $this->householdId);
+        } elseif ($remove) {
+            CardImages::delete($card->{$column});
+            $card->{$column} = null;
+        }
+    }
+
+    /**
+     * @return array<int, array{label: string, value: string}>
+     */
+    private function cleanedDetails(): array
+    {
+        return collect($this->details)
+            ->map(fn ($row) => ['label' => trim((string) ($row['label'] ?? '')), 'value' => trim((string) ($row['value'] ?? ''))])
+            ->filter(fn (array $row) => $row['label'] !== '' || $row['value'] !== '')
+            ->values()
+            ->all();
     }
 
     public function delete(int $id): void
@@ -140,6 +203,7 @@ new #[Layout('layouts.app')] class extends Component
             'cards' => LoyaltyCard::query()->visibleTo(Auth::user(), (int) $this->householdId)
                 ->orderBy('position')->orderBy('name')->get(),
             'showing' => $this->showingId !== null ? $this->find($this->showingId) : null,
+            'editingCard' => $this->editingId !== null ? $this->find($this->editingId) : null,
             'formats' => CardCode::FORMATS,
         ];
     }
@@ -181,13 +245,17 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="button" wire:key="card-{{ $card->id }}" wire:click="showCard({{ $card->id }})"
                             class="group relative flex aspect-[1.586/1] flex-col justify-between overflow-hidden rounded-2xl p-4 text-left text-white shadow-sm ring-1 ring-black/5 transition hover:shadow-md"
                             style="background: linear-gradient(135deg, {{ $card->color ?? '#4b5563' }}, {{ $card->color ? $card->color.'cc' : '#111827' }});">
-                            <span class="flex items-start justify-between gap-2">
+                            @if ($card->frontImageUrl())
+                                <img src="{{ $card->frontImageUrl() }}" alt="" class="absolute inset-0 h-full w-full object-cover" />
+                                <span class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10"></span>
+                            @endif
+                            <span class="relative flex items-start justify-between gap-2">
                                 <span class="text-lg font-semibold drop-shadow-sm">{{ $card->name }}</span>
                                 @if ($card->isPrivate())
                                     <span class="rounded-full bg-black/30 px-2 py-0.5 text-xs">🔒</span>
                                 @endif
                             </span>
-                            <span class="flex items-center justify-between gap-2">
+                            <span class="relative flex items-center justify-between gap-2">
                                 <span class="font-mono text-sm tracking-wider text-white/90">{{ \Illuminate\Support\Str::limit($card->code, 22) }}</span>
                                 <span class="rounded bg-black/25 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">{{ $formatLabel($card->code_format) }}</span>
                             </span>
@@ -207,14 +275,42 @@ new #[Layout('layouts.app')] class extends Component
                     <button type="button" wire:click="closeCard" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-5 w-5" stroke-width="2" /></button>
                 </div>
 
+                @if ($showing->frontImageUrl() || $showing->backImageUrl())
+                    <div class="flex gap-3">
+                        @if ($showing->frontImageUrl())
+                            <img src="{{ $showing->frontImageUrl() }}" alt="{{ __('Front') }}" class="min-w-0 flex-1 rounded-xl object-cover ring-1 ring-gray-200 dark:ring-gray-700" />
+                        @endif
+                        @if ($showing->backImageUrl())
+                            <img src="{{ $showing->backImageUrl() }}" alt="{{ __('Back') }}" class="min-w-0 flex-1 rounded-xl object-cover ring-1 ring-gray-200 dark:ring-gray-700" />
+                        @endif
+                    </div>
+                @endif
+
                 <div class="rounded-xl bg-white p-4 ring-1 ring-gray-200 dark:ring-gray-700">
                     <div class="flex justify-center">{!! $showing->codeSvg() !!}</div>
                     <p class="mt-3 text-center font-mono text-lg tracking-widest text-gray-900 select-all">{{ $showing->code }}</p>
                     <p class="mt-1 text-center text-xs text-gray-400">{{ $showing->formatLabel() }}</p>
                 </div>
 
+                @if ($showing->detailRows() !== [])
+                    <dl class="divide-y divide-gray-100 rounded-xl ring-1 ring-gray-200 dark:divide-gray-700 dark:ring-gray-700">
+                        @foreach ($showing->detailRows() as $row)
+                            <div class="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
+                                <dt class="shrink-0 text-gray-500 dark:text-gray-400">{{ $row['label'] ?: '—' }}</dt>
+                                <dd class="min-w-0 break-words text-right font-medium text-gray-900 select-all dark:text-gray-100">{{ $row['value'] }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                @endif
+
                 @if ($showing->notes)
                     <p class="text-sm text-gray-600 dark:text-gray-400">{{ $showing->notes }}</p>
+                @endif
+
+                @if ($showing->safeLinkUrl())
+                    <a href="{{ $showing->safeLinkUrl() }}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">🔗 {{ __('Open account') }}</a>
+                @elseif ($showing->link_url)
+                    <p class="break-all rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-300">🔗 {{ $showing->link_url }}</p>
                 @endif
 
                 <div class="flex items-center justify-between gap-2 pt-1">
@@ -274,6 +370,67 @@ new #[Layout('layouts.app')] class extends Component
                         @endforeach
                     </div>
                     <x-input-error :messages="$errors->get('color')" class="mt-1" />
+                </div>
+
+                {{-- Card photos (front/back) so it looks like the real card --}}
+                <div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Card photos (optional)') }}</span>
+                    <div class="mt-2 grid gap-3 sm:grid-cols-2">
+                        @foreach (['front' => __('Front / logo'), 'back' => __('Back')] as $side => $sideLabel)
+                            @php
+                                $upload = $side === 'front' ? $frontImage : $backImage;
+                                $removeFlag = $side === 'front' ? 'removeFront' : 'removeBack';
+                                $existingUrl = $side === 'front' ? $editingCard?->frontImageUrl() : $editingCard?->backImageUrl();
+                            @endphp
+                            <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $sideLabel }}</span>
+                                <div class="mt-2 flex items-center gap-3">
+                                    @if ($upload && method_exists($upload, 'temporaryUrl') && $upload->isPreviewable())
+                                        <img src="{{ $upload->temporaryUrl() }}" alt="" class="h-16 w-24 rounded-md object-cover" />
+                                    @elseif ($existingUrl && ! ($side === 'front' ? $removeFront : $removeBack))
+                                        <img src="{{ $existingUrl }}" alt="" class="h-16 w-24 rounded-md object-cover" />
+                                    @else
+                                        <span class="flex h-16 w-24 items-center justify-center rounded-md bg-gray-100 text-2xl dark:bg-gray-700" aria-hidden="true">🖼️</span>
+                                    @endif
+                                    <div class="min-w-0 text-sm">
+                                        <input type="file" wire:model="{{ $side === 'front' ? 'frontImage' : 'backImage' }}" accept="image/*" class="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-2 file:rounded-md file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-indigo-700" />
+                                        <div wire:loading wire:target="{{ $side === 'front' ? 'frontImage' : 'backImage' }}" class="mt-1 text-xs text-gray-400">{{ __('Uploading …') }}</div>
+                                        @if ($existingUrl)
+                                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                <input type="checkbox" wire:model="{{ $removeFlag }}" class="rounded-sm border-gray-300 text-indigo-600" /> {{ __('Remove') }}
+                                            </label>
+                                        @endif
+                                    </div>
+                                </div>
+                                <x-input-error :messages="$errors->get($side === 'front' ? 'frontImage' : 'backImage')" class="mt-1" />
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- Link to the online / app account --}}
+                <div>
+                    <x-input-label for="card-link" :value="__('Account link (online or app, optional)')" />
+                    <x-text-input wire:model="linkUrl" id="card-link" type="url" inputmode="url" class="mt-1 block w-full" placeholder="https://…" />
+                    <x-input-error :messages="$errors->get('linkUrl')" class="mt-1" />
+                </div>
+
+                {{-- Free labelled texts (personalise cards without a photo) --}}
+                <div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('More details (optional)') }}</span>
+                        <button type="button" wire:click="addDetail" class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">+ {{ __('Add text') }}</button>
+                    </div>
+                    <p class="mt-0.5 text-xs text-gray-400">{{ __('e.g. customer number, member since, PIN hint – each with its own label.') }}</p>
+                    <div class="mt-2 space-y-2">
+                        @foreach ($details as $index => $detail)
+                            <div class="flex items-center gap-2" wire:key="detail-{{ $index }}">
+                                <x-text-input wire:model="details.{{ $index }}.label" class="block w-1/3" placeholder="{{ __('Label') }}" />
+                                <x-text-input wire:model="details.{{ $index }}.value" class="block flex-1" placeholder="{{ __('Text') }}" />
+                                <button type="button" wire:click="removeDetail({{ $index }})" class="shrink-0 text-gray-400 hover:text-red-600" aria-label="{{ __('Remove') }}"><x-icon name="x-mark" class="h-4 w-4" stroke-width="2" /></button>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
 
                 <div>

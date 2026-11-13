@@ -7,6 +7,8 @@ use App\Models\LoyaltyCard;
 use App\Support\Barcode;
 use App\Support\CardCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
@@ -114,6 +116,55 @@ class LoyaltyCardsTest extends TestCase
             ->call('showCard', $card->id)
             ->assertSet('showingId', $card->id)
             ->assertSee('<svg', false);
+    }
+
+    public function test_a_card_stores_a_photo_link_and_labelled_details(): void
+    {
+        Storage::fake(LoyaltyCard::IMAGE_DISK);
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('loyalty-cards.index')
+            ->set('name', 'REWE')
+            ->set('code', '123456')
+            ->set('codeFormat', 'CODE_128')
+            ->set('linkUrl', 'https://rewe.de/konto')
+            ->set('details', [['label' => 'Kundennr.', 'value' => '4711'], ['label' => '', 'value' => '']])
+            ->set('frontImage', UploadedFile::fake()->image('card.jpg', 400, 250))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $card = LoyaltyCard::sole();
+        $this->assertSame('https://rewe.de/konto', $card->link_url);
+        $this->assertSame([['label' => 'Kundennr.', 'value' => '4711']], $card->details); // empty row dropped
+        $this->assertNotNull($card->front_image_path);
+        Storage::disk(LoyaltyCard::IMAGE_DISK)->assertExists($card->front_image_path);
+        $this->assertSame('https://rewe.de/konto', $card->safeLinkUrl());
+    }
+
+    public function test_an_unsafe_account_link_is_never_clickable(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $card = LoyaltyCard::factory()->for($household)->create(['link_url' => 'javascript:alert(1)']);
+
+        $this->assertNull($card->safeLinkUrl()); // shown as text, not as a link
+    }
+
+    public function test_the_photo_route_serves_only_members_who_may_see_the_card(): void
+    {
+        Storage::fake(LoyaltyCard::IMAGE_DISK);
+        [$owner, $household] = $this->memberWithHousehold();
+        $other = $this->addMemberTo($household);
+
+        $path = 'loyalty-cards/'.$household->id.'/front.jpg';
+        Storage::disk(LoyaltyCard::IMAGE_DISK)->put($path, 'bytes');
+        $card = LoyaltyCard::factory()->for($household)->privateTo($owner)->create(['front_image_path' => $path]);
+
+        $url = route('loyalty-cards.image', ['card' => $card->id, 'side' => 'front']);
+        $this->actingAs($owner)->get($url)->assertOk();
+        $this->actingAs($other)->get($url)->assertNotFound(); // private card, not visible to the other member
     }
 
     public function test_barcode_renderer_produces_the_expected_symbologies(): void

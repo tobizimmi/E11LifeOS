@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.104.3] – 2026-11-13
+
+### Behoben (Banking)
+- **Erneutes Verbinden legte jedes Mal einen neuen Bank-Eintrag an.** Bei „Erneut verbinden" (z. B. nach einem `server_error`) entstand pro Versuch eine weitere Bankverbindung in der Liste. Jetzt wird der vorhandene Eintrag derselben Bank wiederverwendet (neue Freigabe, alte Fehlermeldung gelöscht), und bereits entstandene Doppel-Einträge werden beim nächsten Verbinden zu einem zusammengeführt.
+
 ## [1.104.2] – 2026-11-13
 
 ### Sicherheit

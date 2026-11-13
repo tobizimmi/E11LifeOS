@@ -29,17 +29,7 @@ class BankLinkSync
         $reference = (string) Str::uuid();
         $requisition = $this->client->createRequisition($institutionId, $redirect, $reference);
 
-        BankLink::create([
-            'user_id' => $user->id,
-            'household_id' => $user->currentHousehold()?->id,
-            'provider' => BankLink::PROVIDER_GOCARDLESS,
-            'institution_id' => $institutionId,
-            'institution_name' => $institutionName,
-            'logo' => $logo,
-            'reference' => $reference,
-            'requisition_id' => $requisition['id'],
-            'status' => BankLink::STATUS_CREATED,
-        ]);
+        $this->storeLink($user, BankLink::PROVIDER_GOCARDLESS, $institutionId, $institutionName, $logo, $reference, $requisition['id']);
 
         return $requisition['link'];
     }
@@ -53,19 +43,42 @@ class BankLinkSync
         $reference = (string) Str::uuid();
         $authorization = $this->enableBanking->startAuthorization($aspspName, $country, $redirect, $reference);
 
-        BankLink::create([
-            'user_id' => $user->id,
-            'household_id' => $user->currentHousehold()?->id,
-            'provider' => BankLink::PROVIDER_ENABLEBANKING,
-            'institution_id' => $aspspName,
-            'institution_name' => $aspspName,
-            'logo' => $logo,
-            'reference' => $reference,
-            'requisition_id' => $authorization['authorization_id'],
-            'status' => BankLink::STATUS_CREATED,
-        ]);
+        $this->storeLink($user, BankLink::PROVIDER_ENABLEBANKING, $aspspName, $aspspName, $logo, $reference, $authorization['authorization_id']);
 
         return $authorization['url'];
+    }
+
+    /**
+     * Reuses the existing bank link for the same user + provider + bank instead of adding a new row
+     * on every (re)connect, and removes leftover duplicate attempts of the same bank – so retrying
+     * does not pile up entries. A still-linked row is preferred as the one to keep.
+     */
+    private function storeLink(User $user, string $provider, string $institutionId, string $institutionName, ?string $logo, string $reference, ?string $requisitionId): BankLink
+    {
+        $query = fn () => BankLink::where('user_id', $user->id)->where('provider', $provider)->where('institution_id', $institutionId);
+
+        $link = $query()
+            ->orderByRaw('status = ? desc', [BankLink::STATUS_LINKED])
+            ->orderByDesc('id')
+            ->first() ?? new BankLink;
+
+        $link->fill([
+            'user_id' => $user->id,
+            'household_id' => $user->currentHousehold()?->id,
+            'provider' => $provider,
+            'institution_id' => $institutionId,
+            'institution_name' => $institutionName,
+            'logo' => $logo,
+            'reference' => $reference,
+            'requisition_id' => $requisitionId,
+            'status' => BankLink::STATUS_CREATED,
+            'sync_message' => null,
+        ])->save();
+
+        // Collapse any earlier duplicate rows for this bank into the one we just saved.
+        $query()->whereKeyNot($link->id)->delete();
+
+        return $link;
     }
 
     /**

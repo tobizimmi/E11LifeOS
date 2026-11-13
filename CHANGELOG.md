@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.105.0] – 2026-11-13
+
+### Neu (Kundenkarten)
+- **Karten sehen aus wie das Original – oder individuell gestaltet.** Zu jeder Kundenkarte lassen sich jetzt **Fotos** hinzufügen (Vorder-/Rückseite bzw. Logo); die Vorderseite erscheint direkt auf der Kartenkachel. Ohne Foto bleibt die farbige Karte.
+- **Konto-Link.** Pro Karte kann ein Link zum Online- oder App-Konto hinterlegt werden; in der Kartenansicht öffnet ihn ein „Konto öffnen"-Button (nur sichere http/https-Links werden klickbar, alles andere wird als Text angezeigt).
+- **Eigene Texte.** Beliebige beschriftete Angaben (z. B. Kundennummer, „Mitglied seit", PIN-Hinweis) lassen sich hinzufügen und werden in der Kartenansicht übersichtlich angezeigt.
+
 ## [1.104.3] – 2026-11-13
 
 ### Behoben (Banking)

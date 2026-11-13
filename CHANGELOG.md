@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.104.1] – 2026-11-13
+
+### Verbessert (Banking Enable Banking)
+- **Vorübergehende Bank-Fehler klarer gemeldet.** Meldet die Bank beim Verbinden ein `server_error` oder `temporarily_unavailable` zurück (ein vorübergehendes Problem auf Bankseite, kein echter Abbruch – bei DKB z. B. rund um die App-Freigabe), erscheint jetzt statt des rohen Fehlercodes der Hinweis, dass es an der Bank liegt und die Verbindung in ein paar Minuten einfach erneut gestartet werden kann. Ein echter Abbruch durch die nutzende Person wird separat gemeldet.
+
 ## [1.104.0] – 2026-11-13
 
 ### Neu (Kundenkarten)

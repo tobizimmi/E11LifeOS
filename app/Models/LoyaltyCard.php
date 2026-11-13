@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ?string $front_image_path
  * @property ?string $back_image_path
  * @property ?string $link_url
- * @property ?array<int, array{label: string, value: string}> $details
+ * @property ?array<int, array<string, mixed>> $details
  * @property int $position
  */
 #[Fillable(['household_id', 'created_by', 'visibility', 'name', 'code', 'code_format', 'color', 'notes', 'front_image_path', 'back_image_path', 'link_url', 'details', 'position'])]

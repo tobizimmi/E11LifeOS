@@ -26,6 +26,7 @@ class ModuleCatalog
             'learnings' => $module(__('Lessons learned'), '🎓', ['learnings.*']),
             'journal' => $module(__('Routines & journal'), '🙂', ['journal.*']),
             'shopping' => $module(__('Shopping List'), '🛒', ['shopping-list.*', 'api.v1.shopping.*']),
+            'cards' => $module(__('Loyalty cards'), '💳', ['loyalty-cards.*']),
             'pantry' => $module(__('Pantry'), '🥫', ['pantry.*']),
             Addons::RECIPES => $module($addons[Addons::RECIPES]['label'], $addons[Addons::RECIPES]['icon'], ['recipes.*'], true),
             Addons::FINANCE => $module($addons[Addons::FINANCE]['label'], $addons[Addons::FINANCE]['icon'], ['finance.*'], true),

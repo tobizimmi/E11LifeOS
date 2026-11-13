@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.104.0] – 2026-11-13
+
+### Neu (Kundenkarten)
+- **Kundenkarten (Stocard-Ersatz).** Neues Modul „Kundenkarten": Kunden- und Bonuskarten speichern und an der Kasse anzeigen. Karten lassen sich per **manueller Eingabe**, durch **Scannen mit der Kamera** oder durch **Hochladen eines Bildes** des Codes anlegen. Die Karte wird als echte Karte (mit Name und Farbe) dargestellt und der Code im **Original-Typ** angezeigt – QR-Code oder klassischer Barcode (EAN-13, EAN-8, UPC-A, Code 128, Code 39) –, damit er an der Kasse zuverlässig scannt. Karten sind im Haushalt geteilt oder privat; der Code-Renderer (QR + Barcode) läuft serverseitig ohne externe Dienste.
+
 ## [1.103.1] – 2026-11-09
 
 ### Neu (KI-Essensplaner)

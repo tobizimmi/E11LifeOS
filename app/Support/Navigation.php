@@ -54,6 +54,7 @@ class Navigation
             'kiosk' => ['everyday', __('Family screen'), 'squares-2x2', 'kiosk.index', ['kiosk.*']],
             'journal' => ['everyday', __('Routines & journal'), 'face-smile', 'journal.index', ['journal.*']],
             'shopping' => ['everyday', __('Shopping List'), 'shopping-cart', 'shopping-list.index', ['shopping-list.*']],
+            'cards' => ['everyday', __('Loyalty cards'), 'credit-card', 'loyalty-cards.index', ['loyalty-cards.*']],
             'pantry' => ['everyday', __('Pantry'), 'archive-box', 'pantry.index', ['pantry.*']],
             'recipes' => $user->canUseAddon(Addons::RECIPES) ? ['everyday', __('Recipes'), 'book-open', 'recipes.index', ['recipes.*']] : null,
             'finance' => $finance ? ['money', __('Finances'), 'banknotes', 'finance.index', ['finance.*']] : null,

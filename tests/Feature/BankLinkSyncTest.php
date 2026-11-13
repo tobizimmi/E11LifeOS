@@ -205,4 +205,27 @@ class BankLinkSyncTest extends TestCase
             ->assertSee('Sandbox Bank')
             ->assertSee(__('Sync now'));
     }
+
+    public function test_a_transient_bank_error_on_the_callback_is_shown_as_retryable(): void
+    {
+        $this->configureEnableBanking();
+        $this->fakeEnableBanking();
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        app(BankLinkSync::class)->connectEnableBanking($user, 'DKB', 'DE', null, 'https://app.test/callback');
+        $link = BankLink::sole();
+
+        // The bank returns ?error=server_error (and no code) – a temporary bank-side problem.
+        $this->get(route('portfolio.banking.link.callback', ['state' => $link->reference, 'error' => 'server_error']))
+            ->assertRedirect(route('portfolio.banking'));
+
+        $link->refresh();
+        $this->assertSame(BankLink::STATUS_ERROR, $link->status);
+        // Classified as temporary and retryable, not a hard decline (locale-independent via __()).
+        $this->assertSame(
+            __('The bank reported a temporary problem (:error). This is on the bank\'s side – please start the connection again in a few minutes.', ['error' => 'server_error']),
+            $link->sync_message,
+        );
+    }
 }

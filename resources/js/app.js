@@ -558,6 +558,104 @@ document.addEventListener('alpine:init', () => {
     });
 
     /**
+     * Loyalty-card scanner: reads a barcode or QR code from the rear camera, or decodes one from an
+     * uploaded image, using ZXing. Reports both the value and its symbology (e.g. EAN_13, QR_CODE)
+     * to the Livewire component via setScanned(code, format), so the card is reproduced in the same
+     * code type. Always loads ZXing (needs the format, which the native BarcodeDetector omits).
+     */
+    window.Alpine.data('cardScanner', () => {
+        const FORMATS = ['AZTEC', 'CODABAR', 'CODE_39', 'CODE_93', 'CODE_128', 'DATA_MATRIX', 'EAN_8', 'EAN_13', 'ITF', 'MAXICODE', 'PDF_417', 'QR_CODE', 'RSS_14', 'RSS_EXPANDED', 'UPC_A', 'UPC_E', 'UPC_EAN_EXTENSION'];
+        let controls = null;
+        let reader = null;
+
+        const formatName = (result) => FORMATS[result.getBarcodeFormat()] ?? 'CODE_128';
+
+        return {
+            visible: false,
+            supported: !!navigator.mediaDevices?.getUserMedia,
+            failed: false,
+            fileError: false,
+
+            async open() {
+                this.visible = true;
+                this.failed = false;
+                this.fileError = false;
+
+                if (!this.supported) {
+                    return;
+                }
+
+                await this.$nextTick();
+
+                if (!this.visible) {
+                    return;
+                }
+
+                try {
+                    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+                    reader = new BrowserMultiFormatReader();
+
+                    if (!this.visible) {
+                        return;
+                    }
+
+                    controls = await reader.decodeFromConstraints(
+                        { video: { facingMode: 'environment' } },
+                        this.$refs.video,
+                        (result) => result && this.found(result.getText(), formatName(result)),
+                    );
+                } catch (error) {
+                    this.failed = true;
+                    this.stop();
+                }
+            },
+
+            async decodeFile(event) {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+
+                if (!file) {
+                    return;
+                }
+
+                this.fileError = false;
+                const url = URL.createObjectURL(file);
+
+                try {
+                    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+                    const result = await new BrowserMultiFormatReader().decodeFromImageUrl(url);
+                    this.found(result.getText(), formatName(result));
+                } catch (error) {
+                    this.fileError = true;
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            },
+
+            found(code, format) {
+                navigator.vibrate?.(100);
+                this.close();
+                this.$wire.setScanned(code, format);
+            },
+
+            stop() {
+                controls?.stop();
+                controls = null;
+                reader = null;
+            },
+
+            close() {
+                this.stop();
+                this.visible = false;
+            },
+
+            destroy() {
+                this.stop();
+            },
+        };
+    });
+
+    /**
      * Dictation into a text field with the browser's speech recognition (German).
      * The recognised text is appended to the field and sent to Livewire as if typed.
      */

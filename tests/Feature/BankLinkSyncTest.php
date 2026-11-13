@@ -222,8 +222,10 @@ class BankLinkSyncTest extends TestCase
 
         $link->refresh();
         $this->assertSame(BankLink::STATUS_ERROR, $link->status);
-        // Classified as temporary and retryable, not a hard decline.
-        $this->assertStringContainsString('server_error', (string) $link->sync_message);
-        $this->assertStringContainsString('temporary problem', (string) $link->sync_message);
+        // Classified as temporary and retryable, not a hard decline (locale-independent via __()).
+        $this->assertSame(
+            __('The bank reported a temporary problem (:error). This is on the bank\'s side – please start the connection again in a few minutes.', ['error' => 'server_error']),
+            $link->sync_message,
+        );
     }
 }

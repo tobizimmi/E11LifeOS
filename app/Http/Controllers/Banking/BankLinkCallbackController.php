@@ -36,7 +36,15 @@ class BankLinkCallbackController extends Controller
 
         if ($error !== '' && ! $request->query('code')) {
             report(new RuntimeException(sprintf('Bank authorisation declined (%s, bank %s): %s', $link->provider, $link->institution_name, $error)));
-            $message = __('The bank declined the authorisation: :error', ['error' => $error]);
+
+            $code = strtolower($error);
+            // "server_error"/"temporarily_unavailable" are the bank's own temporary problems (not a
+            // real decline) – guide the user to simply retry instead of showing a raw error code.
+            $message = match (true) {
+                str_contains($code, 'access_denied'), str_contains($code, 'cancel') => __('You cancelled the bank authorisation. You can start the connection again.'),
+                str_contains($code, 'server_error'), str_contains($code, 'temporarily_unavailable'), str_contains($code, 'timeout') => __('The bank reported a temporary problem (:error). This is on the bank\'s side – please start the connection again in a few minutes.', ['error' => $error]),
+                default => __('The bank declined the authorisation: :error', ['error' => $error]),
+            };
             $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => $message]);
 
             return redirect()->route('portfolio.banking')->with('bankLinkStatus', $message);

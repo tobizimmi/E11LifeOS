@@ -102,3 +102,6 @@ Haushalt mit Einladungscodes, Notizen, Aufgaben, Einkaufsliste, Echtzeit-Sync (R
 
 ### Aufgaben-UX (V6)
 - ✅ Eigene Seite `/tasks` auf Basis der Aufgaben-Sammlung: Smart-Listen (Heute, Geplant, Alle, Meine, Erledigt), natürliche Schnelleingabe (`TaskInput`: Datumsangaben, „jeden Montag“, `!hoch`, `@Name`, `#tag`), Priorität als Systemeigenschaft, Unteraufgaben (`content.subtasks`), Wischgesten, Rückgängig, Mehrfachauswahl.
+
+### Ideen-Backlog (vorgemerkt, noch nicht umgesetzt)
+- **KI-Essensplaner: echte Web-Rezepte verlinken.** Statt die Rezepte vollständig selbst zu erfinden, könnte der Planer echte Rezepte aus dem Web vorschlagen und mit Quell-Link einplanen (Titel + URL, optional Kurzbeschreibung). Offene Punkte: Quellenwahl/Rechte, Zutaten-Extraktion für die Einkaufsliste, Caching. (Vorgemerkt am 2026-11-13.)

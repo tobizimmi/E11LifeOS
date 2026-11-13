@@ -3,6 +3,33 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.105.0] – 2026-11-13
+
+### Neu (Kundenkarten)
+- **Karten sehen aus wie das Original – oder individuell gestaltet.** Zu jeder Kundenkarte lassen sich jetzt **Fotos** hinzufügen (Vorder-/Rückseite bzw. Logo); die Vorderseite erscheint direkt auf der Kartenkachel. Ohne Foto bleibt die farbige Karte.
+- **Konto-Link.** Pro Karte kann ein Link zum Online- oder App-Konto hinterlegt werden; in der Kartenansicht öffnet ihn ein „Konto öffnen"-Button (nur sichere http/https-Links werden klickbar, alles andere wird als Text angezeigt).
+- **Eigene Texte.** Beliebige beschriftete Angaben (z. B. Kundennummer, „Mitglied seit", PIN-Hinweis) lassen sich hinzufügen und werden in der Kartenansicht übersichtlich angezeigt.
+
+## [1.104.3] – 2026-11-13
+
+### Behoben (Banking)
+- **Erneutes Verbinden legte jedes Mal einen neuen Bank-Eintrag an.** Bei „Erneut verbinden" (z. B. nach einem `server_error`) entstand pro Versuch eine weitere Bankverbindung in der Liste. Jetzt wird der vorhandene Eintrag derselben Bank wiederverwendet (neue Freigabe, alte Fehlermeldung gelöscht), und bereits entstandene Doppel-Einträge werden beim nächsten Verbinden zu einem zusammengeführt.
+
+## [1.104.2] – 2026-11-13
+
+### Sicherheit
+- **Laravel auf 13.42 aktualisiert.** Schließt eine am 13.11. veröffentlichte Sicherheitsmeldung (CVE-2026-128083, „Task Output Injection", niedrige Schwere) in `laravel/framework < 13.40`. Nur die Lockdatei wurde auf eine gepatchte Version angehoben; die deklarierten Abhängigkeiten (`^13.17`) bleiben unverändert.
+
+## [1.104.1] – 2026-11-13
+
+### Verbessert (Banking Enable Banking)
+- **Vorübergehende Bank-Fehler klarer gemeldet.** Meldet die Bank beim Verbinden ein `server_error` oder `temporarily_unavailable` zurück (ein vorübergehendes Problem auf Bankseite, kein echter Abbruch – bei DKB z. B. rund um die App-Freigabe), erscheint jetzt statt des rohen Fehlercodes der Hinweis, dass es an der Bank liegt und die Verbindung in ein paar Minuten einfach erneut gestartet werden kann. Ein echter Abbruch durch die nutzende Person wird separat gemeldet.
+
+## [1.104.0] – 2026-11-13
+
+### Neu (Kundenkarten)
+- **Kundenkarten (Stocard-Ersatz).** Neues Modul „Kundenkarten": Kunden- und Bonuskarten speichern und an der Kasse anzeigen. Karten lassen sich per **manueller Eingabe**, durch **Scannen mit der Kamera** oder durch **Hochladen eines Bildes** des Codes anlegen. Die Karte wird als echte Karte (mit Name und Farbe) dargestellt und der Code im **Original-Typ** angezeigt – QR-Code oder klassischer Barcode (EAN-13, EAN-8, UPC-A, Code 128, Code 39) –, damit er an der Kasse zuverlässig scannt. Karten sind im Haushalt geteilt oder privat; der Code-Renderer (QR + Barcode) läuft serverseitig ohne externe Dienste.
+
 ## [1.103.1] – 2026-11-09
 
 ### Neu (KI-Essensplaner)

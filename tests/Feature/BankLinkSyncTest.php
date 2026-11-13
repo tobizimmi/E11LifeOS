@@ -228,4 +228,43 @@ class BankLinkSyncTest extends TestCase
             $link->sync_message,
         );
     }
+
+    public function test_reconnecting_the_same_bank_reuses_the_link_instead_of_adding_a_new_one(): void
+    {
+        $this->configureEnableBanking();
+        $this->fakeEnableBanking();
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+        $sync = app(BankLinkSync::class);
+
+        $sync->connectEnableBanking($user, 'DKB', 'DE', null, 'https://app.test/callback');
+        $first = BankLink::sole();
+
+        // Simulate an earlier failed attempt, then reconnect the same bank.
+        $first->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => 'server_error']);
+        $sync->connectEnableBanking($user, 'DKB', 'DE', null, 'https://app.test/callback');
+
+        // Still exactly one link for the bank – same row, fresh reference, error cleared.
+        $link = BankLink::sole();
+        $this->assertSame($first->id, $link->id);
+        $this->assertNotSame($first->reference, $link->reference);
+        $this->assertSame(BankLink::STATUS_CREATED, $link->status);
+        $this->assertNull($link->sync_message);
+    }
+
+    public function test_existing_duplicate_links_are_collapsed_on_reconnect(): void
+    {
+        $this->configureEnableBanking();
+        $this->fakeEnableBanking();
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // Two leftover rows for the same bank from earlier retries.
+        BankLink::create(['user_id' => $user->id, 'household_id' => $household->id, 'provider' => BankLink::PROVIDER_ENABLEBANKING, 'institution_id' => 'DKB', 'institution_name' => 'DKB', 'reference' => 'a', 'status' => BankLink::STATUS_ERROR]);
+        BankLink::create(['user_id' => $user->id, 'household_id' => $household->id, 'provider' => BankLink::PROVIDER_ENABLEBANKING, 'institution_id' => 'DKB', 'institution_name' => 'DKB', 'reference' => 'b', 'status' => BankLink::STATUS_CREATED]);
+
+        app(BankLinkSync::class)->connectEnableBanking($user, 'DKB', 'DE', null, 'https://app.test/callback');
+
+        $this->assertSame(1, BankLink::where('institution_id', 'DKB')->count());
+    }
 }

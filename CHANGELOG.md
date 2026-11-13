@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.104.2] – 2026-11-13
+
+### Sicherheit
+- **Laravel auf 13.42 aktualisiert.** Schließt eine am 13.11. veröffentlichte Sicherheitsmeldung (CVE-2026-128083, „Task Output Injection", niedrige Schwere) in `laravel/framework < 13.40`. Nur die Lockdatei wurde auf eine gepatchte Version angehoben; die deklarierten Abhängigkeiten (`^13.17`) bleiben unverändert.
+
 ## [1.104.1] – 2026-11-13
 
 ### Verbessert (Banking Enable Banking)

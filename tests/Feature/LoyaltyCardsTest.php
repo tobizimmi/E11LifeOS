@@ -78,10 +78,9 @@ class LoyaltyCardsTest extends TestCase
         LoyaltyCard::factory()->for($household)->privateTo($owner)->create(['name' => 'Owner only']);
 
         $this->actingAs($other);
-        $titles = Volt::test('loyalty-cards.index')->get('cards')->pluck('name');
-
-        $this->assertTrue($titles->contains('Shared card'));
-        $this->assertFalse($titles->contains('Owner only'));
+        Volt::test('loyalty-cards.index')
+            ->assertSee('Shared card')
+            ->assertDontSee('Owner only');
     }
 
     public function test_a_card_can_be_edited_and_deleted(): void

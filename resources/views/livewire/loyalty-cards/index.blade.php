@@ -216,28 +216,24 @@ new #[Layout('layouts.app')] class extends Component
 
 <div x-data="cardScanner">
     <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">💳 {{ __('Loyalty cards') }}</h2>
-            <div class="flex gap-2">
-                <button type="button" x-on:click="open()" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📷 {{ __('Scan') }}</button>
-                <x-primary-button type="button" wire:click="startAdding">+ {{ __('New card') }}</x-primary-button>
-            </div>
-        </div>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">💳 {{ __('Loyalty cards') }}</h2>
     </x-slot>
 
     <div class="py-6 sm:py-8">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Keep your store and loyalty cards here and show them at the till – scanned, uploaded or typed in.') }}</p>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Keep your store and loyalty cards here and show them at the till – scanned, uploaded or typed in.') }}</p>
+                <div class="flex gap-2">
+                    <button type="button" x-on:click="open()" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📷 {{ __('Scan') }}</button>
+                    <x-primary-button type="button" wire:click="startAdding">+ {{ __('New card') }}</x-primary-button>
+                </div>
+            </div>
 
             @if ($cards->isEmpty())
                 <div class="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center dark:border-gray-600 dark:bg-gray-800">
                     <p class="text-4xl">💳</p>
                     <p class="mt-2 font-medium text-gray-900 dark:text-gray-100">{{ __('No cards yet') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Add your first card – scan it, upload a photo of the code, or type the number.') }}</p>
-                    <div class="mt-4 flex justify-center gap-2">
-                        <button type="button" x-on:click="open()" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📷 {{ __('Scan') }}</button>
-                        <x-primary-button type="button" wire:click="startAdding">+ {{ __('New card') }}</x-primary-button>
-                    </div>
                 </div>
             @else
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -393,7 +389,8 @@ new #[Layout('layouts.app')] class extends Component
                                         <span class="flex h-16 w-24 items-center justify-center rounded-md bg-gray-100 text-2xl dark:bg-gray-700" aria-hidden="true">🖼️</span>
                                     @endif
                                     <div class="min-w-0 text-sm">
-                                        <input type="file" wire:model="{{ $side === 'front' ? 'frontImage' : 'backImage' }}" accept="image/*" class="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-2 file:rounded-md file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-indigo-700" />
+                                        <input type="file" accept="image/*" class="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-2 file:rounded-md file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-indigo-700"
+                                            x-on:change="if ($event.target.files[0]) $dispatch('open-cropper', { target: '{{ $side === 'front' ? 'frontImage' : 'backImage' }}', file: $event.target.files[0] }); $event.target.value = ''" />
                                         <div wire:loading wire:target="{{ $side === 'front' ? 'frontImage' : 'backImage' }}" class="mt-1 text-xs text-gray-400">{{ __('Uploading …') }}</div>
                                         @if ($existingUrl)
                                             <label class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
@@ -474,6 +471,48 @@ new #[Layout('layouts.app')] class extends Component
                 🖼️ {{ __('Upload image instead') }}
                 <input type="file" accept="image/*" class="hidden" x-on:change="decodeFile($event)" />
             </label>
+        </div>
+    </div>
+
+    {{-- Image cropper overlay (pan/zoom, canvas only – no library) --}}
+    <div x-data="cardCropper({ uploadError: @js(__('The image could not be uploaded. Please try a smaller photo.')) })" wire:ignore>
+        <div x-show="visible" x-cloak class="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-label="{{ __('Crop image') }}">
+            <div class="w-full max-w-sm space-y-4 rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-800">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ __('Crop image') }}</h3>
+                    <button type="button" x-on:click="close()" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-5 w-5" stroke-width="2" /></button>
+                </div>
+
+                <div class="flex justify-center">
+                    <canvas x-ref="canvas"
+                        class="touch-none cursor-grab rounded-lg ring-1 ring-gray-200 active:cursor-grabbing dark:ring-gray-700"
+                        style="touch-action: none;"
+                        x-on:pointerdown="onDown($event); $event.target.setPointerCapture?.($event.pointerId)"
+                        x-on:pointermove="onMove($event)"
+                        x-on:pointerup="onUp()"
+                        x-on:pointercancel="onUp()"
+                    ></canvas>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-400">➖</span>
+                    <input type="range" min="1" max="4" step="0.01" :value="zoomValue" x-on:input="zoomValue = $event.target.value; zoom(zoomValue)" class="flex-1 accent-indigo-600" aria-label="{{ __('Zoom') }}" />
+                    <span class="text-xs text-gray-400">➕</span>
+                </div>
+
+                <div class="flex justify-center gap-2 text-sm">
+                    <button type="button" x-on:click="setRatio(1.586)" :class="Math.abs(ratio - 1.586) < 0.01 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'" class="rounded-full px-3 py-1">{{ __('Card') }}</button>
+                    <button type="button" x-on:click="setRatio(1)" :class="ratio === 1 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'" class="rounded-full px-3 py-1">{{ __('Square') }}</button>
+                </div>
+
+                <p class="text-center text-xs text-gray-400">{{ __('Drag to move, slider to zoom.') }}</p>
+
+                <div class="flex items-center gap-3 pt-1">
+                    <x-primary-button type="button" x-on:click="confirm()" x-bind:disabled="busy"><span x-show="! busy">{{ __('Crop & use') }}</span><span x-show="busy" x-cloak>{{ __('Uploading …') }}</span></x-primary-button>
+                    <button type="button" x-on:click="useOriginal()" x-bind:disabled="busy" class="text-sm text-gray-600 underline dark:text-gray-300">{{ __('Use original') }}</button>
+                    <button type="button" x-on:click="close()" class="text-sm text-gray-500 underline">{{ __('Cancel') }}</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -40,6 +40,26 @@ class LoyaltyCardsTest extends TestCase
         $this->assertSame($household->id, $card->household_id);
     }
 
+    public function test_several_cards_can_be_added_one_after_another(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $component = Volt::test('loyalty-cards.index');
+
+        foreach (['REWE', 'DM'] as $name) {
+            $component->call('startAdding')
+                ->set('name', $name)
+                ->set('code', '123')
+                ->set('codeFormat', 'CODE_128')
+                ->call('save')
+                ->assertHasNoErrors()
+                ->assertSet('adding', false);
+        }
+
+        $this->assertSame(['REWE', 'DM'], LoyaltyCard::where('household_id', $household->id)->orderBy('id')->pluck('name')->all());
+    }
+
     public function test_name_and_code_are_required(): void
     {
         [$user] = $this->memberWithHousehold();

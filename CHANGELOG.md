@@ -3,6 +3,31 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.106.0] – 2026-11-14
+
+### Neu (Fokus & Time Boxing)
+- **Neues Produktivitäts-Modul „Fokus".** Ein Tagesplaner nach der Time-Boxing-Methode, wie sie fokussierte Manager nutzen:
+  - **Brain Dump:** alles aus dem Kopf in eine Liste – wahlweise direkt als verknüpfte Aufgabe (To-Do) gespeichert, oder bestehende offene To-Dos per „Aus To-Dos holen" übernehmen (eine Quelle der Wahrheit).
+  - **Eisenhower-Matrix:** Einträge in die vier Felder (Sofort erledigen / Einplanen / Delegieren / Streichen) sortieren.
+  - **Top-3 des Tages (MITs):** die wichtigsten Aufgaben werden aus der Matrix vorgeschlagen und markiert (max. 3).
+  - **Time Boxing:** jeder wichtigen Aufgabe einen festen Zeitblock (Start + Dauer) geben; der Tagesplan zeigt die Blöcke der Reihe nach.
+  - Abhaken synchronisiert die verknüpfte Aufgabe; alles ist pro Person privat und mit „Routinen & Tagebuch" verlinkt. Zu finden unter **Alltag → Fokus & Time Boxing**.
+
+## [1.105.4] – 2026-11-14
+
+### Behoben (Navigation)
+- **Kundenkarten-Symbol fehlte im Menü.** Das Icon „credit-card" war im Symbolsatz nicht hinterlegt und blieb leer; es wird jetzt angezeigt.
+
+## [1.105.3] – 2026-11-14
+
+### Neu (Kundenkarten)
+- **Kartenfoto/Logo zuschneiden.** Nach dem Hochladen eines Bildes öffnet sich ein Zuschneide-Fenster: Bild per Ziehen verschieben, per Regler zoomen und zwischen Karten- (Querformat) und quadratischem Ausschnitt wählen. Alternativ „Original verwenden". Läuft komplett im Browser (Canvas), ohne zusätzliche Bibliothek.
+
+## [1.105.2] – 2026-11-14
+
+### Behoben (Kundenkarten)
+- **Nach der ersten Karte ließ sich keine zweite anlegen.** Die Buttons „Neue Karte" und „Scannen" lagen im Seitenkopf, der außerhalb des interaktiven Bereichs gerendert wird – nach dem Anlegen der ersten Karte reagierten sie nicht mehr. Die Buttons sitzen jetzt direkt über der Kartenliste und funktionieren dauerhaft.
+
 ## [1.105.1] – 2026-11-14
 
 ### Behoben (Kundenkarten)

@@ -53,6 +53,7 @@ class Navigation
             'calendar' => ['everyday', __('Calendar'), 'calendar-days', 'calendar.index', ['calendar.*']],
             'kiosk' => ['everyday', __('Family screen'), 'squares-2x2', 'kiosk.index', ['kiosk.*']],
             'journal' => ['everyday', __('Routines & journal'), 'face-smile', 'journal.index', ['journal.*']],
+            'focus' => ['everyday', __('Focus & time boxing'), 'viewfinder-circle', 'focus.index', ['focus.*']],
             'shopping' => ['everyday', __('Shopping List'), 'shopping-cart', 'shopping-list.index', ['shopping-list.*']],
             'cards' => ['everyday', __('Loyalty cards'), 'credit-card', 'loyalty-cards.index', ['loyalty-cards.*']],
             'pantry' => ['everyday', __('Pantry'), 'archive-box', 'pantry.index', ['pantry.*']],

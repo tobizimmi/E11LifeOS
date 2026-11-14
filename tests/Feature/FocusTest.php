@@ -115,7 +115,7 @@ class FocusTest extends TestCase
         [$user, $household] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        $task = Item::create(['household_id' => $household->id, 'created_by' => $user->id, 'collection_id' => Collection::tasksFor($household->id)->id, 'title' => 'Task', 'done' => false]);
+        $task = Item::create(['household_id' => $household->id, 'created_by' => $user->id, 'type' => Item::TYPE_TODO, 'collection_id' => Collection::tasksFor($household->id)->id, 'title' => 'Task', 'done' => false]);
         $entry = FocusEntry::factory()->create(['household_id' => $household->id, 'user_id' => $user->id, 'date' => '2026-11-14', 'item_id' => $task->id]);
 
         Volt::test('focus.index')->call('toggleDone', $entry->id);
@@ -130,8 +130,8 @@ class FocusTest extends TestCase
         $this->actingAs($user);
 
         $collectionId = Collection::tasksFor($household->id)->id;
-        Item::create(['household_id' => $household->id, 'created_by' => $user->id, 'collection_id' => $collectionId, 'title' => 'Offen', 'done' => false]);
-        Item::create(['household_id' => $household->id, 'created_by' => $user->id, 'collection_id' => $collectionId, 'title' => 'Erledigt', 'done' => true]);
+        Item::create(['household_id' => $household->id, 'created_by' => $user->id, 'type' => Item::TYPE_TODO, 'collection_id' => $collectionId, 'title' => 'Offen', 'done' => false]);
+        Item::create(['household_id' => $household->id, 'created_by' => $user->id, 'type' => Item::TYPE_TODO, 'collection_id' => $collectionId, 'title' => 'Erledigt', 'done' => true]);
 
         Volt::test('focus.index')->call('importTasks');
 

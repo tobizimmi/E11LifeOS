@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureAddonEnabled;
 use App\Http\Middleware\EnsureModuleAllowed;
 use App\Http\Middleware\LogSensitiveAccess;
 use App\Http\Middleware\RecordSlowRequests;
+use App\Http\Middleware\RequireApiConfirmation;
 use App\Http\Middleware\RequireTwoFactor;
 use App\Http\Middleware\ScanUploads;
 use App\Http\Middleware\SecurityHeaders;
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'module' => EnsureModuleAllowed::class,
             'auth.token' => AuthenticateApiToken::class,
             'sensitive.log' => LogSensitiveAccess::class,
+            'api.confirmed' => RequireApiConfirmation::class,
         ]);
 
         // Uploads are checked for viruses after the session started, so errors reach the form.

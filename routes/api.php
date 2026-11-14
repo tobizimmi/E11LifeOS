@@ -6,9 +6,11 @@ use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
+use App\Http\Controllers\Api\V1\EmergencyController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FocusController;
 use App\Http\Controllers\Api\V1\HabitController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HouseController;
 use App\Http\Controllers\Api\V1\InvestingController;
 use App\Http\Controllers\Api\V1\JournalController;
@@ -50,6 +52,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware(['auth.token', 'throttle:120,1', 'module'])->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('logout');
+        Route::post('auth/confirm-password', [AuthController::class, 'confirmPassword'])->name('confirm-password');
+        Route::delete('auth/confirm-password', [AuthController::class, 'forgetConfirmation'])->name('confirm-password.forget');
 
         Route::get('tasks', [LifeController::class, 'tasks'])->name('tasks.index');
         Route::post('tasks', [LifeController::class, 'storeTask'])->name('tasks.store');
@@ -223,6 +227,28 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('kid-chores/{chore}', [KidController::class, 'destroyChore'])->whereNumber('chore')->name('kids.chores.destroy');
         Route::post('kid-completions/{completion}/review', [KidController::class, 'review'])->whereNumber('completion')->name('kids.completions.review');
         Route::delete('kid-transactions/{transaction}', [KidController::class, 'destroyTransaction'])->whereNumber('transaction')->name('kids.transactions.destroy');
+
+        // Sensitive areas: the password must have been confirmed for the token (15 minutes).
+        Route::middleware('api.confirmed')->group(function () {
+            Route::middleware('sensitive.log:health')->group(function () {
+                Route::get('health', [HealthController::class, 'index'])->name('health.index');
+                Route::post('health/profiles', [HealthController::class, 'storeProfile'])->name('health.profiles.store');
+                Route::put('health/profiles/{profile}', [HealthController::class, 'updateProfile'])->whereNumber('profile')->name('health.profiles.update');
+                Route::delete('health/profiles/{profile}', [HealthController::class, 'destroyProfile'])->whereNumber('profile')->name('health.profiles.destroy');
+                Route::post('health/profiles/{profile}/entries', [HealthController::class, 'storeEntry'])->whereNumber('profile')->name('health.entries.store');
+                Route::post('health/profiles/{profile}/adopt', [HealthController::class, 'adopt'])->whereNumber('profile')->name('health.entries.adopt');
+                Route::post('health/profiles/{profile}/entries/{entry}/done', [HealthController::class, 'done'])->whereNumber(['profile', 'entry'])->name('health.entries.done');
+                Route::post('health/profiles/{profile}/entries/{entry}/toggle', [HealthController::class, 'toggleActive'])->whereNumber(['profile', 'entry'])->name('health.entries.toggle');
+                Route::delete('health/profiles/{profile}/entries/{entry}', [HealthController::class, 'destroyEntry'])->whereNumber(['profile', 'entry'])->name('health.entries.destroy');
+            });
+
+            Route::middleware('sensitive.log:emergency')->group(function () {
+                Route::get('emergency', [EmergencyController::class, 'index'])->name('emergency.index');
+                Route::post('emergency/entries', [EmergencyController::class, 'store'])->name('emergency.entries.store');
+                Route::put('emergency/entries/{entry}', [EmergencyController::class, 'update'])->whereNumber('entry')->name('emergency.entries.update');
+                Route::delete('emergency/entries/{entry}', [EmergencyController::class, 'destroy'])->whereNumber('entry')->name('emergency.entries.destroy');
+            });
+        });
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');

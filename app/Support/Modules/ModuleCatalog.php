@@ -45,7 +45,7 @@ class ModuleCatalog
             'automations' => $module(__('Automations'), '🔄', ['automations.*']),
             Addons::REAL_ESTATE => $module($addons[Addons::REAL_ESTATE]['label'], $addons[Addons::REAL_ESTATE]['icon'], ['real-estate.*'], true),
             'vehicles' => $module(__('Vehicles'), '🚗', ['vehicles.*', 'api.v1.vehicles.*']),
-            'health' => $module(__('Health'), '❤️', ['health.*']),
+            'health' => $module(__('Health'), '❤️', ['health.*', 'api.v1.health.*']),
             'people' => $module(__('People & occasions'), '🎂', ['people.*', 'api.v1.people.*']),
             'kids' => $module(__('Kids & pocket money'), '⭐', ['kids.*', 'api.v1.kids.*']),
             'work' => $module(__('Working time & leave'), '⏱', ['work.*']),
@@ -54,7 +54,7 @@ class ModuleCatalog
             'places' => $module(__('Places'), '📍', ['places.*', 'api.v1.places.*']),
             'splits' => $module(__('Split costs'), '🧮', ['splits.*', 'api.v1.splits.*']),
             'review' => $module(__('Year in review'), '🌟', ['review.*']),
-            'emergency' => $module(__('Emergency folder'), '🛡', ['emergency.*']),
+            'emergency' => $module(__('Emergency folder'), '🛡', ['emergency.*', 'api.v1.emergency.*']),
             'provision' => $module(__('Provision check'), '☂️', ['provision.*']),
             'drives' => $module(__('Network drives'), '🗄', ['drives.*']),
         ];

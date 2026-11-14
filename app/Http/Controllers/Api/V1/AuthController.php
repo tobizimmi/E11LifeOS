@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\ApiToken;
 use App\Models\User;
+use App\Support\Security\ApiConfirmation;
 use App\Support\Security\SecurityLog;
 use App\Support\TwoFactor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends ApiController
 {
@@ -59,9 +61,54 @@ class AuthController extends ApiController
         return $this->ok(['user' => $this->present($this->user())]);
     }
 
+    /**
+     * Confirms the password for sensitive areas (health, emergency folder) for 15 minutes.
+     */
+    public function confirmPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate(['password' => ['required', 'string', 'max:255']]);
+        $token = $request->attributes->get('api_token');
+        abort_unless($token instanceof ApiToken, 401);
+
+        // Only wrong passwords count: five of them per minute lock the check for a minute.
+        $limiterKey = 'confirm-password:'.$this->user()->id;
+        abort_if(RateLimiter::tooManyAttempts($limiterKey, 5), 429, __('Too many attempts. Please wait a moment.'));
+
+        if (! Hash::check($data['password'], $this->user()->password)) {
+            RateLimiter::hit($limiterKey, 60);
+            SecurityLog::record($this->user(), 'password_confirmation_failed');
+
+            return response()->json(['success' => false, 'error' => __('The password is incorrect.')], 422);
+        }
+
+        RateLimiter::clear($limiterKey);
+        ApiConfirmation::confirm($token);
+
+        return $this->ok(['expires_in' => ApiConfirmation::SECONDS]);
+    }
+
+    /**
+     * Ends the confirmation early (the app calls this when it leaves a sensitive area).
+     */
+    public function forgetConfirmation(Request $request): JsonResponse
+    {
+        $token = $request->attributes->get('api_token');
+
+        if ($token instanceof ApiToken) {
+            ApiConfirmation::forget($token);
+        }
+
+        return $this->ok();
+    }
+
     public function logout(Request $request): JsonResponse
     {
-        $request->attributes->get('api_token')?->delete();
+        $token = $request->attributes->get('api_token');
+
+        if ($token instanceof ApiToken) {
+            ApiConfirmation::forget($token);
+            $token->delete();
+        }
 
         return $this->ok();
     }

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.108.0] – 2026-11-14
+
+### Neu (App-Schnittstelle)
+- **Haus & Familie für die native App.** Die Handy-API (`/api/v1`) liefert jetzt auch **Fahrzeuge** (Kosten pro Monat und Kilometer, Verbrauch, nächste Termine, Log für Tanken, Werkstatt und Fahrten), **Zuhause** (Wartungsaufgaben aus Vorlagen oder eigene, Zähler mit Ständen und Verbrauch) sowie **Kinder & Taschengeld** (Guthaben, Sparziel, Aufgaben abhaken und bestätigen, Geld ein- und ausbuchen) – auf den Haushalt begrenzt und an die Modulsperren angebunden.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.107.0] – 2026-11-14
 
 ### Neu (App-Schnittstelle)

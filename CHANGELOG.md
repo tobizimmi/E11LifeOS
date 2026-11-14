@@ -3,6 +3,21 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.106.0] – 2026-11-14
+
+### Neu (Fokus & Time Boxing)
+- **Neues Produktivitäts-Modul „Fokus".** Ein Tagesplaner nach der Time-Boxing-Methode, wie sie fokussierte Manager nutzen:
+  - **Brain Dump:** alles aus dem Kopf in eine Liste – wahlweise direkt als verknüpfte Aufgabe (To-Do) gespeichert, oder bestehende offene To-Dos per „Aus To-Dos holen" übernehmen (eine Quelle der Wahrheit).
+  - **Eisenhower-Matrix:** Einträge in die vier Felder (Sofort erledigen / Einplanen / Delegieren / Streichen) sortieren.
+  - **Top-3 des Tages (MITs):** die wichtigsten Aufgaben werden aus der Matrix vorgeschlagen und markiert (max. 3).
+  - **Time Boxing:** jeder wichtigen Aufgabe einen festen Zeitblock (Start + Dauer) geben; der Tagesplan zeigt die Blöcke der Reihe nach.
+  - Abhaken synchronisiert die verknüpfte Aufgabe; alles ist pro Person privat und mit „Routinen & Tagebuch" verlinkt. Zu finden unter **Alltag → Fokus & Time Boxing**.
+
+## [1.105.4] – 2026-11-14
+
+### Behoben (Navigation)
+- **Kundenkarten-Symbol fehlte im Menü.** Das Icon „credit-card" war im Symbolsatz nicht hinterlegt und blieb leer; es wird jetzt angezeigt.
+
 ## [1.105.3] – 2026-11-14
 
 ### Neu (Kundenkarten)

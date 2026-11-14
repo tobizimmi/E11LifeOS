@@ -96,6 +96,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('wealth-plan', 'wealth-plan.index')->name('wealth-plan.index');
     Volt::route('wishlist', 'wishlist.index')->name('wishlist.index');
     Volt::route('cards', 'loyalty-cards.index')->name('loyalty-cards.index');
+    Volt::route('focus', 'focus.index')->name('focus.index');
     Route::get('cards/{card}/image/{side}', LoyaltyCardImageController::class)->whereNumber('card')->whereIn('side', ['front', 'back'])->name('loyalty-cards.image');
     Volt::route('pantry', 'pantry.index')->name('pantry.index');
     Volt::route('changelog', 'changelog.index')->name('changelog');

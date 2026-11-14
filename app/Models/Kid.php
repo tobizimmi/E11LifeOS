@@ -29,6 +29,9 @@ class Kid extends Model
         ];
     }
 
+    /**
+     * @return HasMany<KidTransaction, $this>
+     */
     public function transactions(): HasMany
     {
         return $this->hasMany(KidTransaction::class)->orderByDesc('date')->orderByDesc('id');

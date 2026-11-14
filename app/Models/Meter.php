@@ -48,6 +48,9 @@ class Meter extends Model
         return self::kindLabels()[$this->kind]['unit'] ?? '';
     }
 
+    /**
+     * @return HasMany<MeterReading, $this>
+     */
     public function readings(): HasMany
     {
         return $this->hasMany(MeterReading::class)->orderBy('read_on')->orderBy('id');

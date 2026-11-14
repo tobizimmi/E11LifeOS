@@ -649,18 +649,6 @@ parameters:
 			path: app/Models/Concerns/HasShareTokens.php
 
 		-
-			message: '#^Cannot access property \$year on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Models/Contact.php
-
-		-
-			message: '#^Parameter \#1 \$date of static method App\\Models\\Contact\:\:nextOccurrence\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/Contact.php
-
-		-
 			message: '#^Cannot call method lt\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1831,12 +1819,6 @@ parameters:
 			path: app/Support/Life/LifeDates.php
 
 		-
-			message: '#^Cannot access property \$year on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Support/Life/LifeDates.php
-
-		-
 			message: '#^Cannot call method between\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1852,12 +1834,6 @@ parameters:
 			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
-			path: app/Support/Life/LifeDates.php
-
-		-
-			message: '#^Parameter \#1 \$date of static method App\\Models\\Contact\:\:nextOccurrence\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Support/Life/LifeDates.php
 
 		-

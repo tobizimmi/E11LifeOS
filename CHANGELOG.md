@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.105.4] – 2026-11-14
+
+### Behoben (Navigation)
+- **Kundenkarten-Symbol fehlte im Menü.** Das Icon „credit-card" war im Symbolsatz nicht hinterlegt und blieb leer; es wird jetzt angezeigt.
+
 ## [1.105.3] – 2026-11-14
 
 ### Neu (Kundenkarten)

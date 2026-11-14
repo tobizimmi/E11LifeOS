@@ -158,7 +158,7 @@ class OffersController extends ApiController
      */
     private function chainKeys(Household $household): array
     {
-        $chains = $household->offers_chains;
+        $chains = $household->getAttribute('offers_chains');
 
         return is_array($chains) ? array_values(array_map('strval', $chains)) : [];
     }

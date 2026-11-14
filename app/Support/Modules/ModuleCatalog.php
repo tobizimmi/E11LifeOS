@@ -39,7 +39,7 @@ class ModuleCatalog
             'contracts' => $module(__('Contract costs'), '📄', ['contracts.*', 'letters.*', 'api.v1.contracts.*']),
             'quotes' => $module(__('Quote comparisons'), '⚖️', ['quotes.*']),
             'wishlist' => $module(__('Wishlist'), '🎁', ['wishlist.*', 'api.v1.wishlist.*']),
-            'knowledge' => $module(__('Money knowledge'), '💡', ['knowledge.*']),
+            'knowledge' => $module(__('Money knowledge'), '💡', ['knowledge.*', 'api.v1.knowledge.*']),
             'house' => $module(__('At home'), '🛠', ['house.*', 'api.v1.house.*']),
             Addons::SMART_HOME => $module($addons[Addons::SMART_HOME]['label'], $addons[Addons::SMART_HOME]['icon'], ['smart-home.*', 'api.v1.smart-home.*'], true),
             'automations' => $module(__('Automations'), '🔄', ['automations.*']),

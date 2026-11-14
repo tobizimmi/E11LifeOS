@@ -15,11 +15,13 @@ use App\Http\Controllers\Api\V1\HouseController;
 use App\Http\Controllers\Api\V1\InvestingController;
 use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\KidController;
+use App\Http\Controllers\Api\V1\KnowledgeController;
 use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\MealPlanController;
+use App\Http\Controllers\Api\V1\OffersController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
@@ -69,6 +71,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('shopping', [LifeController::class, 'shopping'])->name('shopping.index');
         Route::post('shopping', [LifeController::class, 'storeShopping'])->name('shopping.store');
         Route::post('shopping/quick', [LifeController::class, 'quickShopping'])->name('shopping.quick');
+        Route::get('shopping/offers', [OffersController::class, 'index'])->name('shopping.offers.index');
+        Route::get('shopping/offers/settings', [OffersController::class, 'settings'])->name('shopping.offers.settings');
+        Route::put('shopping/offers/settings', [OffersController::class, 'saveSettings'])->name('shopping.offers.settings.save');
+        Route::post('shopping/offers/watches', [OffersController::class, 'storeWatch'])->name('shopping.offers.watches.store');
+        Route::delete('shopping/offers/watches/{watch}', [OffersController::class, 'destroyWatch'])->whereNumber('watch')->name('shopping.offers.watches.destroy');
+        Route::post('shopping/offers/add', [OffersController::class, 'add'])->name('shopping.offers.add');
         Route::post('shopping/{entry}/toggle', [LifeController::class, 'toggleShopping'])->whereNumber('entry')->name('shopping.toggle');
         Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
         Route::get('finances', [LifeController::class, 'finances'])->name('finances');
@@ -189,6 +197,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('focus/suggest-top', [FocusController::class, 'suggestTop'])->name('focus.suggest');
         Route::put('focus/{entry}', [FocusController::class, 'update'])->whereNumber('entry')->name('focus.update');
         Route::delete('focus/{entry}', [FocusController::class, 'destroy'])->whereNumber('entry')->name('focus.destroy');
+
+        Route::get('knowledge/tips', [KnowledgeController::class, 'tips'])->name('knowledge.tips');
+        Route::get('knowledge/tips/{key}', [KnowledgeController::class, 'tip'])->where('key', '[A-Za-z0-9_.\\-]+')->name('knowledge.tip');
+        Route::get('knowledge/news', [KnowledgeController::class, 'news'])->name('knowledge.news');
+        Route::get('knowledge/favorites', [KnowledgeController::class, 'favorites'])->name('knowledge.favorites');
+        Route::post('knowledge/favorites', [KnowledgeController::class, 'toggle'])->name('knowledge.favorites.toggle');
+        Route::delete('knowledge/favorites/{favorite}', [KnowledgeController::class, 'destroyFavorite'])->whereNumber('favorite')->name('knowledge.favorites.destroy');
 
         Route::get('learnings', [LearningController::class, 'index'])->name('learnings.index');
         Route::post('learnings', [LearningController::class, 'store'])->name('learnings.store');

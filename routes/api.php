@@ -9,8 +9,10 @@ use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FocusController;
 use App\Http\Controllers\Api\V1\HabitController;
+use App\Http\Controllers\Api\V1\HouseController;
 use App\Http\Controllers\Api\V1\InvestingController;
 use App\Http\Controllers\Api\V1\JournalController;
+use App\Http\Controllers\Api\V1\KidController;
 use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
@@ -27,6 +29,7 @@ use App\Http\Controllers\Api\V1\SmartHomeController;
 use App\Http\Controllers\Api\V1\SplitController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\VehicleController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\Api\V1\WealthPlanController;
 use App\Http\Controllers\Api\V1\WishlistController;
@@ -183,6 +186,36 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('learnings/{lesson}/applied', [LearningController::class, 'applied'])->whereNumber('lesson')->name('learnings.applied');
         Route::post('learnings/{lesson}/archive', [LearningController::class, 'archive'])->whereNumber('lesson')->name('learnings.archive');
         Route::delete('learnings/{lesson}', [LearningController::class, 'destroy'])->whereNumber('lesson')->name('learnings.destroy');
+        // Home & family: vehicles, maintenance and meters, kids and pocket money.
+        Route::get('vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+        Route::post('vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+        Route::get('vehicles/{vehicle}', [VehicleController::class, 'show'])->whereNumber('vehicle')->name('vehicles.show');
+        Route::put('vehicles/{vehicle}', [VehicleController::class, 'update'])->whereNumber('vehicle')->name('vehicles.update');
+        Route::delete('vehicles/{vehicle}', [VehicleController::class, 'destroy'])->whereNumber('vehicle')->name('vehicles.destroy');
+        Route::post('vehicles/{vehicle}/logs', [VehicleController::class, 'storeLog'])->whereNumber('vehicle')->name('vehicles.logs.store');
+        Route::delete('vehicles/{vehicle}/logs/{log}', [VehicleController::class, 'destroyLog'])->whereNumber(['vehicle', 'log'])->name('vehicles.logs.destroy');
+
+        Route::get('house', [HouseController::class, 'index'])->name('house.index');
+        Route::post('house/tasks', [HouseController::class, 'storeTask'])->name('house.tasks.store');
+        Route::post('house/tasks/{task}/done', [HouseController::class, 'taskDone'])->whereNumber('task')->name('house.tasks.done');
+        Route::delete('house/tasks/{task}', [HouseController::class, 'destroyTask'])->whereNumber('task')->name('house.tasks.destroy');
+        Route::post('house/meters', [HouseController::class, 'storeMeter'])->name('house.meters.store');
+        Route::put('house/meters/{meter}', [HouseController::class, 'updateMeter'])->whereNumber('meter')->name('house.meters.update');
+        Route::delete('house/meters/{meter}', [HouseController::class, 'destroyMeter'])->whereNumber('meter')->name('house.meters.destroy');
+        Route::post('house/meters/{meter}/readings', [HouseController::class, 'storeReading'])->whereNumber('meter')->name('house.readings.store');
+        Route::delete('house/meters/{meter}/readings/{reading}', [HouseController::class, 'destroyReading'])->whereNumber(['meter', 'reading'])->name('house.readings.destroy');
+
+        Route::get('kids', [KidController::class, 'index'])->name('kids.index');
+        Route::post('kids', [KidController::class, 'store'])->name('kids.store');
+        Route::put('kids/{kid}', [KidController::class, 'update'])->whereNumber('kid')->name('kids.update');
+        Route::delete('kids/{kid}', [KidController::class, 'destroy'])->whereNumber('kid')->name('kids.destroy');
+        Route::post('kids/{kid}/chores/{chore}/done', [KidController::class, 'choreDone'])->whereNumber(['kid', 'chore'])->name('kids.chores.done');
+        Route::post('kids/{kid}/transactions', [KidController::class, 'storeTransaction'])->whereNumber('kid')->name('kids.transactions.store');
+        Route::post('kid-chores', [KidController::class, 'storeChore'])->name('kids.chores.store');
+        Route::put('kid-chores/{chore}', [KidController::class, 'updateChore'])->whereNumber('chore')->name('kids.chores.update');
+        Route::delete('kid-chores/{chore}', [KidController::class, 'destroyChore'])->whereNumber('chore')->name('kids.chores.destroy');
+        Route::post('kid-completions/{completion}/review', [KidController::class, 'review'])->whereNumber('completion')->name('kids.completions.review');
+        Route::delete('kid-transactions/{transaction}', [KidController::class, 'destroyTransaction'])->whereNumber('transaction')->name('kids.transactions.destroy');
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');

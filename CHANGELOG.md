@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.105.3] – 2026-11-14
+
+### Neu (Kundenkarten)
+- **Kartenfoto/Logo zuschneiden.** Nach dem Hochladen eines Bildes öffnet sich ein Zuschneide-Fenster: Bild per Ziehen verschieben, per Regler zoomen und zwischen Karten- (Querformat) und quadratischem Ausschnitt wählen. Alternativ „Original verwenden". Läuft komplett im Browser (Canvas), ohne zusätzliche Bibliothek.
+
 ## [1.105.2] – 2026-11-14
 
 ### Behoben (Kundenkarten)

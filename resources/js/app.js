@@ -656,6 +656,205 @@ document.addEventListener('alpine:init', () => {
     });
 
     /**
+     * Crops an uploaded card photo/logo before it is sent to Livewire. The image is drawn on a
+     * canvas inside a fixed-aspect frame (card or square) the user can pan and zoom; on confirm the
+     * visible area is exported as a JPEG and uploaded to the given Livewire file property. No
+     * cropping library – just canvas. Opened via a window `open-cropper` event with {target, file}.
+     */
+    window.Alpine.data('cardCropper', (config = {}) => {
+        let img = null;
+        let objectUrl = null;
+        let originalFile = null;
+        let dragging = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        return {
+            visible: false,
+            busy: false,
+            target: null,
+            ratio: 1.586, // card aspect (w / h); 1 = square (for logos)
+            frameW: 300,
+            frameH: 189,
+            scale: 1,
+            minScale: 1,
+            offsetX: 0,
+            offsetY: 0,
+            zoomValue: 1,
+
+            init() {
+                window.addEventListener('open-cropper', (event) => this.start(event.detail.target, event.detail.file));
+            },
+
+            start(target, file) {
+                if (!target || !file?.type?.startsWith('image/')) {
+                    return;
+                }
+
+                this.target = target;
+                originalFile = file;
+                this.busy = false;
+                this.ratio = 1.586;
+                objectUrl && URL.revokeObjectURL(objectUrl);
+                objectUrl = URL.createObjectURL(file);
+                img = new Image();
+                img.onload = () => {
+                    this.visible = true;
+                    this.$nextTick(() => { this.setFrame(); this.fit(); this.draw(); });
+                };
+                // Can't decode it for a preview (e.g. HEIC) – upload as is, shrunk.
+                img.onerror = () => this.upload(file);
+                img.src = objectUrl;
+            },
+
+            setFrame() {
+                this.frameW = Math.min(320, window.innerWidth - 64);
+                this.frameH = Math.round(this.frameW / this.ratio);
+                const canvas = this.$refs.canvas;
+                canvas.width = this.frameW;
+                canvas.height = this.frameH;
+            },
+
+            setRatio(ratio) {
+                this.ratio = ratio;
+                this.setFrame();
+                this.fit();
+                this.draw();
+            },
+
+            fit() {
+                this.minScale = Math.max(this.frameW / img.width, this.frameH / img.height);
+                this.scale = this.minScale;
+                this.zoomValue = 1;
+                this.offsetX = (this.frameW - img.width * this.scale) / 2;
+                this.offsetY = (this.frameH - img.height * this.scale) / 2;
+                this.clamp();
+            },
+
+            clamp() {
+                const w = img.width * this.scale;
+                const h = img.height * this.scale;
+                this.offsetX = Math.min(0, Math.max(this.frameW - w, this.offsetX));
+                this.offsetY = Math.min(0, Math.max(this.frameH - h, this.offsetY));
+            },
+
+            draw() {
+                if (!img) {
+                    return;
+                }
+                const ctx = this.$refs.canvas.getContext('2d');
+                ctx.clearRect(0, 0, this.frameW, this.frameH);
+                ctx.drawImage(img, this.offsetX, this.offsetY, img.width * this.scale, img.height * this.scale);
+            },
+
+            point(event) {
+                const rect = this.$refs.canvas.getBoundingClientRect();
+                const touch = event.touches?.[0] || event;
+
+                return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            },
+
+            onDown(event) {
+                dragging = true;
+                const p = this.point(event);
+                lastX = p.x;
+                lastY = p.y;
+            },
+
+            onMove(event) {
+                if (!dragging) {
+                    return;
+                }
+                event.preventDefault();
+                const p = this.point(event);
+                this.offsetX += p.x - lastX;
+                this.offsetY += p.y - lastY;
+                lastX = p.x;
+                lastY = p.y;
+                this.clamp();
+                this.draw();
+            },
+
+            onUp() {
+                dragging = false;
+            },
+
+            zoom(value) {
+                const factor = Math.max(1, parseFloat(value) || 1);
+                const cx = this.frameW / 2;
+                const cy = this.frameH / 2;
+                const ix = (cx - this.offsetX) / this.scale;
+                const iy = (cy - this.offsetY) / this.scale;
+                this.scale = this.minScale * factor;
+                this.offsetX = cx - ix * this.scale;
+                this.offsetY = cy - iy * this.scale;
+                this.clamp();
+                this.draw();
+            },
+
+            async confirm() {
+                if (!img || this.busy) {
+                    return;
+                }
+                this.busy = true;
+                const targetW = 1000;
+                const out = document.createElement('canvas');
+                out.width = targetW;
+                out.height = Math.round(targetW / this.ratio);
+                const f = targetW / this.frameW;
+                out.getContext('2d').drawImage(img, this.offsetX * f, this.offsetY * f, img.width * this.scale * f, img.height * this.scale * f);
+                const blob = await new Promise((resolve) => out.toBlob(resolve, 'image/jpeg', 0.85));
+
+                if (!blob) {
+                    this.busy = false;
+
+                    return;
+                }
+
+                this.upload(new File([blob], (this.target || 'card') + '.jpg', { type: 'image/jpeg' }));
+            },
+
+            async useOriginal() {
+                if (this.busy) {
+                    return;
+                }
+                this.busy = true;
+                this.upload(await window.e11ShrinkImage(originalFile));
+            },
+
+            upload(file) {
+                const target = this.target;
+
+                if (!target) {
+                    return;
+                }
+
+                this.$wire.upload(
+                    target,
+                    file,
+                    () => this.close(),
+                    () => { this.busy = false; this.$dispatch('toast', { message: config.uploadError || 'Upload failed.' }); },
+                );
+            },
+
+            close() {
+                this.visible = false;
+                this.busy = false;
+                dragging = false;
+                objectUrl && URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+                img = null;
+                originalFile = null;
+                this.target = null;
+            },
+
+            destroy() {
+                objectUrl && URL.revokeObjectURL(objectUrl);
+            },
+        };
+    });
+
+    /**
      * Dictation into a text field with the browser's speech recognition (German).
      * The recognised text is appended to the field and sent to Livewire as if typed.
      */

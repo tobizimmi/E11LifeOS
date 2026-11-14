@@ -7,6 +7,8 @@ use App\Support\Life\Journal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The personal journal for the app: one entry per day with mood, activities and the questions of
@@ -84,6 +86,53 @@ class JournalController extends ApiController
 
         if ($entry->isEmpty()) {
             $entry->exists && $entry->delete();
+
+            return $this->ok(null);
+        }
+
+        $entry->save();
+
+        return $this->ok($this->entryData($entry));
+    }
+
+    /**
+     * Adds a photo to the day (at most Journal::MAX_PHOTOS).
+     */
+    public function storePhoto(Request $request, string $date): JsonResponse
+    {
+        abort_if(Carbon::parse($date)->isAfter(today()->addDay()), 422, __('The day is in the future.'));
+        $request->validate(['photo' => ['required', 'image', 'max:15360']]);
+        $entry = $this->entryFor($date);
+        $photos = $entry->photos ?? [];
+        abort_if(count($photos) >= Journal::MAX_PHOTOS, 422, __('At most :count photos per day.', ['count' => Journal::MAX_PHOTOS]));
+
+        $entry->photos = [...$photos, Journal::storePhoto($request->file('photo'), $this->user())];
+        $entry->save();
+
+        return $this->ok($this->entryData($entry), 201);
+    }
+
+    public function photo(string $date, int $index): StreamedResponse
+    {
+        $entry = $this->entryFor($date);
+        $path = ($entry->photos ?? [])[$index] ?? null;
+        abort_unless($entry->exists && is_string($path) && Storage::disk(Journal::DISK)->exists($path), 404);
+
+        return Storage::disk(Journal::DISK)->response($path, null, ['Cache-Control' => 'private, max-age=86400']);
+    }
+
+    public function destroyPhoto(string $date, int $index): JsonResponse
+    {
+        $entry = $this->entryFor($date);
+        $photos = $entry->photos ?? [];
+        abort_unless($entry->exists && isset($photos[$index]), 404);
+
+        Journal::deletePhoto($photos[$index]);
+        unset($photos[$index]);
+        $entry->photos = array_values($photos);
+
+        if ($entry->isEmpty()) {
+            $entry->delete();
 
             return $this->ok(null);
         }

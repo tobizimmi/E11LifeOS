@@ -114,6 +114,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('cards', [LoyaltyCardController::class, 'store'])->name('cards.store');
         Route::put('cards/{card}', [LoyaltyCardController::class, 'update'])->whereNumber('card')->name('cards.update');
         Route::delete('cards/{card}', [LoyaltyCardController::class, 'destroy'])->whereNumber('card')->name('cards.destroy');
+        Route::get('cards/{card}/image/{side}', [LoyaltyCardController::class, 'image'])->whereNumber('card')->whereIn('side', ['front', 'back'])->name('cards.image.show');
+        Route::post('cards/{card}/image/{side}', [LoyaltyCardController::class, 'storeImage'])->whereNumber('card')->whereIn('side', ['front', 'back'])->name('cards.image.store');
+        Route::delete('cards/{card}/image/{side}', [LoyaltyCardController::class, 'destroyImage'])->whereNumber('card')->whereIn('side', ['front', 'back'])->name('cards.image.destroy');
 
         Route::get('wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
         Route::post('wishlist', [WishlistController::class, 'store'])->name('wishlist.store');
@@ -124,6 +127,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('journal', [JournalController::class, 'index'])->name('journal.index');
         Route::get('journal/{date}', [JournalController::class, 'show'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.show');
         Route::put('journal/{date}', [JournalController::class, 'update'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.update');
+        Route::post('journal/{date}/photos', [JournalController::class, 'storePhoto'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.photos.store');
+        Route::get('journal/{date}/photos/{index}', [JournalController::class, 'photo'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->whereNumber('index')->name('journal.photos.show');
+        Route::delete('journal/{date}/photos/{index}', [JournalController::class, 'destroyPhoto'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->whereNumber('index')->name('journal.photos.destroy');
 
         Route::get('habits', [HabitController::class, 'index'])->name('journal.habits.index');
         Route::post('habits', [HabitController::class, 'store'])->name('journal.habits.store');

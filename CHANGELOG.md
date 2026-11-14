@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.109.0] – 2026-11-14
+
+### Neu (App-Schnittstelle)
+- **Fokus & Time Boxing, Gelerntes und Vermögensplan für die native App.** Die Handy-API (`/api/v1`) liefert jetzt den persönlichen Tagesplan (Brain Dump, Eisenhower-Quadranten, Top 3, Zeitblöcke – Abhaken erledigt die verknüpfte Aufgabe), die Wiederholungen und die Bibliothek der Erkenntnisse sowie den live gerechneten Vermögensplan.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.108.0] – 2026-11-14
 
 ### Neu (App-Schnittstelle)

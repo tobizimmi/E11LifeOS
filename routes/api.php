@@ -7,11 +7,13 @@ use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FinanceController;
+use App\Http\Controllers\Api\V1\FocusController;
 use App\Http\Controllers\Api\V1\HabitController;
 use App\Http\Controllers\Api\V1\HouseController;
 use App\Http\Controllers\Api\V1\InvestingController;
 use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\KidController;
+use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
@@ -29,6 +31,7 @@ use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleController;
 use App\Http\Controllers\Api\V1\WatchlistController;
+use App\Http\Controllers\Api\V1\WealthPlanController;
 use App\Http\Controllers\Api\V1\WishlistController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -152,6 +155,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('places/{place}', [PlaceController::class, 'destroy'])->whereNumber('place')->name('places.destroy');
 
         // Money: contract costs and split costs.
+        Route::get('wealth-plan', [WealthPlanController::class, 'show'])->name('wealth-plan.show');
         Route::get('contracts', [ContractController::class, 'index'])->name('contracts.index');
         Route::post('contracts', [ContractController::class, 'store'])->name('contracts.store');
 
@@ -167,6 +171,21 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('splits/{group}/expenses/{expense}', [SplitController::class, 'destroyExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.destroy');
         Route::post('splits/{group}/settle', [SplitController::class, 'settle'])->whereNumber('group')->name('splits.settle');
 
+        // Productivity and growth: focus & time boxing, lessons learned.
+        Route::get('focus', [FocusController::class, 'index'])->name('focus.index');
+        Route::post('focus', [FocusController::class, 'store'])->name('focus.store');
+        Route::post('focus/import-tasks', [FocusController::class, 'importTasks'])->name('focus.import');
+        Route::post('focus/suggest-top', [FocusController::class, 'suggestTop'])->name('focus.suggest');
+        Route::put('focus/{entry}', [FocusController::class, 'update'])->whereNumber('entry')->name('focus.update');
+        Route::delete('focus/{entry}', [FocusController::class, 'destroy'])->whereNumber('entry')->name('focus.destroy');
+
+        Route::get('learnings', [LearningController::class, 'index'])->name('learnings.index');
+        Route::post('learnings', [LearningController::class, 'store'])->name('learnings.store');
+        Route::put('learnings/{lesson}', [LearningController::class, 'update'])->whereNumber('lesson')->name('learnings.update');
+        Route::post('learnings/{lesson}/review', [LearningController::class, 'review'])->whereNumber('lesson')->name('learnings.review');
+        Route::post('learnings/{lesson}/applied', [LearningController::class, 'applied'])->whereNumber('lesson')->name('learnings.applied');
+        Route::post('learnings/{lesson}/archive', [LearningController::class, 'archive'])->whereNumber('lesson')->name('learnings.archive');
+        Route::delete('learnings/{lesson}', [LearningController::class, 'destroy'])->whereNumber('lesson')->name('learnings.destroy');
         // Home & family: vehicles, maintenance and meters, kids and pocket money.
         Route::get('vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
         Route::post('vehicles', [VehicleController::class, 'store'])->name('vehicles.store');

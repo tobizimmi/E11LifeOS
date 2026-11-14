@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.105.1] – 2026-11-14
+
+### Behoben (Kundenkarten)
+- **Karten-Formular ließ sich auf dem Handy nicht scrollen.** Mit Fotos, Konto-Link und Zusatztexten wurde der Dialog höher als der Bildschirm; „Speichern" war nicht erreichbar. Der Dialog (Anlegen/Bearbeiten und die Kartenansicht) hat jetzt eine maximale Höhe und scrollt intern.
+
 ## [1.105.0] – 2026-11-13
 
 ### Neu (Kundenkarten)

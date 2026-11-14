@@ -216,28 +216,24 @@ new #[Layout('layouts.app')] class extends Component
 
 <div x-data="cardScanner">
     <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">💳 {{ __('Loyalty cards') }}</h2>
-            <div class="flex gap-2">
-                <button type="button" x-on:click="open()" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📷 {{ __('Scan') }}</button>
-                <x-primary-button type="button" wire:click="startAdding">+ {{ __('New card') }}</x-primary-button>
-            </div>
-        </div>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">💳 {{ __('Loyalty cards') }}</h2>
     </x-slot>
 
     <div class="py-6 sm:py-8">
         <div class="mx-auto max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8">
-            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Keep your store and loyalty cards here and show them at the till – scanned, uploaded or typed in.') }}</p>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Keep your store and loyalty cards here and show them at the till – scanned, uploaded or typed in.') }}</p>
+                <div class="flex gap-2">
+                    <button type="button" x-on:click="open()" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📷 {{ __('Scan') }}</button>
+                    <x-primary-button type="button" wire:click="startAdding">+ {{ __('New card') }}</x-primary-button>
+                </div>
+            </div>
 
             @if ($cards->isEmpty())
                 <div class="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center dark:border-gray-600 dark:bg-gray-800">
                     <p class="text-4xl">💳</p>
                     <p class="mt-2 font-medium text-gray-900 dark:text-gray-100">{{ __('No cards yet') }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Add your first card – scan it, upload a photo of the code, or type the number.') }}</p>
-                    <div class="mt-4 flex justify-center gap-2">
-                        <button type="button" x-on:click="open()" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">📷 {{ __('Scan') }}</button>
-                        <x-primary-button type="button" wire:click="startAdding">+ {{ __('New card') }}</x-primary-button>
-                    </div>
                 </div>
             @else
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

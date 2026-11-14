@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\SplitController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\WatchlistController;
+use App\Http\Controllers\Api\V1\WealthPlanController;
 use App\Http\Controllers\Api\V1\WishlistController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -151,6 +152,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('places/{place}', [PlaceController::class, 'destroy'])->whereNumber('place')->name('places.destroy');
 
         // Money: contract costs and split costs.
+        Route::get('wealth-plan', [WealthPlanController::class, 'show'])->name('wealth-plan.show');
         Route::get('contracts', [ContractController::class, 'index'])->name('contracts.index');
         Route::post('contracts', [ContractController::class, 'store'])->name('contracts.store');
 

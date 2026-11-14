@@ -5,8 +5,10 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\HabitController;
+use App\Http\Controllers\Api\V1\InvestingController;
 use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
@@ -20,6 +22,7 @@ use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\SplitController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\WatchlistController;
@@ -145,6 +148,22 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('places/{place}/rate', [PlaceController::class, 'rate'])->whereNumber('place')->name('places.rate');
         Route::delete('places/{place}', [PlaceController::class, 'destroy'])->whereNumber('place')->name('places.destroy');
 
+        // Money: contract costs and split costs.
+        Route::get('contracts', [ContractController::class, 'index'])->name('contracts.index');
+        Route::post('contracts', [ContractController::class, 'store'])->name('contracts.store');
+
+        Route::get('splits', [SplitController::class, 'index'])->name('splits.index');
+        Route::post('splits', [SplitController::class, 'store'])->name('splits.store');
+        Route::get('splits/{group}', [SplitController::class, 'show'])->whereNumber('group')->name('splits.show');
+        Route::delete('splits/{group}', [SplitController::class, 'destroy'])->whereNumber('group')->name('splits.destroy');
+        Route::post('splits/{group}/archive', [SplitController::class, 'archive'])->whereNumber('group')->name('splits.archive');
+        Route::post('splits/{group}/members', [SplitController::class, 'storeMember'])->whereNumber('group')->name('splits.members.store');
+        Route::delete('splits/{group}/members/{member}', [SplitController::class, 'destroyMember'])->whereNumber(['group', 'member'])->name('splits.members.destroy');
+        Route::post('splits/{group}/expenses', [SplitController::class, 'storeExpense'])->whereNumber('group')->name('splits.expenses.store');
+        Route::put('splits/{group}/expenses/{expense}', [SplitController::class, 'updateExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.update');
+        Route::delete('splits/{group}/expenses/{expense}', [SplitController::class, 'destroyExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.destroy');
+        Route::post('splits/{group}/settle', [SplitController::class, 'settle'])->whereNumber('group')->name('splits.settle');
+
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
@@ -184,6 +203,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('quotes', [MarketController::class, 'quotes'])->name('quotes');
             Route::get('quotes/{symbol}', [MarketController::class, 'quote'])->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('quote');
             Route::get('search', [MarketController::class, 'search'])->name('search');
+
+            Route::get('alerts', [InvestingController::class, 'alerts'])->name('portfolios.alerts.index');
+            Route::post('alerts', [InvestingController::class, 'storeAlert'])->name('portfolios.alerts.store');
+            Route::post('alerts/{alert}/rearm', [InvestingController::class, 'rearmAlert'])->whereNumber('alert')->name('portfolios.alerts.rearm');
+            Route::delete('alerts/{alert}', [InvestingController::class, 'destroyAlert'])->whereNumber('alert')->name('portfolios.alerts.destroy');
+
+            Route::get('savings-plans', [InvestingController::class, 'savingsPlans'])->name('portfolios.savings.index');
+            Route::post('savings-plans', [InvestingController::class, 'storeSavingsPlan'])->name('portfolios.savings.store');
+            Route::put('savings-plans/{plan}', [InvestingController::class, 'updateSavingsPlan'])->whereNumber('plan')->name('portfolios.savings.update');
+            Route::post('savings-plans/{plan}/toggle', [InvestingController::class, 'toggleSavingsPlan'])->whereNumber('plan')->name('portfolios.savings.toggle');
+            Route::delete('savings-plans/{plan}', [InvestingController::class, 'destroySavingsPlan'])->whereNumber('plan')->name('portfolios.savings.destroy');
 
             Route::get('recommendations', [RecommendationController::class, 'index'])->name('recommendations');
             Route::get('strategy', [PortfolioController::class, 'strategy'])->name('strategy');

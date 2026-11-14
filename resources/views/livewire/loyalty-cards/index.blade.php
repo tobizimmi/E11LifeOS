@@ -268,8 +268,8 @@ new #[Layout('layouts.app')] class extends Component
 
     {{-- Card detail (shown large, scannable) --}}
     @if ($showing)
-        <div class="fixed inset-0 z-[60] flex items-end justify-center bg-gray-900/60 p-4 sm:items-center" x-on:keydown.escape.window="$wire.closeCard()" wire:click.self="closeCard">
-            <div class="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-800" role="dialog" aria-modal="true" aria-label="{{ $showing->name }}">
+        <div class="fixed inset-0 z-[60] flex items-end justify-center overflow-y-auto bg-gray-900/60 p-4 sm:items-center" x-on:keydown.escape.window="$wire.closeCard()" wire:click.self="closeCard">
+            <div class="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md space-y-4 overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-800" role="dialog" aria-modal="true" aria-label="{{ $showing->name }}">
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $showing->name }}</h3>
                     <button type="button" wire:click="closeCard" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-5 w-5" stroke-width="2" /></button>
@@ -323,8 +323,8 @@ new #[Layout('layouts.app')] class extends Component
 
     {{-- Add / edit form --}}
     @if ($adding)
-        <div class="fixed inset-0 z-[60] flex items-end justify-center bg-gray-900/60 p-4 sm:items-center" x-on:keydown.escape.window="$wire.set('adding', false)" wire:click.self="$set('adding', false)">
-            <form wire:submit="save" class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-800" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 z-[60] flex items-end justify-center overflow-y-auto bg-gray-900/60 p-4 sm:items-center" x-on:keydown.escape.window="$wire.set('adding', false)" wire:click.self="$set('adding', false)">
+            <form wire:submit="save" class="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg space-y-4 overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-800" role="dialog" aria-modal="true">
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $editingId ? __('Edit card') : __('New card') }}</h3>
                     <button type="button" wire:click="$set('adding', false)" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="{{ __('Close') }}"><x-icon name="x-mark" class="h-5 w-5" stroke-width="2" /></button>

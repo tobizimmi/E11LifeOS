@@ -6,11 +6,14 @@ use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\FinanceController;
+use App\Http\Controllers\Api\V1\HabitController;
 use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
+use App\Http\Controllers\Api\V1\MealPlanController;
 use App\Http\Controllers\Api\V1\PageController;
+use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecipeController;
@@ -113,6 +116,19 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('journal/{date}', [JournalController::class, 'show'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.show');
         Route::put('journal/{date}', [JournalController::class, 'update'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.update');
 
+        Route::get('habits', [HabitController::class, 'index'])->name('journal.habits.index');
+        Route::post('habits', [HabitController::class, 'store'])->name('journal.habits.store');
+        Route::put('habits/{habit}', [HabitController::class, 'update'])->whereNumber('habit')->name('journal.habits.update');
+        Route::post('habits/{habit}/tap', [HabitController::class, 'tap'])->whereNumber('habit')->name('journal.habits.tap');
+        Route::post('habits/{habit}/archive', [HabitController::class, 'archive'])->whereNumber('habit')->name('journal.habits.archive');
+        Route::delete('habits/{habit}', [HabitController::class, 'destroy'])->whereNumber('habit')->name('journal.habits.destroy');
+
+        Route::get('pantry', [PantryController::class, 'index'])->name('pantry.index');
+        Route::post('pantry', [PantryController::class, 'store'])->name('pantry.store');
+        Route::post('pantry/shopping', [PantryController::class, 'toShopping'])->name('pantry.shopping');
+        Route::post('pantry/{item}/adjust', [PantryController::class, 'adjust'])->whereNumber('item')->name('pantry.adjust');
+        Route::delete('pantry/{item}', [PantryController::class, 'destroy'])->whereNumber('item')->name('pantry.destroy');
+
         Route::get('people', [ContactController::class, 'index'])->name('people.index');
         Route::post('people', [ContactController::class, 'store'])->name('people.store');
         Route::put('people/{person}', [ContactController::class, 'update'])->whereNumber('person')->name('people.update');
@@ -142,6 +158,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('recipes/{recipe}/image', [RecipeController::class, 'image'])->whereNumber('recipe')->name('recipes.image.api');
             Route::put('recipes/{recipe}', [RecipeController::class, 'update'])->whereNumber('recipe')->name('recipes.update');
             Route::delete('recipes/{recipe}', [RecipeController::class, 'destroy'])->whereNumber('recipe')->name('recipes.destroy');
+
+            Route::get('meal-plan', [MealPlanController::class, 'index'])->name('meal-plan.index');
+            Route::post('meal-plan', [MealPlanController::class, 'store'])->name('meal-plan.store');
+            Route::get('meal-plan/ingredients', [MealPlanController::class, 'ingredients'])->name('meal-plan.ingredients');
+            Route::post('meal-plan/shopping', [MealPlanController::class, 'toShopping'])->name('meal-plan.shopping');
+            Route::put('meal-plan/{entry}', [MealPlanController::class, 'update'])->whereNumber('entry')->name('meal-plan.update');
+            Route::delete('meal-plan/{entry}', [MealPlanController::class, 'destroy'])->whereNumber('entry')->name('meal-plan.destroy');
         });
 
         Route::middleware('addon:portfolio')->group(function () {

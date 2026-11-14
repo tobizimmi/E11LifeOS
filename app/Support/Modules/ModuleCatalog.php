@@ -27,7 +27,7 @@ class ModuleCatalog
             'journal' => $module(__('Routines & journal'), '🙂', ['journal.*', 'api.v1.journal.*']),
             'shopping' => $module(__('Shopping List'), '🛒', ['shopping-list.*', 'api.v1.shopping.*']),
             'cards' => $module(__('Loyalty cards'), '💳', ['loyalty-cards.*', 'api.v1.cards.*']),
-            'pantry' => $module(__('Pantry'), '🥫', ['pantry.*']),
+            'pantry' => $module(__('Pantry'), '🥫', ['pantry.*', 'api.v1.pantry.*']),
             Addons::RECIPES => $module($addons[Addons::RECIPES]['label'], $addons[Addons::RECIPES]['icon'], ['recipes.*'], true),
             Addons::FINANCE => $module($addons[Addons::FINANCE]['label'], $addons[Addons::FINANCE]['icon'], ['finance.*'], true),
             Addons::PORTFOLIO => $module($addons[Addons::PORTFOLIO]['label'], $addons[Addons::PORTFOLIO]['icon'], ['portfolio.*', 'api.v1.portfolios.*', 'api.v1.quotes', 'api.v1.quote', 'api.v1.recommendations', 'api.v1.watchlist.*'], true),

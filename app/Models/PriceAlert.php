@@ -5,9 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Notifies the user once a security rises above or falls below a price.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property string $symbol
+ * @property ?string $name
+ * @property string $condition
+ * @property float $target_price
+ * @property ?int $gain_percent
+ * @property ?string $currency
+ * @property ?Carbon $triggered_at
+ * @property bool $active
  */
 #[Fillable(['user_id', 'symbol', 'name', 'condition', 'target_price', 'gain_percent', 'currency', 'triggered_at', 'active'])]
 class PriceAlert extends Model

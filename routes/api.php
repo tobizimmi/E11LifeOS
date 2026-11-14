@@ -4,18 +4,29 @@ use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
+use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FinanceController;
+use App\Http\Controllers\Api\V1\HabitController;
+use App\Http\Controllers\Api\V1\InvestingController;
+use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\LifeController;
+use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
+use App\Http\Controllers\Api\V1\MealPlanController;
 use App\Http\Controllers\Api\V1\PageController;
+use App\Http\Controllers\Api\V1\PantryController;
+use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\SplitController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\WatchlistController;
+use App\Http\Controllers\Api\V1\WishlistController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -92,6 +103,67 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('trip-bookings/{booking}', [TripController::class, 'updateBooking'])->whereNumber('booking')->name('trip-bookings.update');
         Route::delete('trip-bookings/{booking}', [TripController::class, 'destroyBooking'])->whereNumber('booking')->name('trip-bookings.destroy');
 
+        // Everyday modules (loyalty cards, wishlist, journal, people, places).
+        Route::get('cards', [LoyaltyCardController::class, 'index'])->name('cards.index');
+        Route::post('cards', [LoyaltyCardController::class, 'store'])->name('cards.store');
+        Route::put('cards/{card}', [LoyaltyCardController::class, 'update'])->whereNumber('card')->name('cards.update');
+        Route::delete('cards/{card}', [LoyaltyCardController::class, 'destroy'])->whereNumber('card')->name('cards.destroy');
+
+        Route::get('wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+        Route::post('wishlist', [WishlistController::class, 'store'])->name('wishlist.store');
+        Route::put('wishlist/{wish}', [WishlistController::class, 'update'])->whereNumber('wish')->name('wishlist.update');
+        Route::post('wishlist/{wish}/decide', [WishlistController::class, 'decide'])->whereNumber('wish')->name('wishlist.decide');
+        Route::delete('wishlist/{wish}', [WishlistController::class, 'destroy'])->whereNumber('wish')->name('wishlist.destroy');
+
+        Route::get('journal', [JournalController::class, 'index'])->name('journal.index');
+        Route::get('journal/{date}', [JournalController::class, 'show'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.show');
+        Route::put('journal/{date}', [JournalController::class, 'update'])->where('date', '[0-9]{4}-[0-9]{2}-[0-9]{2}')->name('journal.update');
+
+        Route::get('habits', [HabitController::class, 'index'])->name('journal.habits.index');
+        Route::post('habits', [HabitController::class, 'store'])->name('journal.habits.store');
+        Route::put('habits/{habit}', [HabitController::class, 'update'])->whereNumber('habit')->name('journal.habits.update');
+        Route::post('habits/{habit}/tap', [HabitController::class, 'tap'])->whereNumber('habit')->name('journal.habits.tap');
+        Route::post('habits/{habit}/archive', [HabitController::class, 'archive'])->whereNumber('habit')->name('journal.habits.archive');
+        Route::delete('habits/{habit}', [HabitController::class, 'destroy'])->whereNumber('habit')->name('journal.habits.destroy');
+
+        Route::get('pantry', [PantryController::class, 'index'])->name('pantry.index');
+        Route::post('pantry', [PantryController::class, 'store'])->name('pantry.store');
+        Route::post('pantry/shopping', [PantryController::class, 'toShopping'])->name('pantry.shopping');
+        Route::post('pantry/{item}/adjust', [PantryController::class, 'adjust'])->whereNumber('item')->name('pantry.adjust');
+        Route::delete('pantry/{item}', [PantryController::class, 'destroy'])->whereNumber('item')->name('pantry.destroy');
+
+        Route::get('people', [ContactController::class, 'index'])->name('people.index');
+        Route::post('people', [ContactController::class, 'store'])->name('people.store');
+        Route::put('people/{person}', [ContactController::class, 'update'])->whereNumber('person')->name('people.update');
+        Route::delete('people/{person}', [ContactController::class, 'destroy'])->whereNumber('person')->name('people.destroy');
+        Route::post('people/{person}/contacted', [ContactController::class, 'contacted'])->whereNumber('person')->name('people.contacted');
+        Route::post('people/{person}/gifts', [ContactController::class, 'storeGift'])->whereNumber('person')->name('people.gifts.store');
+        Route::put('gifts/{gift}', [ContactController::class, 'updateGift'])->whereNumber('gift')->name('people.gifts.update');
+        Route::delete('gifts/{gift}', [ContactController::class, 'destroyGift'])->whereNumber('gift')->name('people.gifts.destroy');
+
+        Route::get('places', [PlaceController::class, 'index'])->name('places.index');
+        Route::post('places', [PlaceController::class, 'store'])->name('places.store');
+        Route::put('places/{place}', [PlaceController::class, 'update'])->whereNumber('place')->name('places.update');
+        Route::post('places/{place}/visit', [PlaceController::class, 'visit'])->whereNumber('place')->name('places.visit');
+        Route::post('places/{place}/rate', [PlaceController::class, 'rate'])->whereNumber('place')->name('places.rate');
+        Route::delete('places/{place}', [PlaceController::class, 'destroy'])->whereNumber('place')->name('places.destroy');
+
+        // Money: contract costs and split costs.
+        Route::get('contracts', [ContractController::class, 'index'])->name('contracts.index');
+        Route::post('contracts', [ContractController::class, 'store'])->name('contracts.store');
+
+        Route::get('splits', [SplitController::class, 'index'])->name('splits.index');
+        Route::post('splits', [SplitController::class, 'store'])->name('splits.store');
+        Route::get('splits/{group}', [SplitController::class, 'show'])->whereNumber('group')->name('splits.show');
+        Route::delete('splits/{group}', [SplitController::class, 'destroy'])->whereNumber('group')->name('splits.destroy');
+        Route::post('splits/{group}/archive', [SplitController::class, 'archive'])->whereNumber('group')->name('splits.archive');
+        Route::post('splits/{group}/members', [SplitController::class, 'storeMember'])->whereNumber('group')->name('splits.members.store');
+        Route::delete('splits/{group}/members/{member}', [SplitController::class, 'destroyMember'])->whereNumber(['group', 'member'])->name('splits.members.destroy');
+        Route::post('splits/{group}/expenses', [SplitController::class, 'storeExpense'])->whereNumber('group')->name('splits.expenses.store');
+        Route::put('splits/{group}/expenses/{expense}', [SplitController::class, 'updateExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.update');
+        Route::delete('splits/{group}/expenses/{expense}', [SplitController::class, 'destroyExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.destroy');
+        Route::post('splits/{group}/settle', [SplitController::class, 'settle'])->whereNumber('group')->name('splits.settle');
+
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
@@ -105,6 +177,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('recipes/{recipe}/image', [RecipeController::class, 'image'])->whereNumber('recipe')->name('recipes.image.api');
             Route::put('recipes/{recipe}', [RecipeController::class, 'update'])->whereNumber('recipe')->name('recipes.update');
             Route::delete('recipes/{recipe}', [RecipeController::class, 'destroy'])->whereNumber('recipe')->name('recipes.destroy');
+
+            Route::get('meal-plan', [MealPlanController::class, 'index'])->name('meal-plan.index');
+            Route::post('meal-plan', [MealPlanController::class, 'store'])->name('meal-plan.store');
+            Route::get('meal-plan/ingredients', [MealPlanController::class, 'ingredients'])->name('meal-plan.ingredients');
+            Route::post('meal-plan/shopping', [MealPlanController::class, 'toShopping'])->name('meal-plan.shopping');
+            Route::put('meal-plan/{entry}', [MealPlanController::class, 'update'])->whereNumber('entry')->name('meal-plan.update');
+            Route::delete('meal-plan/{entry}', [MealPlanController::class, 'destroy'])->whereNumber('entry')->name('meal-plan.destroy');
         });
 
         Route::middleware('addon:portfolio')->group(function () {
@@ -124,6 +203,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('quotes', [MarketController::class, 'quotes'])->name('quotes');
             Route::get('quotes/{symbol}', [MarketController::class, 'quote'])->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('quote');
             Route::get('search', [MarketController::class, 'search'])->name('search');
+
+            Route::get('alerts', [InvestingController::class, 'alerts'])->name('portfolios.alerts.index');
+            Route::post('alerts', [InvestingController::class, 'storeAlert'])->name('portfolios.alerts.store');
+            Route::post('alerts/{alert}/rearm', [InvestingController::class, 'rearmAlert'])->whereNumber('alert')->name('portfolios.alerts.rearm');
+            Route::delete('alerts/{alert}', [InvestingController::class, 'destroyAlert'])->whereNumber('alert')->name('portfolios.alerts.destroy');
+
+            Route::get('savings-plans', [InvestingController::class, 'savingsPlans'])->name('portfolios.savings.index');
+            Route::post('savings-plans', [InvestingController::class, 'storeSavingsPlan'])->name('portfolios.savings.store');
+            Route::put('savings-plans/{plan}', [InvestingController::class, 'updateSavingsPlan'])->whereNumber('plan')->name('portfolios.savings.update');
+            Route::post('savings-plans/{plan}/toggle', [InvestingController::class, 'toggleSavingsPlan'])->whereNumber('plan')->name('portfolios.savings.toggle');
+            Route::delete('savings-plans/{plan}', [InvestingController::class, 'destroySavingsPlan'])->whereNumber('plan')->name('portfolios.savings.destroy');
 
             Route::get('recommendations', [RecommendationController::class, 'index'])->name('recommendations');
             Route::get('strategy', [PortfolioController::class, 'strategy'])->name('strategy');

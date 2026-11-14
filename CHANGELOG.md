@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.105.2] – 2026-11-14
+
+### Behoben (Kundenkarten)
+- **Nach der ersten Karte ließ sich keine zweite anlegen.** Die Buttons „Neue Karte" und „Scannen" lagen im Seitenkopf, der außerhalb des interaktiven Bereichs gerendert wird – nach dem Anlegen der ersten Karte reagierten sie nicht mehr. Die Buttons sitzen jetzt direkt über der Kartenliste und funktionieren dauerhaft.
+
 ## [1.105.1] – 2026-11-14
 
 ### Behoben (Kundenkarten)

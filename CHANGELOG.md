@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.107.0] – 2026-11-14
+
+### Neu (App-Schnittstelle)
+- **Zwölf weitere Bereiche für die native App.** Die Handy-API (`/api/v1`) liefert jetzt auch, was es bisher nur im Web gab – jeweils mit denselben Regeln für Sichtbarkeit (Haushalt, privat nur für den Ersteller) und Modulsperren:
+  - **Alltag:** Kundenkarten (inkl. fertig gerendertem Strich-/QR-Code für die Anzeige ohne Netz), Wunschliste, Journal, Gewohnheiten, Menschen & Geschenkideen, Orte, Vorrat und Essensplan (inkl. Zutaten der Woche auf die Einkaufsliste).
+  - **Finanzen:** Kosten teilen (Gruppen, Ausgaben, Salden, Ausgleich), Vertragskosten, Kursalarme und Sparpläne.
+- Im Web ändert sich dadurch nichts; die Bereiche erscheinen in der App, sobald deren nächste Version installiert ist.
+
 ## [1.106.0] – 2026-11-14
 
 ### Neu (Fokus & Time Boxing)

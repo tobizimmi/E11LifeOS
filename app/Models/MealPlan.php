@@ -8,8 +8,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 
+/**
+ * A planned meal of a day: a recipe, or a free-text entry such as "Leftovers".
+ *
+ * @property int $id
+ * @property int $household_id
+ * @property ?int $created_by
+ * @property string $visibility
+ * @property Carbon $date
+ * @property string $meal_type
+ * @property ?int $recipe_id
+ * @property string $title
+ * @property ?int $servings
+ * @property ?string $note
+ */
 #[Fillable(['household_id', 'created_by', 'visibility', 'date', 'meal_type', 'recipe_id', 'title', 'servings', 'note', 'legacy_id'])]
 class MealPlan extends Model
 {

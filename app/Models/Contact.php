@@ -13,6 +13,23 @@ use Illuminate\Support\Carbon;
 /**
  * A person that matters to the household: birthday and anniversary with reminder, contact details,
  * notes and gift ideas.
+ *
+ * @property int $id
+ * @property int $household_id
+ * @property ?int $created_by
+ * @property string $visibility
+ * @property string $name
+ * @property ?string $relation
+ * @property ?Carbon $birthday
+ * @property bool $birth_year_known
+ * @property ?Carbon $anniversary
+ * @property ?string $anniversary_label
+ * @property ?string $phone
+ * @property ?string $email
+ * @property ?string $address
+ * @property ?string $notes
+ * @property int $remind_days
+ * @property ?Carbon $last_contact_on
  */
 #[Fillable([
     'household_id', 'created_by', 'visibility', 'name', 'relation', 'birthday', 'birth_year_known', 'anniversary', 'anniversary_label',
@@ -34,6 +51,9 @@ class Contact extends Model
         ];
     }
 
+    /**
+     * @return HasMany<GiftIdea, $this>
+     */
     public function giftIdeas(): HasMany
     {
         return $this->hasMany(GiftIdea::class)->orderByRaw("case status when 'idea' then 0 when 'bought' then 1 else 2 end")->orderByDesc('id');

@@ -25,12 +25,6 @@ parameters:
 			path: app/Console/Commands/ExecuteSavingsPlans.php
 
 		-
-			message: '#^Cannot call method lte\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Console/Commands/ExecuteSavingsPlans.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
@@ -647,18 +641,6 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 2
 			path: app/Models/Concerns/HasShareTokens.php
-
-		-
-			message: '#^Cannot access property \$year on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Models/Contact.php
-
-		-
-			message: '#^Parameter \#1 \$date of static method App\\Models\\Contact\:\:nextOccurrence\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/Contact.php
 
 		-
 			message: '#^Cannot call method lt\(\) on string\.$#'
@@ -1389,7 +1371,7 @@ parameters:
 		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 2
+			count: 1
 			path: app/Support/CalendarEvents.php
 
 		-
@@ -1831,12 +1813,6 @@ parameters:
 			path: app/Support/Life/LifeDates.php
 
 		-
-			message: '#^Cannot access property \$year on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Support/Life/LifeDates.php
-
-		-
 			message: '#^Cannot call method between\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1852,12 +1828,6 @@ parameters:
 			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
-			path: app/Support/Life/LifeDates.php
-
-		-
-			message: '#^Parameter \#1 \$date of static method App\\Models\\Contact\:\:nextOccurrence\(\) expects Illuminate\\Support\\Carbon, string given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Support/Life/LifeDates.php
 
 		-
@@ -2241,7 +2211,7 @@ parameters:
 		-
 			message: '#^Cannot call method copy\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 2
+			count: 1
 			path: app/Support/Portfolio/PortfolioLink.php
 
 		-
@@ -2702,12 +2672,6 @@ parameters:
 
 		-
 			message: '#^Cannot call method gte\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/WeeklyDigest.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: app/Support/WeeklyDigest.php

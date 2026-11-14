@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -262,6 +263,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('quotes', [MarketController::class, 'quotes'])->name('quotes');
             Route::get('quotes/{symbol}', [MarketController::class, 'quote'])->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('quote');
             Route::get('search', [MarketController::class, 'search'])->name('search');
+
+            Route::get('portfolio-reports/dividends', [PortfolioReportsController::class, 'dividends'])->name('portfolios.reports.dividends');
+            Route::get('portfolio-reports/taxes', [PortfolioReportsController::class, 'taxes'])->name('portfolios.reports.taxes');
+            Route::get('portfolio-reports/analysis', [PortfolioReportsController::class, 'analysis'])->name('portfolios.reports.analysis');
+            Route::get('portfolio-reports/rebalancing', [PortfolioReportsController::class, 'rebalancing'])->name('portfolios.reports.rebalancing');
+            Route::put('portfolio-reports/targets', [PortfolioReportsController::class, 'saveTargets'])->name('portfolios.reports.targets');
 
             Route::get('alerts', [InvestingController::class, 'alerts'])->name('portfolios.alerts.index');
             Route::post('alerts', [InvestingController::class, 'storeAlert'])->name('portfolios.alerts.store');

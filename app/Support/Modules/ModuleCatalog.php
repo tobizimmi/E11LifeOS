@@ -23,11 +23,11 @@ class ModuleCatalog
 
         return [
             'brain' => $module(__('Ask your Second Brain'), '✨', ['brain.*']),
-            'learnings' => $module(__('Lessons learned'), '🎓', ['learnings.*']),
+            'learnings' => $module(__('Lessons learned'), '🎓', ['learnings.*', 'api.v1.learnings.*']),
             'journal' => $module(__('Routines & journal'), '🙂', ['journal.*', 'api.v1.journal.*']),
             'shopping' => $module(__('Shopping List'), '🛒', ['shopping-list.*', 'api.v1.shopping.*']),
             'cards' => $module(__('Loyalty cards'), '💳', ['loyalty-cards.*', 'api.v1.cards.*']),
-            'focus' => $module(__('Focus & time boxing'), '🎯', ['focus.*']),
+            'focus' => $module(__('Focus & time boxing'), '🎯', ['focus.*', 'api.v1.focus.*']),
             'pantry' => $module(__('Pantry'), '🥫', ['pantry.*', 'api.v1.pantry.*']),
             Addons::RECIPES => $module($addons[Addons::RECIPES]['label'], $addons[Addons::RECIPES]['icon'], ['recipes.*'], true),
             Addons::FINANCE => $module($addons[Addons::FINANCE]['label'], $addons[Addons::FINANCE]['icon'], ['finance.*'], true),
@@ -35,7 +35,7 @@ class ModuleCatalog
             Addons::BUSINESS => $module($addons[Addons::BUSINESS]['label'], $addons[Addons::BUSINESS]['icon'], ['business.*'], true),
             'net_worth' => $module(__('Net worth'), '🥧', ['net-worth.*', 'api.v1.net-worth']),
             'cashflow' => $module(__('Cashflow analysis'), '🔁', ['cashflow.*']),
-            'wealth_plan' => $module(__('Wealth plan'), '🚀', ['wealth-plan.*']),
+            'wealth_plan' => $module(__('Wealth plan'), '🚀', ['wealth-plan.*', 'api.v1.wealth-plan.*']),
             'contracts' => $module(__('Contract costs'), '📄', ['contracts.*', 'letters.*', 'api.v1.contracts.*']),
             'quotes' => $module(__('Quote comparisons'), '⚖️', ['quotes.*']),
             'wishlist' => $module(__('Wishlist'), '🎁', ['wishlist.*', 'api.v1.wishlist.*']),

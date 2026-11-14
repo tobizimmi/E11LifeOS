@@ -6,9 +6,12 @@ use App\Models\Household;
 use App\Models\Item;
 use App\Models\LoyaltyCard;
 use App\Support\CardCode;
+use App\Support\CardImages;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Loyalty cards for the app: the list comes with the rendered code (SVG) so a card can be shown
@@ -62,6 +65,44 @@ class LoyaltyCardController extends ApiController
         $this->find($card)->delete();
 
         return $this->ok();
+    }
+
+    /**
+     * Sets the photo of the front or the back (replaces an earlier one).
+     */
+    public function storeImage(Request $request, int $card, string $side): JsonResponse
+    {
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+        $request->validate(['image' => ['required', 'image', 'max:8192']]);
+        $model = $this->find($card);
+        $column = $side === 'back' ? 'back_image_path' : 'front_image_path';
+
+        CardImages::delete($model->{$column});
+        $model->update([$column => CardImages::store($request->file('image'), $model->household_id)]);
+
+        return $this->ok($this->cardData($model));
+    }
+
+    public function destroyImage(int $card, string $side): JsonResponse
+    {
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+        $model = $this->find($card);
+        $column = $side === 'back' ? 'back_image_path' : 'front_image_path';
+
+        CardImages::delete($model->{$column});
+        $model->update([$column => null]);
+
+        return $this->ok($this->cardData($model));
+    }
+
+    public function image(int $card, string $side): StreamedResponse
+    {
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+        $model = $this->find($card);
+        $path = $side === 'back' ? $model->back_image_path : $model->front_image_path;
+        abort_unless(is_string($path) && $path !== '' && Storage::disk(LoyaltyCard::IMAGE_DISK)->exists($path), 404);
+
+        return Storage::disk(LoyaltyCard::IMAGE_DISK)->response($path, null, ['Cache-Control' => 'private, max-age=86400']);
     }
 
     /**

@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.110.0] – 2026-11-14
+
+### Neu (App-Schnittstelle)
+- **Fotos für die native App.** Kundenkarten können ein Foto der Vorder- und Rückseite bekommen, im Journal sind bis zu sechs Fotos pro Tag möglich (weiterhin nur für das eigene Konto sichtbar).
+- **Portfolio-Auswertungen für die native App:** Dividenden (Verlauf, erwartete Ausschüttungen, Rendite auf Kosten), Steuern (Gewinne, Verluste, Freibetrag je Jahr), Analyse (Wert, Aufteilung, Entwicklung gegen den Benchmark, Risiko) und Rebalancing mit speicherbaren Zielgewichten.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.109.0] – 2026-11-14
 
 ### Neu (App-Schnittstelle)

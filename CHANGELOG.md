@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.111.0] – 2026-11-14
+
+### Neu (App-Schnittstelle)
+- **Gesundheit und Notfallordner für die native App – geschützt.** Beide Bereiche öffnen sich in der App erst, nachdem das Passwort bestätigt wurde (15 Minuten, nur für das jeweilige Gerät; wie im Web mit „Passwort bestätigen“). Falsche Eingaben werden gezählt (fünf pro Minute) und im Sicherheitsprotokoll vermerkt, jeder Zugriff ebenso. Die Antworten werden nicht zwischengespeichert, die App legt sie nicht auf dem Gerät ab. Enthalten: Profile mit Notfallkarte, Vorsorge, Impfungen, Medikamente und Termine sowie die Einträge des Notfallordners mit Ablauf-Erinnerung; Vertrauenspersonen bleiben im Web.
+- **Geldwissen und Angebote für die App:** Tipps (mit Suche und Kategorien), Nachrichten je Thema und Favoriten; Supermarkt-Angebote mit Postleitzahl, Märkten und Merkliste, einzelne Angebote lassen sich mit einem Tipp auf die Einkaufsliste setzen.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.110.0] – 2026-11-14
 
 ### Neu (App-Schnittstelle)

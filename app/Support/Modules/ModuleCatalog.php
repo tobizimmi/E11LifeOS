@@ -56,7 +56,7 @@ class ModuleCatalog
             'splits' => $module(__('Split costs'), '🧮', ['splits.*', 'api.v1.splits.*']),
             'review' => $module(__('Year in review'), '🌟', ['review.*', 'api.v1.review.*']),
             'emergency' => $module(__('Emergency folder'), '🛡', ['emergency.*', 'api.v1.emergency.*']),
-            'provision' => $module(__('Provision check'), '☂️', ['provision.*']),
+            'provision' => $module(__('Provision check'), '☂️', ['provision.*', 'api.v1.provision.*']),
             'drives' => $module(__('Network drives'), '🗄', ['drives.*', 'api.v1.drives.*']),
         ];
     }

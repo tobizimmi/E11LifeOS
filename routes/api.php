@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
+use App\Http\Controllers\Api\V1\ProvisionController;
 use App\Http\Controllers\Api\V1\QuotesController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
@@ -278,6 +279,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('quote-comparisons/{comparison}/offers/{quote}', [QuotesController::class, 'updateQuote'])->whereNumber(['comparison', 'quote'])->name('quote-comparisons.offers.update');
         Route::delete('quote-comparisons/{comparison}/offers/{quote}', [QuotesController::class, 'destroyQuote'])->whereNumber(['comparison', 'quote'])->name('quote-comparisons.offers.destroy');
         Route::post('quote-comparisons/{comparison}/choose', [QuotesController::class, 'choose'])->whereNumber('comparison')->name('quote-comparisons.choose');
+
+        Route::get('provision/insurance', [ProvisionController::class, 'insurance'])->name('provision.insurance');
+        Route::post('provision/insurance', [ProvisionController::class, 'storeInsurance'])->name('provision.insurance.store');
+        Route::post('provision/answer', [ProvisionController::class, 'answer'])->name('provision.answer');
+        Route::put('provision/contracts/{item}', [ProvisionController::class, 'assign'])->whereNumber('item')->name('provision.assign');
+        Route::get('provision/retirement', [ProvisionController::class, 'retirement'])->name('provision.retirement');
+        Route::put('provision/retirement', [ProvisionController::class, 'updateRetirement'])->name('provision.retirement.update');
+        Route::delete('provision/retirement', [ProvisionController::class, 'resetRetirement'])->name('provision.retirement.reset');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

@@ -441,7 +441,19 @@ new class extends Component
                     {{-- Quick-create menu, shown when the palette is opened via the "+" (create) button. --}}
                     <div class="py-2" x-show="mode === 'create'" x-cloak>
                         <h4 class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Create') }}</h4>
-                        @foreach ([['notes.index', '✏️', __('New note')], ['tasks.index', '✅', __('New task')], ['shopping-list.index', '🛒', __('Shopping List')], ['calendar.index', '📅', __('New appointment')]] as [$createRoute, $createIcon, $createLabel])
+                        @php
+                            $createItems = [
+                                ['notes.index', '✏️', __('New note')],
+                                ['tasks.index', '✅', __('New task')],
+                                ['bookmarks.index', '🔖', __('Save a link')],
+                                ['shopping-list.index', '🛒', __('Shopping List')],
+                                ['calendar.index', '📅', __('New appointment')],
+                            ];
+                            if (auth()->user()?->hasPaperless()) {
+                                $createItems[] = ['scan.index', '📄', __('Scan document')];
+                            }
+                        @endphp
+                        @foreach ($createItems as [$createRoute, $createIcon, $createLabel])
                             <a href="{{ route($createRoute) }}" wire:navigate data-search-result x-on:click="open = false" class="flex items-center gap-2 px-4 py-2 text-gray-900 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-hidden dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
                                 <span aria-hidden="true">{{ $createIcon }}</span> <span class="truncate">{{ $createLabel }}</span>
                             </a>

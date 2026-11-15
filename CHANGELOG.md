@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.117.0] – 2026-11-15
+
+### Behoben (App-Schnittstelle)
+- **„Too Many Attempts" bei Scan-Vorschau und Scan-Upload.** Die Begrenzungen einzelner App-Routen (Scan, Laufwerke, KI-Fragen, Briefe, Jobsuche, Einladungen) teilten sich mit allen anderen Anfragen eines Mitglieds einen Zähler und waren dadurch schnell aufgebraucht. Jede Route zählt jetzt für sich.
+
 ## [1.116.0] – 2026-11-15
 
 ### Neu (Lesezeichen & Später lesen)

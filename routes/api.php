@@ -209,11 +209,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('review', [ReviewController::class, 'show'])->name('review.show');
         Route::get('brain/status', [BrainController::class, 'status'])->name('brain.status');
-        Route::post('brain/ask', [BrainController::class, 'ask'])->middleware('throttle:20,1')->name('brain.ask');
+        Route::post('brain/ask', [BrainController::class, 'ask'])->middleware('throttle:api-20')->name('brain.ask');
         Route::post('brain/action', [BrainController::class, 'action'])->name('brain.action');
         Route::get('letters/templates', [LettersController::class, 'templates'])->name('letters.templates');
         Route::post('letters/fill', [LettersController::class, 'fill'])->name('letters.fill');
-        Route::post('letters/pdf', [LettersController::class, 'pdf'])->middleware('throttle:20,1')->name('letters.pdf');
+        Route::post('letters/pdf', [LettersController::class, 'pdf'])->middleware('throttle:api-20')->name('letters.pdf');
 
         Route::get('work', [WorkController::class, 'index'])->name('work.index');
         Route::post('work/clock', [WorkController::class, 'clock'])->name('work.clock');
@@ -225,10 +225,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('career', [CareerController::class, 'index'])->name('career.index');
         Route::post('career', [CareerController::class, 'store'])->name('career.store');
-        Route::get('career/jobs', [CareerController::class, 'jobs'])->middleware('throttle:20,1')->name('career.jobs');
+        Route::get('career/jobs', [CareerController::class, 'jobs'])->middleware('throttle:api-20')->name('career.jobs');
         Route::post('career/jobs/remember', [CareerController::class, 'rememberJob'])->name('career.jobs.remember');
         Route::put('career/profile', [CareerController::class, 'saveProfile'])->name('career.profile');
-        Route::get('career/cv', [CareerController::class, 'cv'])->middleware('throttle:20,1')->name('career.cv');
+        Route::get('career/cv', [CareerController::class, 'cv'])->middleware('throttle:api-20')->name('career.cv');
         Route::put('career/{entry}', [CareerController::class, 'update'])->whereNumber('entry')->name('career.update');
         Route::delete('career/{entry}', [CareerController::class, 'destroy'])->whereNumber('entry')->name('career.destroy');
         Route::post('career/{entry}/status', [CareerController::class, 'status'])->whereNumber('entry')->name('career.status');
@@ -237,7 +237,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('household/mail', [HouseholdController::class, 'mail'])->name('household.mail');
         Route::post('household/mail', [HouseholdController::class, 'assignMail'])->name('household.mail.assign');
         Route::delete('household/mail', [HouseholdController::class, 'removeMail'])->name('household.mail.remove');
-        Route::post('household/invite', [HouseholdController::class, 'invite'])->middleware('throttle:20,1')->name('household.invite');
+        Route::post('household/invite', [HouseholdController::class, 'invite'])->middleware('throttle:api-20')->name('household.invite');
         Route::post('household/addons/{addon}/toggle', [HouseholdController::class, 'toggleAddon'])->where('addon', '[a-z_]+')->name('household.addons.toggle');
         Route::post('household/members/{member}/addons/{addon}/toggle', [HouseholdController::class, 'toggleMemberAddon'])->whereNumber('member')->where('addon', '[a-z_]+')->name('household.members.addons.toggle');
         Route::post('household/members/{member}/smart-home-control/toggle', [HouseholdController::class, 'toggleMemberControl'])->whereNumber('member')->name('household.members.control.toggle');
@@ -250,14 +250,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('drives', [DrivesController::class, 'store'])->name('drives.store');
         Route::put('drives/{drive}', [DrivesController::class, 'update'])->whereNumber('drive')->name('drives.update');
         Route::delete('drives/{drive}', [DrivesController::class, 'destroy'])->whereNumber('drive')->name('drives.destroy');
-        Route::get('drives/{drive}/browse', [DrivesController::class, 'browse'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.browse');
-        Route::get('drives/{drive}/download', [DrivesController::class, 'download'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.download');
-        Route::post('drives/{drive}/upload', [DrivesController::class, 'upload'])->whereNumber('drive')->middleware('throttle:30,1')->name('drives.upload');
+        Route::get('drives/{drive}/browse', [DrivesController::class, 'browse'])->whereNumber('drive')->middleware('throttle:api-60')->name('drives.browse');
+        Route::get('drives/{drive}/download', [DrivesController::class, 'download'])->whereNumber('drive')->middleware('throttle:api-60')->name('drives.download');
+        Route::post('drives/{drive}/upload', [DrivesController::class, 'upload'])->whereNumber('drive')->middleware('throttle:api-30')->name('drives.upload');
 
         // Document archive (paperless) and scanning.
         Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');
-        Route::post('documents/scan/preview', [DocumentsController::class, 'preview'])->middleware('throttle:60,1')->name('documents.scan.preview');
-        Route::post('documents/scan', [DocumentsController::class, 'scan'])->middleware('throttle:20,1')->name('documents.scan');
+        Route::post('documents/scan/preview', [DocumentsController::class, 'preview'])->middleware('throttle:api-60')->name('documents.scan.preview');
+        Route::post('documents/scan', [DocumentsController::class, 'scan'])->middleware('throttle:api-20')->name('documents.scan');
         Route::get('documents/{document}', [DocumentsController::class, 'show'])->whereNumber('document')->name('documents.show');
         Route::put('documents/{document}', [DocumentsController::class, 'update'])->whereNumber('document')->name('documents.update');
         Route::delete('documents/{document}', [DocumentsController::class, 'destroy'])->whereNumber('document')->name('documents.destroy');

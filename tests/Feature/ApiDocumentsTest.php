@@ -122,4 +122,19 @@ class ApiDocumentsTest extends TestCase
         gc_collect_cycles();
         $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 100, 100), 'meta' => json_encode(['corners' => [0, 0, 0, 0, 0, 0, 0, 0], 'filter' => 'nope'])], $headers)->assertOk();
     }
+
+    public function test_other_requests_do_not_use_up_the_scan_limit(): void
+    {
+        $this->fakePaperless();
+        [$user, $household] = $this->memberWithHousehold();
+        PaperlessInstance::create(['user_id' => $user->id, 'household_id' => $household->id, 'name' => 'Archiv', 'url' => 'https://93.184.216.34', 'token' => 'secret-token']);
+        $headers = $this->headersFor($user) + ['Accept' => 'application/json'];
+
+        // A busy screen refreshing other data must not eat into the separate scan limit.
+        for ($i = 0; $i < 25; $i++) {
+            $this->get('/api/v1/documents', $headers);
+        }
+
+        $this->post('/api/v1/documents/scan', ['pages' => [UploadedFile::fake()->image('a.jpg', 60, 60)]], $headers)->assertCreated();
+    }
 }

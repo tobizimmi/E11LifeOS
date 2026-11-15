@@ -26,6 +26,11 @@ class BookmarkCategory extends Model
     /** @use HasFactory<BookmarkCategoryFactory> */
     use HasFactory;
 
+    public function household(): BelongsTo
+    {
+        return $this->belongsTo(Household::class);
+    }
+
     public function bookmarks(): HasMany
     {
         return $this->hasMany(Bookmark::class, 'category_id');

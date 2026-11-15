@@ -48,6 +48,34 @@ class LinkPreview
     }
 
     /**
+     * The readable text of the page (for an AI summary), SSRF-guarded; empty on any problem.
+     */
+    public static function fetchText(string $url, int $maxChars = 12000): string
+    {
+        if (! UrlGuard::hasValidShape($url) || ! UrlGuard::isPublicHost((string) parse_url($url, PHP_URL_HOST))) {
+            return '';
+        }
+
+        try {
+            $html = Http::timeout(15)->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; E11LifeOS link preview)'])->get($url)->throw()->body();
+        } catch (Throwable) {
+            return '';
+        }
+
+        return self::text($html, $maxChars);
+    }
+
+    /**
+     * Strips scripts/markup from HTML and returns the collapsed visible text.
+     */
+    public static function text(string $html, int $maxChars = 12000): string
+    {
+        $html = preg_replace('#<(script|style|noscript|svg|nav|footer|header)\b[^>]*>.*?</\1>#si', ' ', $html) ?? $html;
+
+        return mb_substr(trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($html)))), 0, $maxChars);
+    }
+
+    /**
      * Extracts the preview metadata from already-fetched HTML (no network – testable on its own).
      *
      * @return array{url: string, title: ?string, description: ?string, site_name: ?string, favicon: ?string, images: list<string>}

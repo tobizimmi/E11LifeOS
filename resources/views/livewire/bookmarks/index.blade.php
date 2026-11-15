@@ -4,6 +4,9 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Item;
+use App\Models\WishlistItem;
+use App\Support\BookmarkAi;
+use App\Support\BookmarkAreas;
 use App\Support\BookmarkImages;
 use App\Support\LinkPreview;
 use App\Support\Security\UrlGuard;
@@ -178,6 +181,97 @@ new #[Layout('layouts.app')] class extends Component
         $bookmark->update(['is_read' => ! $bookmark->is_read, 'read_at' => $bookmark->is_read ? null : now()]);
     }
 
+    /**
+     * Summarises the page with the AI (on request) and stores it on the bookmark.
+     */
+    public function summarise(int $id): void
+    {
+        if (! BookmarkAi::isConfigured()) {
+            return;
+        }
+
+        $bookmark = $this->find($id);
+        $text = LinkPreview::fetchText($bookmark->url);
+
+        if ($text === '') {
+            $this->dispatch('toast', message: __('The web page could not be loaded for a summary.'));
+
+            return;
+        }
+
+        try {
+            $summary = app(BookmarkAi::class)->summarise((string) $bookmark->title, $text);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->dispatch('toast', message: __('The summary could not be created.'));
+
+            return;
+        }
+
+        if ($summary !== '') {
+            $bookmark->update(['summary' => $summary]);
+        }
+    }
+
+    /**
+     * Suggests the fitting area for the entered link (rule-based) and selects it, creating it when
+     * it does not exist yet.
+     */
+    public function suggestArea(): void
+    {
+        $match = BookmarkAreas::suggest(trim($this->url), trim($this->title));
+
+        if (! $match) {
+            $this->dispatch('toast', message: __('No area could be suggested – please pick one.'));
+
+            return;
+        }
+
+        $category = BookmarkCategory::firstOrCreate(
+            ['household_id' => $this->householdId, 'name' => $match['name']],
+            ['created_by' => Auth::id(), 'icon' => $match['icon'], 'color' => '#4b5563', 'position' => (int) BookmarkCategory::where('household_id', $this->householdId)->max('position') + 1],
+        );
+
+        $this->categoryId = (string) $category->id;
+        unset($this->categories);
+        $this->dispatch('toast', message: __('Suggested area: :name', ['name' => $match['name']]));
+    }
+
+    /**
+     * Adds one of the ready-made starter areas.
+     */
+    public function addSuggestedArea(string $name, string $icon): void
+    {
+        BookmarkCategory::firstOrCreate(
+            ['household_id' => $this->householdId, 'name' => mb_substr($name, 0, 80)],
+            ['created_by' => Auth::id(), 'icon' => $icon, 'color' => '#4b5563', 'position' => (int) BookmarkCategory::where('household_id', $this->householdId)->max('position') + 1],
+        );
+
+        unset($this->categories);
+    }
+
+    /**
+     * Saves a bookmark (e.g. a gift idea) to the wishlist.
+     */
+    public function toWishlist(int $id): void
+    {
+        $bookmark = $this->find($id);
+
+        WishlistItem::create([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+            'visibility' => $bookmark->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+            'title' => mb_substr($bookmark->title ?: $bookmark->url, 0, 150),
+            'url' => $bookmark->url,
+            'priority' => 'want',
+            'category' => 'other',
+            'status' => 'open',
+            'reason' => $bookmark->comment,
+        ]);
+
+        $this->dispatch('toast', message: __('Added to the wishlist.'));
+    }
+
     // ── Categories ───────────────────────────────────────────────────
     public function addCategory(): void
     {
@@ -235,9 +329,13 @@ new #[Layout('layouts.app')] class extends Component
             ->latest('id')
             ->get();
 
+        $existingNames = $this->categories->pluck('name')->map(fn (string $name) => mb_strtolower($name));
+
         return [
             'bookmarks' => $bookmarks,
             'categories' => $this->categories,
+            'aiReady' => BookmarkAi::isConfigured(),
+            'suggestedAreas' => collect(BookmarkAreas::SUGGESTED)->reject(fn (array $area) => $existingNames->contains(mb_strtolower($area['name'])))->values(),
         ];
     }
 }; ?>
@@ -274,6 +372,15 @@ new #[Layout('layouts.app')] class extends Component
                 </label>
             </div>
 
+            @if ($suggestedAreas->isNotEmpty())
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Quick areas:') }}</span>
+                    @foreach ($suggestedAreas as $area)
+                        <button type="button" wire:click="addSuggestedArea(@js($area['name']), @js($area['icon']))" class="rounded-full border border-dashed border-gray-300 px-2.5 py-0.5 text-gray-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-600 dark:text-gray-300">+ {{ $area['icon'] }} {{ $area['name'] }}</button>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- Bookmark cards --}}
             @if ($bookmarks->isEmpty())
                 <div class="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center dark:border-gray-600 dark:bg-gray-800">
@@ -309,8 +416,18 @@ new #[Layout('layouts.app')] class extends Component
                                 @if ($bookmark->comment)
                                     <p class="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">💬 {{ $bookmark->comment }}</p>
                                 @endif
-                                <div class="mt-auto flex items-center gap-3 pt-1 text-xs">
+                                @if ($bookmark->summary)
+                                    <p class="rounded-md bg-indigo-50 px-2 py-1 text-xs text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-200">✨ {{ $bookmark->summary }}</p>
+                                @endif
+                                <div class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
                                     <button type="button" wire:click="toggleRead({{ $bookmark->id }})" class="{{ $bookmark->is_read ? 'text-emerald-600' : 'text-gray-500 hover:text-emerald-600' }}">{{ $bookmark->is_read ? '✓ '.__('Read') : __('Mark read') }}</button>
+                                    @if ($aiReady && ! $bookmark->summary)
+                                        <button type="button" wire:click="summarise({{ $bookmark->id }})" wire:loading.attr="disabled" wire:target="summarise({{ $bookmark->id }})" class="text-gray-500 hover:text-indigo-600">
+                                            <span wire:loading.remove wire:target="summarise({{ $bookmark->id }})">✨ {{ __('Summarise') }}</span>
+                                            <span wire:loading wire:target="summarise({{ $bookmark->id }})">{{ __('Summarising …') }}</span>
+                                        </button>
+                                    @endif
+                                    <button type="button" wire:click="toWishlist({{ $bookmark->id }})" class="text-gray-500 hover:text-pink-600" title="{{ __('Add to the wishlist') }}">🎁</button>
                                     <button type="button" wire:click="startEditing({{ $bookmark->id }})" class="text-gray-500 hover:text-indigo-600">{{ __('Edit') }}</button>
                                     <button type="button" wire:click="delete({{ $bookmark->id }})" wire:confirm="{{ __('Delete this link?') }}" class="text-gray-500 hover:text-red-600">{{ __('Delete') }}</button>
                                 </div>
@@ -372,7 +489,10 @@ new #[Layout('layouts.app')] class extends Component
 
                 <div class="grid gap-3 sm:grid-cols-2">
                     <div>
-                        <x-input-label for="bm-cat" :value="__('Area')" />
+                        <div class="flex items-center justify-between">
+                            <x-input-label for="bm-cat" :value="__('Area')" />
+                            <button type="button" wire:click="suggestArea" class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">✨ {{ __('Suggest area') }}</button>
+                        </div>
                         <select wire:model="categoryId" id="bm-cat" class="mt-1 block w-full rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
                             <option value="">{{ __('No area') }}</option>
                             @foreach ($categories as $category)

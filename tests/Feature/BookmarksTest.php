@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Item;
+use App\Models\WishlistItem;
+use App\Support\BookmarkAreas;
 use App\Support\LinkPreview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -99,6 +101,42 @@ class BookmarksTest extends TestCase
 
         $this->assertTrue($bookmark->fresh()->is_read);
         $this->assertNotNull($bookmark->fresh()->read_at);
+    }
+
+    public function test_the_area_is_suggested_from_the_link(): void
+    {
+        $this->assertSame('Videos', BookmarkAreas::suggest('https://www.youtube.com/watch?v=abc')['name']);
+        $this->assertSame('Rezepte', BookmarkAreas::suggest('https://www.chefkoch.de/rezepte/123')['name']);
+        $this->assertSame('Einkäufe', BookmarkAreas::suggest('https://www.amazon.de/dp/B0')['name']);
+        $this->assertSame('Reise', BookmarkAreas::suggest('https://www.booking.com/hotel/x')['name']);
+        $this->assertNull(BookmarkAreas::suggest('https://example.com/misc', 'Nichts Besonderes'));
+    }
+
+    public function test_the_suggest_area_button_selects_or_creates_the_area(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('bookmarks.index')
+            ->set('url', 'https://www.youtube.com/watch?v=abc')
+            ->call('suggestArea')
+            ->assertSet('categoryId', fn ($id) => $id !== null);
+
+        $this->assertDatabaseHas('bookmark_categories', ['household_id' => $household->id, 'name' => 'Videos']);
+    }
+
+    public function test_a_bookmark_can_be_added_to_the_wishlist(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $bookmark = Bookmark::factory()->for($household)->create(['title' => 'Schöne Lampe', 'url' => 'https://shop.example.com/lampe']);
+
+        Volt::test('bookmarks.index')->call('toWishlist', $bookmark->id);
+
+        $wish = WishlistItem::sole();
+        $this->assertSame('Schöne Lampe', $wish->title);
+        $this->assertSame('https://shop.example.com/lampe', $wish->url);
     }
 
     public function test_private_bookmarks_are_hidden_from_other_members(): void

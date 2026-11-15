@@ -32,7 +32,7 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $read_at
  * @property int $position
  */
-#[Fillable(['household_id', 'created_by', 'category_id', 'visibility', 'url', 'title', 'description', 'site_name', 'favicon_url', 'image_url', 'image_path', 'comment', 'is_read', 'read_at', 'position'])]
+#[Fillable(['household_id', 'created_by', 'category_id', 'visibility', 'url', 'title', 'description', 'site_name', 'favicon_url', 'image_url', 'image_path', 'comment', 'summary', 'is_read', 'read_at', 'position'])]
 class Bookmark extends Model
 {
     /** @use HasFactory<BookmarkFactory> */
@@ -52,6 +52,11 @@ class Bookmark extends Model
     protected static function booted(): void
     {
         static::deleted(fn (Bookmark $bookmark) => BookmarkImages::delete($bookmark->image_path));
+    }
+
+    public function household(): BelongsTo
+    {
+        return $this->belongsTo(Household::class);
     }
 
     public function category(): BelongsTo

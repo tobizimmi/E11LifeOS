@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.107.1] – 2026-11-15
+
+### Neu (Lesezeichen)
+- **Schnell-Bereiche:** fertige Bereiche (Einkäufe, Geschenke, Videos, Rezepte, Reise, Lernen, Restaurants, Zeitschriften, Artikel) per Klick anlegen.
+- **Bereich vorschlagen:** ein Button rät beim Speichern anhand des Links den passenden Bereich (z. B. YouTube → Videos, Chefkoch → Rezepte, Amazon → Einkäufe) und legt ihn bei Bedarf an.
+- **KI-Zusammenfassung:** auf Wunsch per Button eine kurze Zusammenfassung des Artikels erstellen lassen (nutzt die Second-Brain-KI).
+- **Als Wunsch übernehmen:** Geschenk-/Shopping-Links mit einem Klick in die Wunschliste übernehmen.
+
 ## [1.107.0] – 2026-11-15
 
 ### Neu (Lesezeichen & Später lesen)

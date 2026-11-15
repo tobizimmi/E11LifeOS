@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.117.1] – 2026-11-15
+
+### Verbessert (Anlegen / „+")
+- **„+"-Menü ist jetzt ein echtes Anlegen-Menü:** neben Notiz, Aufgabe, Einkaufsliste und Termin lässt sich dort direkt ein **Link speichern** (Lesezeichen).
+- **Dokument scannen** im „+"-Menü: öffnet den Dokumentenscanner (Kamera → PDF → Paperless), wie in der iOS-App. Wird angezeigt, sobald Paperless eingerichtet ist.
+
 ## [1.117.0] – 2026-11-15
 
 ### Behoben (App-Schnittstelle)

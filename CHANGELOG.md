@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.112.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Dokumentenarchiv und Scannen für die native App.** Die Dokumente bleiben in paperless: Die App durchsucht und filtert sie (Schlagwort, Korrespondent, Dokumententyp), zeigt Vorschau und Original, ändert Titel, Datum und Zuordnung, fügt Notizen hinzu und löscht Dokumente. Fotografierte Seiten werden zu einem PDF zusammengefasst und an paperless geschickt – ist paperless nicht erreichbar, wird der Scan wie im Web zwischengespeichert und später hochgeladen.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.111.0] – 2026-11-14
 
 ### Neu (App-Schnittstelle)

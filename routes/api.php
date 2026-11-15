@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
+use App\Http\Controllers\Api\V1\DocumentsController;
 use App\Http\Controllers\Api\V1\EmergencyController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FocusController;
@@ -197,6 +198,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('focus/suggest-top', [FocusController::class, 'suggestTop'])->name('focus.suggest');
         Route::put('focus/{entry}', [FocusController::class, 'update'])->whereNumber('entry')->name('focus.update');
         Route::delete('focus/{entry}', [FocusController::class, 'destroy'])->whereNumber('entry')->name('focus.destroy');
+
+        // Document archive (paperless) and scanning.
+        Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');
+        Route::post('documents/scan', [DocumentsController::class, 'scan'])->middleware('throttle:20,1')->name('documents.scan');
+        Route::get('documents/{document}', [DocumentsController::class, 'show'])->whereNumber('document')->name('documents.show');
+        Route::put('documents/{document}', [DocumentsController::class, 'update'])->whereNumber('document')->name('documents.update');
+        Route::delete('documents/{document}', [DocumentsController::class, 'destroy'])->whereNumber('document')->name('documents.destroy');
+        Route::post('documents/{document}/notes', [DocumentsController::class, 'addNote'])->whereNumber('document')->name('documents.notes.store');
+        Route::get('documents/{document}/{variant}', [DocumentsController::class, 'file'])->whereNumber('document')->whereIn('variant', ['thumb', 'preview', 'download'])->name('documents.file');
 
         Route::get('knowledge/tips', [KnowledgeController::class, 'tips'])->name('knowledge.tips');
         Route::get('knowledge/tips/{key}', [KnowledgeController::class, 'tip'])->where('key', '[A-Za-z0-9_.\\-]+')->name('knowledge.tip');

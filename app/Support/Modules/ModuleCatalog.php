@@ -56,7 +56,7 @@ class ModuleCatalog
             'review' => $module(__('Year in review'), '🌟', ['review.*', 'api.v1.review.*']),
             'emergency' => $module(__('Emergency folder'), '🛡', ['emergency.*', 'api.v1.emergency.*']),
             'provision' => $module(__('Provision check'), '☂️', ['provision.*']),
-            'drives' => $module(__('Network drives'), '🗄', ['drives.*']),
+            'drives' => $module(__('Network drives'), '🗄', ['drives.*', 'api.v1.drives.*']),
         ];
     }
 

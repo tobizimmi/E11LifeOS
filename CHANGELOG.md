@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.115.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Laufwerke für die native App:** WebDAV-Laufwerke (NAS, Nextcloud, Storage Box) anlegen, Ordner durchsuchen, Dateien laden und hochladen; die Adressprüfung (VPN oder öffentlich) und der Virenscan gelten wie im Web. Google Drive wird weiterhin im Web verbunden.
+- **Dokumente und E-Mails an Einträge hängen** (Seiten, Einträge, Reisen, Karriere …): paperless-Dokumente und Mail-Links verknüpfen und lösen. Die Dokumente bleiben in paperless.
+- **Mail-Eingang des Haushalts** in der App: Adresse ansehen, neu vergeben oder entfernen (nur der Besitzer) und das Protokoll der letzten Mails.
+- **Jobvorschläge** in der Karriere aus der Jobbörse der Arbeitsagentur, mit einem Tipp als geplante Bewerbung merken.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.114.0] – 2026-11-15
 
 ### Neu (App-Schnittstelle)

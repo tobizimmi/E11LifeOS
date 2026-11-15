@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationsController;
 use App\Http\Controllers\Api\V1\BookmarksController;
 use App\Http\Controllers\Api\V1\BrainController;
+use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
@@ -319,6 +320,21 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'updateInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.update');
         Route::post('real-estate/{estate}/invoices/{invoice}/paid', [RealEstateController::class, 'togglePaid'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.paid');
         Route::delete('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'destroyInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.destroy');
+
+        Route::get('business', [BusinessController::class, 'index'])->name('business.index');
+        Route::post('business/invoices', [BusinessController::class, 'storeInvoice'])->name('business.invoices.store');
+        Route::get('business/invoices/{invoice}', [BusinessController::class, 'showInvoice'])->whereNumber('invoice')->name('business.invoices.show');
+        Route::post('business/invoices/{invoice}/issue', [BusinessController::class, 'issueInvoice'])->whereNumber('invoice')->name('business.invoices.issue');
+        Route::post('business/invoices/{invoice}/pay', [BusinessController::class, 'pay'])->whereNumber('invoice')->name('business.invoices.pay');
+        Route::get('business/invoices/{invoice}/pdf', [BusinessController::class, 'pdf'])->whereNumber('invoice')->middleware('throttle:api-30')->name('business.invoices.pdf');
+        Route::delete('business/invoices/{invoice}', [BusinessController::class, 'destroyInvoice'])->whereNumber('invoice')->name('business.invoices.destroy');
+        Route::post('business/customers', [BusinessController::class, 'storeCustomer'])->name('business.customers.store');
+        Route::put('business/customers/{customer}', [BusinessController::class, 'updateCustomer'])->whereNumber('customer')->name('business.customers.update');
+        Route::delete('business/customers/{customer}', [BusinessController::class, 'destroyCustomer'])->whereNumber('customer')->name('business.customers.destroy');
+        Route::get('business/time', [BusinessController::class, 'time'])->name('business.time');
+        Route::post('business/time/start', [BusinessController::class, 'startTimer'])->name('business.time.start');
+        Route::post('business/time/stop', [BusinessController::class, 'stopTimer'])->name('business.time.stop');
+        Route::delete('business/time/{entry}', [BusinessController::class, 'destroyTime'])->whereNumber('entry')->name('business.time.destroy');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

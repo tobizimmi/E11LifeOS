@@ -33,7 +33,7 @@ class ModuleCatalog
             Addons::RECIPES => $module($addons[Addons::RECIPES]['label'], $addons[Addons::RECIPES]['icon'], ['recipes.*'], true),
             Addons::FINANCE => $module($addons[Addons::FINANCE]['label'], $addons[Addons::FINANCE]['icon'], ['finance.*'], true),
             Addons::PORTFOLIO => $module($addons[Addons::PORTFOLIO]['label'], $addons[Addons::PORTFOLIO]['icon'], ['portfolio.*', 'api.v1.portfolios.*', 'api.v1.quotes', 'api.v1.quote', 'api.v1.recommendations', 'api.v1.watchlist.*'], true),
-            Addons::BUSINESS => $module($addons[Addons::BUSINESS]['label'], $addons[Addons::BUSINESS]['icon'], ['business.*'], true),
+            Addons::BUSINESS => $module($addons[Addons::BUSINESS]['label'], $addons[Addons::BUSINESS]['icon'], ['business.*', 'api.v1.business.*'], true),
             'net_worth' => $module(__('Net worth'), '🥧', ['net-worth.*', 'api.v1.net-worth']),
             'cashflow' => $module(__('Cashflow analysis'), '🔁', ['cashflow.*']),
             'wealth_plan' => $module(__('Wealth plan'), '🚀', ['wealth-plan.*', 'api.v1.wealth-plan.*']),

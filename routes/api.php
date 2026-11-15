@@ -73,6 +73,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('tasks/{task}', [LifeController::class, 'updateTask'])->whereNumber('task')->name('tasks.update');
         Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
+        Route::get('tasks/options', [TaskDetailsController::class, 'options'])->name('tasks.options');
         Route::get('tasks/{task}', [TaskDetailsController::class, 'show'])->whereNumber('task')->name('tasks.show');
         Route::put('tasks/{task}/details', [TaskDetailsController::class, 'update'])->whereNumber('task')->name('tasks.details');
         Route::post('tasks/{task}/subtasks', [TaskDetailsController::class, 'addSubtask'])->whereNumber('task')->name('tasks.subtasks.store');

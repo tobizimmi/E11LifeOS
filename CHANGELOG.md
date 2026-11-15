@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.121.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Spaces und Gruppen für die App:** Spaces (Arbeit, Zuhause, Verein …) anlegen, ändern und löschen, Aufgaben direkt hineinlegen oder verschieben. Gruppen jenseits des Haushalts mit Einladungslink, Mitgliedern und der Übersicht, was mit wem geteilt ist.
+- Im Web ändert sich dadurch nichts.
+
+## [1.120.0] – 2026-11-15
+
+### Geändert (Scannen)
+- **Scans ohne weißen Rand.** Das PDF aus gescannten Seiten hat jetzt genau die Größe des Bildausschnitts statt eines weißen DIN-A4-Blatts. Ein zugeschnittener Kassenzettel bleibt ein schmaler Streifen. Das gilt auch für den Scan im Web.
+
 ## [1.117.1] – 2026-11-15
 
 ### Verbessert (Anlegen / „+")

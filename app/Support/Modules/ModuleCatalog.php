@@ -49,7 +49,7 @@ class ModuleCatalog
             'people' => $module(__('People & occasions'), '🎂', ['people.*', 'api.v1.people.*']),
             'kids' => $module(__('Kids & pocket money'), '⭐', ['kids.*', 'api.v1.kids.*']),
             'work' => $module(__('Working time & leave'), '⏱', ['work.*', 'api.v1.work.*']),
-            'career' => $module(__('Career'), '💼', ['career.*']),
+            'career' => $module(__('Career'), '💼', ['career.*', 'api.v1.career.*']),
             'trips' => $module(__('Trips'), '✈️', ['trips.*']),
             'places' => $module(__('Places'), '📍', ['places.*', 'api.v1.places.*']),
             'splits' => $module(__('Split costs'), '🧮', ['splits.*', 'api.v1.splits.*']),

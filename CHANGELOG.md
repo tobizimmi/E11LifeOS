@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.114.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Karriere für die native App** (nur für dich sichtbar): Werdegang mit Stationen, Ausbildung, Weiterbildungen, Meilensteinen, Arbeitsverträgen und Bewerbungen samt Status, Hinweisen zu ablaufenden Zertifikaten und Probezeit, Profil und Lebenslauf als PDF.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.113.0] – 2026-11-15
 
 ### Neu (App-Schnittstelle)

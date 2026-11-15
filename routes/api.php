@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BrainController;
 use App\Http\Controllers\Api\V1\CalendarController;
+use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
@@ -218,6 +219,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('work/settings', [WorkController::class, 'saveSettings'])->name('work.settings');
         Route::put('work/days/{date}', [WorkController::class, 'saveDay'])->where('date', '\d{4}-\d{2}-\d{2}')->name('work.days.save');
         Route::delete('work/days/{date}', [WorkController::class, 'clearDay'])->where('date', '\d{4}-\d{2}-\d{2}')->name('work.days.clear');
+
+        Route::get('career', [CareerController::class, 'index'])->name('career.index');
+        Route::post('career', [CareerController::class, 'store'])->name('career.store');
+        Route::put('career/profile', [CareerController::class, 'saveProfile'])->name('career.profile');
+        Route::get('career/cv', [CareerController::class, 'cv'])->middleware('throttle:20,1')->name('career.cv');
+        Route::put('career/{entry}', [CareerController::class, 'update'])->whereNumber('entry')->name('career.update');
+        Route::delete('career/{entry}', [CareerController::class, 'destroy'])->whereNumber('entry')->name('career.destroy');
+        Route::post('career/{entry}/status', [CareerController::class, 'status'])->whereNumber('entry')->name('career.status');
 
         // Document archive (paperless) and scanning.
         Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');

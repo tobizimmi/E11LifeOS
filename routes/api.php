@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
+use App\Http\Controllers\Api\V1\DocumentLinksController;
 use App\Http\Controllers\Api\V1\DocumentsController;
+use App\Http\Controllers\Api\V1\DrivesController;
 use App\Http\Controllers\Api\V1\EmergencyController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FocusController;
@@ -223,6 +225,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('career', [CareerController::class, 'index'])->name('career.index');
         Route::post('career', [CareerController::class, 'store'])->name('career.store');
+        Route::get('career/jobs', [CareerController::class, 'jobs'])->middleware('throttle:20,1')->name('career.jobs');
+        Route::post('career/jobs/remember', [CareerController::class, 'rememberJob'])->name('career.jobs.remember');
         Route::put('career/profile', [CareerController::class, 'saveProfile'])->name('career.profile');
         Route::get('career/cv', [CareerController::class, 'cv'])->middleware('throttle:20,1')->name('career.cv');
         Route::put('career/{entry}', [CareerController::class, 'update'])->whereNumber('entry')->name('career.update');
@@ -230,10 +234,25 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('career/{entry}/status', [CareerController::class, 'status'])->whereNumber('entry')->name('career.status');
 
         Route::get('household', [HouseholdController::class, 'show'])->name('household.show');
+        Route::get('household/mail', [HouseholdController::class, 'mail'])->name('household.mail');
+        Route::post('household/mail', [HouseholdController::class, 'assignMail'])->name('household.mail.assign');
+        Route::delete('household/mail', [HouseholdController::class, 'removeMail'])->name('household.mail.remove');
         Route::post('household/invite', [HouseholdController::class, 'invite'])->middleware('throttle:20,1')->name('household.invite');
         Route::post('household/addons/{addon}/toggle', [HouseholdController::class, 'toggleAddon'])->where('addon', '[a-z_]+')->name('household.addons.toggle');
         Route::post('household/members/{member}/addons/{addon}/toggle', [HouseholdController::class, 'toggleMemberAddon'])->whereNumber('member')->where('addon', '[a-z_]+')->name('household.members.addons.toggle');
         Route::post('household/members/{member}/smart-home-control/toggle', [HouseholdController::class, 'toggleMemberControl'])->whereNumber('member')->name('household.members.control.toggle');
+
+        Route::get('document-links', [DocumentLinksController::class, 'index'])->name('documents.links.index');
+        Route::post('document-links', [DocumentLinksController::class, 'store'])->name('documents.links.store');
+        Route::delete('document-links/{link}', [DocumentLinksController::class, 'destroy'])->whereNumber('link')->name('documents.links.destroy');
+
+        Route::get('drives', [DrivesController::class, 'index'])->name('drives.index');
+        Route::post('drives', [DrivesController::class, 'store'])->name('drives.store');
+        Route::put('drives/{drive}', [DrivesController::class, 'update'])->whereNumber('drive')->name('drives.update');
+        Route::delete('drives/{drive}', [DrivesController::class, 'destroy'])->whereNumber('drive')->name('drives.destroy');
+        Route::get('drives/{drive}/browse', [DrivesController::class, 'browse'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.browse');
+        Route::get('drives/{drive}/download', [DrivesController::class, 'download'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.download');
+        Route::post('drives/{drive}/upload', [DrivesController::class, 'upload'])->whereNumber('drive')->middleware('throttle:30,1')->name('drives.upload');
 
         // Document archive (paperless) and scanning.
         Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');

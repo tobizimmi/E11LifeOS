@@ -11,10 +11,13 @@ use App\Support\Life\MapHttp;
 use App\Support\PrefixAwareSignedUploadUrl;
 use App\Support\Security\EncryptedFilesystemAdapter;
 use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -54,6 +57,12 @@ class AppServiceProvider extends ServiceProvider
 
             return $handler($request, $options);
         });
+
+        // Per-route limits of the mobile API. A plain "throttle:N,M" counts every throttled route of a
+        // member in one shared bucket, so busy screens used up the limit of the scan routes.
+        foreach ([20, 30, 60] as $perMinute) {
+            RateLimiter::for('api-'.$perMinute, fn (Request $request) => Limit::perMinute($perMinute)->by(($request->user()?->getAuthIdentifier() ?? $request->ip()).'|'.($request->route()?->getName() ?? $request->path())));
+        }
 
         Gate::define('admin', fn (User $user) => $user->isAdmin());
 

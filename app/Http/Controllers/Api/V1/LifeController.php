@@ -42,6 +42,8 @@ class LifeController extends ApiController
         $due = $collection->systemProperty('due');
         $priority = $collection->systemProperty('priority');
         $repeat = $collection->systemProperty('repeat');
+        $category = $collection->systemProperty('category');
+        $assignee = $collection->systemProperty('assignee');
         $filter = (string) $request->query('filter', 'all');
         $today = today()->toDateString();
         $week = today()->addDays(7)->toDateString();
@@ -61,6 +63,8 @@ class LifeController extends ApiController
                 $row['due'],
                 $priority ? ((string) $row['task']->propertyValue($priority) ?: null) : null,
                 $repeat ? ((string) $row['task']->propertyValue($repeat) ?: null) : null,
+                $category ? ((string) $row['task']->propertyValue($category) ?: null) : null,
+                $assignee ? ((int) $row['task']->propertyValue($assignee) ?: null) : null,
             ));
 
         return $this->ok($tasks);
@@ -421,7 +425,7 @@ class LifeController extends ApiController
     /**
      * @return array<string, mixed>
      */
-    private function taskData(Item $task, ?string $due, ?string $priority = null, ?string $repeat = null): array
+    private function taskData(Item $task, ?string $due, ?string $priority = null, ?string $repeat = null, ?string $category = null, ?int $assignee = null): array
     {
         $subtasks = $task->subtasks();
 
@@ -432,6 +436,8 @@ class LifeController extends ApiController
             'time' => $task->due_time,
             'priority' => $priority,
             'repeat' => $repeat,
+            'category' => $category,
+            'assignee' => $assignee,
             'subtasks' => ['total' => count($subtasks), 'done' => count(array_filter($subtasks, fn (array $entry) => $entry['done']))],
             'tags' => $task->relationLoaded('tags') ? $task->tags->pluck('name')->all() : [],
             'done' => (bool) $task->done,

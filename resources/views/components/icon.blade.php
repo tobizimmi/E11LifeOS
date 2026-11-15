@@ -52,6 +52,7 @@
         'credit-card' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 18Z"/>',
         'viewfinder-circle' => '<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>',
         'clock' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
+        'bookmark' => '<path stroke-linecap="round" stroke-linejoin="round" d="m17.593 3.322 1.1.128c.9.105 1.557.86 1.557 1.776V21L12 17.25 3.75 21V5.226c0-.916.657-1.671 1.557-1.776l1.1-.128m9.586 0a48.108 48.108 0 0 0-3.478-.397m3.478.397c.147.317.241.666.241 1.044 0 .378-.094.727-.241 1.044m-9.586-2.49c-.147.317-.241.666-.241 1.044 0 .378.094.727.241 1.044m0-2.088a48.11 48.11 0 0 1 3.478-.397m6.108.397a2.37 2.37 0 0 0-1.044-.241 2.37 2.37 0 0 0-1.044.241m2.088 0V2.75a48.108 48.108 0 0 0-6.108 0v.572"/>',
     ];
 @endphp
 <svg {{ $attributes->merge(['class' => 'h-5 w-5 shrink-0', 'stroke-width' => '1.5']) }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">{!! $paths[$name] ?? '' !!}</svg>

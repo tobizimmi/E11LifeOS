@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.107.0] – 2026-11-15
+
+### Neu (Lesezeichen & Später lesen)
+- **Neues Modul „Lesezeichen & Später lesen".** Speichere Artikel, Shopping-Links und Online-Zeitschriften, um sie später zu lesen oder wiederzufinden:
+  - **Eigene Bereiche/Kategorien** anlegen (z. B. Einkäufe, Zeitschriften, Artikel) und Links hineinsortieren; nach Bereich filtern.
+  - **Webseiten-Vorschau:** Link einfügen → „Vorschau laden" holt Titel, Beschreibung, Seitenname und Vorschaubilder der Seite (sicher serverseitig). Du kannst **ein Bild der Webseite auswählen**, das gespeichert und als Karte angezeigt wird.
+  - **Kommentar** pro Link, **als gelesen** markieren, privat oder im Haushalt geteilt.
+  - Zu finden unter **Alltag → Lesezeichen & Später lesen**.
+
 ## [1.106.0] – 2026-11-14
 
 ### Neu (Fokus & Time Boxing)

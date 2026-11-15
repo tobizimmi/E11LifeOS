@@ -28,6 +28,7 @@ class ModuleCatalog
             'shopping' => $module(__('Shopping List'), '🛒', ['shopping-list.*', 'api.v1.shopping.*']),
             'cards' => $module(__('Loyalty cards'), '💳', ['loyalty-cards.*']),
             'focus' => $module(__('Focus & time boxing'), '🎯', ['focus.*']),
+            'bookmarks' => $module(__('Bookmarks & read later'), '🔖', ['bookmarks.*']),
             'pantry' => $module(__('Pantry'), '🥫', ['pantry.*']),
             Addons::RECIPES => $module($addons[Addons::RECIPES]['label'], $addons[Addons::RECIPES]['icon'], ['recipes.*'], true),
             Addons::FINANCE => $module($addons[Addons::FINANCE]['label'], $addons[Addons::FINANCE]['icon'], ['finance.*'], true),

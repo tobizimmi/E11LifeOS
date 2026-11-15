@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\Household;
 use App\Models\HouseholdInvite;
 use App\Models\HouseholdMember;
+use App\Models\InboundMail;
 use App\Support\Addons;
+use App\Support\Mail\MailIntake;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -73,6 +75,51 @@ class HouseholdController extends ApiController
         $target->update(['permissions' => $permissions ?: null]);
 
         return $this->ok($this->data($household->refresh()));
+    }
+
+    /**
+     * The household's own mail address: mails sent there become tasks, shopping items, bookings or inbox notes.
+     */
+    public function mail(): JsonResponse
+    {
+        return $this->ok($this->mailData($this->household()));
+    }
+
+    public function assignMail(): JsonResponse
+    {
+        $household = $this->household();
+        abort_if(MailIntake::domain() === null, 404, __('Mail intake is not set up on this server.'));
+        $this->owner($household);
+        MailIntake::assignAddress($household);
+
+        return $this->ok($this->mailData($household->refresh()), 201);
+    }
+
+    public function removeMail(): JsonResponse
+    {
+        $household = $this->household();
+        $this->owner($household);
+        $household->forceFill(['mail_address' => null])->save();
+
+        return $this->ok($this->mailData($household->refresh()));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mailData(Household $household): array
+    {
+        return [
+            'available' => MailIntake::domain() !== null,
+            'address' => MailIntake::address($household),
+            'mails' => InboundMail::where('household_id', $household->id)->latest()->limit(10)->get()->map(fn (InboundMail $mail) => [
+                'id' => $mail->id,
+                'from' => (string) $mail->from_address,
+                'subject' => (string) $mail->subject,
+                'status' => $mail->status,
+                'received_at' => $mail->created_at?->toIso8601String(),
+            ])->all(),
+        ];
     }
 
     private function household(): Household

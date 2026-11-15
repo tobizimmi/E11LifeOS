@@ -83,6 +83,38 @@ class CareerController extends ApiController
         return $this->ok(CareerPlanner::profile($this->user()->refresh()));
     }
 
+    /**
+     * Current job offers from the job exchange for the wished-for role (or the latest job).
+     */
+    public function jobs(): JsonResponse
+    {
+        $terms = CareerPlanner::searchTerms($this->user(), $this->entries()->get());
+
+        return $this->ok(['what' => $terms['what'], 'where' => $terms['where'], 'jobs' => CareerPlanner::jobSuggestions($terms['what'], $terms['where'])]);
+    }
+
+    /**
+     * Remembers a suggested job as a planned application.
+     */
+    public function rememberJob(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'employer' => ['nullable', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'url' => ['required', 'url:https', 'max:1000'],
+        ]);
+
+        $entry = $this->entries()->where('type', 'application')->get()->first(fn (CareerEntry $e) => $e->detail('url') === $data['url']);
+        $entry ??= CareerEntry::create([
+            'user_id' => $this->user()->id, 'household_id' => $this->household()->id, 'type' => 'application', 'title' => trim($data['title']),
+            'organization' => trim((string) ($data['employer'] ?? '')) ?: null, 'location' => trim((string) ($data['location'] ?? '')) ?: null,
+            'details' => ['status' => 'planned', 'url' => $data['url']],
+        ]);
+
+        return $this->ok($this->entryData($entry), 201);
+    }
+
     public function cv(): Response
     {
         $user = $this->user();

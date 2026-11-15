@@ -6,10 +6,12 @@ use App\Models\PaperlessInstance;
 use App\Support\Paperless\PaperlessClient;
 use App\Support\Paperless\PaperlessException;
 use App\Support\Paperless\PaperlessUploader;
+use App\Support\Paperless\ScanImage;
 use App\Support\Paperless\ScanPdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -156,6 +158,8 @@ class DocumentsController extends ApiController
             'title' => ['nullable', 'string', 'max:150'],
             'pages' => ['required', 'array', 'min:1', 'max:'.ScanPdf::MAX_PAGES],
             'pages.*' => ['file', 'image', 'max:12288'],
+            'meta' => ['sometimes', 'array', 'max:'.ScanPdf::MAX_PAGES],
+            'meta.*' => ['nullable', 'json'],
             'tags' => ['sometimes', 'array', 'max:50'],
             'tags.*' => ['integer'],
             'correspondent' => ['nullable', 'integer'],
@@ -165,9 +169,8 @@ class DocumentsController extends ApiController
         $instance = $this->instance($data['instance'] ?? null) ?? abort(404, __('No paperless connection set up.'));
         $household = $this->user()->currentHousehold() ?? abort(404, __('You are not a member of a household yet.'));
 
-        $uris = collect($request->file('pages'))->map(fn ($file) => 'data:'.$file->getMimeType().';base64,'.base64_encode((string) file_get_contents($file->getRealPath())))->all();
-
         try {
+            $uris = collect($request->file('pages'))->map(fn ($file, $index) => $this->pageUri($file, $request->input('meta.'.$index)))->all();
             $pdf = ScanPdf::fromImages($uris);
         } catch (\InvalidArgumentException) {
             return response()->json(['success' => false, 'message' => __('The scan could not be processed. Please try again.')], 422);
@@ -177,6 +180,51 @@ class DocumentsController extends ApiController
         $queued = app(PaperlessUploader::class)->store($instance, $this->user(), $household->id, $pdf, (Str::slug($title) ?: 'scan').'.pdf', $title, array_map('intval', $data['tags'] ?? []), $data['correspondent'] ?? null, $data['document_type'] ?? null);
 
         return $this->ok(['queued' => $queued], 201);
+    }
+
+    /**
+     * Previews one page the way it will be filed: corners set, filter and rotation applied.
+     */
+    public function preview(Request $request): Response|JsonResponse
+    {
+        $request->validate(['page' => ['required', 'file', 'image', 'max:12288'], 'meta' => ['nullable', 'json']]);
+
+        try {
+            $jpeg = ScanImage::process((string) file_get_contents($request->file('page')->getRealPath()), ...$this->options($request->input('meta'), 900));
+        } catch (\InvalidArgumentException) {
+            return response()->json(['success' => false, 'message' => __('The scan could not be processed. Please try again.')], 422);
+        }
+
+        return response($jpeg, 200, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    /**
+     * A page as data URI: processed when the member adjusted it, otherwise as it came.
+     */
+    private function pageUri(UploadedFile $file, mixed $meta): string
+    {
+        $binary = (string) file_get_contents($file->getRealPath());
+        $options = $this->options(is_string($meta) ? $meta : null, 1800);
+
+        if ($options['corners'] === null && $options['filter'] === 'original' && $options['rotate'] === 0) {
+            return 'data:'.$file->getMimeType().';base64,'.base64_encode($binary);
+        }
+
+        return 'data:image/jpeg;base64,'.base64_encode(ScanImage::process($binary, ...$options));
+    }
+
+    /**
+     * @return array{corners: list<float>|null, filter: string, rotate: int, maxSide: int}
+     */
+    private function options(?string $meta, int $maxSide): array
+    {
+        $data = is_string($meta) ? (json_decode($meta, true) ?: []) : [];
+        $corners = isset($data['corners']) && is_array($data['corners']) && count($data['corners']) === 8 ? array_map('floatval', array_values($data['corners'])) : null;
+        $filter = in_array($data['filter'] ?? null, ScanImage::FILTERS, true) ? $data['filter'] : 'original';
+        $angle = (int) ($data['rotate'] ?? 0);
+        $rotate = in_array($angle, [90, 180, 270], true) ? $angle : 0;
+
+        return ['corners' => $corners, 'filter' => $filter, 'rotate' => $rotate, 'maxSide' => $maxSide];
     }
 
     private function instance(?int $id): ?PaperlessInstance

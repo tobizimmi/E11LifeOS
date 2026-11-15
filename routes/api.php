@@ -256,6 +256,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         // Document archive (paperless) and scanning.
         Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');
+        Route::post('documents/scan/preview', [DocumentsController::class, 'preview'])->middleware('throttle:60,1')->name('documents.scan.preview');
         Route::post('documents/scan', [DocumentsController::class, 'scan'])->middleware('throttle:20,1')->name('documents.scan');
         Route::get('documents/{document}', [DocumentsController::class, 'show'])->whereNumber('document')->name('documents.show');
         Route::put('documents/{document}', [DocumentsController::class, 'update'])->whereNumber('document')->name('documents.update');

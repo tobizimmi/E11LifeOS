@@ -100,4 +100,25 @@ class ApiDocumentsTest extends TestCase
             ->assertCreated()->assertJsonPath('data.queued', false);
         Http::assertSent(fn ($request) => str_contains($request->url(), 'post_document'));
     }
+
+    public function test_pages_are_straightened_filtered_and_previewed(): void
+    {
+        $this->fakePaperless();
+        [$user, $household] = $this->memberWithHousehold();
+        PaperlessInstance::create(['user_id' => $user->id, 'household_id' => $household->id, 'name' => 'Archiv', 'url' => 'https://93.184.216.34', 'token' => 'secret-token']);
+        $headers = $this->headersFor($user) + ['Accept' => 'application/json'];
+        $meta = json_encode(['corners' => [0.1, 0.1, 0.9, 0.12, 0.88, 0.9, 0.08, 0.92], 'filter' => 'bw', 'rotate' => 90]);
+
+        $started = microtime(true);
+        $response = $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 1600, 1200), 'meta' => $meta], $headers)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $size = getimagesizefromstring($response->getContent());
+        $this->assertLessThan(20, microtime(true) - $started);
+        // The page is portrait-sized after the 90° turn of a landscape photo.
+        $this->assertGreaterThan($size[0], $size[1]);
+
+        $this->post('/api/v1/documents/scan', ['title' => 'Brief', 'pages' => [UploadedFile::fake()->image('a.jpg', 800, 600)], 'meta' => [$meta]], $headers)->assertCreated()->assertJsonPath('data.queued', false);
+        $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')], $headers)->assertStatus(422);
+        // Nonsense settings fall back to the unchanged page.
+        $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 300, 300), 'meta' => json_encode(['corners' => [0, 0, 0, 0, 0, 0, 0, 0], 'filter' => 'nope'])], $headers)->assertOk();
+    }
 }

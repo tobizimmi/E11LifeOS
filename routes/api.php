@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\DrivesController;
 use App\Http\Controllers\Api\V1\EmergencyController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FocusController;
+use App\Http\Controllers\Api\V1\GroupsController;
 use App\Http\Controllers\Api\V1\HabitController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HouseController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\SpacesController;
 use App\Http\Controllers\Api\V1\SplitController;
 use App\Http\Controllers\Api\V1\TaskDetailsController;
 use App\Http\Controllers\Api\V1\TodayController;
@@ -256,6 +258,23 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('document-links', [DocumentLinksController::class, 'index'])->name('documents.links.index');
         Route::post('document-links', [DocumentLinksController::class, 'store'])->name('documents.links.store');
         Route::delete('document-links/{link}', [DocumentLinksController::class, 'destroy'])->whereNumber('link')->name('documents.links.destroy');
+
+        Route::get('groups', [GroupsController::class, 'index'])->name('groups.index');
+        Route::post('groups', [GroupsController::class, 'store'])->name('groups.store');
+        Route::post('groups/{group}/invite', [GroupsController::class, 'createInvite'])->whereNumber('group')->name('groups.invite');
+        Route::delete('groups/{group}/invite', [GroupsController::class, 'revokeInvite'])->whereNumber('group')->name('groups.invite.revoke');
+        Route::delete('groups/{group}/members/{member}', [GroupsController::class, 'removeMember'])->whereNumber(['group', 'member'])->name('groups.members.destroy');
+        Route::post('groups/{group}/leave', [GroupsController::class, 'leave'])->whereNumber('group')->name('groups.leave');
+        Route::delete('groups/{group}', [GroupsController::class, 'destroy'])->whereNumber('group')->name('groups.destroy');
+        Route::delete('shares/{share}', [GroupsController::class, 'unshare'])->whereNumber('share')->name('shares.destroy');
+
+        Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
+        Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');
+        Route::get('spaces/{space}', [SpacesController::class, 'show'])->whereNumber('space')->name('spaces.show');
+        Route::put('spaces/{space}', [SpacesController::class, 'update'])->whereNumber('space')->name('spaces.update');
+        Route::delete('spaces/{space}', [SpacesController::class, 'destroy'])->whereNumber('space')->name('spaces.destroy');
+        Route::post('spaces/{space}/tasks', [SpacesController::class, 'addTask'])->whereNumber('space')->name('spaces.tasks.store');
+        Route::put('tasks/{task}/space', [SpacesController::class, 'assignTask'])->whereNumber('task')->name('tasks.space');
 
         Route::get('bookmarks', [BookmarksController::class, 'index'])->name('bookmarks.index');
         Route::post('bookmarks/preview', [BookmarksController::class, 'preview'])->middleware('throttle:api-30')->name('bookmarks.preview');

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Item;
+use App\Models\Place;
 use App\Models\WishlistItem;
 use App\Support\BookmarkAreas;
 use App\Support\LinkPreview;
@@ -137,6 +138,21 @@ class BookmarksTest extends TestCase
         $wish = WishlistItem::sole();
         $this->assertSame('Schöne Lampe', $wish->title);
         $this->assertSame('https://shop.example.com/lampe', $wish->url);
+    }
+
+    public function test_a_bookmark_can_be_saved_as_a_place(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $bookmark = Bookmark::factory()->for($household)->create(['title' => 'Hotel Schön', 'url' => 'https://hotel.example.com', 'comment' => 'Für den Sommer']);
+
+        Volt::test('bookmarks.index')->call('saveAsPlace', $bookmark->id);
+
+        $place = Place::sole();
+        $this->assertSame('Hotel Schön', $place->name);
+        $this->assertSame('https://hotel.example.com', $place->url);
+        $this->assertSame('Für den Sommer', $place->notes);
     }
 
     public function test_private_bookmarks_are_hidden_from_other_members(): void

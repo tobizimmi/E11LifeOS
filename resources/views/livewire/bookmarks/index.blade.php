@@ -4,7 +4,9 @@ use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Item;
+use App\Models\Place;
 use App\Models\WishlistItem;
+use App\Support\Addons;
 use App\Support\BookmarkAi;
 use App\Support\BookmarkAreas;
 use App\Support\BookmarkImages;
@@ -272,6 +274,39 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('toast', message: __('Added to the wishlist.'));
     }
 
+    /**
+     * Opens the recipe import prefilled with the link (the review step lives in the recipes module).
+     */
+    public function importRecipe(int $id): void
+    {
+        $bookmark = $this->find($id);
+
+        if (! $this->currentUser()->canUseAddon(Addons::RECIPES)) {
+            return;
+        }
+
+        $this->redirectRoute('recipes.import', ['source' => 'link', 'url' => $bookmark->url], navigate: true);
+    }
+
+    /**
+     * Saves a travel/location link as a place in the Places module.
+     */
+    public function saveAsPlace(int $id): void
+    {
+        $bookmark = $this->find($id);
+
+        Place::create([
+            'household_id' => $this->householdId,
+            'created_by' => Auth::id(),
+            'visibility' => $bookmark->isPrivate() ? Item::VISIBILITY_PRIVATE : Item::VISIBILITY_SHARED,
+            'name' => mb_substr($bookmark->title ?: ($bookmark->host() ?? $bookmark->url), 0, 150),
+            'url' => mb_substr($bookmark->url, 0, 500),
+            'notes' => $bookmark->comment ?: $bookmark->description,
+        ]);
+
+        $this->dispatch('toast', message: __('Saved as a place.'));
+    }
+
     // ── Categories ───────────────────────────────────────────────────
     public function addCategory(): void
     {
@@ -335,6 +370,7 @@ new #[Layout('layouts.app')] class extends Component
             'bookmarks' => $bookmarks,
             'categories' => $this->categories,
             'aiReady' => BookmarkAi::isConfigured(),
+            'recipesEnabled' => Auth::user()->canUseAddon(Addons::RECIPES),
             'suggestedAreas' => collect(BookmarkAreas::SUGGESTED)->reject(fn (array $area) => $existingNames->contains(mb_strtolower($area['name'])))->values(),
         ];
     }
@@ -428,6 +464,10 @@ new #[Layout('layouts.app')] class extends Component
                                         </button>
                                     @endif
                                     <button type="button" wire:click="toWishlist({{ $bookmark->id }})" class="text-gray-500 hover:text-pink-600" title="{{ __('Add to the wishlist') }}">🎁</button>
+                                    @if ($recipesEnabled)
+                                        <button type="button" wire:click="importRecipe({{ $bookmark->id }})" class="text-gray-500 hover:text-amber-600" title="{{ __('Import into recipes') }}">🍳</button>
+                                    @endif
+                                    <button type="button" wire:click="saveAsPlace({{ $bookmark->id }})" class="text-gray-500 hover:text-emerald-600" title="{{ __('Save as a place') }}">📍</button>
                                     <button type="button" wire:click="startEditing({{ $bookmark->id }})" class="text-gray-500 hover:text-indigo-600">{{ __('Edit') }}</button>
                                     <button type="button" wire:click="delete({{ $bookmark->id }})" wire:confirm="{{ __('Delete this link?') }}" class="text-gray-500 hover:text-red-600">{{ __('Delete') }}</button>
                                 </div>

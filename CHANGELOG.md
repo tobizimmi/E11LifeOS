@@ -10,6 +10,8 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 - **Bereich vorschlagen:** ein Button rät beim Speichern anhand des Links den passenden Bereich (z. B. YouTube → Videos, Chefkoch → Rezepte, Amazon → Einkäufe) und legt ihn bei Bedarf an.
 - **KI-Zusammenfassung:** auf Wunsch per Button eine kurze Zusammenfassung des Artikels erstellen lassen (nutzt die Second-Brain-KI).
 - **Als Wunsch übernehmen:** Geschenk-/Shopping-Links mit einem Klick in die Wunschliste übernehmen.
+- **In Rezepte importieren:** Rezept-Links öffnen direkt den Rezept-Import (vorausgefüllt) im Rezepte-Modul.
+- **Als Reise-Ort merken:** Hotel-/Orts-Links mit einem Klick als Ort ins Reisen-/Orte-Modul übernehmen.
 
 ## [1.107.0] – 2026-11-15
 

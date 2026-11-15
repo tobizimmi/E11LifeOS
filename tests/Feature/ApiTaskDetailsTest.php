@@ -31,6 +31,7 @@ class ApiTaskDetailsTest extends TestCase
     {
         [$user] = $this->memberWithHousehold();
         $headers = $this->headersFor($user);
+        $this->getJson('/api/v1/tasks/options', $headers)->assertOk()->assertJsonPath('data.me', $user->id)->assertJsonStructure(['data' => ['category', 'members']]);
         $id = $this->postJson('/api/v1/tasks', ['text' => 'Umzug planen'], $headers)->assertCreated()->json('data.id');
 
         $detail = $this->postJson("/api/v1/tasks/{$id}/subtasks", ['text' => 'Kartons kaufen'], $headers)->assertCreated()->json('data');

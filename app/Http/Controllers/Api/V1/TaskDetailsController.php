@@ -19,6 +19,22 @@ class TaskDetailsController extends ApiController
 {
     private const MAX_SUBTASKS = 100;
 
+    /**
+     * Categories and members for filters and pickers.
+     */
+    public function options(): JsonResponse
+    {
+        $household = $this->household();
+        $collection = Collection::tasksFor($household->id)->load('properties');
+        $members = QuickCapture::members($household->id);
+
+        return $this->ok([
+            'category' => array_map(fn (array $option) => ['id' => $option['id'], 'name' => $option['name']], $collection->systemProperty('category')->selectOptions()),
+            'members' => array_map(fn (int $id, string $name) => ['id' => $id, 'name' => $name], array_keys($members), array_values($members)),
+            'me' => $this->user()->id,
+        ]);
+    }
+
     public function show(int $task): JsonResponse
     {
         return $this->ok($this->detail($this->find($task)));

@@ -22,7 +22,7 @@ class ModuleCatalog
         $module = fn (string $label, string $icon, array $routes, bool $addon = false) => ['label' => $label, 'icon' => $icon, 'routes' => $routes, 'addon' => $addon];
 
         return [
-            'brain' => $module(__('Ask your Second Brain'), '✨', ['brain.*']),
+            'brain' => $module(__('Ask your Second Brain'), '✨', ['brain.*', 'api.v1.brain.*']),
             'learnings' => $module(__('Lessons learned'), '🎓', ['learnings.*', 'api.v1.learnings.*']),
             'journal' => $module(__('Routines & journal'), '🙂', ['journal.*', 'api.v1.journal.*']),
             'shopping' => $module(__('Shopping List'), '🛒', ['shopping-list.*', 'api.v1.shopping.*']),
@@ -36,7 +36,7 @@ class ModuleCatalog
             'net_worth' => $module(__('Net worth'), '🥧', ['net-worth.*', 'api.v1.net-worth']),
             'cashflow' => $module(__('Cashflow analysis'), '🔁', ['cashflow.*']),
             'wealth_plan' => $module(__('Wealth plan'), '🚀', ['wealth-plan.*', 'api.v1.wealth-plan.*']),
-            'contracts' => $module(__('Contract costs'), '📄', ['contracts.*', 'letters.*', 'api.v1.contracts.*']),
+            'contracts' => $module(__('Contract costs'), '📄', ['contracts.*', 'letters.*', 'api.v1.contracts.*', 'api.v1.letters.*']),
             'quotes' => $module(__('Quote comparisons'), '⚖️', ['quotes.*']),
             'wishlist' => $module(__('Wishlist'), '🎁', ['wishlist.*', 'api.v1.wishlist.*']),
             'knowledge' => $module(__('Money knowledge'), '💡', ['knowledge.*', 'api.v1.knowledge.*']),
@@ -48,12 +48,12 @@ class ModuleCatalog
             'health' => $module(__('Health'), '❤️', ['health.*', 'api.v1.health.*']),
             'people' => $module(__('People & occasions'), '🎂', ['people.*', 'api.v1.people.*']),
             'kids' => $module(__('Kids & pocket money'), '⭐', ['kids.*', 'api.v1.kids.*']),
-            'work' => $module(__('Working time & leave'), '⏱', ['work.*']),
+            'work' => $module(__('Working time & leave'), '⏱', ['work.*', 'api.v1.work.*']),
             'career' => $module(__('Career'), '💼', ['career.*']),
             'trips' => $module(__('Trips'), '✈️', ['trips.*']),
             'places' => $module(__('Places'), '📍', ['places.*', 'api.v1.places.*']),
             'splits' => $module(__('Split costs'), '🧮', ['splits.*', 'api.v1.splits.*']),
-            'review' => $module(__('Year in review'), '🌟', ['review.*']),
+            'review' => $module(__('Year in review'), '🌟', ['review.*', 'api.v1.review.*']),
             'emergency' => $module(__('Emergency folder'), '🛡', ['emergency.*', 'api.v1.emergency.*']),
             'provision' => $module(__('Provision check'), '☂️', ['provision.*']),
             'drives' => $module(__('Network drives'), '🗄', ['drives.*']),

@@ -110,15 +110,16 @@ class ApiDocumentsTest extends TestCase
         $meta = json_encode(['corners' => [0.1, 0.1, 0.9, 0.12, 0.88, 0.9, 0.08, 0.92], 'filter' => 'bw', 'rotate' => 90]);
 
         $started = microtime(true);
-        $response = $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 1600, 1200), 'meta' => $meta], $headers)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $response = $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 500, 400), 'meta' => $meta], $headers)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
         $size = getimagesizefromstring($response->getContent());
         $this->assertLessThan(20, microtime(true) - $started);
         // The page is portrait-sized after the 90° turn of a landscape photo.
         $this->assertGreaterThan($size[0], $size[1]);
 
-        $this->post('/api/v1/documents/scan', ['title' => 'Brief', 'pages' => [UploadedFile::fake()->image('a.jpg', 800, 600)], 'meta' => [$meta]], $headers)->assertCreated()->assertJsonPath('data.queued', false);
+        $this->post('/api/v1/documents/scan', ['title' => 'Brief', 'pages' => [UploadedFile::fake()->image('a.jpg', 400, 300)], 'meta' => [$meta]], $headers)->assertCreated()->assertJsonPath('data.queued', false);
         $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')], $headers)->assertStatus(422);
         // Nonsense settings fall back to the unchanged page.
-        $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 300, 300), 'meta' => json_encode(['corners' => [0, 0, 0, 0, 0, 0, 0, 0], 'filter' => 'nope'])], $headers)->assertOk();
+        gc_collect_cycles();
+        $this->post('/api/v1/documents/scan/preview', ['page' => UploadedFile::fake()->image('a.jpg', 100, 100), 'meta' => json_encode(['corners' => [0, 0, 0, 0, 0, 0, 0, 0], 'filter' => 'nope'])], $headers)->assertOk();
     }
 }

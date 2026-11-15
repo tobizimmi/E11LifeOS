@@ -21,10 +21,44 @@ class ScanImage
      */
     public static function process(string $binary, ?array $corners, string $filter = 'color', int $rotate = 0, int $maxSide = 1800): string
     {
-        if (function_exists('ini_set')) {
-            @ini_set('memory_limit', '384M');
+        $previousLimit = self::raiseMemoryLimit();
+
+        try {
+            return self::render($binary, $corners, $filter, $rotate, $maxSide);
+        } finally {
+            if ($previousLimit !== null) {
+                @ini_set('memory_limit', $previousLimit);
+            }
+        }
+    }
+
+    /**
+     * Gives a large photo room to be decoded, but never lowers a limit and puts it back afterwards.
+     * Returns the previous value when it was changed.
+     */
+    private static function raiseMemoryLimit(): ?string
+    {
+        $current = (string) ini_get('memory_limit');
+        $bytes = match (true) {
+            $current === '-1' => PHP_INT_MAX,
+            (bool) preg_match('/^(\d+)\s*([kmg]?)$/i', trim($current), $m) => (int) $m[1] * match (strtolower($m[2])) {
+                'g' => 1024 ** 3,
+                'm' => 1024 ** 2,
+                'k' => 1024,
+                default => 1,
+            },
+            default => PHP_INT_MAX,
+        };
+
+        if ($bytes >= 384 * 1024 * 1024) {
+            return null;
         }
 
+        return @ini_set('memory_limit', '384M') !== false ? $current : null;
+    }
+
+    private static function render(string $binary, ?array $corners, string $filter, int $rotate, int $maxSide): string
+    {
         $source = @imagecreatefromstring($binary);
 
         if (! $source instanceof GdImage) {

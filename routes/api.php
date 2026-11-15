@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AutomationsController;
 use App\Http\Controllers\Api\V1\BookmarksController;
 use App\Http\Controllers\Api\V1\BrainController;
 use App\Http\Controllers\Api\V1\CalendarController;
@@ -287,6 +288,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('provision/retirement', [ProvisionController::class, 'retirement'])->name('provision.retirement');
         Route::put('provision/retirement', [ProvisionController::class, 'updateRetirement'])->name('provision.retirement.update');
         Route::delete('provision/retirement', [ProvisionController::class, 'resetRetirement'])->name('provision.retirement.reset');
+
+        Route::get('automations', [AutomationsController::class, 'index'])->name('automations.index');
+        Route::post('automations/draft', [AutomationsController::class, 'draft'])->middleware('throttle:api-20')->name('automations.draft');
+        Route::post('automations/templates/{template}', [AutomationsController::class, 'fromTemplate'])->name('automations.template');
+        Route::post('automations/packages/{package}', [AutomationsController::class, 'installPackage'])->name('automations.package');
+        Route::post('automations/modes/{key}', [AutomationsController::class, 'mode'])->where('key', '[a-z0-9_-]+')->name('automations.mode');
+        Route::post('automations/{automation}/toggle', [AutomationsController::class, 'toggle'])->whereNumber('automation')->name('automations.toggle');
+        Route::post('automations/{automation}/run', [AutomationsController::class, 'run'])->whereNumber('automation')->middleware('throttle:api-30')->name('automations.run');
+        Route::get('automations/{automation}/log', [AutomationsController::class, 'log'])->whereNumber('automation')->name('automations.log');
+        Route::delete('automations/{automation}', [AutomationsController::class, 'destroy'])->whereNumber('automation')->name('automations.destroy');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

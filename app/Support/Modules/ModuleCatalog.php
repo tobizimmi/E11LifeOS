@@ -43,7 +43,7 @@ class ModuleCatalog
             'knowledge' => $module(__('Money knowledge'), '💡', ['knowledge.*', 'api.v1.knowledge.*']),
             'house' => $module(__('At home'), '🛠', ['house.*', 'api.v1.house.*']),
             Addons::SMART_HOME => $module($addons[Addons::SMART_HOME]['label'], $addons[Addons::SMART_HOME]['icon'], ['smart-home.*', 'api.v1.smart-home.*'], true),
-            'automations' => $module(__('Automations'), '🔄', ['automations.*']),
+            'automations' => $module(__('Automations'), '🔄', ['automations.*', 'api.v1.automations.*']),
             Addons::REAL_ESTATE => $module($addons[Addons::REAL_ESTATE]['label'], $addons[Addons::REAL_ESTATE]['icon'], ['real-estate.*'], true),
             'vehicles' => $module(__('Vehicles'), '🚗', ['vehicles.*', 'api.v1.vehicles.*']),
             'health' => $module(__('Health'), '❤️', ['health.*', 'api.v1.health.*']),

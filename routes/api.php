@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BrainController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\KidController;
 use App\Http\Controllers\Api\V1\KnowledgeController;
 use App\Http\Controllers\Api\V1\LearningController;
+use App\Http\Controllers\Api\V1\LettersController;
 use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
@@ -30,6 +32,7 @@ use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
+use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
 use App\Http\Controllers\Api\V1\SplitController;
@@ -39,6 +42,7 @@ use App\Http\Controllers\Api\V1\VehicleController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\Api\V1\WealthPlanController;
 use App\Http\Controllers\Api\V1\WishlistController;
+use App\Http\Controllers\Api\V1\WorkController;
 use App\Http\Controllers\SmartHomeWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -198,6 +202,22 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('focus/suggest-top', [FocusController::class, 'suggestTop'])->name('focus.suggest');
         Route::put('focus/{entry}', [FocusController::class, 'update'])->whereNumber('entry')->name('focus.update');
         Route::delete('focus/{entry}', [FocusController::class, 'destroy'])->whereNumber('entry')->name('focus.destroy');
+
+        Route::get('review', [ReviewController::class, 'show'])->name('review.show');
+        Route::get('brain/status', [BrainController::class, 'status'])->name('brain.status');
+        Route::post('brain/ask', [BrainController::class, 'ask'])->middleware('throttle:20,1')->name('brain.ask');
+        Route::post('brain/action', [BrainController::class, 'action'])->name('brain.action');
+        Route::get('letters/templates', [LettersController::class, 'templates'])->name('letters.templates');
+        Route::post('letters/fill', [LettersController::class, 'fill'])->name('letters.fill');
+        Route::post('letters/pdf', [LettersController::class, 'pdf'])->middleware('throttle:20,1')->name('letters.pdf');
+
+        Route::get('work', [WorkController::class, 'index'])->name('work.index');
+        Route::post('work/clock', [WorkController::class, 'clock'])->name('work.clock');
+        Route::post('work/leave', [WorkController::class, 'planLeave'])->name('work.leave.plan');
+        Route::delete('work/leave', [WorkController::class, 'cancelLeave'])->name('work.leave.cancel');
+        Route::put('work/settings', [WorkController::class, 'saveSettings'])->name('work.settings');
+        Route::put('work/days/{date}', [WorkController::class, 'saveDay'])->where('date', '\d{4}-\d{2}-\d{2}')->name('work.days.save');
+        Route::delete('work/days/{date}', [WorkController::class, 'clearDay'])->where('date', '\d{4}-\d{2}-\d{2}')->name('work.days.clear');
 
         // Document archive (paperless) and scanning.
         Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');

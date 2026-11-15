@@ -79,6 +79,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
         Route::get('tasks/options', [TaskDetailsController::class, 'options'])->name('tasks.options');
+        Route::get('task-templates', [TaskDetailsController::class, 'templates'])->name('tasks.templates');
+        Route::post('task-templates/{template}/apply', [TaskDetailsController::class, 'applyTemplate'])->where('template', '[a-z0-9_-]+')->name('tasks.templates.apply');
+        Route::delete('task-templates/{template}', [TaskDetailsController::class, 'destroyTemplate'])->whereNumber('template')->name('tasks.templates.destroy');
+        Route::post('tasks/{task}/template', [TaskDetailsController::class, 'saveAsTemplate'])->whereNumber('task')->name('tasks.template.store');
+        Route::post('task-categories', [TaskDetailsController::class, 'storeCategory'])->name('tasks.categories.store');
+        Route::put('task-categories/{category}', [TaskDetailsController::class, 'updateCategory'])->where('category', '[A-Za-z0-9_-]+')->name('tasks.categories.update');
+        Route::delete('task-categories/{category}', [TaskDetailsController::class, 'destroyCategory'])->where('category', '[A-Za-z0-9_-]+')->name('tasks.categories.destroy');
         Route::get('tasks/{task}', [TaskDetailsController::class, 'show'])->whereNumber('task')->name('tasks.show');
         Route::put('tasks/{task}/details', [TaskDetailsController::class, 'update'])->whereNumber('task')->name('tasks.details');
         Route::post('tasks/{task}/subtasks', [TaskDetailsController::class, 'addSubtask'])->whereNumber('task')->name('tasks.subtasks.store');

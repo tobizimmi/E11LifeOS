@@ -68,4 +68,30 @@ class ApiTaskDetailsTest extends TestCase
 
         $this->getJson("/api/v1/tasks/{$foreign->id}", $this->headersFor($user))->assertNotFound();
     }
+
+    public function test_templates_and_categories(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = $this->headersFor($user);
+
+        $templates = $this->getJson('/api/v1/task-templates', $headers)->assertOk()->json('data');
+        $this->assertNotEmpty($templates);
+        $this->postJson("/api/v1/task-templates/{$templates[0]['key']}/apply", ['date' => today()->toDateString()], $headers)->assertCreated();
+        $this->assertGreaterThan(0, count($this->getJson('/api/v1/tasks', $headers)->json('data')));
+
+        $id = $this->postJson('/api/v1/tasks', ['text' => 'Packliste'], $headers)->json('data.id');
+        $this->postJson("/api/v1/tasks/{$id}/template", [], $headers)->assertStatus(422);
+        $this->postJson("/api/v1/tasks/{$id}/subtasks", ['text' => 'Pass'], $headers)->assertCreated();
+        $this->postJson("/api/v1/tasks/{$id}/template", ['name' => 'Reise'], $headers)->assertCreated();
+        $own = collect($this->getJson('/api/v1/task-templates', $headers)->json('data'))->firstWhere('own', true);
+        $this->assertSame('Reise', $own['name']);
+        $this->deleteJson('/api/v1/task-templates/'.substr($own['key'], 4), [], $headers)->assertOk();
+
+        $before = count($this->getJson('/api/v1/tasks/options', $headers)->json('data.category'));
+        $added = $this->postJson('/api/v1/task-categories', ['name' => 'Garten'], $headers)->assertOk()->json('data.category');
+        $this->assertCount($before + 1, $added);
+        $key = collect($added)->firstWhere('name', 'Garten')['id'];
+        $this->putJson("/api/v1/task-categories/{$key}", ['name' => 'Beet'], $headers)->assertOk();
+        $this->deleteJson("/api/v1/task-categories/{$key}", [], $headers)->assertOk()->assertJsonCount($before, 'data.category');
+    }
 }

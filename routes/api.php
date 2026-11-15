@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\ProvisionController;
 use App\Http\Controllers\Api\V1\QuotesController;
+use App\Http\Controllers\Api\V1\RealEstateController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
@@ -305,6 +306,19 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('automations/{automation}/run', [AutomationsController::class, 'run'])->whereNumber('automation')->middleware('throttle:api-30')->name('automations.run');
         Route::get('automations/{automation}/log', [AutomationsController::class, 'log'])->whereNumber('automation')->name('automations.log');
         Route::delete('automations/{automation}', [AutomationsController::class, 'destroy'])->whereNumber('automation')->name('automations.destroy');
+
+        Route::get('real-estate', [RealEstateController::class, 'index'])->name('real-estate.index');
+        Route::post('real-estate', [RealEstateController::class, 'store'])->name('real-estate.store');
+        Route::get('real-estate/{estate}', [RealEstateController::class, 'show'])->whereNumber('estate')->name('real-estate.show');
+        Route::put('real-estate/{estate}', [RealEstateController::class, 'update'])->whereNumber('estate')->name('real-estate.update');
+        Route::delete('real-estate/{estate}', [RealEstateController::class, 'destroy'])->whereNumber('estate')->name('real-estate.destroy');
+        Route::post('real-estate/{estate}/items', [RealEstateController::class, 'addItem'])->whereNumber('estate')->name('real-estate.items.store');
+        Route::put('real-estate/{estate}/items/{item}', [RealEstateController::class, 'updateItem'])->whereNumber(['estate', 'item'])->name('real-estate.items.update');
+        Route::delete('real-estate/{estate}/items/{item}', [RealEstateController::class, 'destroyItem'])->whereNumber(['estate', 'item'])->name('real-estate.items.destroy');
+        Route::post('real-estate/{estate}/invoices', [RealEstateController::class, 'addInvoice'])->whereNumber('estate')->name('real-estate.invoices.store');
+        Route::put('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'updateInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.update');
+        Route::post('real-estate/{estate}/invoices/{invoice}/paid', [RealEstateController::class, 'togglePaid'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.paid');
+        Route::delete('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'destroyInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.destroy');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

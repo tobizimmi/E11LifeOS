@@ -9,6 +9,13 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 - **„+"-Menü ist jetzt ein echtes Anlegen-Menü:** neben Notiz, Aufgabe, Einkaufsliste und Termin lässt sich dort direkt ein **Link speichern** (Lesezeichen).
 - **Dokument scannen** im „+"-Menü: öffnet den Dokumentenscanner (Kamera → PDF → Paperless), wie in der iOS-App. Wird angezeigt, sobald Paperless eingerichtet ist.
 
+## [1.119.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Lesezeichen & Später lesen in der App:** Links speichern (mit Webseiten-Vorschau und Bereichs-Vorschlag), Bereiche anlegen, als gelesen markieren, privat oder geteilt, KI-Zusammenfassung sowie „Auf die Wunschliste“ und „Als Ort speichern“.
+- Die Aufgabenliste liefert zusätzlich Kategorie und Zuständige, damit die App danach filtern kann.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.118.0] – 2026-11-15
 
 ### Neu (App-Schnittstelle)

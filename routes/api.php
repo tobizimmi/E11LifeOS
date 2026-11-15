@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BookmarksController;
 use App\Http\Controllers\Api\V1\BrainController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CareerController;
@@ -72,6 +73,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('tasks/{task}', [LifeController::class, 'updateTask'])->whereNumber('task')->name('tasks.update');
         Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
+        Route::get('tasks/options', [TaskDetailsController::class, 'options'])->name('tasks.options');
         Route::get('tasks/{task}', [TaskDetailsController::class, 'show'])->whereNumber('task')->name('tasks.show');
         Route::put('tasks/{task}/details', [TaskDetailsController::class, 'update'])->whereNumber('task')->name('tasks.details');
         Route::post('tasks/{task}/subtasks', [TaskDetailsController::class, 'addSubtask'])->whereNumber('task')->name('tasks.subtasks.store');
@@ -254,6 +256,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('document-links', [DocumentLinksController::class, 'index'])->name('documents.links.index');
         Route::post('document-links', [DocumentLinksController::class, 'store'])->name('documents.links.store');
         Route::delete('document-links/{link}', [DocumentLinksController::class, 'destroy'])->whereNumber('link')->name('documents.links.destroy');
+
+        Route::get('bookmarks', [BookmarksController::class, 'index'])->name('bookmarks.index');
+        Route::post('bookmarks/preview', [BookmarksController::class, 'preview'])->middleware('throttle:api-30')->name('bookmarks.preview');
+        Route::post('bookmarks', [BookmarksController::class, 'store'])->name('bookmarks.store');
+        Route::put('bookmarks/{bookmark}', [BookmarksController::class, 'update'])->whereNumber('bookmark')->name('bookmarks.update');
+        Route::delete('bookmarks/{bookmark}', [BookmarksController::class, 'destroy'])->whereNumber('bookmark')->name('bookmarks.destroy');
+        Route::post('bookmarks/{bookmark}/read', [BookmarksController::class, 'toggleRead'])->whereNumber('bookmark')->name('bookmarks.read');
+        Route::post('bookmarks/{bookmark}/summary', [BookmarksController::class, 'summarise'])->whereNumber('bookmark')->middleware('throttle:api-20')->name('bookmarks.summary');
+        Route::post('bookmarks/{bookmark}/wishlist', [BookmarksController::class, 'toWishlist'])->whereNumber('bookmark')->name('bookmarks.wishlist');
+        Route::post('bookmarks/{bookmark}/place', [BookmarksController::class, 'toPlace'])->whereNumber('bookmark')->name('bookmarks.place');
+        Route::post('bookmark-categories', [BookmarksController::class, 'storeCategory'])->name('bookmarks.categories.store');
+        Route::delete('bookmark-categories/{category}', [BookmarksController::class, 'destroyCategory'])->whereNumber('category')->name('bookmarks.categories.destroy');
 
         Route::get('drives', [DrivesController::class, 'index'])->name('drives.index');
         Route::post('drives', [DrivesController::class, 'store'])->name('drives.store');

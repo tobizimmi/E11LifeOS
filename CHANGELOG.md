@@ -12,6 +12,12 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
   - **Bereich vorschlagen** (regelbasiert, z. B. YouTube → Videos, Chefkoch → Rezepte) und **KI-Zusammenfassung** des Artikels per Button.
   - **Übernehmen:** als Wunsch in die Wunschliste, Rezept-Links direkt in den Rezept-Import, Hotel-/Orts-Links als Ort ins Reisen-/Orte-Modul.
 
+## [1.116.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Scans nachbearbeiten.** In der App lassen sich die Ränder einer fotografierten Seite verschieben (der Server entzerrt sie zu einem geraden Blatt), die Seite drehen und ein Filter wählen: Dokument (Kontrast und Schärfe, Papier wird weiß), Grau oder Schwarz-Weiß. Eine Vorschau zeigt vorab, wie die Seite abgelegt wird. Ohne Anpassung bleibt die Seite unverändert.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.115.0] – 2026-11-15
 
 ### Neu (App-Schnittstelle)

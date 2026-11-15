@@ -41,12 +41,13 @@ class LifeController extends ApiController
         $collection = Collection::tasksFor($household->id)->load('properties');
         $due = $collection->systemProperty('due');
         $priority = $collection->systemProperty('priority');
+        $repeat = $collection->systemProperty('repeat');
         $filter = (string) $request->query('filter', 'all');
         $today = today()->toDateString();
         $week = today()->addDays(7)->toDateString();
 
         $tasks = Item::query()->forHousehold($household->id)->visibleTo($this->user())
-            ->where('collection_id', $collection->id)->where('done', false)->orderBy('position')->limit(500)->get()
+            ->where('collection_id', $collection->id)->where('done', false)->with('tags')->orderBy('position')->limit(500)->get()
             ->map(fn (Item $task) => ['task' => $task, 'due' => $due ? ((string) $task->propertyValue($due) ?: null) : null])
             ->filter(fn (array $row) => match ($filter) {
                 'today' => $row['due'] !== null && $row['due'] <= $today,
@@ -59,6 +60,7 @@ class LifeController extends ApiController
                 $row['task'],
                 $row['due'],
                 $priority ? ((string) $row['task']->propertyValue($priority) ?: null) : null,
+                $repeat ? ((string) $row['task']->propertyValue($repeat) ?: null) : null,
             ));
 
         return $this->ok($tasks);
@@ -417,11 +419,24 @@ class LifeController extends ApiController
     }
 
     /**
-     * @return array{id: int, title: string, due: ?string, time: ?string, done: bool, url: string}
+     * @return array<string, mixed>
      */
-    private function taskData(Item $task, ?string $due, ?string $priority = null): array
+    private function taskData(Item $task, ?string $due, ?string $priority = null, ?string $repeat = null): array
     {
-        return ['id' => $task->id, 'title' => $task->title, 'due' => $due, 'time' => $task->due_time, 'priority' => $priority, 'done' => (bool) $task->done, 'url' => route('tasks.index', ['task' => $task->id])];
+        $subtasks = $task->subtasks();
+
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'due' => $due,
+            'time' => $task->due_time,
+            'priority' => $priority,
+            'repeat' => $repeat,
+            'subtasks' => ['total' => count($subtasks), 'done' => count(array_filter($subtasks, fn (array $entry) => $entry['done']))],
+            'tags' => $task->relationLoaded('tags') ? $task->tags->pluck('name')->all() : [],
+            'done' => (bool) $task->done,
+            'url' => route('tasks.index', ['task' => $task->id]),
+        ];
     }
 
     /**

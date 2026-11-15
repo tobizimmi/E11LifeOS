@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\Collection;
 use App\Models\Household;
 use App\Models\Item;
+use App\Models\Space;
 use App\Support\Links;
 use App\Support\QuickCapture;
 use Illuminate\Http\JsonResponse;
@@ -202,6 +203,7 @@ class TaskDetailsController extends ApiController
             'repeat' => $value('repeat') !== null ? (string) $value('repeat') : null,
             'category' => $value('category') !== null ? (string) $value('category') : null,
             'assignee' => $assignee !== null ? ['id' => (int) $assignee, 'name' => $members[(int) $assignee] ?? null] : null,
+            'space' => $task->space_id,
             'notes' => $task->body(),
             'tags' => $task->tags()->pluck('name')->all(),
             'subtasks' => array_map(fn (array $entry) => ['id' => (string) $entry['id'], 'text' => (string) $entry['text'], 'done' => $entry['done']], $task->subtasks()),
@@ -210,6 +212,7 @@ class TaskDetailsController extends ApiController
             'options' => [
                 'repeat' => $options('repeat'),
                 'category' => $options('category'),
+                'spaces' => Space::query()->visibleTo($this->user(), $task->household_id)->get()->map(fn (Space $space) => ['id' => $space->id, 'name' => $space->name, 'icon' => $space->icon])->all(),
                 'members' => array_map(fn (int $id, string $name) => ['id' => $id, 'name' => $name], array_keys($members), array_values($members)),
             ],
         ];

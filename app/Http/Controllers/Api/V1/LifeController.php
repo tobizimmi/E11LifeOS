@@ -432,7 +432,7 @@ class LifeController extends ApiController
             'time' => $task->due_time,
             'priority' => $priority,
             'repeat' => $repeat,
-            'subtasks' => ['total' => count($subtasks), 'done' => count(array_filter($subtasks, fn (array $entry) => $entry['done'] ?? false))],
+            'subtasks' => ['total' => count($subtasks), 'done' => count(array_filter($subtasks, fn (array $entry) => $entry['done']))],
             'tags' => $task->relationLoaded('tags') ? $task->tags->pluck('name')->all() : [],
             'done' => (bool) $task->done,
             'url' => route('tasks.index', ['task' => $task->id]),

@@ -97,7 +97,7 @@ class TaskDetailsController extends ApiController
     public function toggleSubtask(int $task, string $subtask): JsonResponse
     {
         $item = $this->find($task);
-        $item->setSubtasks(array_map(fn (array $entry) => $entry['id'] === $subtask ? array_merge($entry, ['done' => ! ($entry['done'] ?? false)]) : $entry, $item->subtasks()));
+        $item->setSubtasks(array_map(fn (array $entry) => $entry['id'] === $subtask ? array_merge($entry, ['done' => ! $entry['done']]) : $entry, $item->subtasks()));
         $item->save();
 
         return $this->ok($this->detail($item));
@@ -172,7 +172,7 @@ class TaskDetailsController extends ApiController
         $collection = Collection::tasksFor($task->household_id)->load('properties');
         $members = QuickCapture::members($task->household_id);
         $value = fn (string $key) => ($property = $collection->systemProperty($key)) ? $task->propertyValue($property) : null;
-        $options = fn (string $key) => collect($collection->systemProperty($key)?->options ?? [])->map(fn (array $option) => ['id' => (string) $option['id'], 'name' => (string) $option['name']])->values()->all();
+        $options = fn (string $key) => array_map(fn (array $option) => ['id' => $option['id'], 'name' => $option['name']], $collection->systemProperty($key)->selectOptions());
         $assignee = $value('assignee');
         $overview = Links::overview(Links::ITEM, $task->id, $this->user(), $task->household_id);
 
@@ -188,13 +188,13 @@ class TaskDetailsController extends ApiController
             'assignee' => $assignee !== null ? ['id' => (int) $assignee, 'name' => $members[(int) $assignee] ?? null] : null,
             'notes' => $task->body(),
             'tags' => $task->tags()->pluck('name')->all(),
-            'subtasks' => array_map(fn (array $entry) => ['id' => (string) $entry['id'], 'text' => (string) $entry['text'], 'done' => (bool) ($entry['done'] ?? false)], $task->subtasks()),
+            'subtasks' => array_map(fn (array $entry) => ['id' => (string) $entry['id'], 'text' => (string) $entry['text'], 'done' => $entry['done']], $task->subtasks()),
             'rotation' => $task->rotation(),
             'pages' => collect($overview['linked'])->filter(fn (array $node) => ($node['page'] ?? false) === true)->map(fn (array $node) => ['id' => $node['id'] ?? null, 'title' => $node['title'] ?? '', 'removable' => (bool) ($node['removable'] ?? false)])->values()->all(),
             'options' => [
                 'repeat' => $options('repeat'),
                 'category' => $options('category'),
-                'members' => collect($members)->map(fn ($name, $id) => ['id' => (int) $id, 'name' => $name])->values()->all(),
+                'members' => array_map(fn (int $id, string $name) => ['id' => $id, 'name' => $name], array_keys($members), array_values($members)),
             ],
         ];
     }

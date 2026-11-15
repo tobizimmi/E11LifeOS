@@ -6,6 +6,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 ## [1.114.0] – 2026-11-15
 
 ### Neu (App-Schnittstelle)
+- **Haushalt für die native App:** Mitglieder, Module des Haushalts und je Mitglied ein- oder ausschalten (nur der Besitzer), Einladungen mit Code und Link.
 - **Karriere für die native App** (nur für dich sichtbar): Werdegang mit Stationen, Ausbildung, Weiterbildungen, Meilensteinen, Arbeitsverträgen und Bewerbungen samt Status, Hinweisen zu ablaufenden Zertifikaten und Probezeit, Profil und Lebenslauf als PDF.
 - Im Web ändert sich dadurch nichts.
 

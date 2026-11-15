@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\FocusController;
 use App\Http\Controllers\Api\V1\HabitController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HouseController;
+use App\Http\Controllers\Api\V1\HouseholdController;
 use App\Http\Controllers\Api\V1\InvestingController;
 use App\Http\Controllers\Api\V1\JournalController;
 use App\Http\Controllers\Api\V1\KidController;
@@ -227,6 +228,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('career/{entry}', [CareerController::class, 'update'])->whereNumber('entry')->name('career.update');
         Route::delete('career/{entry}', [CareerController::class, 'destroy'])->whereNumber('entry')->name('career.destroy');
         Route::post('career/{entry}/status', [CareerController::class, 'status'])->whereNumber('entry')->name('career.status');
+
+        Route::get('household', [HouseholdController::class, 'show'])->name('household.show');
+        Route::post('household/invite', [HouseholdController::class, 'invite'])->middleware('throttle:20,1')->name('household.invite');
+        Route::post('household/addons/{addon}/toggle', [HouseholdController::class, 'toggleAddon'])->where('addon', '[a-z_]+')->name('household.addons.toggle');
+        Route::post('household/members/{member}/addons/{addon}/toggle', [HouseholdController::class, 'toggleMemberAddon'])->whereNumber('member')->where('addon', '[a-z_]+')->name('household.members.addons.toggle');
+        Route::post('household/members/{member}/smart-home-control/toggle', [HouseholdController::class, 'toggleMemberControl'])->whereNumber('member')->name('household.members.control.toggle');
 
         // Document archive (paperless) and scanning.
         Route::get('documents', [DocumentsController::class, 'index'])->name('documents.index');

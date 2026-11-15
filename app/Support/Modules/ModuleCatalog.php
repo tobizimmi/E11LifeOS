@@ -38,7 +38,7 @@ class ModuleCatalog
             'cashflow' => $module(__('Cashflow analysis'), '🔁', ['cashflow.*']),
             'wealth_plan' => $module(__('Wealth plan'), '🚀', ['wealth-plan.*', 'api.v1.wealth-plan.*']),
             'contracts' => $module(__('Contract costs'), '📄', ['contracts.*', 'letters.*', 'api.v1.contracts.*', 'api.v1.letters.*']),
-            'quotes' => $module(__('Quote comparisons'), '⚖️', ['quotes.*']),
+            'quotes' => $module(__('Quote comparisons'), '⚖️', ['quotes.*', 'api.v1.quote-comparisons.*']),
             'wishlist' => $module(__('Wishlist'), '🎁', ['wishlist.*', 'api.v1.wishlist.*']),
             'knowledge' => $module(__('Money knowledge'), '💡', ['knowledge.*', 'api.v1.knowledge.*']),
             'house' => $module(__('At home'), '🛠', ['house.*', 'api.v1.house.*']),

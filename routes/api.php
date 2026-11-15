@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
+use App\Http\Controllers\Api\V1\QuotesController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
@@ -267,6 +268,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('groups/{group}/leave', [GroupsController::class, 'leave'])->whereNumber('group')->name('groups.leave');
         Route::delete('groups/{group}', [GroupsController::class, 'destroy'])->whereNumber('group')->name('groups.destroy');
         Route::delete('shares/{share}', [GroupsController::class, 'unshare'])->whereNumber('share')->name('shares.destroy');
+
+        Route::get('quote-comparisons', [QuotesController::class, 'index'])->name('quote-comparisons.index');
+        Route::post('quote-comparisons', [QuotesController::class, 'store'])->name('quote-comparisons.store');
+        Route::get('quote-comparisons/{comparison}', [QuotesController::class, 'show'])->whereNumber('comparison')->name('quote-comparisons.show');
+        Route::put('quote-comparisons/{comparison}', [QuotesController::class, 'update'])->whereNumber('comparison')->name('quote-comparisons.update');
+        Route::delete('quote-comparisons/{comparison}', [QuotesController::class, 'destroy'])->whereNumber('comparison')->name('quote-comparisons.destroy');
+        Route::post('quote-comparisons/{comparison}/offers', [QuotesController::class, 'addQuote'])->whereNumber('comparison')->name('quote-comparisons.offers.store');
+        Route::put('quote-comparisons/{comparison}/offers/{quote}', [QuotesController::class, 'updateQuote'])->whereNumber(['comparison', 'quote'])->name('quote-comparisons.offers.update');
+        Route::delete('quote-comparisons/{comparison}/offers/{quote}', [QuotesController::class, 'destroyQuote'])->whereNumber(['comparison', 'quote'])->name('quote-comparisons.offers.destroy');
+        Route::post('quote-comparisons/{comparison}/choose', [QuotesController::class, 'choose'])->whereNumber('comparison')->name('quote-comparisons.choose');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

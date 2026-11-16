@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\DocumentsController;
 use App\Http\Controllers\Api\V1\DrivesController;
 use App\Http\Controllers\Api\V1\EmergencyController;
 use App\Http\Controllers\Api\V1\FinanceController;
+use App\Http\Controllers\Api\V1\FinanceExtrasController;
 use App\Http\Controllers\Api\V1\FocusController;
 use App\Http\Controllers\Api\V1\GroupsController;
 use App\Http\Controllers\Api\V1\HabitController;
@@ -64,6 +65,7 @@ use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TaskDetailsController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\TripExtrasController;
 use App\Http\Controllers\Api\V1\VehicleController;
 use App\Http\Controllers\Api\V1\WatchlistController;
 use App\Http\Controllers\Api\V1\WealthPlanController;
@@ -129,6 +131,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('net-worth', [LifeController::class, 'netWorth'])->name('net-worth');
         Route::get('finances', [LifeController::class, 'finances'])->name('finances');
         Route::get('finance/categories', [FinanceController::class, 'categories'])->name('finance.categories');
+        Route::get('finance/bookings', [FinanceExtrasController::class, 'bookings'])->name('finance.bookings.index');
+        Route::post('finance/bookings', [FinanceExtrasController::class, 'store'])->name('finance.bookings.store');
+        Route::post('finance/bookings/receipt', [FinanceExtrasController::class, 'readReceipt'])->middleware('throttle:api-20')->name('finance.bookings.receipt');
+        Route::post('finance/bookings/{transaction}/remember', [FinanceExtrasController::class, 'remember'])->whereNumber('transaction')->name('finance.bookings.remember');
+        Route::put('finance/accounts/{account}', [FinanceExtrasController::class, 'renameAccount'])->whereNumber('account')->name('finance.accounts.update');
+        Route::delete('finance/accounts/{account}', [FinanceExtrasController::class, 'destroyAccount'])->whereNumber('account')->name('finance.accounts.destroy');
+        Route::get('finance/rules', [FinanceExtrasController::class, 'rules'])->name('finance.rules.index');
+        Route::post('finance/rules/apply', [FinanceExtrasController::class, 'applyRules'])->name('finance.rules.apply');
+        Route::delete('finance/rules/{rule}', [FinanceExtrasController::class, 'destroyRule'])->whereNumber('rule')->name('finance.rules.destroy');
+        Route::post('finance/categorize', [FinanceExtrasController::class, 'categorizeWithAi'])->middleware('throttle:api-20')->name('finance.categorize');
         Route::put('transactions/{transaction}', [FinanceController::class, 'recategorize'])->whereNumber('transaction')->name('transactions.update');
         Route::get('budgets', [FinanceController::class, 'budgets'])->name('budgets.index');
         Route::put('budgets', [FinanceController::class, 'updateBudget'])->name('budgets.update');
@@ -159,6 +171,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         // Trips (read + edit itinerary/packing/bookings) for offline use.
         Route::get('trips', [TripController::class, 'index'])->name('trips.index');
+        Route::get('trips/templates', [TripExtrasController::class, 'templates'])->name('trips.templates');
+        Route::post('trips', [TripExtrasController::class, 'store'])->name('trips.store');
+        Route::put('trips/{trip}', [TripExtrasController::class, 'update'])->whereNumber('trip')->name('trips.update');
+        Route::delete('trips/{trip}', [TripExtrasController::class, 'destroy'])->whereNumber('trip')->name('trips.destroy');
+        Route::post('trips/{trip}/template', [TripExtrasController::class, 'applyTemplate'])->whereNumber('trip')->name('trips.template');
+        Route::post('trips/{trip}/unpack', [TripExtrasController::class, 'unpackAll'])->whereNumber('trip')->name('trips.unpack');
+        Route::post('trip-stops/{stop}/done', [TripExtrasController::class, 'stopDone'])->whereNumber('stop')->name('trips.stops.done');
         Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
         Route::post('trips/{trip}/stops', [TripController::class, 'storeStop'])->whereNumber('trip')->name('trips.stops.store');
         Route::put('trip-stops/{stop}', [TripController::class, 'updateStop'])->whereNumber('stop')->name('trip-stops.update');

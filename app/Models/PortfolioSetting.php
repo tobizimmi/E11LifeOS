@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Personal portfolio settings: recommendation strategy, benchmark, tax allowance, Pushover.
+ *
+ * @property array<string, mixed>|null $score_weights
  */
 #[Fillable(['user_id', 'default_portfolio_id', 'strategy', 'drop_threshold', 'drop_period_days', 'min_stability_score', 'min_market_cap_bn', 'rsi_threshold', 'max_pe_ratio', 'max_debt_equity', 'check_200ma', 'prefer_dividends', 'benchmark_symbol', 'tax_allowance', 'church_tax_rate', 'pushover_user_key', 'pushover_app_token', 'notifications_enabled', 'news_push_enabled', 'news_push_portfolio_only', 'news_push_max_age_hours', 'instagram_push', 'score_weights'])]
 class PortfolioSetting extends Model

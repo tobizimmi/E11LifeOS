@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\PortfolioMarketController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\ProvisionController;
 use App\Http\Controllers\Api\V1\QuotesController;
@@ -579,6 +580,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('quotes/{symbol}', [MarketController::class, 'quote'])->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('quote');
             Route::get('search', [MarketController::class, 'search'])->name('search');
 
+            Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
+            Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
+            Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');
             Route::get('portfolio-reports/dividends', [PortfolioReportsController::class, 'dividends'])->name('portfolios.reports.dividends');
             Route::get('portfolio-reports/taxes', [PortfolioReportsController::class, 'taxes'])->name('portfolios.reports.taxes');
             Route::get('portfolio-reports/analysis', [PortfolioReportsController::class, 'analysis'])->name('portfolios.reports.analysis');

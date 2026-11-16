@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.130.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Rezepte importieren:** per Link (auch Instagram), Text oder Foto; die Rezeptdatei (schema.org, Paprika, Mealie) und PDF gehen ebenfalls.
+- **Portfolio:** Marktanalyse (Weltlage, Branchen, Bewertung der eigenen Aktien) und Nachrichten zu den eigenen Werten; Depots anlegen, ändern und löschen; Käufe, Verkäufe, Dividenden, Splits, Gebühren und Übertragungen erfassen, ändern und löschen (die Positionen werden daraus neu berechnet).
+- **Weniger „Zu viele Anfragen“:** Das Limit der App-Schnittstelle liegt jetzt bei 600 statt 120 Anfragen pro Minute, weil ein Abgleich der App viele einzelne Abrufe macht.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.129.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

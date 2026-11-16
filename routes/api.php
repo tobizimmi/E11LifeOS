@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AutomationEditorController;
 use App\Http\Controllers\Api\V1\AutomationsController;
 use App\Http\Controllers\Api\V1\BookmarksController;
 use App\Http\Controllers\Api\V1\BrainController;
@@ -304,6 +305,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('provision/retirement', [ProvisionController::class, 'resetRetirement'])->name('provision.retirement.reset');
 
         Route::get('automations', [AutomationsController::class, 'index'])->name('automations.index');
+        Route::get('automations/catalog', [AutomationEditorController::class, 'catalog'])->name('automations.catalog');
+        Route::post('automations', [AutomationEditorController::class, 'store'])->name('automations.store');
+        Route::post('automations/test', [AutomationEditorController::class, 'test'])->middleware('throttle:api-30')->name('automations.test');
+        Route::get('automations/{automation}', [AutomationEditorController::class, 'show'])->whereNumber('automation')->name('automations.show');
+        Route::put('automations/{automation}', [AutomationEditorController::class, 'update'])->whereNumber('automation')->name('automations.update');
         Route::post('automations/draft', [AutomationsController::class, 'draft'])->middleware('throttle:api-20')->name('automations.draft');
         Route::post('automations/templates/{template}', [AutomationsController::class, 'fromTemplate'])->name('automations.template');
         Route::post('automations/packages/{package}', [AutomationsController::class, 'installPackage'])->name('automations.package');

@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Models\ChecklistTemplate;
 use App\Models\Collection;
+use App\Models\CollectionProperty;
 use App\Models\Household;
 use App\Models\Item;
 use App\Models\Space;
+use App\Support\ChecklistTemplates;
 use App\Support\Links;
 use App\Support\QuickCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -34,6 +38,99 @@ class TaskDetailsController extends ApiController
             'members' => array_map(fn (int $id, string $name) => ['id' => $id, 'name' => $name], array_keys($members), array_values($members)),
             'me' => $this->user()->id,
         ]);
+    }
+
+    /**
+     * Checklist templates (built in and the household's own).
+     */
+    public function templates(): JsonResponse
+    {
+        $household = $this->household();
+        $list = [];
+
+        foreach ($this->allTemplates($household->id) as $key => $template) {
+            $list[] = ['key' => $key, 'name' => $template['name'], 'icon' => $template['icon'], 'anchor' => $template['anchor'], 'default_offset' => $template['default_offset'], 'own' => $template['own'], 'tasks' => count($template['tasks']), 'preview' => array_map(fn (array $task) => $task['title'], array_slice($template['tasks'], 0, 6))];
+        }
+
+        return $this->ok($list);
+    }
+
+    /**
+     * Creates the tasks of a template around a date.
+     */
+    public function applyTemplate(Request $request, string $template): JsonResponse
+    {
+        $household = $this->household();
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
+        $found = $this->allTemplates($household->id)[$template] ?? abort(404);
+        $count = ChecklistTemplates::apply($this->user(), $household->id, $found, Carbon::parse($data['date']));
+
+        return $this->ok(['created' => $count], 201);
+    }
+
+    public function destroyTemplate(int $template): JsonResponse
+    {
+        $household = $this->household();
+        ChecklistTemplate::query()->visibleTo($this->user(), $household->id)->findOrFail($template)->delete();
+
+        return $this->ok();
+    }
+
+    public function saveAsTemplate(Request $request, int $task): JsonResponse
+    {
+        $item = $this->find($task);
+        $data = $request->validate(['name' => ['nullable', 'string', 'max:120']]);
+        abort_if($item->subtasks() === [], 422, __('Add subtasks first.'));
+        ChecklistTemplates::saveFromTask($item, $this->user(), $data['name'] ?? null);
+
+        return $this->ok(null, 201);
+    }
+
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:40']]);
+        $property = $this->categoryProperty();
+        $colors = ['green', 'blue', 'purple', 'orange', 'red', 'pink', 'gray'];
+        $options = $property->selectOptions();
+        $property->update(['options' => [...$options, ['id' => Str::lower(Str::random(8)), 'name' => trim($data['name']), 'color' => $colors[count($options) % count($colors)]]]]);
+
+        return $this->options();
+    }
+
+    public function updateCategory(Request $request, string $category): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:40']]);
+        $property = $this->categoryProperty();
+        $property->update(['options' => array_map(fn (array $option) => $option['id'] === $category ? [...$option, 'name' => trim($data['name'])] : $option, $property->selectOptions())]);
+
+        return $this->options();
+    }
+
+    public function destroyCategory(string $category): JsonResponse
+    {
+        $property = $this->categoryProperty();
+        $property->update(['options' => array_values(array_filter($property->selectOptions(), fn (array $option) => $option['id'] !== $category))]);
+
+        return $this->options();
+    }
+
+    private function categoryProperty(): CollectionProperty
+    {
+        return Collection::tasksFor($this->household()->id)->load('properties')->systemProperty('category') ?? abort(422);
+    }
+
+    /**
+     * @return array<string, array{name: string, icon: string, anchor: string, default_offset: int, tasks: list<array{title: string, offset: int, subtasks: list<string>}>, own: bool}>
+     */
+    private function allTemplates(int $householdId): array
+    {
+        $own = [];
+
+        foreach (ChecklistTemplate::query()->visibleTo($this->user(), $householdId)->orderBy('name')->get() as $template) {
+            $own['own-'.$template->id] = ['name' => $template->name, 'icon' => $template->icon ?: '📋', 'anchor' => __('Due'), 'default_offset' => 0, 'tasks' => $template->tasks, 'own' => true];
+        }
+
+        return array_map(fn (array $template) => $template + ['own' => false], ChecklistTemplates::builtIn()) + $own;
     }
 
     public function show(int $task): JsonResponse

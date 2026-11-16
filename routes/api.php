@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AutomationsController;
 use App\Http\Controllers\Api\V1\BookmarksController;
 use App\Http\Controllers\Api\V1\BrainController;
+use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
@@ -36,6 +38,9 @@ use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
+use App\Http\Controllers\Api\V1\ProvisionController;
+use App\Http\Controllers\Api\V1\QuotesController;
+use App\Http\Controllers\Api\V1\RealEstateController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
@@ -76,6 +81,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
         Route::get('tasks/options', [TaskDetailsController::class, 'options'])->name('tasks.options');
+        Route::get('task-templates', [TaskDetailsController::class, 'templates'])->name('tasks.templates');
+        Route::post('task-templates/{template}/apply', [TaskDetailsController::class, 'applyTemplate'])->where('template', '[a-z0-9_-]+')->name('tasks.templates.apply');
+        Route::delete('task-templates/{template}', [TaskDetailsController::class, 'destroyTemplate'])->whereNumber('template')->name('tasks.templates.destroy');
+        Route::post('tasks/{task}/template', [TaskDetailsController::class, 'saveAsTemplate'])->whereNumber('task')->name('tasks.template.store');
+        Route::post('task-categories', [TaskDetailsController::class, 'storeCategory'])->name('tasks.categories.store');
+        Route::put('task-categories/{category}', [TaskDetailsController::class, 'updateCategory'])->where('category', '[A-Za-z0-9_-]+')->name('tasks.categories.update');
+        Route::delete('task-categories/{category}', [TaskDetailsController::class, 'destroyCategory'])->where('category', '[A-Za-z0-9_-]+')->name('tasks.categories.destroy');
         Route::get('tasks/{task}', [TaskDetailsController::class, 'show'])->whereNumber('task')->name('tasks.show');
         Route::put('tasks/{task}/details', [TaskDetailsController::class, 'update'])->whereNumber('task')->name('tasks.details');
         Route::post('tasks/{task}/subtasks', [TaskDetailsController::class, 'addSubtask'])->whereNumber('task')->name('tasks.subtasks.store');
@@ -267,6 +279,62 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('groups/{group}/leave', [GroupsController::class, 'leave'])->whereNumber('group')->name('groups.leave');
         Route::delete('groups/{group}', [GroupsController::class, 'destroy'])->whereNumber('group')->name('groups.destroy');
         Route::delete('shares/{share}', [GroupsController::class, 'unshare'])->whereNumber('share')->name('shares.destroy');
+
+        Route::get('quote-comparisons', [QuotesController::class, 'index'])->name('quote-comparisons.index');
+        Route::post('quote-comparisons', [QuotesController::class, 'store'])->name('quote-comparisons.store');
+        Route::get('quote-comparisons/{comparison}', [QuotesController::class, 'show'])->whereNumber('comparison')->name('quote-comparisons.show');
+        Route::put('quote-comparisons/{comparison}', [QuotesController::class, 'update'])->whereNumber('comparison')->name('quote-comparisons.update');
+        Route::delete('quote-comparisons/{comparison}', [QuotesController::class, 'destroy'])->whereNumber('comparison')->name('quote-comparisons.destroy');
+        Route::post('quote-comparisons/{comparison}/offers', [QuotesController::class, 'addQuote'])->whereNumber('comparison')->name('quote-comparisons.offers.store');
+        Route::put('quote-comparisons/{comparison}/offers/{quote}', [QuotesController::class, 'updateQuote'])->whereNumber(['comparison', 'quote'])->name('quote-comparisons.offers.update');
+        Route::delete('quote-comparisons/{comparison}/offers/{quote}', [QuotesController::class, 'destroyQuote'])->whereNumber(['comparison', 'quote'])->name('quote-comparisons.offers.destroy');
+        Route::post('quote-comparisons/{comparison}/choose', [QuotesController::class, 'choose'])->whereNumber('comparison')->name('quote-comparisons.choose');
+
+        Route::get('provision/insurance', [ProvisionController::class, 'insurance'])->name('provision.insurance');
+        Route::post('provision/insurance', [ProvisionController::class, 'storeInsurance'])->name('provision.insurance.store');
+        Route::post('provision/answer', [ProvisionController::class, 'answer'])->name('provision.answer');
+        Route::put('provision/contracts/{item}', [ProvisionController::class, 'assign'])->whereNumber('item')->name('provision.assign');
+        Route::get('provision/retirement', [ProvisionController::class, 'retirement'])->name('provision.retirement');
+        Route::put('provision/retirement', [ProvisionController::class, 'updateRetirement'])->name('provision.retirement.update');
+        Route::delete('provision/retirement', [ProvisionController::class, 'resetRetirement'])->name('provision.retirement.reset');
+
+        Route::get('automations', [AutomationsController::class, 'index'])->name('automations.index');
+        Route::post('automations/draft', [AutomationsController::class, 'draft'])->middleware('throttle:api-20')->name('automations.draft');
+        Route::post('automations/templates/{template}', [AutomationsController::class, 'fromTemplate'])->name('automations.template');
+        Route::post('automations/packages/{package}', [AutomationsController::class, 'installPackage'])->name('automations.package');
+        Route::post('automations/modes/{key}', [AutomationsController::class, 'mode'])->where('key', '[a-z0-9_-]+')->name('automations.mode');
+        Route::post('automations/{automation}/toggle', [AutomationsController::class, 'toggle'])->whereNumber('automation')->name('automations.toggle');
+        Route::post('automations/{automation}/run', [AutomationsController::class, 'run'])->whereNumber('automation')->middleware('throttle:api-30')->name('automations.run');
+        Route::get('automations/{automation}/log', [AutomationsController::class, 'log'])->whereNumber('automation')->name('automations.log');
+        Route::delete('automations/{automation}', [AutomationsController::class, 'destroy'])->whereNumber('automation')->name('automations.destroy');
+
+        Route::get('real-estate', [RealEstateController::class, 'index'])->name('real-estate.index');
+        Route::post('real-estate', [RealEstateController::class, 'store'])->name('real-estate.store');
+        Route::get('real-estate/{estate}', [RealEstateController::class, 'show'])->whereNumber('estate')->name('real-estate.show');
+        Route::put('real-estate/{estate}', [RealEstateController::class, 'update'])->whereNumber('estate')->name('real-estate.update');
+        Route::delete('real-estate/{estate}', [RealEstateController::class, 'destroy'])->whereNumber('estate')->name('real-estate.destroy');
+        Route::post('real-estate/{estate}/items', [RealEstateController::class, 'addItem'])->whereNumber('estate')->name('real-estate.items.store');
+        Route::put('real-estate/{estate}/items/{item}', [RealEstateController::class, 'updateItem'])->whereNumber(['estate', 'item'])->name('real-estate.items.update');
+        Route::delete('real-estate/{estate}/items/{item}', [RealEstateController::class, 'destroyItem'])->whereNumber(['estate', 'item'])->name('real-estate.items.destroy');
+        Route::post('real-estate/{estate}/invoices', [RealEstateController::class, 'addInvoice'])->whereNumber('estate')->name('real-estate.invoices.store');
+        Route::put('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'updateInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.update');
+        Route::post('real-estate/{estate}/invoices/{invoice}/paid', [RealEstateController::class, 'togglePaid'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.paid');
+        Route::delete('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'destroyInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.destroy');
+
+        Route::get('business', [BusinessController::class, 'index'])->name('business.index');
+        Route::post('business/invoices', [BusinessController::class, 'storeInvoice'])->name('business.invoices.store');
+        Route::get('business/invoices/{invoice}', [BusinessController::class, 'showInvoice'])->whereNumber('invoice')->name('business.invoices.show');
+        Route::post('business/invoices/{invoice}/issue', [BusinessController::class, 'issueInvoice'])->whereNumber('invoice')->name('business.invoices.issue');
+        Route::post('business/invoices/{invoice}/pay', [BusinessController::class, 'pay'])->whereNumber('invoice')->name('business.invoices.pay');
+        Route::get('business/invoices/{invoice}/pdf', [BusinessController::class, 'pdf'])->whereNumber('invoice')->middleware('throttle:api-30')->name('business.invoices.pdf');
+        Route::delete('business/invoices/{invoice}', [BusinessController::class, 'destroyInvoice'])->whereNumber('invoice')->name('business.invoices.destroy');
+        Route::post('business/customers', [BusinessController::class, 'storeCustomer'])->name('business.customers.store');
+        Route::put('business/customers/{customer}', [BusinessController::class, 'updateCustomer'])->whereNumber('customer')->name('business.customers.update');
+        Route::delete('business/customers/{customer}', [BusinessController::class, 'destroyCustomer'])->whereNumber('customer')->name('business.customers.destroy');
+        Route::get('business/time', [BusinessController::class, 'time'])->name('business.time');
+        Route::post('business/time/start', [BusinessController::class, 'startTimer'])->name('business.time.start');
+        Route::post('business/time/stop', [BusinessController::class, 'stopTimer'])->name('business.time.stop');
+        Route::delete('business/time/{entry}', [BusinessController::class, 'destroyTime'])->whereNumber('entry')->name('business.time.destroy');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

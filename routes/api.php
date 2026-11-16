@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AutomationsController;
 use App\Http\Controllers\Api\V1\BookmarksController;
 use App\Http\Controllers\Api\V1\BrainController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\BusinessExtrasController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
@@ -80,6 +81,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('tasks/{task}', [LifeController::class, 'updateTask'])->whereNumber('task')->name('tasks.update');
         Route::delete('tasks/{task}', [LifeController::class, 'destroyTask'])->whereNumber('task')->name('tasks.destroy');
         Route::post('tasks/{task}/toggle', [LifeController::class, 'toggleTask'])->whereNumber('task')->name('tasks.toggle');
+        Route::post('tasks/order', [TaskDetailsController::class, 'reorder'])->name('tasks.order');
         Route::get('tasks/options', [TaskDetailsController::class, 'options'])->name('tasks.options');
         Route::get('task-templates', [TaskDetailsController::class, 'templates'])->name('tasks.templates');
         Route::post('task-templates/{template}/apply', [TaskDetailsController::class, 'applyTemplate'])->where('template', '[a-z0-9_-]+')->name('tasks.templates.apply');
@@ -335,6 +337,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('business/time/start', [BusinessController::class, 'startTimer'])->name('business.time.start');
         Route::post('business/time/stop', [BusinessController::class, 'stopTimer'])->name('business.time.stop');
         Route::delete('business/time/{entry}', [BusinessController::class, 'destroyTime'])->whereNumber('entry')->name('business.time.destroy');
+        Route::post('business/time', [BusinessExtrasController::class, 'storeTime'])->name('business.time.store');
+        Route::put('business/time/{entry}', [BusinessExtrasController::class, 'updateTime'])->whereNumber('entry')->name('business.time.update');
+        Route::post('business/time/bill', [BusinessExtrasController::class, 'billTime'])->name('business.time.bill');
+        Route::get('business/products', [BusinessExtrasController::class, 'products'])->name('business.products.index');
+        Route::post('business/products', [BusinessExtrasController::class, 'storeProduct'])->name('business.products.store');
+        Route::put('business/products/{product}', [BusinessExtrasController::class, 'updateProduct'])->whereNumber('product')->name('business.products.update');
+        Route::delete('business/products/{product}', [BusinessExtrasController::class, 'destroyProduct'])->whereNumber('product')->name('business.products.destroy');
+        Route::get('business/recurring', [BusinessExtrasController::class, 'recurring'])->name('business.recurring.index');
+        Route::post('business/invoices/{invoice}/recurring', [BusinessExtrasController::class, 'storeRecurring'])->whereNumber('invoice')->name('business.recurring.store');
+        Route::put('business/recurring/{template}', [BusinessExtrasController::class, 'updateRecurring'])->whereNumber('template')->name('business.recurring.update');
+        Route::post('business/recurring/{template}/run', [BusinessExtrasController::class, 'runRecurring'])->whereNumber('template')->name('business.recurring.run');
+        Route::delete('business/recurring/{template}', [BusinessExtrasController::class, 'destroyRecurring'])->whereNumber('template')->name('business.recurring.destroy');
 
         Route::get('spaces', [SpacesController::class, 'index'])->name('spaces.index');
         Route::post('spaces', [SpacesController::class, 'store'])->name('spaces.store');

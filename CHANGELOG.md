@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.123.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Kleingewerbe in der App:** Produkte verwalten und in Rechnungen einfügen, Zeiten manuell erfassen und bearbeiten, mehrere Zeiten eines Kunden mit einem Tipp zu einem Rechnungsentwurf abrechnen, wiederkehrende Rechnungen anlegen, pausieren, sofort erzeugen und löschen.
+- **Aufgaben per Hand sortieren:** neue Reihenfolge wird gespeichert und im Web genauso angezeigt.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.122.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

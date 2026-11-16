@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.127.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Buchhaltung des Kleingewerbes in der App:** Belege (Einnahmen und Ausgaben) mit Foto erfassen und per KI auslesen, suchen und bearbeiten; die Einnahmenüberschussrechnung (EÜR) mit den Zahlen für die Anlage EÜR, Monatsübersicht und Hinweisen; Umsatzsteuer-Voranmeldung nach Quartal oder Monat (Kz 81, 86, 66, 83); PDF für die Steuererklärung. Alle Zahlen kommen aus denselben Berechnungen wie im Web.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.126.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

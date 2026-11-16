@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.131.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Finanzen in der App:** alle Buchungen mit Filtern (Monat, Konto, Kategorie, Suche) und Summen; Barausgaben erfassen, auch per Belegfoto mit KI-Auslesen und Erkennung schon gebuchter Zahlungen; Konten umbenennen und löschen; „Für diese Gegenstelle immer merken“, gemerkte Regeln anwenden oder löschen; offene Buchungen per KI einer Kategorie zuordnen.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.129.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

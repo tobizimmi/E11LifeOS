@@ -7,6 +7,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
 ### Neu (App-Schnittstelle)
 - **Finanzen in der App:** alle Buchungen mit Filtern (Monat, Konto, Kategorie, Suche) und Summen; Barausgaben erfassen, auch per Belegfoto mit KI-Auslesen und Erkennung schon gebuchter Zahlungen; Konten umbenennen und löschen; „Für diese Gegenstelle immer merken“, gemerkte Regeln anwenden oder löschen; offene Buchungen per KI einer Kategorie zuordnen.
+- **Reisen in der App:** Reise anlegen (mit Packlisten-Vorlage), Details bearbeiten, löschen, Packlisten-Vorlagen hinzufügen und alles auspacken.
 - Im Web ändert sich dadurch nichts.
 
 ## [1.129.0] – 2026-11-16

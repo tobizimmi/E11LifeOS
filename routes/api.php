@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\ProvisionController;
 use App\Http\Controllers\Api\V1\QuotesController;
 use App\Http\Controllers\Api\V1\RealEstateController;
+use App\Http\Controllers\Api\V1\RealEstateFinanceController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
@@ -322,6 +323,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'updateInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.update');
         Route::post('real-estate/{estate}/invoices/{invoice}/paid', [RealEstateController::class, 'togglePaid'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.paid');
         Route::delete('real-estate/{estate}/invoices/{invoice}', [RealEstateController::class, 'destroyInvoice'])->whereNumber(['estate', 'invoice'])->name('real-estate.invoices.destroy');
+        Route::get('real-estate/{estate}/finance', [RealEstateFinanceController::class, 'show'])->whereNumber('estate')->name('real-estate.finance.show');
+        Route::post('real-estate/{estate}/loans', [RealEstateFinanceController::class, 'storeLoan'])->whereNumber('estate')->name('real-estate.loans.store');
+        Route::put('real-estate/{estate}/loans/{loan}', [RealEstateFinanceController::class, 'updateLoan'])->whereNumber(['estate', 'loan'])->name('real-estate.loans.update');
+        Route::delete('real-estate/{estate}/loans/{loan}', [RealEstateFinanceController::class, 'destroyLoan'])->whereNumber(['estate', 'loan'])->name('real-estate.loans.destroy');
+        Route::post('real-estate/{estate}/subsidies', [RealEstateFinanceController::class, 'storeSubsidy'])->whereNumber('estate')->name('real-estate.subsidies.store');
+        Route::put('real-estate/{estate}/subsidies/{subsidy}', [RealEstateFinanceController::class, 'updateSubsidy'])->whereNumber(['estate', 'subsidy'])->name('real-estate.subsidies.update');
+        Route::post('real-estate/{estate}/subsidies/{subsidy}/status', [RealEstateFinanceController::class, 'subsidyStatus'])->whereNumber(['estate', 'subsidy'])->name('real-estate.subsidies.status');
+        Route::delete('real-estate/{estate}/subsidies/{subsidy}', [RealEstateFinanceController::class, 'destroySubsidy'])->whereNumber(['estate', 'subsidy'])->name('real-estate.subsidies.destroy');
+        Route::post('real-estate/{estate}/draws', [RealEstateFinanceController::class, 'storeDraw'])->whereNumber('estate')->name('real-estate.draws.store');
+        Route::put('real-estate/{estate}/draws/{draw}', [RealEstateFinanceController::class, 'updateDraw'])->whereNumber(['estate', 'draw'])->name('real-estate.draws.update');
+        Route::post('real-estate/{estate}/draws/{draw}/done', [RealEstateFinanceController::class, 'drawDone'])->whereNumber(['estate', 'draw'])->name('real-estate.draws.done');
+        Route::delete('real-estate/{estate}/draws/{draw}', [RealEstateFinanceController::class, 'destroyDraw'])->whereNumber(['estate', 'draw'])->name('real-estate.draws.destroy');
 
         Route::get('business', [BusinessController::class, 'index'])->name('business.index');
         Route::post('business/invoices', [BusinessController::class, 'storeInvoice'])->name('business.invoices.store');

@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.122.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Angebotsvergleich, Vorsorge-Check, Automationen, Immobilien und Kleingewerbe für die App.** Angebote vergleichen und wählen; Versicherungslücken und Rentenlücke; Automationen ein-/ausschalten, ausführen, aus Vorlagen, Paketen oder einem Satz (KI) anlegen; Immobilien mit Gewerken und Rechnungen; Rechnungen, Angebote, Kunden und Zeiterfassung.
+- **Aufgaben:** Checklisten-Vorlagen anwenden und aus einer Aufgabe speichern, Kategorien anlegen, umbenennen und löschen.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.121.0] – 2026-11-15
 
 ### Neu (App-Schnittstelle)

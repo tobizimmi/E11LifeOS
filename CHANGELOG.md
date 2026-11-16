@@ -7,6 +7,10 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
 ### Neu (App-Schnittstelle)
 - **Hilfe & Support in der App:** Anfrage an das Team schreiben (Frage, Problem, Fehler, Wunsch, Konto) mit Bereich, Dringlichkeit und bis zu drei Anhängen; eigene Anfragen verfolgen, antworten, als gelöst markieren und die Hilfe bewerten.
+## [1.128.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Vermietung vollständig in der App:** Nebenkostenabrechnung (Kosten nach Schlüssel, Anteil und Saldo je Mieter, PDF, als versendet markieren), Indexmiete berechnen und übernehmen samt Brief, Mieterportal-Link erstellen und widerrufen, Mietvertrag und Zahlungserinnerung als PDF, Übergabeprotokolle mit Zählern, Schlüsseln, Räumen und Fotos, Bewerbungsformular online stellen und Bewerber verwalten bis zur Übernahme als Mieter.
 - Im Web ändert sich dadurch nichts.
 
 ## [1.127.0] – 2026-11-16

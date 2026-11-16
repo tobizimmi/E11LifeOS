@@ -92,6 +92,8 @@ class RealEstateRentalController extends ApiController
             'lease_end_on' => ['nullable', 'date', 'after:move_in_on'],
             'notice_months' => ['sometimes', 'integer', 'min:1', 'max:12'],
             'rent_adjustment' => ['sometimes', Rule::in(RealEstateTenant::RENT_ADJUSTMENTS)],
+            'index_base' => ['nullable', 'numeric', 'min:1', 'max:1000'],
+            'index_base_month' => ['nullable', 'date_format:Y-m'],
             'due_day' => ['sometimes', 'integer', 'min:1', 'max:28'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
@@ -114,6 +116,8 @@ class RealEstateRentalController extends ApiController
             'lease_end_on' => $data['lease_end_on'] ?? null,
             'notice_months' => (int) ($data['notice_months'] ?? 3),
             'rent_adjustment' => $data['rent_adjustment'] ?? 'none',
+            'index_base' => $data['index_base'] ?? null,
+            'index_base_month' => $data['index_base_month'] ?? null,
             'due_day' => (int) ($data['due_day'] ?? 3),
             'notes' => $data['notes'] ?? null,
         ];
@@ -168,6 +172,10 @@ class RealEstateRentalController extends ApiController
                 'due_day' => $tenant->due_day,
                 'notes' => $tenant->notes,
                 'active' => $tenant->isActiveOn(today()),
+                'index_base' => $tenant->index_base,
+                'index_base_month' => $tenant->index_base_month,
+                'next_index_change' => $this->date($tenant->nextIndexChangeOn()),
+                'has_portal' => $tenant->getAttribute('portal_token') !== null,
                 'months' => $months,
             ];
         }

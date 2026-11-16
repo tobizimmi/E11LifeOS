@@ -72,4 +72,35 @@ class ApiAutomationsTest extends TestCase
 
         $this->postJson("/api/v1/automations/{$id}/toggle", [], $this->headersFor($stranger))->assertNotFound();
     }
+
+    public function test_block_editor_catalog_save_edit_and_test_run(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = $this->headersFor($user);
+
+        $catalog = $this->getJson('/api/v1/automations/catalog', $headers)->assertOk()->assertJsonStructure(['data' => ['triggers', 'conditions', 'actions']])->json('data');
+        $types = array_column($catalog['triggers'], 'type');
+        $this->assertContains('time', $types);
+        $this->assertContains('manual', $types);
+        $push = collect($catalog['actions'])->firstWhere('type', 'push');
+        $this->assertSame('select', collect($push['fields'])->firstWhere('key', 'to')['kind']);
+
+        $id = $this->postJson('/api/v1/automations', [
+            'name' => 'Abends erinnern',
+            'trigger' => ['type' => 'time', 'at' => '19:00', 'days' => [1, 2, 3]],
+            'conditions' => [['type' => 'weekdays', 'days' => [1, 2, 3]]],
+            'actions' => [['type' => 'push', 'to' => 'me', 'title' => 'Hallo', 'body' => 'Test', 'urgent' => false]],
+        ], $headers)->assertCreated()->assertJsonPath('data.trigger.at', '19:00')->assertJsonPath('data.active', true)->json('data.id');
+
+        $this->postJson('/api/v1/automations', ['name' => 'X', 'trigger' => ['type' => 'time'], 'actions' => []], $headers)->assertStatus(422);
+        $this->postJson('/api/v1/automations', ['name' => 'X', 'trigger' => ['type' => 'nope'], 'actions' => [['type' => 'push']]], $headers)->assertStatus(422);
+        $this->postJson('/api/v1/automations', ['name' => 'X', 'trigger' => ['type' => 'time', 'at' => '25:99'], 'actions' => [['type' => 'push']]], $headers)->assertStatus(422);
+
+        $this->putJson("/api/v1/automations/{$id}", ['name' => 'Abends', 'trigger' => ['type' => 'manual'], 'actions' => [['type' => 'delay', 'minutes' => 5]]], $headers)->assertOk()->assertJsonPath('data.name', 'Abends')->assertJsonPath('data.trigger.type', 'manual');
+        $this->getJson("/api/v1/automations/{$id}", $headers)->assertOk()->assertJsonPath('data.actions.0.minutes', 5);
+        $this->postJson('/api/v1/automations/test', ['name' => 'Probe', 'trigger' => ['type' => 'manual'], 'actions' => [['type' => 'push', 'title' => 'Hi']]], $headers)->assertOk()->assertJsonStructure(['data' => ['log']]);
+
+        $stranger = $this->memberWithHousehold()[0];
+        $this->getJson("/api/v1/automations/{$id}", $this->headersFor($stranger))->assertNotFound();
+    }
 }

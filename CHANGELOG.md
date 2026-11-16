@@ -3,6 +3,19 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.125.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Rentabilitätsprüfung in der App:** Berechnungen speichern, aus einer eigenen Immobilie vorbefüllen, live neu berechnen (Urteil, Kennzahlen, Hinweise, Entwicklung über die Jahre).
+- **Vermietung in der App:** Mieter mit Mietvertragsdaten anlegen und bearbeiten, Mieteingang je Monat abhaken.
+- Im Web ändert sich dadurch nichts.
+
+## [1.124.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Immobilien-Finanzierung in der App:** Darlehen mit Rate, Restschuld und Zinsen, Förderungen mit Antragsstand und Frist, geplante gegen tatsächliche Abrufe (Finanzierungs-Controlling).
+- Im Web ändert sich dadurch nichts.
+
 ## [1.123.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

@@ -3,6 +3,10 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.129.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Hilfe & Support in der App:** Anfrage an das Team schreiben (Frage, Problem, Fehler, Wunsch, Konto) mit Bereich, Dringlichkeit und bis zu drei Anhängen; eigene Anfragen verfolgen, antworten, als gelöst markieren und die Hilfe bewerten.
 ## [1.128.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

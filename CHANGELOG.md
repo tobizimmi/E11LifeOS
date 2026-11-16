@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.126.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Block-Editor der Automationen in der App:** Auslöser, Bedingungen (auch „Eine davon“) und Aktionen aus dem Baukasten zusammenstellen, bestehende Automationen bearbeiten, Probelauf ohne Ausführung.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.125.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

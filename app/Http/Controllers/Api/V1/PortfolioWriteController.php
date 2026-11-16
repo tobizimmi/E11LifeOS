@@ -52,6 +52,12 @@ class PortfolioWriteController extends ApiController
     public function updateTransaction(Request $request, int $transaction): JsonResponse
     {
         $existing = $this->transaction($transaction);
+        // Fields the app did not send stay as they are.
+        foreach (['name', 'isin', 'currency', 'exchange_rate', 'taxes', 'fees', 'notes'] as $field) {
+            if (! $request->has($field)) {
+                $request->merge([$field => $existing->getAttribute($field)]);
+            }
+        }
         $old = Portfolio::findOrFail($existing->portfolio_id);
         $target = $request->filled('portfolio_id') ? $this->portfolio((int) $request->input('portfolio_id')) : $old;
         $existing->update($this->transactionFields($request, $target, $existing));

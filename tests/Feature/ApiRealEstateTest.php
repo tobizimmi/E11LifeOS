@@ -56,4 +56,28 @@ class ApiRealEstateTest extends TestCase
 
         $this->getJson("/api/v1/real-estate/{$id}", $this->headersFor($stranger))->assertNotFound();
     }
+
+    public function test_loans_subsidies_and_draws(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = $this->headersFor($user);
+        $id = $this->postJson('/api/v1/real-estate', ['name' => 'Haus Linde', 'usage' => 'owner', 'state' => 'NW', 'purchase_price' => 400000, 'purchase_date' => '2025-01-01'], $headers)->json('data.id');
+
+        $loan = $this->postJson("/api/v1/real-estate/{$id}/loans", ['lender' => 'Bank', 'kind' => 'annuity', 'amount' => 240000, 'interest_rate' => 3.5, 'repayment_rate' => 2, 'fixed_years' => 10, 'start_on' => '2025-01-01'], $headers)->assertCreated()->assertJsonPath('data.loans.0.monthly_rate', 1100)->json('data.loans.0.id');
+        $this->postJson("/api/v1/real-estate/{$id}/loans", ['lender' => 'Bank', 'kind' => 'nope', 'amount' => 1, 'interest_rate' => 1, 'repayment_rate' => 1, 'fixed_years' => 5], $headers)->assertStatus(422);
+        $this->putJson("/api/v1/real-estate/{$id}/loans/{$loan}", ['lender' => 'Sparkasse', 'kind' => 'kfw', 'amount' => 100000, 'interest_rate' => 1, 'repayment_rate' => 2, 'fixed_years' => 10], $headers)->assertOk()->assertJsonPath('data.loans.0.lender', 'Sparkasse');
+
+        $subsidy = $this->postJson("/api/v1/real-estate/{$id}/subsidies", ['program' => 'KfW 261', 'title' => 'Sanierung', 'kind' => 'grant', 'amount' => 15000, 'status' => 'idea'], $headers)->assertCreated()->assertJsonPath('data.secured_subsidies', 0)->json('data.subsidies.0.id');
+        $this->postJson("/api/v1/real-estate/{$id}/subsidies/{$subsidy}/status", ['status' => 'approved'], $headers)->assertOk()->assertJsonPath('data.secured_subsidies', 15000)->assertJsonPath('data.subsidies.0.approved_on', today()->toDateString());
+        $this->postJson("/api/v1/real-estate/{$id}/subsidies/{$subsidy}/status", ['status' => 'x'], $headers)->assertStatus(422);
+
+        $draw = $this->postJson("/api/v1/real-estate/{$id}/draws", ['source' => 'loan', 'loan_id' => $loan, 'label' => 'Rate 1', 'planned_amount' => 50000], $headers)->assertCreated()->assertJsonPath('data.draws.0.utilisation', 0)->json('data.draws.0.id');
+        $this->postJson("/api/v1/real-estate/{$id}/draws/{$draw}/done", [], $headers)->assertOk()->assertJsonPath('data.draws.0.utilisation', 100);
+        $this->postJson("/api/v1/real-estate/{$id}/draws", ['source' => 'loan', 'loan_id' => 999999, 'label' => 'X'], $headers)->assertNotFound();
+
+        $this->getJson("/api/v1/real-estate/{$id}/finance", $headers)->assertOk()->assertJsonCount(1, 'data.loans');
+        $this->deleteJson("/api/v1/real-estate/{$id}/draws/{$draw}", [], $headers)->assertOk()->assertJsonCount(0, 'data.draws');
+        $this->deleteJson("/api/v1/real-estate/{$id}/subsidies/{$subsidy}", [], $headers)->assertOk()->assertJsonCount(0, 'data.subsidies');
+        $this->deleteJson("/api/v1/real-estate/{$id}/loans/{$loan}", [], $headers)->assertOk()->assertJsonCount(0, 'data.loans');
+    }
 }

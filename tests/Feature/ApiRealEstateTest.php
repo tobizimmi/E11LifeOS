@@ -80,4 +80,45 @@ class ApiRealEstateTest extends TestCase
         $this->deleteJson("/api/v1/real-estate/{$id}/subsidies/{$subsidy}", [], $headers)->assertOk()->assertJsonCount(0, 'data.subsidies');
         $this->deleteJson("/api/v1/real-estate/{$id}/loans/{$loan}", [], $headers)->assertOk()->assertJsonCount(0, 'data.loans');
     }
+
+    public function test_profitability_analyses_can_be_calculated_and_saved(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = $this->headersFor($user);
+
+        $this->getJson('/api/v1/real-estate/analyses', $headers)->assertOk()->assertJsonPath('data.defaults.purchase_price', 300000)->assertJsonCount(0, 'data.saved');
+        $result = $this->postJson('/api/v1/real-estate/analyses/calculate', ['inputs' => ['purchase_price' => 250000, 'rent' => 900, 'living_area' => 60]], $headers)->assertOk()->assertJsonStructure(['data' => ['total', 'loan', 'monthly_rate', 'gross_yield', 'verdict' => ['level', 'text'], 'hints', 'projection']])->json('data');
+        $this->assertSame(250000.0, (float) $result['price']);
+
+        $id = $this->postJson('/api/v1/real-estate/analyses', ['title' => 'Wohnung Köln', 'inputs' => ['purchase_price' => 250000, 'rent' => 900, 'state' => 'XX', 'years' => 99]], $headers)->assertCreated()->assertJsonPath('data.title', 'Wohnung Köln')->assertJsonPath('data.inputs.years', 40)->assertJsonPath('data.inputs.state', 'BY')->json('data.id');
+        $this->putJson("/api/v1/real-estate/analyses/{$id}", ['title' => 'Neu', 'inputs' => ['rent' => 1100]], $headers)->assertOk()->assertJsonPath('data.inputs.rent', 1100)->assertJsonPath('data.title', 'Neu');
+        $this->postJson('/api/v1/real-estate/analyses', ['inputs' => []], $headers)->assertStatus(422);
+
+        $property = $this->postJson('/api/v1/real-estate', ['name' => 'Haus', 'usage' => 'owner', 'state' => 'NW', 'purchase_price' => 400000], $headers)->json('data.id');
+        $this->getJson("/api/v1/real-estate/analyses/prefill/{$property}", $headers)->assertOk()->assertJsonPath('data.title', 'Haus')->assertJsonPath('data.inputs.purchase_price', 400000);
+
+        $stranger = $this->memberWithHousehold()[0];
+        $this->getJson("/api/v1/real-estate/analyses/{$id}", $this->headersFor($stranger))->assertNotFound();
+        $this->deleteJson("/api/v1/real-estate/analyses/{$id}", [], $headers)->assertOk();
+        $this->getJson("/api/v1/real-estate/analyses/{$id}", $headers)->assertNotFound();
+    }
+
+    public function test_tenants_and_the_rent_check(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = $this->headersFor($user);
+        $id = $this->postJson('/api/v1/real-estate', ['name' => 'Mehrfamilienhaus', 'usage' => 'rental', 'state' => 'NW', 'purchase_price' => 500000], $headers)->json('data.id');
+        $year = today()->year;
+
+        $this->postJson("/api/v1/real-estate/{$id}/tenants", ['name' => 'Familie Beispiel', 'move_in_on' => '2024-01-01', 'cold_rent' => 800, 'utilities_advance' => 200, 'deposit' => 5000], $headers)->assertStatus(422);
+        $tenant = $this->postJson("/api/v1/real-estate/{$id}/tenants", ['name' => 'Familie Beispiel', 'unit' => 'EG', 'move_in_on' => '2024-01-01', 'cold_rent' => 800, 'utilities_advance' => 200, 'deposit' => 2400], $headers)->assertCreated()->assertJsonPath('data.tenants.0.monthly_total', 1000)->json('data.tenants.0.id');
+
+        $this->postJson("/api/v1/real-estate/{$id}/tenants/{$tenant}/payments", ['year' => $year, 'month' => 1], $headers)->assertOk()->assertJsonPath('data.tenants.0.months.0.paid', true)->assertJsonPath('data.received', 1000);
+        $this->postJson("/api/v1/real-estate/{$id}/tenants/{$tenant}/payments", ['year' => $year, 'month' => 1], $headers)->assertOk()->assertJsonPath('data.tenants.0.months.0.paid', false)->assertJsonPath('data.received', 0);
+        $this->postJson("/api/v1/real-estate/{$id}/tenants/{$tenant}/payments", ['year' => 2020, 'month' => 1], $headers)->assertStatus(422);
+
+        $this->putJson("/api/v1/real-estate/{$id}/tenants/{$tenant}", ['name' => 'Familie Muster', 'move_in_on' => '2024-01-01', 'move_out_on' => '2024-06-30', 'cold_rent' => 850], $headers)->assertOk()->assertJsonPath('data.tenants.0.name', 'Familie Muster')->assertJsonPath('data.tenants.0.active', false);
+        $this->getJson("/api/v1/real-estate/{$id}/rental?year=2024", $headers)->assertOk()->assertJsonPath('data.year', 2024)->assertJsonPath('data.tenants.0.months.0.lives', true)->assertJsonPath('data.tenants.0.months.11.lives', false);
+        $this->deleteJson("/api/v1/real-estate/{$id}/tenants/{$tenant}", [], $headers)->assertOk()->assertJsonCount(0, 'data.tenants');
+    }
 }

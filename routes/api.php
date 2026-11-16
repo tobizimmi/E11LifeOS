@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
 use App\Http\Controllers\Api\V1\SpacesController;
 use App\Http\Controllers\Api\V1\SplitController;
+use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TaskDetailsController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripController;
@@ -356,6 +357,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('real-estate/{estate}/draws/{draw}', [RealEstateFinanceController::class, 'updateDraw'])->whereNumber(['estate', 'draw'])->name('real-estate.draws.update');
         Route::post('real-estate/{estate}/draws/{draw}/done', [RealEstateFinanceController::class, 'drawDone'])->whereNumber(['estate', 'draw'])->name('real-estate.draws.done');
         Route::delete('real-estate/{estate}/draws/{draw}', [RealEstateFinanceController::class, 'destroyDraw'])->whereNumber(['estate', 'draw'])->name('real-estate.draws.destroy');
+
+        Route::get('support', [SupportController::class, 'index'])->name('support.index');
+        Route::post('support', [SupportController::class, 'store'])->middleware('throttle:api-20')->name('support.store');
+        Route::get('support/{ticket}', [SupportController::class, 'show'])->whereNumber('ticket')->name('support.show');
+        Route::post('support/{ticket}/reply', [SupportController::class, 'reply'])->whereNumber('ticket')->middleware('throttle:api-20')->name('support.reply');
+        Route::post('support/{ticket}/solve', [SupportController::class, 'solve'])->whereNumber('ticket')->name('support.solve');
+        Route::post('support/{ticket}/rate', [SupportController::class, 'rate'])->whereNumber('ticket')->name('support.rate');
+        Route::get('support/{ticket}/messages/{message}/files/{index}', [SupportController::class, 'file'])->whereNumber(['ticket', 'message', 'index'])->middleware('throttle:api-60')->name('support.file');
 
         Route::get('business', [BusinessController::class, 'index'])->name('business.index');
         Route::post('business/invoices', [BusinessController::class, 'storeInvoice'])->name('business.invoices.store');

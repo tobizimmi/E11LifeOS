@@ -41,7 +41,9 @@ use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\PortfolioMarketController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
+use App\Http\Controllers\Api\V1\PortfolioWriteController;
 use App\Http\Controllers\Api\V1\ProvisionController;
 use App\Http\Controllers\Api\V1\QuotesController;
 use App\Http\Controllers\Api\V1\RealEstateAnalysisController;
@@ -52,6 +54,7 @@ use App\Http\Controllers\Api\V1\RealEstateHandoverController;
 use App\Http\Controllers\Api\V1\RealEstateLettingController;
 use App\Http\Controllers\Api\V1\RealEstateRentalController;
 use App\Http\Controllers\Api\V1\RecipeController;
+use App\Http\Controllers\Api\V1\RecipeImportController;
 use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -81,7 +84,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // Home Assistant reports state changes here (secret in the address, see Smart home › Settings).
     Route::post('smart-home/webhook/{secret}', SmartHomeWebhookController::class)->middleware('throttle:240,1')->where('secret', '[A-Za-z0-9]{32,64}')->name('smart-home.webhook');
 
-    Route::middleware(['auth.token', 'throttle:120,1', 'module'])->group(function () {
+    Route::middleware(['auth.token', 'throttle:600,1', 'module'])->group(function () {
         Route::get('auth/me', [AuthController::class, 'me'])->name('me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('logout');
         Route::post('auth/confirm-password', [AuthController::class, 'confirmPassword'])->name('confirm-password');
@@ -562,6 +565,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         });
 
         Route::middleware('addon:recipes')->group(function () {
+            Route::get('recipes/import', [RecipeImportController::class, 'sources'])->name('recipes.import.sources');
+            Route::post('recipes/import', [RecipeImportController::class, 'import'])->middleware('throttle:api-20')->name('recipes.import');
             Route::get('recipes', [RecipeController::class, 'index'])->name('recipes.index');
             Route::post('recipes', [RecipeController::class, 'store'])->name('recipes.store');
             Route::get('recipes/{recipe}', [RecipeController::class, 'show'])->whereNumber('recipe')->name('recipes.show');
@@ -579,6 +584,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::middleware('addon:portfolio')->group(function () {
             Route::get('portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');
+            Route::post('portfolios', [PortfolioWriteController::class, 'storePortfolio'])->name('portfolios.store');
+            Route::put('portfolios/{portfolio}', [PortfolioWriteController::class, 'updatePortfolio'])->whereNumber('portfolio')->name('portfolios.update');
+            Route::delete('portfolios/{portfolio}', [PortfolioWriteController::class, 'destroyPortfolio'])->whereNumber('portfolio')->name('portfolios.destroy');
+            Route::post('portfolios/{portfolio}/transactions', [PortfolioWriteController::class, 'storeTransaction'])->whereNumber('portfolio')->name('portfolios.transactions.store');
+            Route::put('transactions-portfolio/{transaction}', [PortfolioWriteController::class, 'updateTransaction'])->whereNumber('transaction')->name('portfolios.transactions.update');
+            Route::delete('transactions-portfolio/{transaction}', [PortfolioWriteController::class, 'destroyTransaction'])->whereNumber('transaction')->name('portfolios.transactions.destroy');
             Route::get('portfolios/{portfolio}/positions', [PortfolioController::class, 'positions'])->name('portfolios.positions');
             Route::post('portfolios/{portfolio}/positions', [PortfolioController::class, 'storePosition'])->name('portfolios.positions.store');
             Route::put('positions/{position}', [PortfolioController::class, 'updatePosition'])->whereNumber('position')->name('positions.update');
@@ -595,6 +606,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('quotes/{symbol}', [MarketController::class, 'quote'])->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('quote');
             Route::get('search', [MarketController::class, 'search'])->name('search');
 
+            Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
+            Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
+            Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');
             Route::get('portfolio-reports/dividends', [PortfolioReportsController::class, 'dividends'])->name('portfolios.reports.dividends');
             Route::get('portfolio-reports/taxes', [PortfolioReportsController::class, 'taxes'])->name('portfolios.reports.taxes');
             Route::get('portfolio-reports/analysis', [PortfolioReportsController::class, 'analysis'])->name('portfolios.reports.analysis');

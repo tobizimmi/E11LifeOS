@@ -8,6 +8,12 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 ### Neu (App-Schnittstelle)
 - **Finanzen in der App:** alle Buchungen mit Filtern (Monat, Konto, Kategorie, Suche) und Summen; Barausgaben erfassen, auch per Belegfoto mit KI-Auslesen und Erkennung schon gebuchter Zahlungen; Konten umbenennen und löschen; „Für diese Gegenstelle immer merken“, gemerkte Regeln anwenden oder löschen; offene Buchungen per KI einer Kategorie zuordnen.
 - **Reisen in der App:** Reise anlegen (mit Packlisten-Vorlage), Details bearbeiten, löschen, Packlisten-Vorlagen hinzufügen und alles auspacken.
+## [1.130.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Rezepte importieren:** per Link (auch Instagram), Text oder Foto; die Rezeptdatei (schema.org, Paprika, Mealie) und PDF gehen ebenfalls.
+- **Portfolio:** Marktanalyse (Weltlage, Branchen, Bewertung der eigenen Aktien) und Nachrichten zu den eigenen Werten; Depots anlegen, ändern und löschen; Käufe, Verkäufe, Dividenden, Splits, Gebühren und Übertragungen erfassen, ändern und löschen (die Positionen werden daraus neu berechnet).
+- **Weniger „Zu viele Anfragen“:** Das Limit der App-Schnittstelle liegt jetzt bei 600 statt 120 Anfragen pro Minute, weil ein Abgleich der App viele einzelne Abrufe macht.
 - Im Web ändert sich dadurch nichts.
 
 ## [1.129.0] – 2026-11-16

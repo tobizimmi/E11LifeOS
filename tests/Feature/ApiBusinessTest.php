@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\BusinessProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
 
@@ -112,5 +114,62 @@ class ApiBusinessTest extends TestCase
         $this->postJson("/api/v1/business/recurring/{$template}/run", [], $headers)->assertCreated();
         $this->deleteJson("/api/v1/business/recurring/{$template}", [], $headers)->assertOk()->assertJsonCount(0, 'data');
         $this->deleteJson("/api/v1/business/products/{$product}", [], $headers)->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_bookings_with_receipt_and_the_yearly_report(): void
+    {
+        Storage::fake('secure');
+        [$user] = $this->memberWithHousehold();
+        $this->profile($user);
+        $headers = $this->headersFor($user);
+        $year = today()->year;
+
+        $this->postJson('/api/v1/business/bookings', ['kind' => 'expense', 'booked_on' => today()->toDateString(), 'description' => 'Papier', 'category' => 'sales', 'amount' => 20], $headers)->assertStatus(422);
+        $id = $this->post('/api/v1/business/bookings', ['kind' => 'expense', 'booked_on' => today()->toDateString(), 'description' => 'Papier', 'counterparty' => 'Büro AG', 'category' => 'office', 'amount' => 23.80, 'vat_amount' => 3.80, 'receipt' => UploadedFile::fake()->image('beleg.jpg')], $headers + ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('data.has_receipt', true)->assertJsonPath('data.vat_amount', 0)->json('data.id');
+        $this->postJson('/api/v1/business/bookings', ['kind' => 'income', 'booked_on' => today()->toDateString(), 'description' => 'Marktstand', 'category' => 'sales', 'amount' => 150], $headers)->assertCreated();
+
+        $this->get("/api/v1/business/bookings/{$id}/receipt", $headers)->assertOk();
+        $this->getJson('/api/v1/business/bookings?kind=missing', $headers)->assertOk()->assertJsonCount(0, 'data.entries');
+        $this->getJson('/api/v1/business/bookings?q=papier', $headers)->assertOk()->assertJsonCount(1, 'data.entries')->assertJsonPath('data.expense_sum', 23.8)->assertJsonPath('data.income_sum', 0);
+
+        $this->postJson("/api/v1/business/bookings/{$id}", ['kind' => 'expense', 'booked_on' => today()->toDateString(), 'description' => 'Papier', 'category' => 'office', 'amount' => 30, 'remove_receipt' => true], $headers)->assertOk()->assertJsonPath('data.has_receipt', false);
+        $this->getJson('/api/v1/business/bookings?kind=missing', $headers)->assertJsonCount(1, 'data.entries');
+
+        $invoice = $this->postJson('/api/v1/business/invoices', ['recipient' => 'Kunde', 'service_period' => 'Nov', 'issue' => true, 'items' => [['description' => 'Arbeit', 'quantity' => 1, 'unit_price' => 100]]], $headers)->json('data.id');
+        $this->postJson("/api/v1/business/invoices/{$invoice}/pay", [], $headers)->assertOk();
+
+        $report = $this->getJson("/api/v1/business/report?year={$year}", $headers)->assertOk()->assertJsonPath('data.small_business', true)->assertJsonPath('data.income_total', 250)->assertJsonPath('data.expense_total', 30)->assertJsonPath('data.profit', 220)->assertJsonPath('data.vat_periods', [])->assertJsonCount(12, 'data.monthly')->json('data');
+        $this->assertSame(1, $report['missing_receipts']);
+        $this->assertSame('ok', $report['limit_status']);
+        $this->assertSame(250.0, (float) collect($report['lines'])->where('section', 'income')->sum('amount'));
+
+        $this->get("/api/v1/business/report/download?year={$year}&format=csv", $headers)->assertOk()->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->get("/api/v1/business/report/download?year={$year}&format=pdf", $headers)->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->getJson('/api/v1/business/report/download?year=1999&format=pdf', $headers)->assertStatus(422);
+
+        $this->deleteJson("/api/v1/business/bookings/{$id}", [], $headers)->assertOk();
+        $stranger = $this->memberWithHousehold()[0];
+        $this->profile($stranger);
+        $this->postJson('/api/v1/business/bookings/'.$id, ['kind' => 'expense', 'booked_on' => today()->toDateString(), 'description' => 'x', 'category' => 'office', 'amount' => 1], $this->headersFor($stranger))->assertNotFound();
+    }
+
+    public function test_vat_advance_returns_for_a_business_that_charges_vat(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        BusinessProfile::create(['user_id' => $user->id, 'household_id' => $user->currentHousehold()?->id, 'company_name' => 'Muster', 'street' => 'Weg 1', 'postal_code' => '50667', 'city' => 'Köln', 'tax_number' => '123/456/789', 'small_business' => false, 'default_vat_rate' => 19, 'hourly_rate' => 80]);
+        $headers = $this->headersFor($user);
+        $year = today()->year;
+
+        $id = $this->postJson('/api/v1/business/invoices', ['recipient' => 'Kunde', 'service_period' => 'Nov', 'issue' => true, 'items' => [['description' => 'Arbeit', 'quantity' => 1, 'unit_price' => 1000, 'vat_rate' => 19]]], $headers)->assertCreated()->json('data.id');
+        $this->postJson("/api/v1/business/invoices/{$id}/pay", [], $headers)->assertOk();
+        $this->postJson('/api/v1/business/bookings', ['kind' => 'expense', 'booked_on' => today()->toDateString(), 'description' => 'Laptop', 'category' => 'low_value_assets', 'amount' => 595, 'vat_amount' => 95], $headers)->assertCreated()->assertJsonPath('data.vat_amount', 95);
+
+        $report = $this->getJson("/api/v1/business/report?year={$year}&interval=quarter", $headers)->assertOk()->assertJsonCount(4, 'data.vat_periods')->json('data');
+        $quarter = collect($report['vat_periods'])->first(fn ($period) => $period['from'] <= today()->toDateString() && $period['to'] >= today()->toDateString());
+        $this->assertSame(1000.0, (float) $quarter['kz81']);
+        $this->assertSame(190.0, (float) $quarter['kz81_vat']);
+        $this->assertSame(95.0, (float) $quarter['kz66']);
+        $this->assertSame(95.0, (float) $quarter['kz83']);
+        $this->getJson("/api/v1/business/report?year={$year}&interval=month", $headers)->assertJsonCount(12, 'data.vat_periods');
     }
 }

@@ -94,4 +94,18 @@ class ApiTaskDetailsTest extends TestCase
         $this->putJson("/api/v1/task-categories/{$key}", ['name' => 'Beet'], $headers)->assertOk();
         $this->deleteJson("/api/v1/task-categories/{$key}", [], $headers)->assertOk()->assertJsonCount($before, 'data.category');
     }
+
+    public function test_manual_order_sets_positions(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $headers = $this->headersFor($user);
+        $a = $this->postJson('/api/v1/tasks', ['text' => 'Erste'], $headers)->json('data.id');
+        $b = $this->postJson('/api/v1/tasks', ['text' => 'Zweite'], $headers)->json('data.id');
+
+        $this->postJson('/api/v1/tasks/order', ['ids' => [$b, $a, 999999]], $headers)->assertOk();
+        $list = $this->getJson('/api/v1/tasks', $headers)->assertOk()->json('data');
+        $this->assertSame([$b, $a], array_column($list, 'id'));
+        $this->assertSame([1, 2], array_column($list, 'position'));
+        $this->postJson('/api/v1/tasks/order', ['ids' => []], $headers)->assertStatus(422);
+    }
 }

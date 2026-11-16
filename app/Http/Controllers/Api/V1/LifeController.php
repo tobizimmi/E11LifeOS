@@ -440,6 +440,7 @@ class LifeController extends ApiController
             'assignee' => $assignee,
             'subtasks' => ['total' => count($subtasks), 'done' => count(array_filter($subtasks, fn (array $entry) => $entry['done']))],
             'tags' => $task->relationLoaded('tags') ? $task->tags->pluck('name')->all() : [],
+            'position' => $task->position,
             'done' => (bool) $task->done,
             'url' => route('tasks.index', ['task' => $task->id]),
         ];

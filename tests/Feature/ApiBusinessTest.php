@@ -84,4 +84,33 @@ class ApiBusinessTest extends TestCase
         $stopped = $this->postJson('/api/v1/business/time/stop', [], $headers)->assertOk()->assertJsonPath('data.running', null)->assertJsonCount(2, 'data.entries')->json('data.entries.0.id');
         $this->deleteJson("/api/v1/business/time/{$stopped}", [], $headers)->assertOk()->assertJsonCount(1, 'data.entries');
     }
+
+    public function test_products_manual_times_billing_and_recurring_templates(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->profile($user);
+        $headers = $this->headersFor($user);
+
+        $this->postJson('/api/v1/business/products', ['name' => 'Beratung', 'unit' => 'h', 'unit_price' => 90, 'vat_rate' => 0], $headers)->assertCreated()->assertJsonPath('data.0.name', 'Beratung');
+        $product = $this->getJson('/api/v1/business/products', $headers)->assertOk()->json('data.0.id');
+        $this->putJson("/api/v1/business/products/{$product}", ['name' => 'Beratung', 'unit_price' => 95, 'vat_rate' => 0], $headers)->assertOk()->assertJsonPath('data.0.unit_price', 95);
+
+        $customer = $this->postJson('/api/v1/business/customers', ['name' => 'Kunde GmbH'], $headers)->json('data.id');
+        $this->postJson('/api/v1/business/time', ['description' => 'Konzept', 'customer_id' => $customer, 'date' => '2026-11-10', 'duration' => '1:30'], $headers)->assertCreated();
+        $this->postJson('/api/v1/business/time', ['description' => 'Falsch', 'date' => '2026-11-10', 'duration' => 'abc'], $headers)->assertStatus(422);
+        $entry = $this->getJson('/api/v1/business/time', $headers)->assertJsonCount(1, 'data.entries')->json('data.entries.0.id');
+        $this->putJson("/api/v1/business/time/{$entry}", ['description' => 'Konzept', 'customer_id' => $customer, 'date' => '2026-11-10', 'duration' => '2'], $headers)->assertOk();
+
+        $this->postJson('/api/v1/business/time/bill', ['entries' => []], $headers)->assertStatus(422);
+        $invoice = $this->postJson('/api/v1/business/time/bill', ['entries' => [$entry]], $headers)->assertCreated()->json('data.invoice_id');
+        $this->getJson("/api/v1/business/invoices/{$invoice}", $headers)->assertOk()->assertJsonPath('data.gross_total', 160);
+        $this->putJson("/api/v1/business/time/{$entry}", ['description' => 'x', 'date' => '2026-11-10', 'duration' => '1'], $headers)->assertNotFound();
+
+        $this->postJson("/api/v1/business/invoices/{$invoice}/recurring", ['frequency' => 'monthly'], $headers)->assertCreated()->assertJsonPath('data.0.frequency', 'monthly');
+        $template = $this->getJson('/api/v1/business/recurring', $headers)->assertJsonCount(1, 'data')->json('data.0.id');
+        $this->putJson("/api/v1/business/recurring/{$template}", ['active' => false, 'auto_issue' => true], $headers)->assertOk()->assertJsonPath('data.0.active', false);
+        $this->postJson("/api/v1/business/recurring/{$template}/run", [], $headers)->assertCreated();
+        $this->deleteJson("/api/v1/business/recurring/{$template}", [], $headers)->assertOk()->assertJsonCount(0, 'data');
+        $this->deleteJson("/api/v1/business/products/{$product}", [], $headers)->assertOk()->assertJsonCount(0, 'data');
+    }
 }

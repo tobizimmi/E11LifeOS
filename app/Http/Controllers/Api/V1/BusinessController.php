@@ -322,6 +322,7 @@ class BusinessController extends ApiController
         return [
             'id' => $entry->id,
             'description' => $entry->description,
+            'customer_id' => $entry->customer_id,
             'customer' => $customer?->name,
             'started_at' => Carbon::parse((string) $entry->started_at)->toIso8601String(),
             'ended_at' => $entry->ended_at !== null ? Carbon::parse((string) $entry->ended_at)->toIso8601String() : null,

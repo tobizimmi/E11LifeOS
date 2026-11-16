@@ -106,6 +106,27 @@ class TaskDetailsController extends ApiController
         return $this->options();
     }
 
+    /**
+     * Manual order: the tasks get the positions 1..n in the order of the given ids.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:200'], 'ids.*' => ['integer']]);
+        $household = $this->household();
+        $position = 0;
+
+        foreach (array_values(array_unique(array_map('intval', $data['ids']))) as $id) {
+            $task = Item::query()->forHousehold($household->id)->visibleTo($this->user())
+                ->where('collection_id', Collection::tasksFor($household->id)->id)->find($id);
+
+            if ($task !== null) {
+                $task->forceFill(['position' => ++$position])->saveQuietly();
+            }
+        }
+
+        return $this->ok();
+    }
+
     public function destroyCategory(string $category): JsonResponse
     {
         $property = $this->categoryProperty();

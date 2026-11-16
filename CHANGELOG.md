@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.128.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Vermietung vollständig in der App:** Nebenkostenabrechnung (Kosten nach Schlüssel, Anteil und Saldo je Mieter, PDF, als versendet markieren), Indexmiete berechnen und übernehmen samt Brief, Mieterportal-Link erstellen und widerrufen, Mietvertrag und Zahlungserinnerung als PDF, Übergabeprotokolle mit Zählern, Schlüsseln, Räumen und Fotos, Bewerbungsformular online stellen und Bewerber verwalten bis zur Übernahme als Mieter.
+- Im Web ändert sich dadurch nichts.
+
 ## [1.127.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

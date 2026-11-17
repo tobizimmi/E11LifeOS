@@ -961,12 +961,6 @@ parameters:
 			path: app/Models/TimeEntry.php
 
 		-
-			message: '#^Cannot call method copy\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/TrustedPerson.php
-
-		-
 			message: '#^Method App\\Models\\User\:\:currentHousehold\(\) should return App\\Models\\Household\|null but returns \(Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\)\|null\.$#'
 			identifier: return.type
 			count: 1

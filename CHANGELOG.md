@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.142.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Mehr aus dem Web in der App:** Kosten teilen (Freigabe-Link mit Ablauf, Person umbenennen, CSV und PDF), Vertrauenspersonen im Notfallordner (einladen, Zugriff erlauben oder ablehnen, neuen Link senden) und Smart Home einrichten (Verbindungen zu Home Assistant und evcc, Geräte auswählen und benennen, Regler, Lademodus und Ladegrenze).
+
 ## [1.141.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

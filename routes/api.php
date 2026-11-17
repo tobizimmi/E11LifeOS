@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\MealPlanController;
+use App\Http\Controllers\Api\V1\MealPlannerController;
 use App\Http\Controllers\Api\V1\OffersController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
@@ -582,6 +583,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
             Route::get('meal-plan', [MealPlanController::class, 'index'])->name('meal-plan.index');
             Route::post('meal-plan', [MealPlanController::class, 'store'])->name('meal-plan.store');
+            Route::get('meal-planner', [MealPlannerController::class, 'show'])->name('meal-planner.show');
+            Route::put('meal-planner/preferences', [MealPlannerController::class, 'savePreferences'])->name('meal-planner.preferences');
+            Route::post('meal-planner/generate', [MealPlannerController::class, 'generate'])->middleware('throttle:api-20')->name('meal-planner.generate');
+            Route::post('meal-planner/add', [MealPlannerController::class, 'addToPlan'])->name('meal-planner.add');
+            Route::post('meal-planner/shopping-list', [MealPlannerController::class, 'createList'])->name('meal-planner.shopping-list');
             Route::get('meal-plan/ingredients', [MealPlanController::class, 'ingredients'])->name('meal-plan.ingredients');
             Route::post('meal-plan/shopping', [MealPlanController::class, 'toShopping'])->name('meal-plan.shopping');
             Route::put('meal-plan/{entry}', [MealPlanController::class, 'update'])->whereNumber('entry')->name('meal-plan.update');

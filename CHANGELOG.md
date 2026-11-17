@@ -6,6 +6,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 ## [1.132.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)
+- **KI-Wochenplaner in der App:** Vorlieben speichern, Woche erzeugen, in den Essensplan übernehmen (mit Doppelt-Abfrage, Rezepte optional dauerhaft behalten) und Einkaufsliste anlegen.
 - **Rezept-Kategorien in der App:** anlegen, umbenennen, Symbol ändern, verschieben und löschen (Rezepte bleiben erhalten); Rezepte lassen sich Kategorien zuordnen.
 
 ## [1.131.0] – 2026-11-16

@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\LifeController;
 use App\Http\Controllers\Api\V1\LoyaltyCardController;
 use App\Http\Controllers\Api\V1\MarketController;
 use App\Http\Controllers\Api\V1\MealPlanController;
+use App\Http\Controllers\Api\V1\MealPlannerController;
 use App\Http\Controllers\Api\V1\OffersController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
@@ -53,6 +54,7 @@ use App\Http\Controllers\Api\V1\RealEstateFinanceController;
 use App\Http\Controllers\Api\V1\RealEstateHandoverController;
 use App\Http\Controllers\Api\V1\RealEstateLettingController;
 use App\Http\Controllers\Api\V1\RealEstateRentalController;
+use App\Http\Controllers\Api\V1\RecipeCategoryController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecipeImportController;
 use App\Http\Controllers\Api\V1\RecommendationController;
@@ -78,7 +80,7 @@ use Illuminate\Support\Facades\Route;
  * Mobile API (Expo app). Sign in with POST /api/v1/auth/login, then send "Authorization: Bearer <token>".
  */
 Route::prefix('v1')->name('api.v1.')->group(function () {
-    Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
+    Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:api-login')->name('login');
     // Siri/Shortcut one-action quick-add: token + text in the query, no header or JSON body needed.
     Route::get('quick/{type}', [LifeController::class, 'quickViaToken'])->where('type', 'shopping|task|note|inbox|auto')->middleware('throttle:60,1')->name('quick');
     // Home Assistant reports state changes here (secret in the address, see Smart home › Settings).
@@ -567,6 +569,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::middleware('addon:recipes')->group(function () {
             Route::get('recipes/import', [RecipeImportController::class, 'sources'])->name('recipes.import.sources');
             Route::post('recipes/import', [RecipeImportController::class, 'import'])->middleware('throttle:api-20')->name('recipes.import');
+            Route::get('recipe-categories', [RecipeCategoryController::class, 'index'])->name('recipe-categories.index');
+            Route::post('recipe-categories', [RecipeCategoryController::class, 'store'])->name('recipe-categories.store');
+            Route::put('recipe-categories/{category}', [RecipeCategoryController::class, 'update'])->whereNumber('category')->name('recipe-categories.update');
+            Route::post('recipe-categories/{category}/move', [RecipeCategoryController::class, 'move'])->whereNumber('category')->name('recipe-categories.move');
+            Route::delete('recipe-categories/{category}', [RecipeCategoryController::class, 'destroy'])->whereNumber('category')->name('recipe-categories.destroy');
             Route::get('recipes', [RecipeController::class, 'index'])->name('recipes.index');
             Route::post('recipes', [RecipeController::class, 'store'])->name('recipes.store');
             Route::get('recipes/{recipe}', [RecipeController::class, 'show'])->whereNumber('recipe')->name('recipes.show');
@@ -576,6 +583,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
             Route::get('meal-plan', [MealPlanController::class, 'index'])->name('meal-plan.index');
             Route::post('meal-plan', [MealPlanController::class, 'store'])->name('meal-plan.store');
+            Route::get('meal-planner', [MealPlannerController::class, 'show'])->name('meal-planner.show');
+            Route::put('meal-planner/preferences', [MealPlannerController::class, 'savePreferences'])->name('meal-planner.preferences');
+            Route::post('meal-planner/generate', [MealPlannerController::class, 'generate'])->middleware('throttle:api-20')->name('meal-planner.generate');
+            Route::post('meal-planner/add', [MealPlannerController::class, 'addToPlan'])->name('meal-planner.add');
+            Route::post('meal-planner/shopping-list', [MealPlannerController::class, 'createList'])->name('meal-planner.shopping-list');
             Route::get('meal-plan/ingredients', [MealPlanController::class, 'ingredients'])->name('meal-plan.ingredients');
             Route::post('meal-plan/shopping', [MealPlanController::class, 'toShopping'])->name('meal-plan.shopping');
             Route::put('meal-plan/{entry}', [MealPlanController::class, 'update'])->whereNumber('entry')->name('meal-plan.update');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Household;
 use App\Models\Recipe;
+use App\Models\RecipeCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -44,11 +45,16 @@ class RecipeController extends ApiController
     public function store(Request $request): JsonResponse
     {
         $data = $this->validatedRecipe($request, creating: true);
+        $categoryIds = $this->categoryIds($data);
+        unset($data['category_ids']);
 
         $recipe = new Recipe($data);
         $recipe->household_id = $this->household()->id;
         $recipe->created_by = $this->user()->id;
         $recipe->save();
+        if ($categoryIds !== null) {
+            $recipe->categories()->sync($categoryIds);
+        }
 
         $recipe->load('categories:id,name');
 
@@ -59,8 +65,15 @@ class RecipeController extends ApiController
     {
         $this->authorizeRecipe($recipe);
 
-        $recipe->fill($this->validatedRecipe($request, creating: false));
+        $data = $this->validatedRecipe($request, creating: false);
+        $categoryIds = $this->categoryIds($data);
+        unset($data['category_ids']);
+
+        $recipe->fill($data);
         $recipe->save();
+        if ($categoryIds !== null) {
+            $recipe->categories()->sync($categoryIds);
+        }
 
         $recipe->load('categories:id,name');
 
@@ -115,7 +128,27 @@ class RecipeController extends ApiController
             'ingredients.*' => ['string', 'max:500'],
             'instructions' => ['sometimes', 'nullable', 'array'],
             'instructions.*' => ['string', 'max:5000'],
+            'category_ids' => ['sometimes', 'nullable', 'array'],
+            'category_ids.*' => ['integer'],
         ]);
+    }
+
+    /**
+     * Category ids from the request, limited to the household's own categories (null = not sent).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<int, int>|null
+     */
+    private function categoryIds(array $data): ?array
+    {
+        if (! array_key_exists('category_ids', $data)) {
+            return null;
+        }
+
+        /** @var array<int, int> $ids */
+        $ids = (array) ($data['category_ids'] ?? []);
+
+        return RecipeCategory::where('household_id', $this->household()->id)->whereIn('id', $ids)->pluck('id')->map(fn ($id): int => (int) $id)->all();
     }
 
     /**
@@ -148,6 +181,7 @@ class RecipeController extends ApiController
             'difficulty' => $recipe->difficulty,
             'cooked_count' => (int) $recipe->cooked_count,
             'categories' => $recipe->categories->pluck('name')->all(),
+            'category_ids' => $recipe->categories->pluck('id')->map(fn ($id): int => (int) $id)->all(),
         ];
     }
 

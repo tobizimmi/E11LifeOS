@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\DocumentsController;
 use App\Http\Controllers\Api\V1\DriveGoogleController;
 use App\Http\Controllers\Api\V1\DrivesController;
 use App\Http\Controllers\Api\V1\EmergencyController;
+use App\Http\Controllers\Api\V1\EmergencyPeopleController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FinanceExtrasController;
 use App\Http\Controllers\Api\V1\FinanceFilesController;
@@ -70,8 +71,10 @@ use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\SmartHomeSetupController;
 use App\Http\Controllers\Api\V1\SpacesController;
 use App\Http\Controllers\Api\V1\SplitController;
+use App\Http\Controllers\Api\V1\SplitShareController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\SystemExtrasController;
 use App\Http\Controllers\Api\V1\TaskDetailsController;
@@ -292,6 +295,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('splits/{group}/expenses', [SplitController::class, 'storeExpense'])->whereNumber('group')->name('splits.expenses.store');
         Route::put('splits/{group}/expenses/{expense}', [SplitController::class, 'updateExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.update');
         Route::delete('splits/{group}/expenses/{expense}', [SplitController::class, 'destroyExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.destroy');
+        Route::post('splits/{group}/share', [SplitShareController::class, 'create'])->whereNumber('group')->name('splits.share.create');
+        Route::delete('splits/{group}/share', [SplitShareController::class, 'revoke'])->whereNumber('group')->name('splits.share.revoke');
+        Route::put('splits/{group}/share/expiry', [SplitShareController::class, 'expiry'])->whereNumber('group')->name('splits.share.expiry');
+        Route::put('splits/{group}/members/{member}', [SplitShareController::class, 'renameMember'])->whereNumber(['group', 'member'])->name('splits.members.rename');
+        Route::get('splits/{group}/export/{format}', [SplitShareController::class, 'export'])->whereNumber('group')->whereIn('format', ['csv', 'pdf'])->middleware('throttle:api-30')->name('splits.export.api');
         Route::post('splits/{group}/settle', [SplitController::class, 'settle'])->whereNumber('group')->name('splits.settle');
 
         // Productivity and growth: focus & time boxing, lessons learned.
@@ -615,12 +623,30 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::post('emergency/entries', [EmergencyController::class, 'store'])->name('emergency.entries.store');
                 Route::put('emergency/entries/{entry}', [EmergencyController::class, 'update'])->whereNumber('entry')->name('emergency.entries.update');
                 Route::delete('emergency/entries/{entry}', [EmergencyController::class, 'destroy'])->whereNumber('entry')->name('emergency.entries.destroy');
+                Route::get('emergency/people', [EmergencyPeopleController::class, 'index'])->name('emergency.people.index');
+                Route::post('emergency/people', [EmergencyPeopleController::class, 'store'])->middleware('throttle:api-20')->name('emergency.people.store');
+                Route::post('emergency/people/{person}/resend', [EmergencyPeopleController::class, 'resend'])->whereNumber('person')->middleware('throttle:api-20')->name('emergency.people.resend');
+                Route::post('emergency/people/{person}/allow', [EmergencyPeopleController::class, 'allow'])->whereNumber('person')->name('emergency.people.allow');
+                Route::post('emergency/people/{person}/decline', [EmergencyPeopleController::class, 'decline'])->whereNumber('person')->name('emergency.people.decline');
+                Route::delete('emergency/people/{person}', [EmergencyPeopleController::class, 'destroy'])->whereNumber('person')->name('emergency.people.destroy');
             });
         });
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
+            Route::get('smart-home/setup', [SmartHomeSetupController::class, 'setup'])->name('smart-home.setup');
+            Route::post('smart-home/connections', [SmartHomeSetupController::class, 'storeConnection'])->middleware('throttle:api-20')->name('smart-home.connections.store');
+            Route::put('smart-home/connections/{connection}', [SmartHomeSetupController::class, 'updateConnection'])->whereNumber('connection')->middleware('throttle:api-20')->name('smart-home.connections.update');
+            Route::delete('smart-home/connections/{connection}', [SmartHomeSetupController::class, 'destroyConnection'])->whereNumber('connection')->name('smart-home.connections.destroy');
+            Route::post('smart-home/connections/{connection}/test', [SmartHomeSetupController::class, 'testConnection'])->whereNumber('connection')->middleware('throttle:api-20')->name('smart-home.connections.test');
+            Route::get('smart-home/available', [SmartHomeSetupController::class, 'available'])->middleware('throttle:api-20')->name('smart-home.available');
+            Route::post('smart-home/entities', [SmartHomeSetupController::class, 'addEntity'])->middleware('throttle:api-20')->name('smart-home.entities.store');
+            Route::put('smart-home/entities/{entity}', [SmartHomeSetupController::class, 'updateEntity'])->whereNumber('entity')->name('smart-home.entities.update');
+            Route::delete('smart-home/entities/{entity}', [SmartHomeSetupController::class, 'destroyEntity'])->whereNumber('entity')->name('smart-home.entities.destroy');
+            Route::post('smart-home/devices/{entity}/value', [SmartHomeSetupController::class, 'setValue'])->whereNumber('entity')->middleware('throttle:api-60')->name('smart-home.value');
+            Route::post('smart-home/charging/{loadpoint}/mode', [SmartHomeSetupController::class, 'chargeMode'])->whereNumber('loadpoint')->middleware('throttle:api-30')->name('smart-home.charge.mode');
+            Route::post('smart-home/charging/{loadpoint}/limit', [SmartHomeSetupController::class, 'chargeLimit'])->whereNumber('loadpoint')->middleware('throttle:api-30')->name('smart-home.charge.limit');
             Route::post('smart-home/modes/{key}', [SmartHomeController::class, 'mode'])->where('key', '[a-z_]{1,40}')->name('smart-home.mode');
         });
 

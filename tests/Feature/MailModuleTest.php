@@ -27,8 +27,13 @@ class MailModuleTest extends TestCase
             ->set('aUsername', 'me@proton.me')
             ->set('aPassword', 'bridge-secret')
             ->call('saveAccount')
-            ->assertHasNoErrors()
-            ->assertSet('flash', 'STUB-VALIDATED'); // STUB experiment: does validate-only still 419?
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('mail_accounts', ['user_id' => $user->id, 'label' => 'Proton privat']);
+
+        $account = MailAccount::where('user_id', $user->id)->sole();
+        $this->assertSame('me@proton.me', $account->username); // decrypted via cast
+        $this->assertSame('bridge-secret', $account->password);
     }
 
     public function test_an_account_requires_host_and_credentials(): void

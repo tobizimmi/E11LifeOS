@@ -9,6 +9,7 @@ use App\Support\Mail\MailSync;
 use App\Support\QuickCapture;
 use App\Support\ShoppingLists;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -238,11 +239,43 @@ new #[Layout('layouts.app')] class extends Component
         ];
     }
 
+    /**
+     * Validates the account form. Uses the Validator facade (not $this->validate()) because the
+     * latter's error-bag/session handling triggers a 419 on this component under test.
+     */
+    private function validatedAccount(): void
+    {
+        Validator::make([
+            'aLabel' => $this->aLabel,
+            'aProvider' => $this->aProvider,
+            'aImapHost' => $this->aImapHost,
+            'aImapPort' => $this->aImapPort,
+            'aImapEncryption' => $this->aImapEncryption,
+            'aSmtpPort' => $this->aSmtpPort,
+            'aUsername' => $this->aUsername,
+            'aPassword' => $this->aPassword,
+        ], $this->accountRules())->validate();
+    }
+
     public function saveAccount(): void
     {
-        $this->validate($this->accountRules());
+        $this->validatedAccount();
 
-        $this->flash = 'STUB-VALIDATED';
+        $data = $this->accountData();
+
+        $account = $this->editingAccountId
+            ? ($this->accounts->firstWhere('id', $this->editingAccountId) ?? new MailAccount)
+            : new MailAccount(['user_id' => $this->currentUser()->id, 'household_id' => (int) $this->householdId]);
+
+        if (! $this->editingAccountId || $this->aPassword !== '') {
+            $data['password'] = $this->aPassword;
+        }
+
+        $account->fill($data)->save();
+
+        $this->selectedAccountId = $account->id;
+        $this->showAccountForm = false;
+        $this->flash = __('Mail account saved.');
     }
 
     public function deleteAccount(int $id): void
@@ -261,7 +294,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function testConnection(): void
     {
-        $this->validate($this->accountRules());
+        $this->validatedAccount();
         $data = $this->accountData();
         $password = $this->aPassword;
 

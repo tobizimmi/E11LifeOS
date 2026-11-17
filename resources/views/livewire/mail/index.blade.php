@@ -240,9 +240,9 @@ new #[Layout('layouts.app')] class extends Component
 
     public function saveAccount(): void
     {
-        $this->validate($this->accountRules());
-
         try {
+            $this->validate($this->accountRules());
+
             $data = $this->accountData();
 
             $account = $this->editingAccountId
@@ -255,6 +255,8 @@ new #[Layout('layouts.app')] class extends Component
 
             $account->fill($data)->save();
             $this->selectedAccountId = $account->id;
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             $this->flash = 'DEBUG: '.get_class($e).': '.$e->getMessage();
 

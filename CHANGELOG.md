@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.132.1] – 2026-11-17
+
+### Behoben
+- **Anmeldung in der App:** „Too Many Attempts“ schon beim ersten Versuch. Das Limit zählte nur pro Adresse, sodass sich alle Geräte hinter derselben Adresse (Mobilfunk, Proxy) die 10 Versuche pro Minute teilten. Es gilt jetzt pro Konto (10 pro Minute) und großzügig pro Adresse.
+
 ## [1.132.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

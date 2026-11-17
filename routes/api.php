@@ -80,7 +80,7 @@ use Illuminate\Support\Facades\Route;
  * Mobile API (Expo app). Sign in with POST /api/v1/auth/login, then send "Authorization: Bearer <token>".
  */
 Route::prefix('v1')->name('api.v1.')->group(function () {
-    Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
+    Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:api-login')->name('login');
     // Siri/Shortcut one-action quick-add: token + text in the query, no header or JSON body needed.
     Route::get('quick/{type}', [LifeController::class, 'quickViaToken'])->where('type', 'shopping|task|note|inbox|auto')->middleware('throttle:60,1')->name('quick');
     // Home Assistant reports state changes here (secret in the address, see Smart home › Settings).

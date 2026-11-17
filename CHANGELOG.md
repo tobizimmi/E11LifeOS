@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.136.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio-Import in der App:** CSV-Export des Brokers oder PDF/Foto einer Abrechnung (per KI) einlesen, Vorschau prüfen und die Transaktionen ins Depot übernehmen.
+
 ## [1.135.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

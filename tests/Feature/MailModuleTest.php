@@ -19,15 +19,22 @@ class MailModuleTest extends TestCase
         [$user] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        Volt::test('mail.index')
+        $component = Volt::test('mail.index')
             ->set('aLabel', 'Proton privat')
             ->set('aImapHost', '127.0.0.1')
             ->set('aImapPort', 1143)
             ->set('aImapEncryption', 'tls')
             ->set('aUsername', 'me@proton.me')
-            ->set('aPassword', 'bridge-secret')
-            ->call('saveAccount')
-            ->assertHasNoErrors();
+            ->set('aPassword', 'bridge-secret');
+
+        // Diagnostic: confirm set() populated the property and the household resolved.
+        $component->assertSet('aLabel', 'Proton privat');
+        $component->assertSet('householdId', fn ($v) => $v !== null);
+
+        $component->call('saveAccount')->assertHasNoErrors();
+
+        // Diagnostic: did saveAccount run to completion (flash set at the very end)?
+        $component->assertSet('flash', 'Mail account saved.');
 
         $this->assertDatabaseHas('mail_accounts', ['user_id' => $user->id, 'label' => 'Proton privat']);
 
@@ -41,7 +48,9 @@ class MailModuleTest extends TestCase
         [$user] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        Volt::test('mail.index')->call('saveAccount')
+        $component = Volt::test('mail.index');
+        $component->assertSet('aLabel', ''); // diagnostic: defaults are empty
+        $component->call('saveAccount')
             ->assertHasErrors(['aLabel', 'aImapHost', 'aUsername', 'aPassword']);
 
         $this->assertDatabaseCount('mail_accounts', 0);

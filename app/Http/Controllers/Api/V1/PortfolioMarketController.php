@@ -24,6 +24,46 @@ use Illuminate\Support\Collection;
  */
 class PortfolioMarketController extends ApiController
 {
+    /**
+     * "Discover": the main indices and the results of the daily market scan per screener.
+     */
+    public function discover(Request $request, MarketData $market): JsonResponse
+    {
+        $screener = (string) $request->query('screener', 'day_losers');
+        $screener = in_array($screener, MarketData::SCREENERS, true) ? $screener : 'day_losers';
+
+        $quotes = $market->quotes(array_keys(MarketData::INDICES));
+        $indices = collect(MarketData::INDICES)->map(function (string $label, string $symbol) use ($quotes): array {
+            $quote = $quotes[$symbol] ?? null;
+
+            return ['symbol' => $symbol, 'name' => $label, 'price' => $quote?->last_price !== null ? (float) $quote->last_price : null, 'change' => $quote?->changePercent()];
+        })->values()->all();
+
+        $watched = WatchlistItem::where('user_id', $this->user()->id)->pluck('symbol')->flip();
+        $results = Security::where('scanned_at', '>=', now()->subDays(3))->get()
+            ->filter(fn (Security $security): bool => in_array($screener, $security->screeners ?? [], true))
+            ->sortBy(fn (Security $security): float => $screener === 'day_losers' ? ($security->changePercent() ?? 0) : -($security->changePercent() ?? 0))
+            ->values();
+        if (in_array($screener, ['undervalued_large_caps', 'most_actives'], true)) {
+            $results = $results->sortByDesc('market_cap')->values();
+        }
+
+        return $this->ok([
+            'screener' => $screener,
+            'screeners' => MarketData::SCREENERS,
+            'indices' => $indices,
+            'results' => $results->take(25)->map(fn (Security $security): array => [
+                'symbol' => $security->symbol,
+                'name' => $security->name,
+                'price' => $security->last_price !== null ? (float) $security->last_price : null,
+                'currency' => $security->currency,
+                'change' => $security->changePercent(),
+                'market_cap' => $security->market_cap !== null ? (int) $security->market_cap : null,
+                'watched' => $watched->has($security->symbol),
+            ])->all(),
+        ]);
+    }
+
     public function market(MarketData $market): JsonResponse
     {
         $user = $this->user();

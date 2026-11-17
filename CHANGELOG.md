@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.134.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Entdecken“ in der App:** die wichtigsten Indizes und der tägliche Marktscan (Gewinner, Verlierer, unterbewertete Werte …) mit Übernahme in die Watchlist.
+- **Portfolio-Einstellungen in der App:** Strategie, Schwellen, Freibetrag, Kirchensteuer, Vergleichsindex, Standard-Depot, Benachrichtigungen (Pushover, Nachrichten) und Gewichtung des Punktesystems.
+
+## [1.133.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Reisen in der App:** Wetter-Vorhersage, Kommentare und Vorschläge der Reisegruppe (übernehmen, ablehnen, löschen) und „Orte nach Entfernung sortieren“ für einen Tag.
+
 ## [1.132.1] – 2026-11-17
 
 ### Behoben

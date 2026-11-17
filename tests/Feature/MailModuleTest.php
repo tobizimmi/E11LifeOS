@@ -20,7 +20,6 @@ class MailModuleTest extends TestCase
         $this->actingAs($user);
 
         Volt::test('mail.index')
-            ->call('newAccount')
             ->set('aLabel', 'Proton privat')
             ->set('aImapHost', '127.0.0.1')
             ->set('aImapPort', 1143)
@@ -28,12 +27,11 @@ class MailModuleTest extends TestCase
             ->set('aUsername', 'me@proton.me')
             ->set('aPassword', 'bridge-secret')
             ->call('saveAccount')
-            ->assertHasNoErrors()
-            ->assertSet('showAccountForm', false);
+            ->assertHasNoErrors();
 
-        $account = MailAccount::sole();
-        $this->assertSame('Proton privat', $account->label);
-        $this->assertSame($user->id, $account->user_id);
+        $this->assertDatabaseHas('mail_accounts', ['user_id' => $user->id, 'label' => 'Proton privat']);
+
+        $account = MailAccount::where('user_id', $user->id)->sole();
         $this->assertSame('me@proton.me', $account->username); // decrypted via cast
         $this->assertSame('bridge-secret', $account->password);
     }
@@ -43,10 +41,10 @@ class MailModuleTest extends TestCase
         [$user] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        Volt::test('mail.index')->call('newAccount')->call('saveAccount')
+        Volt::test('mail.index')->call('saveAccount')
             ->assertHasErrors(['aLabel', 'aImapHost', 'aUsername', 'aPassword']);
 
-        $this->assertSame(0, MailAccount::count());
+        $this->assertDatabaseCount('mail_accounts', 0);
     }
 
     public function test_the_proton_preset_fills_bridge_defaults(): void

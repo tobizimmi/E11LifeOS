@@ -221,9 +221,12 @@ new #[Layout('layouts.app')] class extends Component
         ];
     }
 
-    private function validateAccount(): void
+    /**
+     * @return array<string, mixed>
+     */
+    private function accountRules(): array
     {
-        $this->validate([
+        return [
             'aLabel' => ['required', 'string', 'max:80'],
             'aProvider' => ['required', 'in:'.implode(',', MailAccount::PROVIDERS)],
             'aImapHost' => ['required', 'string', 'max:255'],
@@ -232,33 +235,26 @@ new #[Layout('layouts.app')] class extends Component
             'aSmtpPort' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'aUsername' => ['required', 'string', 'max:255'],
             'aPassword' => [$this->editingAccountId ? 'nullable' : 'required', 'string', 'max:255'],
-        ]);
+        ];
     }
 
     public function saveAccount(): void
     {
-        $this->validateAccount();
+        $this->validate($this->accountRules());
         $data = $this->accountData();
 
-        if ($this->editingAccountId) {
-            $account = $this->accounts->firstWhere('id', $this->editingAccountId);
+        $account = $this->editingAccountId
+            ? ($this->accounts->firstWhere('id', $this->editingAccountId) ?? new MailAccount)
+            : new MailAccount(['user_id' => $this->currentUser()->id, 'household_id' => (int) $this->householdId]);
 
-            if (! $account) {
-                return;
-            }
-
-            if ($this->aPassword !== '') {
-                $data['password'] = $this->aPassword;
-            }
-
-            $account->forceFill($data)->save();
-        } else {
+        if (! $this->editingAccountId || $this->aPassword !== '') {
             $data['password'] = $this->aPassword;
-            $account = MailAccount::create($data + ['user_id' => $this->currentUser()->id, 'household_id' => (int) $this->householdId]);
-            $this->selectedAccountId = $account->id;
         }
 
+        $account->fill($data)->save();
+
         unset($this->accounts);
+        $this->selectedAccountId = $account->id;
         $this->showAccountForm = false;
         $this->flash = __('Mail account saved.');
     }
@@ -279,7 +275,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function testConnection(): void
     {
-        $this->validateAccount();
+        $this->validate($this->accountRules());
         $data = $this->accountData();
         $password = $this->aPassword;
 

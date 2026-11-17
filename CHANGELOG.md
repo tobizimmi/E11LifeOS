@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.143.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Gruppen in der App:** Einer Gruppe per Einladungslink beitreten (allein oder als Haushalts-Inhaber mit dem ganzen Haushalt) und einen Haushalt wieder aus einer Gruppe nehmen.
+
 ## [1.142.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

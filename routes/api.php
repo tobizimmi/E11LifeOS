@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\FinanceExtrasController;
 use App\Http\Controllers\Api\V1\FinanceFilesController;
 use App\Http\Controllers\Api\V1\FinanceInsightsController;
 use App\Http\Controllers\Api\V1\FocusController;
+use App\Http\Controllers\Api\V1\GroupJoinController;
 use App\Http\Controllers\Api\V1\GroupsController;
 use App\Http\Controllers\Api\V1\HabitController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -351,6 +352,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('groups', [GroupsController::class, 'index'])->name('groups.index');
         Route::post('groups', [GroupsController::class, 'store'])->name('groups.store');
+        Route::get('groups/join/{token}', [GroupJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:api-20')->name('groups.join.show');
+        Route::post('groups/join/{token}', [GroupJoinController::class, 'join'])->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:api-20')->name('groups.join.api');
+        Route::delete('groups/{group}/households/{household}', [GroupJoinController::class, 'removeHousehold'])->whereNumber(['group', 'household'])->name('groups.households.destroy');
         Route::post('groups/{group}/invite', [GroupsController::class, 'createInvite'])->whereNumber('group')->name('groups.invite');
         Route::delete('groups/{group}/invite', [GroupsController::class, 'revokeInvite'])->whereNumber('group')->name('groups.invite.revoke');
         Route::delete('groups/{group}/members/{member}', [GroupsController::class, 'removeMember'])->whereNumber(['group', 'member'])->name('groups.members.destroy');

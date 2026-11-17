@@ -50,4 +50,28 @@ class ApiGroupsTest extends TestCase
         $this->getJson('/api/v1/groups', $this->headersFor($stranger))->assertJsonCount(0, 'data.groups');
         $this->deleteJson("/api/v1/groups/{$id}", [], $this->headersFor($stranger))->assertNotFound();
     }
+
+    public function test_joining_with_the_invite_link_and_removing_a_household(): void
+    {
+        [$owner] = $this->memberWithHousehold();
+        $ownerHeaders = $this->headersFor($owner);
+        $id = $this->postJson('/api/v1/groups', ['name' => 'Verein', 'icon' => '⚽'], $ownerHeaders)->assertCreated()->json('data.id');
+        $token = basename((string) $this->postJson("/api/v1/groups/{$id}/invite", [], $ownerHeaders)->json('data.url'));
+
+        [$guest] = $this->memberWithHousehold();
+        $headers = $this->headersFor($guest);
+        $this->getJson('/api/v1/groups/join/'.$token, $headers)->assertOk()->assertJsonPath('data.name', 'Verein')->assertJsonPath('data.is_member', false)->assertJsonPath('data.household.size', 1);
+        $this->getJson('/api/v1/groups/join/'.str_repeat('a', 40), $headers)->assertNotFound();
+
+        $this->postJson('/api/v1/groups/join/'.$token, ['with_household' => true], $headers)->assertOk();
+        $this->getJson('/api/v1/groups', $headers)->assertOk()->assertJsonPath('data.groups.0.households.0.name', $guest->currentHousehold()->name);
+        $this->getJson('/api/v1/groups/join/'.$token, $headers)->assertJsonPath('data.household', null);
+        $this->postJson('/api/v1/groups/join/'.$token, [], $headers)->assertOk();
+        $this->getJson('/api/v1/groups', $headers)->assertJsonCount(2, 'data.groups.0.members');
+
+        [$stranger] = $this->memberWithHousehold();
+        $this->deleteJson("/api/v1/groups/{$id}/households/{$guest->currentHousehold()->id}", [], $this->headersFor($stranger))->assertNotFound();
+        $this->deleteJson("/api/v1/groups/{$id}/households/{$guest->currentHousehold()->id}", [], $ownerHeaders)->assertOk();
+        $this->getJson('/api/v1/groups', $this->headersFor($owner))->assertJsonCount(0, 'data.groups.0.households');
+    }
 }

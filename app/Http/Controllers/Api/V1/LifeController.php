@@ -384,6 +384,7 @@ class LifeController extends ApiController
                 'available' => round((float) $row['available'], 2),
                 'remaining' => round((float) $row['remaining'], 2),
                 'percent' => (float) $row['percent'],
+                'rollover' => $budget?->rollover_from !== null,
             ];
         }
 

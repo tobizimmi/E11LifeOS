@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioImportController;
 use App\Http\Controllers\Api\V1\PortfolioInsightsController;
+use App\Http\Controllers\Api\V1\PortfolioInstagramController;
 use App\Http\Controllers\Api\V1\PortfolioMarketController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\PortfolioSettingsController;
@@ -635,6 +636,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('portfolio-import', [PortfolioImportController::class, 'brokers'])->name('portfolios.import.brokers');
             Route::post('portfolio-import/parse', [PortfolioImportController::class, 'parse'])->middleware('throttle:api-20')->name('portfolios.import.parse');
             Route::post('portfolio-import/commit', [PortfolioImportController::class, 'commit'])->middleware('throttle:api-20')->name('portfolios.import.commit');
+            Route::get('portfolio-instagram', [PortfolioInstagramController::class, 'index'])->middleware('throttle:api-30')->name('portfolios.instagram.index');
+            Route::post('portfolio-instagram/push', [PortfolioInstagramController::class, 'togglePush'])->name('portfolios.instagram.push');
+            Route::post('portfolio-instagram/{post}/watch', [PortfolioInstagramController::class, 'watch'])->whereNumber('post')->name('portfolios.instagram.watch');
+            Route::post('portfolio-instagram/{post}/alerts', [PortfolioInstagramController::class, 'alerts'])->whereNumber('post')->name('portfolios.instagram.alerts');
             Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
             Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
             Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');

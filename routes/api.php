@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\OffersController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
+use App\Http\Controllers\Api\V1\PortfolioBankingController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioImportController;
 use App\Http\Controllers\Api\V1\PortfolioInsightsController;
@@ -562,6 +563,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::post('health/profiles/{profile}/entries/{entry}/done', [HealthController::class, 'done'])->whereNumber(['profile', 'entry'])->name('health.entries.done');
                 Route::post('health/profiles/{profile}/entries/{entry}/toggle', [HealthController::class, 'toggleActive'])->whereNumber(['profile', 'entry'])->name('health.entries.toggle');
                 Route::delete('health/profiles/{profile}/entries/{entry}', [HealthController::class, 'destroyEntry'])->whereNumber(['profile', 'entry'])->name('health.entries.destroy');
+            });
+
+            Route::middleware(['addon:portfolio', 'sensitive.log:banking'])->group(function () {
+                Route::get('banking', [PortfolioBankingController::class, 'index'])->name('banking.index');
+                Route::put('banking/alerts', [PortfolioBankingController::class, 'saveAlerts'])->name('banking.alerts');
+                Route::post('banking/links/{link}/sync', [PortfolioBankingController::class, 'syncLink'])->whereNumber('link')->middleware('throttle:api-20')->name('banking.links.sync');
+                Route::post('banking/links/{link}/auto-sync', [PortfolioBankingController::class, 'toggleLinkAutoSync'])->whereNumber('link')->name('banking.links.auto');
+                Route::delete('banking/links/{link}', [PortfolioBankingController::class, 'destroyLink'])->whereNumber('link')->name('banking.links.destroy');
+                Route::post('banking/connections/{connection}/account', [PortfolioBankingController::class, 'toggleAccount'])->whereNumber('connection')->name('banking.connections.account');
             });
 
             Route::middleware('sensitive.log:emergency')->group(function () {

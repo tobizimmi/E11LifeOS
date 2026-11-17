@@ -21,14 +21,18 @@ class MailModuleTest extends TestCase
 
         $this->withoutExceptionHandling();
 
-        Volt::test('mail.index')
-            ->set('aLabel', 'Proton privat')
-            ->set('aImapHost', '127.0.0.1')
-            ->set('aImapPort', 1143)
-            ->set('aImapEncryption', 'tls')
-            ->set('aUsername', 'me@proton.me')
-            ->set('aPassword', 'bridge-secret')
-            ->call('saveAccount');
+        try {
+            Volt::test('mail.index')
+                ->set('aLabel', 'Proton privat')
+                ->set('aImapHost', '127.0.0.1')
+                ->set('aImapPort', 1143)
+                ->set('aImapEncryption', 'tls')
+                ->set('aUsername', 'me@proton.me')
+                ->set('aPassword', 'bridge-secret')
+                ->call('saveAccount');
+        } catch (\Throwable $e) {
+            $this->fail('EX '.get_class($e).' code='.(method_exists($e, 'getStatusCode') ? $e->getStatusCode() : $e->getCode()).' msg="'.$e->getMessage().'" TRACE: '.substr($e->getTraceAsString(), 0, 1200));
+        }
 
         $this->assertDatabaseHas('mail_accounts', ['user_id' => $user->id, 'label' => 'Proton privat']);
 

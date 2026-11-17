@@ -64,6 +64,13 @@ class AppServiceProvider extends ServiceProvider
             RateLimiter::for('api-'.$perMinute, fn (Request $request) => Limit::perMinute($perMinute)->by(($request->user()?->getAuthIdentifier() ?? $request->ip()).'|'.($request->route()?->getName() ?? $request->path())));
         }
 
+        // App sign-in: 10 tries per minute for one account (brute force) and a generous limit per address. A
+        // plain per-address limit blocked every phone behind a shared address (mobile network, proxy).
+        RateLimiter::for('api-login', fn (Request $request) => [
+            Limit::perMinute(10)->by('login|'.mb_strtolower((string) $request->input('email', $request->input('username', '')))),
+            Limit::perMinute(120)->by('login-ip|'.$request->ip()),
+        ]);
+
         Gate::define('admin', fn (User $user) => $user->isAdmin());
 
         // Documents, ID scans and receipts are stored encrypted (disk "secure").

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.141.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Mehr aus dem Web in der App:** Reisekarte (Orte mit Position), Familienbildschirm, Menü anpassen, PDF-Design (mit Vorschau eines echten Rezepts), Business-Einstellungen mit Logo, Google Drive verbinden (die Anmeldung läuft im Browser und führt zurück in die App), Kontoauszug-Import (CSV) sowie Steuer-CSV und Finanzbericht als PDF zum Teilen.
+
 ## [1.140.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

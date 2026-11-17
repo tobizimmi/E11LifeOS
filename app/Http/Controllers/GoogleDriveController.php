@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Api\V1\DriveGoogleController;
 use App\Models\NetworkDrive;
+use App\Models\User;
 use App\Support\Drives\GoogleDriveClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -25,23 +28,39 @@ class GoogleDriveController extends Controller
 
     public function callback(Request $request): RedirectResponse
     {
+        // From the app: the state was handed out by the API and belongs to one member.
+        $appUserId = Cache::pull(DriveGoogleController::STATE_PREFIX.(string) $request->query('state', ''));
+
+        if ($appUserId) {
+            $user = User::find($appUserId) ?? abort(403);
+            $this->store($user, $request, false);
+
+            return redirect()->away('e11lifeos://drives');
+        }
+
+        $user = $request->user() ?? abort(403);
         $expected = (string) $request->session()->pull('google_drive_state', '');
 
         if ($expected === '' || ! hash_equals($expected, (string) $request->query('state', ''))) {
             abort(403);
         }
 
+        return $this->store($user, $request, true);
+    }
+
+    private function store(User $user, Request $request, bool $web): RedirectResponse
+    {
         if (blank($request->query('code'))) {
-            return redirect()->route('drives.index')->with('error', __('Google Drive was not connected.'));
+            return $web ? redirect()->route('drives.index')->with('error', __('Google Drive was not connected.')) : redirect()->away('e11lifeos://drives');
         }
 
         try {
             $token = GoogleDriveClient::exchangeCode((string) $request->query('code'));
         } catch (Throwable $exception) {
-            return redirect()->route('drives.index')->with('error', $exception->getMessage());
+            return $web ? redirect()->route('drives.index')->with('error', $exception->getMessage()) : redirect()->away('e11lifeos://drives');
         }
 
-        $drive = NetworkDrive::firstOrNew(['user_id' => $request->user()->id, 'type' => 'google']);
+        $drive = NetworkDrive::firstOrNew(['user_id' => $user->id, 'type' => 'google']);
         $previous = $drive->token ?? [];
         $drive->fill([
             'name' => $drive->name ?: 'Google Drive',

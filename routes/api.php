@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\V1\RealEstateFinanceController;
 use App\Http\Controllers\Api\V1\RealEstateHandoverController;
 use App\Http\Controllers\Api\V1\RealEstateLettingController;
 use App\Http\Controllers\Api\V1\RealEstateRentalController;
+use App\Http\Controllers\Api\V1\RecipeCategoryController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\RecipeImportController;
 use App\Http\Controllers\Api\V1\RecommendationController;
@@ -567,6 +568,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::middleware('addon:recipes')->group(function () {
             Route::get('recipes/import', [RecipeImportController::class, 'sources'])->name('recipes.import.sources');
             Route::post('recipes/import', [RecipeImportController::class, 'import'])->middleware('throttle:api-20')->name('recipes.import');
+            Route::get('recipe-categories', [RecipeCategoryController::class, 'index'])->name('recipe-categories.index');
+            Route::post('recipe-categories', [RecipeCategoryController::class, 'store'])->name('recipe-categories.store');
+            Route::put('recipe-categories/{category}', [RecipeCategoryController::class, 'update'])->whereNumber('category')->name('recipe-categories.update');
+            Route::post('recipe-categories/{category}/move', [RecipeCategoryController::class, 'move'])->whereNumber('category')->name('recipe-categories.move');
+            Route::delete('recipe-categories/{category}', [RecipeCategoryController::class, 'destroy'])->whereNumber('category')->name('recipe-categories.destroy');
             Route::get('recipes', [RecipeController::class, 'index'])->name('recipes.index');
             Route::post('recipes', [RecipeController::class, 'store'])->name('recipes.store');
             Route::get('recipes/{recipe}', [RecipeController::class, 'show'])->whereNumber('recipe')->name('recipes.show');

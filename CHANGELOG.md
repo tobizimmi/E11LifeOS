@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.132.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Rezept-Kategorien in der App:** anlegen, umbenennen, Symbol ändern, verschieben und löschen (Rezepte bleiben erhalten); Rezepte lassen sich Kategorien zuordnen.
+
 ## [1.131.0] – 2026-11-16
 
 ### Neu (App-Schnittstelle)

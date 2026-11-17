@@ -22,7 +22,7 @@ class PortfolioSettingsController extends ApiController
 
     public function update(Request $request): JsonResponse
     {
-        $household = $this->household();
+        $this->household();
         $data = $request->validate([
             'default_portfolio_id' => ['sometimes', 'nullable', 'integer'],
             'benchmark_symbol' => ['sometimes', 'string', 'max:20'],
@@ -48,7 +48,7 @@ class PortfolioSettingsController extends ApiController
 
         if (array_key_exists('default_portfolio_id', $data)) {
             $id = $data['default_portfolio_id'];
-            $data['default_portfolio_id'] = $id !== null && Portfolio::query()->where('household_id', $household->id)->whereKey((int) $id)->exists() ? (int) $id : null;
+            $data['default_portfolio_id'] = $id !== null && Portfolio::query()->where('user_id', $this->user()->id)->whereKey((int) $id)->exists() ? (int) $id : null;
         }
         if (isset($data['benchmark_symbol'])) {
             $data['benchmark_symbol'] = strtoupper((string) $data['benchmark_symbol']);
@@ -96,7 +96,7 @@ class PortfolioSettingsController extends ApiController
      */
     private function data(PortfolioSetting $settings): array
     {
-        $household = $this->household();
+        $this->household();
 
         return [
             'default_portfolio_id' => $settings->getAttribute('default_portfolio_id') === null ? null : (int) $settings->getAttribute('default_portfolio_id'),
@@ -120,7 +120,7 @@ class PortfolioSettingsController extends ApiController
             'news_push_max_age_hours' => (int) ($settings->getAttribute('news_push_max_age_hours') ?? 24),
             'notifications_enabled' => (bool) ($settings->getAttribute('notifications_enabled') ?? true),
             'strategies' => PortfolioSetting::STRATEGIES,
-            'portfolios' => Portfolio::query()->where('household_id', $household->id)->orderBy('name')->get(['id', 'name'])->map(fn (Portfolio $portfolio): array => ['id' => $portfolio->id, 'name' => $portfolio->name])->all(),
+            'portfolios' => Portfolio::query()->where('user_id', $this->user()->id)->orderBy('name')->get(['id', 'name'])->map(fn (Portfolio $portfolio): array => ['id' => $portfolio->id, 'name' => $portfolio->name])->all(),
             'score_factors' => collect(StockScore::factors())->map(fn (array $factor, string $key): array => [
                 'key' => $key,
                 'label' => $factor['label'],

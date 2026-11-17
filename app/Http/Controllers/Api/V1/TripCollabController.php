@@ -8,6 +8,8 @@ use App\Models\TripStop;
 use App\Support\Life\PlaceFinder;
 use App\Support\Life\TripDayPlanner;
 use App\Support\Life\TripFeedbackBox;
+use App\Support\Life\TripItinerary;
+use App\Support\Life\TripRoutes;
 use App\Support\Weather;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -92,6 +94,91 @@ class TripCollabController extends ApiController
         }
 
         return $this->ok(['sorted' => $stops->count()]);
+    }
+
+    /**
+     * Duration and distance per day and per way (to each place from the one before). With
+     * `fetch=1` missing routes are calculated first; otherwise only remembered ones are returned
+     * and `pending` lists the days still to calculate.
+     */
+    public function routes(Request $request, int $trip): JsonResponse
+    {
+        $model = $this->find($trip)->load('stops');
+        $mode = $this->tripMode($model);
+        $routes = TripItinerary::dayRoutes(TripItinerary::build($model), $mode, fetch: $request->boolean('fetch'));
+
+        return $this->ok([
+            'travel_mode' => $mode,
+            'modes' => $this->modes(),
+            'days' => collect($routes['days'])->map(fn (array $day, string $date): array => [
+                'date' => $date,
+                'duration' => round($day['duration']),
+                'distance' => round($day['distance']),
+                'mode' => $day['mode'],
+                'legs' => collect($day['legs'])->map(fn (array $leg, int $stopId): array => ['stop_id' => $stopId, 'duration' => round($leg['duration']), 'distance' => round($leg['distance']), 'mode' => $leg['mode']])->values()->all(),
+            ])->values()->all(),
+            'pending' => $routes['pending'],
+            'failed' => $routes['failed'],
+        ]);
+    }
+
+    /**
+     * On foot, by bike or by car for the whole trip (the routes and times of all days change).
+     */
+    public function setTravelMode(Request $request, int $trip): JsonResponse
+    {
+        $model = $this->find($trip);
+        $data = $request->validate(['mode' => ['required', 'in:'.implode(',', array_keys(TripRoutes::modes()))]]);
+        $model->update(['travel_mode' => $data['mode']]);
+
+        return $this->ok(['travel_mode' => $data['mode']]);
+    }
+
+    /**
+     * The way to one entry: its own mode, or null for "as set for the trip".
+     */
+    public function setStopMode(Request $request, int $stop): JsonResponse
+    {
+        $model = TripStop::findOrFail($stop);
+        $trip = $this->find($model->trip_id);
+        $data = $request->validate(['mode' => ['nullable', 'in:'.implode(',', array_keys(TripRoutes::modes()))]]);
+        $mode = $data['mode'] ?? null;
+        $model->update(['travel_mode' => $mode === $this->tripMode($trip) ? null : $mode]);
+
+        return $this->ok(['travel_mode' => $model->travel_mode]);
+    }
+
+    /**
+     * Sets the times of a day: stay at each place plus the way to the next one.
+     */
+    public function scheduleDay(int $trip, string $day): JsonResponse
+    {
+        $model = $this->find($trip)->load('stops');
+        abort_unless((bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $day), 422);
+
+        $mode = $this->tripMode($model);
+        $routes = TripItinerary::dayRoutes(TripItinerary::build($model), $mode, fetch: true);
+        $stops = $model->stops()->whereDate('day', $day)->get()->values();
+
+        $planned = TripDayPlanner::schedule($stops, $routes['days'][$day]['legs'] ?? [], $mode);
+        foreach ($planned as $id => $times) {
+            $stops->firstWhere('id', $id)?->update($times);
+        }
+
+        return $this->ok(['scheduled' => count($planned)]);
+    }
+
+    private function tripMode(Trip $trip): string
+    {
+        return $trip->travel_mode ?: 'foot';
+    }
+
+    /**
+     * @return list<array{key: string, icon: string, label: string}>
+     */
+    private function modes(): array
+    {
+        return collect(TripRoutes::modes())->map(fn (array $mode, string $key): array => ['key' => $key, 'icon' => $mode['icon'], 'label' => $mode['label']])->values()->all();
     }
 
     /**

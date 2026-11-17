@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.135.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Einblicke“ in der App:** die eigenen Werte auf einen Blick (Analysten, Insider, eigene Strategie, nächste Zahlen, letzte Nachricht) und das Insider-Barometer; Kennzahlen neu laden.
+
 ## [1.134.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

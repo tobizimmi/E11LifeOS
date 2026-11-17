@@ -24,6 +24,8 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, pdo_sqlite, sqlite3, gd
           coverage: none
+          # The whole suite runs in one process; the default 128M limit is nearly used up.
+          ini-values: memory_limit=512M
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -54,6 +56,8 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, pdo_sqlite, sqlite3, gd
           coverage: none
+          # The whole suite runs in one process; the default 128M limit is nearly used up.
+          ini-values: memory_limit=512M
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -114,6 +118,8 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, pdo_mysql, gd
           coverage: none
+          # The whole suite runs in one process; the default 128M limit is nearly used up.
+          ini-values: memory_limit=512M
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress

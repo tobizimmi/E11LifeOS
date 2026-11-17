@@ -21,6 +21,49 @@ use Illuminate\Support\Facades\Cache;
  */
 class TripCollabController extends ApiController
 {
+    /**
+     * The places of the trip with their map position. Entries without one are looked up (a few per
+     * call) and remembered.
+     */
+    public function map(int $trip): JsonResponse
+    {
+        $model = $this->find($trip)->load('stops');
+        $lookups = 0;
+
+        foreach ($model->stops as $stop) {
+            if ($stop->hasPosition() || $lookups >= 6) {
+                continue;
+            }
+
+            $query = $stop->location ?: ($model->destination ? $stop->title.', '.$model->destination : null);
+            if (! $query) {
+                continue;
+            }
+
+            $lookups++;
+            $position = PlaceFinder::locate($query, $stop->location ? $model->destination : null);
+
+            if ($position !== null) {
+                $stop->update(['lat' => $position['lat'], 'lng' => $position['lng']]);
+            }
+        }
+
+        return $this->ok([
+            'stops' => $model->stops->filter(fn (TripStop $stop): bool => $stop->hasPosition())
+                ->sortBy([['day', 'asc'], ['position', 'asc']])->values()
+                ->map(fn (TripStop $stop): array => [
+                    'id' => $stop->id,
+                    'title' => PlaceFinder::readable((string) $stop->title),
+                    'kind' => $stop->kind,
+                    'day' => $stop->day?->toDateString(),
+                    'time' => $stop->time,
+                    'lat' => (float) $stop->lat,
+                    'lng' => (float) $stop->lng,
+                ])->all(),
+            'missing' => $model->stops->reject(fn (TripStop $stop): bool => $stop->hasPosition())->count(),
+        ]);
+    }
+
     public function weather(int $trip): JsonResponse
     {
         $model = $this->find($trip)->load('stops');

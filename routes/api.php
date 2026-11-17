@@ -627,6 +627,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('quotes/{symbol}', [MarketController::class, 'quote'])->where('symbol', '[A-Za-z0-9.\-^=]{1,32}')->name('quote');
             Route::get('search', [MarketController::class, 'search'])->name('search');
 
+            Route::get('portfolio-reports/discover', [PortfolioMarketController::class, 'discover'])->middleware('throttle:api-30')->name('portfolios.reports.discover');
             Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
             Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
             Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');

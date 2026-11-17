@@ -6,6 +6,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 ## [1.134.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)
+- **Portfolio „Entdecken“ in der App:** die wichtigsten Indizes und der tägliche Marktscan (Gewinner, Verlierer, unterbewertete Werte …) mit Übernahme in die Watchlist.
 - **Portfolio-Einstellungen in der App:** Strategie, Schwellen, Freibetrag, Kirchensteuer, Vergleichsindex, Standard-Depot, Benachrichtigungen (Pushover, Nachrichten) und Gewichtung des Punktesystems.
 
 ## [1.133.0] – 2026-11-17

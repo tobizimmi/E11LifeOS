@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\NewsArticle;
+use App\Models\Security;
 use App\Models\User;
 use App\Models\WatchlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,5 +52,22 @@ class ApiPortfolioMarketTest extends TestCase
         Http::fake(['*' => Http::response([], 500)]);
 
         $this->getJson('/api/v1/portfolio-reports/market', $this->headersFor($user))->assertOk()->assertJsonStructure(['data' => ['global' => ['rows', 'light'], 'sectors', 'scores']]);
+    }
+
+    public function test_discover_lists_indices_and_scan_results(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $household->setAddon('portfolio', true);
+        Http::fake(['*' => Http::response([], 500)]);
+        Security::create(['symbol' => 'AAA', 'name' => 'Alpha', 'last_price' => 90, 'previous_close' => 100, 'currency' => 'EUR', 'screeners' => ['day_losers'], 'scanned_at' => now()]);
+        Security::create(['symbol' => 'BBB', 'name' => 'Beta', 'last_price' => 110, 'previous_close' => 100, 'currency' => 'EUR', 'screeners' => ['day_gainers'], 'scanned_at' => now()]);
+        WatchlistItem::create(['user_id' => $user->id, 'symbol' => 'AAA']);
+        $headers = $this->headersFor($user);
+
+        $this->getJson('/api/v1/portfolio-reports/discover', $headers)->assertOk()
+            ->assertJsonPath('data.results.0.symbol', 'AAA')->assertJsonPath('data.results.0.watched', true)->assertJsonPath('data.results.0.change', -10)
+            ->assertJsonCount(1, 'data.results')->assertJsonPath('data.indices.0.name', 'DAX');
+        $this->getJson('/api/v1/portfolio-reports/discover?screener=day_gainers', $headers)->assertOk()->assertJsonPath('data.results.0.symbol', 'BBB');
+        $this->getJson('/api/v1/portfolio-reports/discover?screener=nope', $headers)->assertOk()->assertJsonPath('data.screener', 'day_losers');
     }
 }

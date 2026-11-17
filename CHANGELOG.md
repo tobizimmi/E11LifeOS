@@ -3,6 +3,16 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.118.0] – 2026-11-17
+
+### Neu (Mail – Stufe 1: Lesen & Weiterverwenden)
+- **Neues Modul „Mail" (Alltagsbereich).** Pro Nutzer **private** IMAP-Mailkonten (mehrere möglich), inkl. **Proton-(Bridge-)Vorlage** mit vorausgefüllten Ports (IMAP 1143/STARTTLS, SMTP 1025) für Proton Mail über die Proton Bridge.
+- **Konten verwalten:** anlegen, bearbeiten, löschen, **Verbindung testen**; Zugangsdaten verschlüsselt gespeichert.
+- **Mails lesen:** inkrementeller IMAP-Sync (`mail:sync`, alle 5 Minuten) holt neue Mails ins Tool, **ohne sie auf dem Server zu löschen**; Liste mit Gelesen-/Ungelesen-Status, Suche, Leseansicht (Klartext). Geänderte UIDVALIDITY wird erkannt und neu synchronisiert.
+- **Mails weiterverwenden:** eine Mail per Klick als **Aufgabe**, in die **Einkaufsliste** oder in den **Eingang** übernehmen.
+- Das Modul lässt sich pro Nutzer über die Navigation ein-/ausblenden.
+- Hinweis: Senden (SMTP), Ordner/Threads und Anhang-Übernahme sind als nächste Stufen vorgesehen.
+
 ## [1.117.1] – 2026-11-15
 
 ### Verbessert (Anlegen / „+")

@@ -40,9 +40,15 @@ class Mailbox
         $this->stream = $stream;
     }
 
-    public function open(): void
+    /**
+     * Opens the connection and logs in, then selects the INBOX. The catch-all intake passes no
+     * config and uses the server's own mailbox; a personal mail account passes its own settings.
+     *
+     * @param  array{host: string, port: int, encryption: string, validate_cert: bool, username: string, password: string}|null  $config
+     */
+    public function open(?array $config = null, bool $select = true): void
     {
-        $config = config('services.inbound_mail');
+        $config ??= config('services.inbound_mail');
 
         if (! $this->stream) {
             $this->connect((string) $config['host'], (int) $config['port'], (string) $config['encryption'], (bool) $config['validate_cert']);
@@ -63,7 +69,29 @@ class Mailbox
         }
 
         $this->command('LOGIN '.$this->quote((string) $config['username']).' '.$this->quote((string) $config['password']), 'Mailbox login failed');
-        $this->command('SELECT INBOX');
+
+        if ($select) {
+            $this->command('SELECT INBOX');
+        }
+    }
+
+    /**
+     * Closes the connection without expunging – a client must never delete the member's server mail.
+     */
+    public function logout(): void
+    {
+        if (! $this->stream) {
+            return;
+        }
+
+        try {
+            $this->command('LOGOUT');
+        } catch (RuntimeException) {
+            // The server may close the connection right after LOGOUT.
+        } finally {
+            fclose($this->stream);
+            $this->stream = null;
+        }
     }
 
     /**
@@ -144,6 +172,86 @@ class Mailbox
             fclose($this->stream);
             $this->stream = null;
         }
+    }
+
+    /**
+     * Selects a folder and returns its UIDVALIDITY and message count. A changed UIDVALIDITY means
+     * the server reassigned UIDs, so a client must drop what it cached for that folder and resync.
+     *
+     * @return array{uidvalidity: int, exists: int}
+     */
+    public function selectFolder(string $folder = 'INBOX'): array
+    {
+        $uidValidity = 0;
+        $exists = 0;
+
+        foreach ($this->command('SELECT '.$this->quote($folder)) as $response) {
+            if (preg_match('/\[UIDVALIDITY (\d+)\]/i', $response['line'], $match)) {
+                $uidValidity = (int) $match[1];
+            }
+
+            if (preg_match('/^\* (\d+) EXISTS/i', $response['line'], $match)) {
+                $exists = (int) $match[1];
+            }
+        }
+
+        return ['uidvalidity' => $uidValidity, 'exists' => $exists];
+    }
+
+    /**
+     * The UIDs of all mails in the selected folder (ascending).
+     *
+     * @return list<int>
+     */
+    public function uidSearchAll(): array
+    {
+        $uids = [];
+
+        foreach ($this->command('UID SEARCH ALL') as $response) {
+            if (preg_match('/^\* SEARCH\b(.*)$/i', $response['line'], $match)) {
+                $uids = array_merge($uids, array_map('intval', preg_split('/\s+/', trim($match[1]), -1, PREG_SPLIT_NO_EMPTY) ?: []));
+            }
+        }
+
+        sort($uids);
+
+        return $uids;
+    }
+
+    /**
+     * Fetches one mail by UID: whether it is seen on the server, its size and the raw RFC822 source.
+     *
+     * @return array{seen: bool, size: int, raw: string}
+     */
+    public function uidFetch(int $uid): array
+    {
+        $seen = false;
+        $size = 0;
+        $raw = '';
+
+        foreach ($this->command('UID FETCH '.$uid.' (FLAGS RFC822.SIZE BODY.PEEK[])') as $response) {
+            if (preg_match('/FLAGS \(([^)]*)\)/i', $response['line'], $match) && stripos($match[1], '\\Seen') !== false) {
+                $seen = true;
+            }
+
+            if (preg_match('/RFC822\.SIZE (\d+)/i', $response['line'], $match)) {
+                $size = (int) $match[1];
+            }
+
+            if ($response['literal'] !== null) {
+                $raw = $response['literal'];
+            }
+        }
+
+        return ['seen' => $seen, 'size' => $size, 'raw' => $raw];
+    }
+
+    /**
+     * Marks a mail as read on the server (so the state matches what the member saw in the tool).
+     */
+    public function uidMarkSeen(int $uid): void
+    {
+        $this->command('UID STORE '.$uid.' +FLAGS.SILENT (\\Seen)');
     }
 
     private function connect(string $host, int $port, string $encryption, bool $validateCertificate): void

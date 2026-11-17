@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.138.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Banking in der App** (hinter der Passwort-Bestätigung): Übersicht der Bank-Verbindungen (PSD2 und FinTS) mit Konten und Abrufstand, PSD2-Verbindung jetzt abrufen, Auto-Abruf, Verbindung trennen, Kontoschalter und Bank-Benachrichtigungen (Gehalt, hohe Abbuchung, Kontostand, Prognose). Das Einrichten einer Verbindung (PIN, TAN, Weiterleitung zur Bank) bleibt im Browser.
+
 ## [1.137.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

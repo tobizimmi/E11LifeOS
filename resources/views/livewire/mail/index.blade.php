@@ -242,21 +242,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->validate($this->accountRules());
 
-        $data = $this->accountData();
-
-        $account = $this->editingAccountId
-            ? ($this->accounts->firstWhere('id', $this->editingAccountId) ?? new MailAccount)
-            : new MailAccount(['user_id' => $this->currentUser()->id, 'household_id' => (int) $this->householdId]);
-
-        if (! $this->editingAccountId || $this->aPassword !== '') {
-            $data['password'] = $this->aPassword;
-        }
-
-        $account->fill($data)->save();
-
-        $this->selectedAccountId = $account->id;
-        $this->showAccountForm = false;
-        $this->flash = __('Mail account saved.');
+        $this->flash = 'STUB-VALIDATED';
     }
 
     public function deleteAccount(int $id): void

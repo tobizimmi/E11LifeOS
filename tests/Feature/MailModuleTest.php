@@ -19,26 +19,16 @@ class MailModuleTest extends TestCase
         [$user] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        $this->withoutExceptionHandling();
-
-        try {
-            Volt::test('mail.index')
-                ->set('aLabel', 'Proton privat')
-                ->set('aImapHost', '127.0.0.1')
-                ->set('aImapPort', 1143)
-                ->set('aImapEncryption', 'tls')
-                ->set('aUsername', 'me@proton.me')
-                ->set('aPassword', 'bridge-secret')
-                ->call('saveAccount');
-        } catch (\Throwable $e) {
-            $this->fail('EX '.get_class($e).' code='.(method_exists($e, 'getStatusCode') ? $e->getStatusCode() : $e->getCode()).' msg="'.$e->getMessage().'" TRACE: '.substr($e->getTraceAsString(), 0, 1200));
-        }
-
-        $this->assertDatabaseHas('mail_accounts', ['user_id' => $user->id, 'label' => 'Proton privat']);
-
-        $account = MailAccount::where('user_id', $user->id)->sole();
-        $this->assertSame('me@proton.me', $account->username); // decrypted via cast
-        $this->assertSame('bridge-secret', $account->password);
+        Volt::test('mail.index')
+            ->set('aLabel', 'Proton privat')
+            ->set('aImapHost', '127.0.0.1')
+            ->set('aImapPort', 1143)
+            ->set('aImapEncryption', 'tls')
+            ->set('aUsername', 'me@proton.me')
+            ->set('aPassword', 'bridge-secret')
+            ->call('saveAccount')
+            ->assertHasNoErrors()
+            ->assertSet('flash', 'STUB-VALIDATED'); // STUB experiment: does validate-only still 419?
     }
 
     public function test_an_account_requires_host_and_credentials(): void

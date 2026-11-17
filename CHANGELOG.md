@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.140.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Finanzen in der App:** Auswertung mit KI-Analyst (Zusammenfassung, Stärken, Empfehlungen mit Ersparnis pro Jahr), Steuerjahr (Abzüge, Gutschriften, Steuereffekt, Buchungen einer Steuerkategorie zuordnen, Vorschläge übernehmen, Steuersatz und Kinder) und Budgets als Topf (Rest wandert in den nächsten Monat).
+
 ## [1.139.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

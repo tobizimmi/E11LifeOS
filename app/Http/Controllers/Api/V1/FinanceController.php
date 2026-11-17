@@ -59,6 +59,7 @@ class FinanceController extends ApiController
                 'label' => FinanceCategories::label($budget->category),
                 'icon' => FinanceCategories::icon($budget->category),
                 'monthly_limit' => round((float) $budget->monthly_limit, 2),
+                'rollover' => $budget->rollover_from !== null,
             ]);
 
         return $this->ok($budgets);

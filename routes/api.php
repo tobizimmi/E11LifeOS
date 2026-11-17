@@ -192,6 +192,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('trip-feedback/{feedback}/approve', [TripCollabController::class, 'approve'])->whereNumber('feedback')->name('trip-feedback.approve.api');
         Route::post('trip-feedback/{feedback}/decline', [TripCollabController::class, 'decline'])->whereNumber('feedback')->name('trip-feedback.decline.api');
         Route::delete('trip-feedback/{feedback}', [TripCollabController::class, 'destroyFeedback'])->whereNumber('feedback')->name('trip-feedback.destroy.api');
+        Route::get('trips/{trip}/routes', [TripCollabController::class, 'routes'])->whereNumber('trip')->middleware('throttle:api-30')->name('trips.routes.api');
+        Route::put('trips/{trip}/travel-mode', [TripCollabController::class, 'setTravelMode'])->whereNumber('trip')->name('trips.travel-mode.api');
+        Route::put('trip-stops/{stop}/travel-mode', [TripCollabController::class, 'setStopMode'])->whereNumber('stop')->name('trip-stops.travel-mode.api');
+        Route::post('trips/{trip}/days/{day}/schedule', [TripCollabController::class, 'scheduleDay'])->whereNumber('trip')->middleware('throttle:api-30')->name('trips.days.schedule.api');
         Route::post('trips/{trip}/days/{day}/optimize', [TripCollabController::class, 'optimizeDay'])->whereNumber('trip')->name('trips.days.optimize.api');
         Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
         Route::post('trips/{trip}/stops', [TripController::class, 'storeStop'])->whereNumber('trip')->name('trips.stops.store');

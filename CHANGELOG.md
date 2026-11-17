@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.139.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Reise-Routen in der App:** Dauer und Strecke pro Tag und zu jedem Ort (zu Fuß, Rad, Auto für die ganze Reise oder pro Weg) und „Zeiten planen“ für einen Tag.
+
 ## [1.138.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

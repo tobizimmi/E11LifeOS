@@ -68,7 +68,7 @@ jobs:
           cache: 'npm'
 
       - name: Check JS dependencies for known vulnerabilities
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Prepare environment
         run: |

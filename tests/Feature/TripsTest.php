@@ -12,6 +12,7 @@ use App\Support\Life\TripPlanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -25,6 +26,8 @@ class TripsTest extends TestCase
     {
         parent::setUp();
 
+        // Creating a trip loads its places and the forecast; without this the tests call the real services.
+        Http::fake();
         $this->travelTo(Carbon::parse('2026-09-28 10:00'));
     }
 

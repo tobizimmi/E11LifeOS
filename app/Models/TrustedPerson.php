@@ -11,6 +11,11 @@ use Illuminate\Support\Str;
 /**
  * Someone who may open the emergency folder: they request access through their personal link and
  * get it after the waiting period, unless the owner declines in between.
+ *
+ * @property ?Carbon $invited_at
+ * @property ?Carbon $requested_at
+ * @property ?Carbon $granted_at
+ * @property ?Carbon $last_viewed_at
  */
 #[Fillable(['user_id', 'name', 'email', 'token_hash', 'wait_days', 'invited_at', 'requested_at', 'granted_at', 'last_viewed_at'])]
 class TrustedPerson extends Model

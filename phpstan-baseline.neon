@@ -961,12 +961,6 @@ parameters:
 			path: app/Models/TimeEntry.php
 
 		-
-			message: '#^Cannot call method copy\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/TrustedPerson.php
-
-		-
 			message: '#^Method App\\Models\\User\:\:currentHousehold\(\) should return App\\Models\\Household\|null but returns \(Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\)\|null\.$#'
 			identifier: return.type
 			count: 1
@@ -2141,12 +2135,6 @@ parameters:
 			identifier: nullCoalesce.expr
 			count: 8
 			path: app/Support/Portfolio/Import/OutbankParser.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Portfolio/InstagramAi.php
 
 		-
 			message: '#^Parameter \#1 \$user of method App\\Support\\Portfolio\\Notifier\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'

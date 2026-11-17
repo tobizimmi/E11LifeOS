@@ -73,6 +73,9 @@ Route::post('profile/export', [DataExportController::class, 'encrypted'])
     ->middleware(['auth', 'throttle:6,1'])
     ->name('profile.export.encrypted');
 
+// Google sends the browser back here – also from the app, where the one-time state identifies the member.
+Route::get('drives/google/callback', [GoogleDriveController::class, 'callback'])->middleware('throttle:10,1')->name('drives.google.callback');
+
 Route::middleware(['auth'])->controller(GoogleCalendarController::class)->group(function () {
     Route::get('profile/google-calendar/connect', 'connect')->name('google-calendar.connect');
     Route::get('profile/google-calendar/callback', 'callback')->name('google-calendar.callback');
@@ -128,7 +131,6 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('drives', 'drives.index')->name('drives.index');
     Route::get('drives/{drive}/download', [NetworkDriveController::class, 'download'])->whereNumber('drive')->middleware('throttle:60,1')->name('drives.download');
     Route::get('drives/google/connect', [GoogleDriveController::class, 'connect'])->middleware('throttle:10,1')->name('drives.google.connect');
-    Route::get('drives/google/callback', [GoogleDriveController::class, 'callback'])->middleware('throttle:10,1')->name('drives.google.callback');
     Volt::route('work', 'work.index')->name('work.index');
     Volt::route('journal', 'journal.index')->name('journal.index');
     Route::get('journal/{entry}/photos/{index}', JournalPhotoController::class)->whereNumber(['entry', 'index'])->name('journal.photo');

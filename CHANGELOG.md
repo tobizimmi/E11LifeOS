@@ -3,7 +3,7 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
-## [1.118.0] – 2026-11-17
+## [1.144.0] – 2026-11-17
 
 ### Neu (Mail – Stufe 1: Lesen & Weiterverwenden)
 - **Neues Modul „Mail" (Alltagsbereich).** Pro Nutzer **private** IMAP-Mailkonten (mehrere möglich), inkl. **Proton-(Bridge-)Vorlage** mit vorausgefüllten Ports (IMAP 1143/STARTTLS, SMTP 1025) für Proton Mail über die Proton Bridge.
@@ -13,11 +13,164 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 - Das Modul lässt sich pro Nutzer über die Navigation ein-/ausblenden.
 - Hinweis: Senden (SMTP), Ordner/Threads und Anhang-Übernahme sind als nächste Stufen vorgesehen.
 
+## [1.143.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Gruppen in der App:** Einer Gruppe per Einladungslink beitreten (allein oder als Haushalts-Inhaber mit dem ganzen Haushalt) und einen Haushalt wieder aus einer Gruppe nehmen.
+
+## [1.142.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Mehr aus dem Web in der App:** Kosten teilen (Freigabe-Link mit Ablauf, Person umbenennen, CSV und PDF), Vertrauenspersonen im Notfallordner (einladen, Zugriff erlauben oder ablehnen, neuen Link senden) und Smart Home einrichten (Verbindungen zu Home Assistant und evcc, Geräte auswählen und benennen, Regler, Lademodus und Ladegrenze).
+
+## [1.141.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Mehr aus dem Web in der App:** Reisekarte (Orte mit Position), Familienbildschirm, Menü anpassen, PDF-Design (mit Vorschau eines echten Rezepts), Business-Einstellungen mit Logo, Google Drive verbinden (die Anmeldung läuft im Browser und führt zurück in die App), Kontoauszug-Import (CSV) sowie Steuer-CSV und Finanzbericht als PDF zum Teilen.
+
+## [1.140.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Finanzen in der App:** Auswertung mit KI-Analyst (Zusammenfassung, Stärken, Empfehlungen mit Ersparnis pro Jahr), Steuerjahr (Abzüge, Gutschriften, Steuereffekt, Buchungen einer Steuerkategorie zuordnen, Vorschläge übernehmen, Steuersatz und Kinder) und Budgets als Topf (Rest wandert in den nächsten Monat).
+
+## [1.139.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Reise-Routen in der App:** Dauer und Strecke pro Tag und zu jedem Ort (zu Fuß, Rad, Auto für die ganze Reise oder pro Weg) und „Zeiten planen“ für einen Tag.
+
+## [1.138.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Banking in der App** (hinter der Passwort-Bestätigung): Übersicht der Bank-Verbindungen (PSD2 und FinTS) mit Konten und Abrufstand, PSD2-Verbindung jetzt abrufen, Auto-Abruf, Verbindung trennen, Kontoschalter und Bank-Benachrichtigungen (Gehalt, hohe Abbuchung, Kontostand, Prognose). Das Einrichten einer Verbindung (PIN, TAN, Weiterleitung zur Bank) bleibt im Browser.
+
+## [1.137.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Instagram“ in der App:** die analysierten Beiträge des Aktien-Profils (Stimmung, Einstieg, Stop-Loss), Filter, auf die Watchlist, Kursalarme am Einstiegskurs und Push an/aus.
+
+## [1.136.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio-Import in der App:** CSV-Export des Brokers oder PDF/Foto einer Abrechnung (per KI) einlesen, Vorschau prüfen und die Transaktionen ins Depot übernehmen.
+
+## [1.135.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Einblicke“ in der App:** die eigenen Werte auf einen Blick (Analysten, Insider, eigene Strategie, nächste Zahlen, letzte Nachricht) und das Insider-Barometer; Kennzahlen neu laden.
+
+## [1.134.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Entdecken“ in der App:** die wichtigsten Indizes und der tägliche Marktscan (Gewinner, Verlierer, unterbewertete Werte …) mit Übernahme in die Watchlist.
+- **Portfolio-Einstellungen in der App:** Strategie, Schwellen, Freibetrag, Kirchensteuer, Vergleichsindex, Standard-Depot, Benachrichtigungen (Pushover, Nachrichten) und Gewichtung des Punktesystems.
+
+## [1.133.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Reisen in der App:** Wetter-Vorhersage, Kommentare und Vorschläge der Reisegruppe (übernehmen, ablehnen, löschen) und „Orte nach Entfernung sortieren“ für einen Tag.
+
+## [1.132.1] – 2026-11-17
+
+### Behoben
+- **Anmeldung in der App:** „Too Many Attempts“ schon beim ersten Versuch. Das Limit zählte nur pro Adresse, sodass sich alle Geräte hinter derselben Adresse (Mobilfunk, Proxy) die 10 Versuche pro Minute teilten. Es gilt jetzt pro Konto (10 pro Minute) und großzügig pro Adresse.
+
+## [1.132.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **KI-Wochenplaner in der App:** Vorlieben speichern, Woche erzeugen, in den Essensplan übernehmen (mit Doppelt-Abfrage, Rezepte optional dauerhaft behalten) und Einkaufsliste anlegen.
+- **Rezept-Kategorien in der App:** anlegen, umbenennen, Symbol ändern, verschieben und löschen (Rezepte bleiben erhalten); Rezepte lassen sich Kategorien zuordnen.
+
+## [1.131.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Finanzen in der App:** alle Buchungen mit Filtern (Monat, Konto, Kategorie, Suche) und Summen; Barausgaben erfassen, auch per Belegfoto mit KI-Auslesen und Erkennung schon gebuchter Zahlungen; Konten umbenennen und löschen; „Für diese Gegenstelle immer merken“, gemerkte Regeln anwenden oder löschen; offene Buchungen per KI einer Kategorie zuordnen.
+- **Reisen in der App:** Reise anlegen (mit Packlisten-Vorlage), Details bearbeiten, löschen, Packlisten-Vorlagen hinzufügen und alles auspacken.
+## [1.130.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Rezepte importieren:** per Link (auch Instagram), Text oder Foto; die Rezeptdatei (schema.org, Paprika, Mealie) und PDF gehen ebenfalls.
+- **Portfolio:** Marktanalyse (Weltlage, Branchen, Bewertung der eigenen Aktien) und Nachrichten zu den eigenen Werten; Depots anlegen, ändern und löschen; Käufe, Verkäufe, Dividenden, Splits, Gebühren und Übertragungen erfassen, ändern und löschen (die Positionen werden daraus neu berechnet).
+- **Weniger „Zu viele Anfragen“:** Das Limit der App-Schnittstelle liegt jetzt bei 600 statt 120 Anfragen pro Minute, weil ein Abgleich der App viele einzelne Abrufe macht.
+- Im Web ändert sich dadurch nichts.
+
+## [1.129.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Hilfe & Support in der App:** Anfrage an das Team schreiben (Frage, Problem, Fehler, Wunsch, Konto) mit Bereich, Dringlichkeit und bis zu drei Anhängen; eigene Anfragen verfolgen, antworten, als gelöst markieren und die Hilfe bewerten.
+## [1.128.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Vermietung vollständig in der App:** Nebenkostenabrechnung (Kosten nach Schlüssel, Anteil und Saldo je Mieter, PDF, als versendet markieren), Indexmiete berechnen und übernehmen samt Brief, Mieterportal-Link erstellen und widerrufen, Mietvertrag und Zahlungserinnerung als PDF, Übergabeprotokolle mit Zählern, Schlüsseln, Räumen und Fotos, Bewerbungsformular online stellen und Bewerber verwalten bis zur Übernahme als Mieter.
+- Im Web ändert sich dadurch nichts.
+
+## [1.127.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Buchhaltung des Kleingewerbes in der App:** Belege (Einnahmen und Ausgaben) mit Foto erfassen und per KI auslesen, suchen und bearbeiten; die Einnahmenüberschussrechnung (EÜR) mit den Zahlen für die Anlage EÜR, Monatsübersicht und Hinweisen; Umsatzsteuer-Voranmeldung nach Quartal oder Monat (Kz 81, 86, 66, 83); PDF für die Steuererklärung. Alle Zahlen kommen aus denselben Berechnungen wie im Web.
+- Im Web ändert sich dadurch nichts.
+
+## [1.126.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Block-Editor der Automationen in der App:** Auslöser, Bedingungen (auch „Eine davon“) und Aktionen aus dem Baukasten zusammenstellen, bestehende Automationen bearbeiten, Probelauf ohne Ausführung.
+- Im Web ändert sich dadurch nichts.
+
+## [1.125.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Rentabilitätsprüfung in der App:** Berechnungen speichern, aus einer eigenen Immobilie vorbefüllen, live neu berechnen (Urteil, Kennzahlen, Hinweise, Entwicklung über die Jahre).
+- **Vermietung in der App:** Mieter mit Mietvertragsdaten anlegen und bearbeiten, Mieteingang je Monat abhaken.
+- Im Web ändert sich dadurch nichts.
+
+## [1.124.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Immobilien-Finanzierung in der App:** Darlehen mit Rate, Restschuld und Zinsen, Förderungen mit Antragsstand und Frist, geplante gegen tatsächliche Abrufe (Finanzierungs-Controlling).
+- Im Web ändert sich dadurch nichts.
+
+## [1.123.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Kleingewerbe in der App:** Produkte verwalten und in Rechnungen einfügen, Zeiten manuell erfassen und bearbeiten, mehrere Zeiten eines Kunden mit einem Tipp zu einem Rechnungsentwurf abrechnen, wiederkehrende Rechnungen anlegen, pausieren, sofort erzeugen und löschen.
+- **Aufgaben per Hand sortieren:** neue Reihenfolge wird gespeichert und im Web genauso angezeigt.
+- Im Web ändert sich dadurch nichts.
+
+## [1.122.0] – 2026-11-16
+
+### Neu (App-Schnittstelle)
+- **Angebotsvergleich, Vorsorge-Check, Automationen, Immobilien und Kleingewerbe für die App.** Angebote vergleichen und wählen; Versicherungslücken und Rentenlücke; Automationen ein-/ausschalten, ausführen, aus Vorlagen, Paketen oder einem Satz (KI) anlegen; Immobilien mit Gewerken und Rechnungen; Rechnungen, Angebote, Kunden und Zeiterfassung.
+- **Aufgaben:** Checklisten-Vorlagen anwenden und aus einer Aufgabe speichern, Kategorien anlegen, umbenennen und löschen.
+- Im Web ändert sich dadurch nichts.
+
+## [1.121.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Spaces und Gruppen für die App:** Spaces (Arbeit, Zuhause, Verein …) anlegen, ändern und löschen, Aufgaben direkt hineinlegen oder verschieben. Gruppen jenseits des Haushalts mit Einladungslink, Mitgliedern und der Übersicht, was mit wem geteilt ist.
+- Im Web ändert sich dadurch nichts.
+
+## [1.120.0] – 2026-11-15
+
+### Geändert (Scannen)
+- **Scans ohne weißen Rand.** Das PDF aus gescannten Seiten hat jetzt genau die Größe des Bildausschnitts statt eines weißen DIN-A4-Blatts. Ein zugeschnittener Kassenzettel bleibt ein schmaler Streifen. Das gilt auch für den Scan im Web.
+
 ## [1.117.1] – 2026-11-15
 
 ### Verbessert (Anlegen / „+")
 - **„+"-Menü ist jetzt ein echtes Anlegen-Menü:** neben Notiz, Aufgabe, Einkaufsliste und Termin lässt sich dort direkt ein **Link speichern** (Lesezeichen).
 - **Dokument scannen** im „+"-Menü: öffnet den Dokumentenscanner (Kamera → PDF → Paperless), wie in der iOS-App. Wird angezeigt, sobald Paperless eingerichtet ist.
+
+## [1.119.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Lesezeichen & Später lesen in der App:** Links speichern (mit Webseiten-Vorschau und Bereichs-Vorschlag), Bereiche anlegen, als gelesen markieren, privat oder geteilt, KI-Zusammenfassung sowie „Auf die Wunschliste“ und „Als Ort speichern“.
+- Die Aufgabenliste liefert zusätzlich Kategorie und Zuständige, damit die App danach filtern kann.
+- Im Web ändert sich dadurch nichts.
+
+## [1.118.0] – 2026-11-15
+
+### Neu (App-Schnittstelle)
+- **Aufgaben-Details für die App:** Unteraufgaben (Checkliste), Notizen, Uhrzeit, Wiederholung, Zuständige/r, Kategorie, Schlagwörter, Rotation (Putzplan) und verknüpfte Seiten lassen sich jetzt auch in der App bearbeiten. In der Aufgabenliste zeigt die App den Fortschritt der Unteraufgaben, die Wiederholung und Schlagwörter.
+- Im Web ändert sich dadurch nichts.
 
 ## [1.117.0] – 2026-11-15
 

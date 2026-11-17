@@ -67,10 +67,10 @@ class MailSync
         $message = MimeMessage::parse($fetched['raw']);
         $messageId = mb_substr(trim($message->headers['message-id'] ?? '', " <>\t"), 0, 990) ?: null;
 
-        $attachments = array_values(array_map(
+        $attachments = array_map(
             fn (array $attachment): array => ['name' => mb_substr($attachment['name'], 0, 255), 'mime' => $attachment['mime'], 'size' => strlen($attachment['content'])],
             $message->attachments,
-        ));
+        );
 
         $account->messages()->updateOrCreate(
             ['folder' => $folder, 'uid' => $uid],

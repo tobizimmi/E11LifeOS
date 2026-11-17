@@ -4,9 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * An Instagram post or video of a finance profile and what the AI read from it.
+ *
+ * @property int $id
+ * @property ?Carbon $published_at
+ * @property ?list<string> $tickers
  */
 #[Fillable(['profile', 'instagram_id', 'shortcode', 'caption', 'thumbnail_url', 'video_url', 'post_url', 'published_at', 'duration_sec', 'view_count', 'transcript', 'summary', 'tickers', 'stock_name', 'sentiment', 'key_points', 'entry_price', 'entry_type', 'stop_loss', 'currency', 'tranches', 'analyzed_at', 'notified_at'])]
 class InstagramPost extends Model

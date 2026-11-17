@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.137.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Instagram“ in der App:** die analysierten Beiträge des Aktien-Profils (Stimmung, Einstieg, Stop-Loss), Filter, auf die Watchlist, Kursalarme am Einstiegskurs und Push an/aus.
+
 ## [1.136.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\PortfolioInsightsController;
 use App\Http\Controllers\Api\V1\PortfolioMarketController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\PortfolioSettingsController;
@@ -628,6 +629,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('search', [MarketController::class, 'search'])->name('search');
 
             Route::get('portfolio-reports/discover', [PortfolioMarketController::class, 'discover'])->middleware('throttle:api-30')->name('portfolios.reports.discover');
+            Route::get('portfolio-reports/insights', [PortfolioInsightsController::class, 'index'])->middleware('throttle:api-30')->name('portfolios.reports.insights');
+            Route::post('portfolio-reports/insights/refresh', [PortfolioInsightsController::class, 'refresh'])->middleware('throttle:api-20')->name('portfolios.reports.insights.refresh');
             Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
             Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
             Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');

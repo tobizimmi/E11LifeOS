@@ -240,29 +240,21 @@ new #[Layout('layouts.app')] class extends Component
 
     public function saveAccount(): void
     {
-        try {
-            $this->validate($this->accountRules());
+        $this->validate($this->accountRules());
 
-            $data = $this->accountData();
+        $data = $this->accountData();
 
-            $account = $this->editingAccountId
-                ? ($this->accounts->firstWhere('id', $this->editingAccountId) ?? new MailAccount)
-                : new MailAccount(['user_id' => $this->currentUser()->id, 'household_id' => (int) $this->householdId]);
+        $account = $this->editingAccountId
+            ? ($this->accounts->firstWhere('id', $this->editingAccountId) ?? new MailAccount)
+            : new MailAccount(['user_id' => $this->currentUser()->id, 'household_id' => (int) $this->householdId]);
 
-            if (! $this->editingAccountId || $this->aPassword !== '') {
-                $data['password'] = $this->aPassword;
-            }
-
-            $account->fill($data)->save();
-            $this->selectedAccountId = $account->id;
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            $this->flash = 'DEBUG: '.get_class($e).': '.$e->getMessage();
-
-            return;
+        if (! $this->editingAccountId || $this->aPassword !== '') {
+            $data['password'] = $this->aPassword;
         }
 
+        $account->fill($data)->save();
+
+        $this->selectedAccountId = $account->id;
         $this->showAccountForm = false;
         $this->flash = __('Mail account saved.');
     }

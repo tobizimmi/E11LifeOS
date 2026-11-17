@@ -236,6 +236,8 @@ class SplitController extends ApiController
             'title' => $group->title,
             'icon' => $group->icon,
             'archived' => $group->archived_at !== null,
+            'share_url' => $group->share_token ? route('splits.public', $group->share_token) : null,
+            'share_expires_at' => $group->share_expires_at?->toIso8601String(),
             'total' => $stats['total'],
             'per_person' => $stats['per_person'],
             'me' => $me?->id,

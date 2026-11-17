@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\BrainController;
 use App\Http\Controllers\Api\V1\BusinessBooksController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\BusinessExtrasController;
+use App\Http\Controllers\Api\V1\BusinessSettingsController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
@@ -16,11 +17,16 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\DocumentLinksController;
 use App\Http\Controllers\Api\V1\DocumentsController;
+use App\Http\Controllers\Api\V1\DriveGoogleController;
 use App\Http\Controllers\Api\V1\DrivesController;
 use App\Http\Controllers\Api\V1\EmergencyController;
+use App\Http\Controllers\Api\V1\EmergencyPeopleController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\FinanceExtrasController;
+use App\Http\Controllers\Api\V1\FinanceFilesController;
+use App\Http\Controllers\Api\V1\FinanceInsightsController;
 use App\Http\Controllers\Api\V1\FocusController;
+use App\Http\Controllers\Api\V1\GroupJoinController;
 use App\Http\Controllers\Api\V1\GroupsController;
 use App\Http\Controllers\Api\V1\HabitController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -66,9 +72,12 @@ use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\SmartHomeSetupController;
 use App\Http\Controllers\Api\V1\SpacesController;
 use App\Http\Controllers\Api\V1\SplitController;
+use App\Http\Controllers\Api\V1\SplitShareController;
 use App\Http\Controllers\Api\V1\SupportController;
+use App\Http\Controllers\Api\V1\SystemExtrasController;
 use App\Http\Controllers\Api\V1\TaskDetailsController;
 use App\Http\Controllers\Api\V1\TodayController;
 use App\Http\Controllers\Api\V1\TripCollabController;
@@ -145,6 +154,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('finance/bookings/{transaction}/remember', [FinanceExtrasController::class, 'remember'])->whereNumber('transaction')->name('finance.bookings.remember');
         Route::put('finance/accounts/{account}', [FinanceExtrasController::class, 'renameAccount'])->whereNumber('account')->name('finance.accounts.update');
         Route::delete('finance/accounts/{account}', [FinanceExtrasController::class, 'destroyAccount'])->whereNumber('account')->name('finance.accounts.destroy');
+        Route::get('finance/tax/{year}/export', [FinanceFilesController::class, 'taxExport'])->whereNumber('year')->middleware('throttle:api-30')->name('finance.tax.export');
+        Route::get('finance/report/pdf', [FinanceFilesController::class, 'reportPdf'])->middleware('throttle:api-30')->name('finance.report.pdf');
+        Route::post('finance/import/inspect', [FinanceFilesController::class, 'inspect'])->middleware('throttle:api-20')->name('finance.import.inspect');
+        Route::post('finance/import', [FinanceFilesController::class, 'import'])->middleware('throttle:api-20')->name('finance.import');
+        Route::get('finance/report', [FinanceInsightsController::class, 'report'])->name('finance.report.api');
+        Route::post('finance/advice', [FinanceInsightsController::class, 'advice'])->middleware('throttle:api-20')->name('finance.advice');
+        Route::get('finance/tax', [FinanceInsightsController::class, 'tax'])->name('finance.tax.api');
+        Route::get('finance/tax/search', [FinanceInsightsController::class, 'search'])->name('finance.tax.search');
+        Route::post('finance/tax/accept', [FinanceInsightsController::class, 'acceptSuggestions'])->name('finance.tax.accept');
+        Route::put('finance/tax/settings', [FinanceInsightsController::class, 'taxSettings'])->name('finance.tax.settings');
+        Route::put('finance/bookings/{transaction}/tax', [FinanceInsightsController::class, 'tagBooking'])->whereNumber('transaction')->name('finance.bookings.tax');
+        Route::post('budgets/{category}/rollover', [FinanceInsightsController::class, 'toggleRollover'])->where('category', '[a-z_]{1,40}')->name('budgets.rollover');
         Route::get('finance/rules', [FinanceExtrasController::class, 'rules'])->name('finance.rules.index');
         Route::post('finance/rules/apply', [FinanceExtrasController::class, 'applyRules'])->name('finance.rules.apply');
         Route::delete('finance/rules/{rule}', [FinanceExtrasController::class, 'destroyRule'])->whereNumber('rule')->name('finance.rules.destroy');
@@ -186,6 +207,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('trips/{trip}/template', [TripExtrasController::class, 'applyTemplate'])->whereNumber('trip')->name('trips.template');
         Route::post('trips/{trip}/unpack', [TripExtrasController::class, 'unpackAll'])->whereNumber('trip')->name('trips.unpack');
         Route::post('trip-stops/{stop}/done', [TripExtrasController::class, 'stopDone'])->whereNumber('stop')->name('trips.stops.done');
+        Route::get('trips/{trip}/map', [TripCollabController::class, 'map'])->whereNumber('trip')->name('trips.map.api');
         Route::get('trips/{trip}/weather', [TripCollabController::class, 'weather'])->whereNumber('trip')->name('trips.weather.api');
         Route::get('trips/{trip}/feedback', [TripCollabController::class, 'feedback'])->whereNumber('trip')->name('trips.feedback.api');
         Route::post('trips/{trip}/feedback', [TripCollabController::class, 'comment'])->whereNumber('trip')->name('trips.feedback.comment.api');
@@ -274,6 +296,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('splits/{group}/expenses', [SplitController::class, 'storeExpense'])->whereNumber('group')->name('splits.expenses.store');
         Route::put('splits/{group}/expenses/{expense}', [SplitController::class, 'updateExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.update');
         Route::delete('splits/{group}/expenses/{expense}', [SplitController::class, 'destroyExpense'])->whereNumber(['group', 'expense'])->name('splits.expenses.destroy');
+        Route::post('splits/{group}/share', [SplitShareController::class, 'create'])->whereNumber('group')->name('splits.share.create');
+        Route::delete('splits/{group}/share', [SplitShareController::class, 'revoke'])->whereNumber('group')->name('splits.share.revoke');
+        Route::put('splits/{group}/share/expiry', [SplitShareController::class, 'expiry'])->whereNumber('group')->name('splits.share.expiry');
+        Route::put('splits/{group}/members/{member}', [SplitShareController::class, 'renameMember'])->whereNumber(['group', 'member'])->name('splits.members.rename');
+        Route::get('splits/{group}/export/{format}', [SplitShareController::class, 'export'])->whereNumber('group')->whereIn('format', ['csv', 'pdf'])->middleware('throttle:api-30')->name('splits.export.api');
         Route::post('splits/{group}/settle', [SplitController::class, 'settle'])->whereNumber('group')->name('splits.settle');
 
         // Productivity and growth: focus & time boxing, lessons learned.
@@ -325,6 +352,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('groups', [GroupsController::class, 'index'])->name('groups.index');
         Route::post('groups', [GroupsController::class, 'store'])->name('groups.store');
+        Route::get('groups/join/{token}', [GroupJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:api-20')->name('groups.join.show');
+        Route::post('groups/join/{token}', [GroupJoinController::class, 'join'])->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:api-20')->name('groups.join.api');
+        Route::delete('groups/{group}/households/{household}', [GroupJoinController::class, 'removeHousehold'])->whereNumber(['group', 'household'])->name('groups.households.destroy');
         Route::post('groups/{group}/invite', [GroupsController::class, 'createInvite'])->whereNumber('group')->name('groups.invite');
         Route::delete('groups/{group}/invite', [GroupsController::class, 'revokeInvite'])->whereNumber('group')->name('groups.invite.revoke');
         Route::delete('groups/{group}/members/{member}', [GroupsController::class, 'removeMember'])->whereNumber(['group', 'member'])->name('groups.members.destroy');
@@ -437,6 +467,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('support/{ticket}/rate', [SupportController::class, 'rate'])->whereNumber('ticket')->name('support.rate');
         Route::get('support/{ticket}/messages/{message}/files/{index}', [SupportController::class, 'file'])->whereNumber(['ticket', 'message', 'index'])->middleware('throttle:api-60')->name('support.file');
 
+        Route::get('business/settings', [BusinessSettingsController::class, 'show'])->name('business.settings.show');
+        Route::put('business/settings', [BusinessSettingsController::class, 'update'])->name('business.settings.update');
+        Route::post('business/settings/logo', [BusinessSettingsController::class, 'logo'])->middleware('throttle:api-20')->name('business.settings.logo');
+        Route::delete('business/settings/logo', [BusinessSettingsController::class, 'removeLogo'])->name('business.settings.logo.remove');
         Route::get('business', [BusinessController::class, 'index'])->name('business.index');
         Route::post('business/invoices', [BusinessController::class, 'storeInvoice'])->name('business.invoices.store');
         Route::get('business/invoices/{invoice}', [BusinessController::class, 'showInvoice'])->whereNumber('invoice')->name('business.invoices.show');
@@ -492,6 +526,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('bookmark-categories', [BookmarksController::class, 'storeCategory'])->name('bookmarks.categories.store');
         Route::delete('bookmark-categories/{category}', [BookmarksController::class, 'destroyCategory'])->whereNumber('category')->name('bookmarks.categories.destroy');
 
+        Route::get('kiosk', [SystemExtrasController::class, 'kiosk'])->name('kiosk');
+        Route::get('menu', [SystemExtrasController::class, 'menu'])->name('menu.show');
+        Route::post('menu/preset', [SystemExtrasController::class, 'menuPreset'])->name('menu.preset');
+        Route::post('menu/toggle', [SystemExtrasController::class, 'menuToggle'])->name('menu.toggle');
+        Route::get('pdf-design', [SystemExtrasController::class, 'pdfDesign'])->name('pdf-design.show');
+        Route::put('pdf-design', [SystemExtrasController::class, 'savePdfDesign'])->name('pdf-design.save');
+        Route::delete('pdf-design', [SystemExtrasController::class, 'resetPdfDesign'])->name('pdf-design.reset');
+        Route::post('pdf-design/preview/{recipe}', [SystemExtrasController::class, 'pdfPreview'])->whereNumber('recipe')->middleware('throttle:api-30')->name('pdf-design.preview');
+        Route::get('drives/google', [DriveGoogleController::class, 'status'])->name('drives.google.status');
+        Route::post('drives/google/connect', [DriveGoogleController::class, 'connect'])->middleware('throttle:10,1')->name('drives.google.connect.api');
         Route::get('drives', [DrivesController::class, 'index'])->name('drives.index');
         Route::post('drives', [DrivesController::class, 'store'])->name('drives.store');
         Route::put('drives/{drive}', [DrivesController::class, 'update'])->whereNumber('drive')->name('drives.update');
@@ -583,12 +627,30 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::post('emergency/entries', [EmergencyController::class, 'store'])->name('emergency.entries.store');
                 Route::put('emergency/entries/{entry}', [EmergencyController::class, 'update'])->whereNumber('entry')->name('emergency.entries.update');
                 Route::delete('emergency/entries/{entry}', [EmergencyController::class, 'destroy'])->whereNumber('entry')->name('emergency.entries.destroy');
+                Route::get('emergency/people', [EmergencyPeopleController::class, 'index'])->name('emergency.people.index');
+                Route::post('emergency/people', [EmergencyPeopleController::class, 'store'])->middleware('throttle:api-20')->name('emergency.people.store');
+                Route::post('emergency/people/{person}/resend', [EmergencyPeopleController::class, 'resend'])->whereNumber('person')->middleware('throttle:api-20')->name('emergency.people.resend');
+                Route::post('emergency/people/{person}/allow', [EmergencyPeopleController::class, 'allow'])->whereNumber('person')->name('emergency.people.allow');
+                Route::post('emergency/people/{person}/decline', [EmergencyPeopleController::class, 'decline'])->whereNumber('person')->name('emergency.people.decline');
+                Route::delete('emergency/people/{person}', [EmergencyPeopleController::class, 'destroy'])->whereNumber('person')->name('emergency.people.destroy');
             });
         });
 
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
+            Route::get('smart-home/setup', [SmartHomeSetupController::class, 'setup'])->name('smart-home.setup');
+            Route::post('smart-home/connections', [SmartHomeSetupController::class, 'storeConnection'])->middleware('throttle:api-20')->name('smart-home.connections.store');
+            Route::put('smart-home/connections/{connection}', [SmartHomeSetupController::class, 'updateConnection'])->whereNumber('connection')->middleware('throttle:api-20')->name('smart-home.connections.update');
+            Route::delete('smart-home/connections/{connection}', [SmartHomeSetupController::class, 'destroyConnection'])->whereNumber('connection')->name('smart-home.connections.destroy');
+            Route::post('smart-home/connections/{connection}/test', [SmartHomeSetupController::class, 'testConnection'])->whereNumber('connection')->middleware('throttle:api-20')->name('smart-home.connections.test');
+            Route::get('smart-home/available', [SmartHomeSetupController::class, 'available'])->middleware('throttle:api-20')->name('smart-home.available');
+            Route::post('smart-home/entities', [SmartHomeSetupController::class, 'addEntity'])->middleware('throttle:api-20')->name('smart-home.entities.store');
+            Route::put('smart-home/entities/{entity}', [SmartHomeSetupController::class, 'updateEntity'])->whereNumber('entity')->name('smart-home.entities.update');
+            Route::delete('smart-home/entities/{entity}', [SmartHomeSetupController::class, 'destroyEntity'])->whereNumber('entity')->name('smart-home.entities.destroy');
+            Route::post('smart-home/devices/{entity}/value', [SmartHomeSetupController::class, 'setValue'])->whereNumber('entity')->middleware('throttle:api-60')->name('smart-home.value');
+            Route::post('smart-home/charging/{loadpoint}/mode', [SmartHomeSetupController::class, 'chargeMode'])->whereNumber('loadpoint')->middleware('throttle:api-30')->name('smart-home.charge.mode');
+            Route::post('smart-home/charging/{loadpoint}/limit', [SmartHomeSetupController::class, 'chargeLimit'])->whereNumber('loadpoint')->middleware('throttle:api-30')->name('smart-home.charge.limit');
             Route::post('smart-home/modes/{key}', [SmartHomeController::class, 'mode'])->where('key', '[a-z_]{1,40}')->name('smart-home.mode');
         });
 

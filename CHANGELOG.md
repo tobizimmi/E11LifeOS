@@ -3,6 +3,26 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.143.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Gruppen in der App:** Einer Gruppe per Einladungslink beitreten (allein oder als Haushalts-Inhaber mit dem ganzen Haushalt) und einen Haushalt wieder aus einer Gruppe nehmen.
+
+## [1.142.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Mehr aus dem Web in der App:** Kosten teilen (Freigabe-Link mit Ablauf, Person umbenennen, CSV und PDF), Vertrauenspersonen im Notfallordner (einladen, Zugriff erlauben oder ablehnen, neuen Link senden) und Smart Home einrichten (Verbindungen zu Home Assistant und evcc, Geräte auswählen und benennen, Regler, Lademodus und Ladegrenze).
+
+## [1.141.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Mehr aus dem Web in der App:** Reisekarte (Orte mit Position), Familienbildschirm, Menü anpassen, PDF-Design (mit Vorschau eines echten Rezepts), Business-Einstellungen mit Logo, Google Drive verbinden (die Anmeldung läuft im Browser und führt zurück in die App), Kontoauszug-Import (CSV) sowie Steuer-CSV und Finanzbericht als PDF zum Teilen.
+
+## [1.140.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Finanzen in der App:** Auswertung mit KI-Analyst (Zusammenfassung, Stärken, Empfehlungen mit Ersparnis pro Jahr), Steuerjahr (Abzüge, Gutschriften, Steuereffekt, Buchungen einer Steuerkategorie zuordnen, Vorschläge übernehmen, Steuersatz und Kinder) und Budgets als Topf (Rest wandert in den nächsten Monat).
+
 ## [1.139.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

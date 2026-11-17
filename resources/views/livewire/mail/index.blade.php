@@ -221,9 +221,9 @@ new #[Layout('layouts.app')] class extends Component
         ];
     }
 
-    private function rules(): array
+    private function validateAccount(): void
     {
-        return [
+        $this->validate([
             'aLabel' => ['required', 'string', 'max:80'],
             'aProvider' => ['required', 'in:'.implode(',', MailAccount::PROVIDERS)],
             'aImapHost' => ['required', 'string', 'max:255'],
@@ -232,12 +232,12 @@ new #[Layout('layouts.app')] class extends Component
             'aSmtpPort' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'aUsername' => ['required', 'string', 'max:255'],
             'aPassword' => [$this->editingAccountId ? 'nullable' : 'required', 'string', 'max:255'],
-        ];
+        ]);
     }
 
     public function saveAccount(): void
     {
-        $this->validate($this->rules());
+        $this->validateAccount();
         $data = $this->accountData();
 
         if ($this->editingAccountId) {
@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function testConnection(): void
     {
-        $this->validate($this->rules());
+        $this->validateAccount();
         $data = $this->accountData();
         $password = $this->aPassword;
 

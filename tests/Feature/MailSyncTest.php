@@ -108,7 +108,7 @@ class MailSyncTest extends TestCase
         $mail = "From: n@example.com\nSubject: Frisch\n\nFrischer Text";
         $sent = str_replace("\n", "\r\n", $mail);
 
-        [$mailbox] = $this->mailboxWithServer(
+        [$mailbox, $server] = $this->mailboxWithServer(
             "* OK ready\nA0001 OK Logged in\n"
             ."* OK [UIDVALIDITY 777] Ok\nA0002 OK Selected\n"
             ."* SEARCH 1\nA0003 OK done\n"
@@ -116,6 +116,7 @@ class MailSyncTest extends TestCase
             ."* BYE\nA0005 OK Logout\n"
         );
         $this->app->instance(Mailbox::class, $mailbox);
+        $this->assertIsResource($server); // keep the scripted server socket alive for the duration
 
         app(MailSync::class)->sync($account);
 

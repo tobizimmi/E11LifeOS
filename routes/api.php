@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\PortfolioMarketController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
+use App\Http\Controllers\Api\V1\PortfolioSettingsController;
 use App\Http\Controllers\Api\V1\PortfolioWriteController;
 use App\Http\Controllers\Api\V1\ProvisionController;
 use App\Http\Controllers\Api\V1\QuotesController;
@@ -629,6 +630,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
             Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
             Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');
+            Route::get('portfolio-settings', [PortfolioSettingsController::class, 'show'])->name('portfolios.settings.show');
+            Route::put('portfolio-settings', [PortfolioSettingsController::class, 'update'])->name('portfolios.settings.update');
+            Route::put('portfolio-settings/score-weights', [PortfolioSettingsController::class, 'scoreWeights'])->name('portfolios.settings.weights');
             Route::get('portfolio-reports/dividends', [PortfolioReportsController::class, 'dividends'])->name('portfolios.reports.dividends');
             Route::get('portfolio-reports/taxes', [PortfolioReportsController::class, 'taxes'])->name('portfolios.reports.taxes');
             Route::get('portfolio-reports/analysis', [PortfolioReportsController::class, 'analysis'])->name('portfolios.reports.analysis');

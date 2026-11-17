@@ -3,6 +3,31 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.139.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Reise-Routen in der App:** Dauer und Strecke pro Tag und zu jedem Ort (zu Fuß, Rad, Auto für die ganze Reise oder pro Weg) und „Zeiten planen“ für einen Tag.
+
+## [1.138.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Banking in der App** (hinter der Passwort-Bestätigung): Übersicht der Bank-Verbindungen (PSD2 und FinTS) mit Konten und Abrufstand, PSD2-Verbindung jetzt abrufen, Auto-Abruf, Verbindung trennen, Kontoschalter und Bank-Benachrichtigungen (Gehalt, hohe Abbuchung, Kontostand, Prognose). Das Einrichten einer Verbindung (PIN, TAN, Weiterleitung zur Bank) bleibt im Browser.
+
+## [1.137.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Instagram“ in der App:** die analysierten Beiträge des Aktien-Profils (Stimmung, Einstieg, Stop-Loss), Filter, auf die Watchlist, Kursalarme am Einstiegskurs und Push an/aus.
+
+## [1.136.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio-Import in der App:** CSV-Export des Brokers oder PDF/Foto einer Abrechnung (per KI) einlesen, Vorschau prüfen und die Transaktionen ins Depot übernehmen.
+
+## [1.135.0] – 2026-11-17
+
+### Neu (App-Schnittstelle)
+- **Portfolio „Einblicke“ in der App:** die eigenen Werte auf einen Blick (Analysten, Insider, eigene Strategie, nächste Zahlen, letzte Nachricht) und das Insider-Barometer; Kennzahlen neu laden.
+
 ## [1.134.0] – 2026-11-17
 
 ### Neu (App-Schnittstelle)

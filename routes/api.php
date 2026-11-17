@@ -41,7 +41,11 @@ use App\Http\Controllers\Api\V1\OffersController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PantryController;
 use App\Http\Controllers\Api\V1\PlaceController;
+use App\Http\Controllers\Api\V1\PortfolioBankingController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\PortfolioImportController;
+use App\Http\Controllers\Api\V1\PortfolioInsightsController;
+use App\Http\Controllers\Api\V1\PortfolioInstagramController;
 use App\Http\Controllers\Api\V1\PortfolioMarketController;
 use App\Http\Controllers\Api\V1\PortfolioReportsController;
 use App\Http\Controllers\Api\V1\PortfolioSettingsController;
@@ -188,6 +192,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('trip-feedback/{feedback}/approve', [TripCollabController::class, 'approve'])->whereNumber('feedback')->name('trip-feedback.approve.api');
         Route::post('trip-feedback/{feedback}/decline', [TripCollabController::class, 'decline'])->whereNumber('feedback')->name('trip-feedback.decline.api');
         Route::delete('trip-feedback/{feedback}', [TripCollabController::class, 'destroyFeedback'])->whereNumber('feedback')->name('trip-feedback.destroy.api');
+        Route::get('trips/{trip}/routes', [TripCollabController::class, 'routes'])->whereNumber('trip')->middleware('throttle:api-30')->name('trips.routes.api');
+        Route::put('trips/{trip}/travel-mode', [TripCollabController::class, 'setTravelMode'])->whereNumber('trip')->name('trips.travel-mode.api');
+        Route::put('trip-stops/{stop}/travel-mode', [TripCollabController::class, 'setStopMode'])->whereNumber('stop')->name('trip-stops.travel-mode.api');
+        Route::post('trips/{trip}/days/{day}/schedule', [TripCollabController::class, 'scheduleDay'])->whereNumber('trip')->middleware('throttle:api-30')->name('trips.days.schedule.api');
         Route::post('trips/{trip}/days/{day}/optimize', [TripCollabController::class, 'optimizeDay'])->whereNumber('trip')->name('trips.days.optimize.api');
         Route::get('trips/{trip}', [TripController::class, 'show'])->whereNumber('trip')->name('trips.show');
         Route::post('trips/{trip}/stops', [TripController::class, 'storeStop'])->whereNumber('trip')->name('trips.stops.store');
@@ -561,6 +569,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::delete('health/profiles/{profile}/entries/{entry}', [HealthController::class, 'destroyEntry'])->whereNumber(['profile', 'entry'])->name('health.entries.destroy');
             });
 
+            Route::middleware(['addon:portfolio', 'sensitive.log:banking'])->group(function () {
+                Route::get('banking', [PortfolioBankingController::class, 'index'])->name('banking.index');
+                Route::put('banking/alerts', [PortfolioBankingController::class, 'saveAlerts'])->name('banking.alerts');
+                Route::post('banking/links/{link}/sync', [PortfolioBankingController::class, 'syncLink'])->whereNumber('link')->middleware('throttle:api-20')->name('banking.links.sync');
+                Route::post('banking/links/{link}/auto-sync', [PortfolioBankingController::class, 'toggleLinkAutoSync'])->whereNumber('link')->name('banking.links.auto');
+                Route::delete('banking/links/{link}', [PortfolioBankingController::class, 'destroyLink'])->whereNumber('link')->name('banking.links.destroy');
+                Route::post('banking/connections/{connection}/account', [PortfolioBankingController::class, 'toggleAccount'])->whereNumber('connection')->name('banking.connections.account');
+            });
+
             Route::middleware('sensitive.log:emergency')->group(function () {
                 Route::get('emergency', [EmergencyController::class, 'index'])->name('emergency.index');
                 Route::post('emergency/entries', [EmergencyController::class, 'store'])->name('emergency.entries.store');
@@ -628,6 +645,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('search', [MarketController::class, 'search'])->name('search');
 
             Route::get('portfolio-reports/discover', [PortfolioMarketController::class, 'discover'])->middleware('throttle:api-30')->name('portfolios.reports.discover');
+            Route::get('portfolio-reports/insights', [PortfolioInsightsController::class, 'index'])->middleware('throttle:api-30')->name('portfolios.reports.insights');
+            Route::post('portfolio-reports/insights/refresh', [PortfolioInsightsController::class, 'refresh'])->middleware('throttle:api-20')->name('portfolios.reports.insights.refresh');
+            Route::get('portfolio-import', [PortfolioImportController::class, 'brokers'])->name('portfolios.import.brokers');
+            Route::post('portfolio-import/parse', [PortfolioImportController::class, 'parse'])->middleware('throttle:api-20')->name('portfolios.import.parse');
+            Route::post('portfolio-import/commit', [PortfolioImportController::class, 'commit'])->middleware('throttle:api-20')->name('portfolios.import.commit');
+            Route::get('portfolio-instagram', [PortfolioInstagramController::class, 'index'])->middleware('throttle:api-30')->name('portfolios.instagram.index');
+            Route::post('portfolio-instagram/push', [PortfolioInstagramController::class, 'togglePush'])->name('portfolios.instagram.push');
+            Route::post('portfolio-instagram/{post}/watch', [PortfolioInstagramController::class, 'watch'])->whereNumber('post')->name('portfolios.instagram.watch');
+            Route::post('portfolio-instagram/{post}/alerts', [PortfolioInstagramController::class, 'alerts'])->whereNumber('post')->name('portfolios.instagram.alerts');
             Route::get('portfolio-reports/market', [PortfolioMarketController::class, 'market'])->middleware('throttle:api-30')->name('portfolios.reports.market');
             Route::get('portfolio-reports/news', [PortfolioMarketController::class, 'news'])->name('portfolios.reports.news');
             Route::post('portfolio-reports/news/refresh', [PortfolioMarketController::class, 'refreshNews'])->middleware('throttle:api-20')->name('portfolios.reports.news.refresh');

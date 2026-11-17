@@ -2143,12 +2143,6 @@ parameters:
 			path: app/Support/Portfolio/Import/OutbankParser.php
 
 		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Support/Portfolio/InstagramAi.php
-
-		-
 			message: '#^Parameter \#1 \$user of method App\\Support\\Portfolio\\Notifier\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1

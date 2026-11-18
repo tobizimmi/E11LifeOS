@@ -5,6 +5,7 @@ use App\Models\MailAccount;
 use App\Models\MailMessage;
 use App\Models\ShoppingList;
 use App\Support\Mail\Mailbox;
+use App\Support\Mail\MailSender;
 use App\Support\Mail\MailSync;
 use App\Support\QuickCapture;
 use App\Support\ShoppingLists;
@@ -56,6 +57,20 @@ new #[Layout('layouts.app')] class extends Component
     public string $testMessage = '';
 
     public ?bool $testOk = null;
+
+    // ── Compose / reply ──────────────────────────────────────────────
+    public bool $showCompose = false;
+
+    public string $composeTo = '';
+
+    public string $composeCc = '';
+
+    public string $composeSubject = '';
+
+    public string $composeBody = '';
+
+    /** The message being replied to/forwarded, for In-Reply-To/References headers. */
+    public ?int $composeReplyToId = null;
 
     /**
      * @return Collection<int, MailAccount>
@@ -145,6 +160,109 @@ new #[Layout('layouts.app')] class extends Component
     public function close(): void
     {
         $this->openId = null;
+    }
+
+    // ── Compose / reply / forward (SMTP) ─────────────────────────────
+    public function compose(): void
+    {
+        $this->reset(['composeTo', 'composeCc', 'composeSubject', 'composeBody', 'composeReplyToId']);
+        $this->showCompose = true;
+    }
+
+    public function reply(int $id): void
+    {
+        $message = $this->ownedMessage($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $this->composeTo = (string) $message->from_address;
+        $this->composeCc = '';
+        $this->composeSubject = $this->prefixedSubject('Re', (string) $message->subject);
+        $this->composeBody = "\n\n".$this->quote($message);
+        $this->composeReplyToId = $message->id;
+        $this->showCompose = true;
+    }
+
+    public function forward(int $id): void
+    {
+        $message = $this->ownedMessage($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $this->composeTo = '';
+        $this->composeCc = '';
+        $this->composeSubject = $this->prefixedSubject('Fwd', (string) $message->subject);
+        $this->composeBody = "\n\n".$this->quote($message);
+        $this->composeReplyToId = null;
+        $this->showCompose = true;
+    }
+
+    public function sendMail(MailSender $sender): void
+    {
+        $account = $this->selectedAccount;
+
+        if (! $account) {
+            return;
+        }
+
+        Validator::make([
+            'composeTo' => $this->composeTo,
+            'composeBody' => $this->composeBody,
+        ], [
+            'composeTo' => ['required', 'string', 'max:2000'],
+            'composeBody' => ['nullable', 'string', 'max:100000'],
+        ])->validate();
+
+        $options = ['cc' => $this->composeCc];
+
+        if ($this->composeReplyToId) {
+            $original = $this->ownedMessage($this->composeReplyToId);
+
+            if ($original?->message_id) {
+                $options['in_reply_to'] = '<'.trim($original->message_id, '<>').'>';
+                $options['references'] = $options['in_reply_to'];
+            }
+        }
+
+        try {
+            $sender->send($account, $this->composeTo, $this->composeSubject, $this->composeBody, $options);
+        } catch (\Throwable $exception) {
+            $this->flash = __('Sending failed: :error', ['error' => $exception->getMessage()]);
+
+            return;
+        }
+
+        $this->showCompose = false;
+        $this->reset(['composeTo', 'composeCc', 'composeSubject', 'composeBody', 'composeReplyToId']);
+        $this->flash = __('Mail sent.');
+    }
+
+    private function ownedMessage(int $id): ?MailMessage
+    {
+        return MailMessage::query()->where('mail_account_id', $this->selectedAccount?->id)->find($id);
+    }
+
+    private function prefixedSubject(string $prefix, string $subject): string
+    {
+        $subject = trim($subject);
+
+        return str_starts_with(mb_strtolower($subject), mb_strtolower($prefix).':') ? $subject : $prefix.': '.$subject;
+    }
+
+    private function quote(MailMessage $message): string
+    {
+        $header = __('On :date, :sender wrote:', [
+            'date' => $message->date?->isoFormat('LLL') ?? '',
+            'sender' => $message->fromLabel(),
+        ]);
+        $quoted = collect(preg_split('/\R/u', (string) $message->body_text) ?: [])
+            ->map(fn (string $line) => '> '.$line)->implode("\n");
+
+        return $header."\n".$quoted;
     }
 
     // ── Account management ───────────────────────────────────────────
@@ -447,6 +565,9 @@ new #[Layout('layouts.app')] class extends Component
                     <span wire:loading.remove wire:target="syncNow">⟳ {{ __('Sync now') }}</span>
                     <span wire:loading wire:target="syncNow">{{ __('Syncing …') }}</span>
                 </button>
+                @if ($this->selectedAccount->smtp_host)
+                    <button type="button" wire:click="compose" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">✉️ {{ __('New mail') }}</button>
+                @endif
                 <button type="button" wire:click="editAccount({{ $this->selectedAccount->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">{{ __('Settings') }}</button>
                 <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search mail …') }}" class="flex-1 min-w-[10rem] rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" />
                 @if ($this->selectedAccount->last_synced_at)
@@ -475,6 +596,13 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
 
                     <div class="mt-4 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200">{{ $msg->body_text ?: __('(No text content.)') }}</div>
+
+                    @if ($this->selectedAccount->smtp_host)
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button type="button" wire:click="reply({{ $msg->id }})" class="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">↩️ {{ __('Reply') }}</button>
+                            <button type="button" wire:click="forward({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">↪️ {{ __('Forward') }}</button>
+                        </div>
+                    @endif
 
                     <div class="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                         <span class="self-center text-xs font-medium uppercase text-gray-400">{{ __('Use in the tool') }}:</span>
@@ -507,6 +635,47 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             @endif
         @endif
+    @endif
+
+    {{-- Compose dialog --}}
+    @if ($showCompose)
+        <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" wire:key="compose">
+            <div class="mt-8 w-full max-w-xl rounded-xl bg-white p-5 shadow-xl dark:bg-gray-900">
+                <div class="mb-3 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">✉️ {{ __('New mail') }}</h2>
+                    <button type="button" wire:click="$set('showCompose', false)" class="text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('To') }}</label>
+                        <input type="text" wire:model="composeTo" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="name@example.com, …" />
+                        @error('composeTo')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Cc') }}</label>
+                        <input type="text" wire:model="composeCc" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="{{ __('optional') }}" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Subject') }}</label>
+                        <input type="text" wire:model="composeSubject" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Message') }}</label>
+                        <textarea wire:model="composeBody" rows="10" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800"></textarea>
+                        @error('composeBody')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
+                    </div>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button type="button" wire:click="$set('showCompose', false)" class="rounded-lg px-3 py-2 text-sm text-gray-500">{{ __('Cancel') }}</button>
+                    <button type="button" wire:click="sendMail" wire:loading.attr="disabled" wire:target="sendMail" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                        <span wire:loading.remove wire:target="sendMail">{{ __('Send') }}</span>
+                        <span wire:loading wire:target="sendMail">{{ __('Sending …') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     @endif
 
     {{-- Account form dialog --}}

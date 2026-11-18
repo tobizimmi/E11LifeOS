@@ -16,7 +16,7 @@ use Symfony\Component\Mime\Email;
 class MailSender
 {
     /**
-     * @param  array{cc?: string, in_reply_to?: ?string, references?: ?string}  $options
+     * @param  array{cc?: string, bcc?: string, in_reply_to?: ?string, references?: ?string, attachments?: list<array{name: string, mime: string, content: string}>}  $options
      */
     public function send(MailAccount $account, string $to, string $subject, string $body, array $options = []): void
     {
@@ -41,6 +41,14 @@ class MailSender
 
         foreach ($this->addresses($options['cc'] ?? '') as $address) {
             $email->addCc($address);
+        }
+
+        foreach ($this->addresses($options['bcc'] ?? '') as $address) {
+            $email->addBcc($address);
+        }
+
+        foreach ($options['attachments'] ?? [] as $attachment) {
+            $email->attach($attachment['content'], $attachment['name'], $attachment['mime']);
         }
 
         if (! empty($options['in_reply_to'])) {

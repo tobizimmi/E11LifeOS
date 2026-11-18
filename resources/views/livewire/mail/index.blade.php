@@ -2,6 +2,7 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\MailAccount;
+use App\Models\MailDraft;
 use App\Models\MailMessage;
 use App\Models\PaperlessInstance;
 use App\Models\ShoppingList;
@@ -19,10 +20,11 @@ use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] class extends Component
 {
-    use InteractsWithHousehold;
+    use InteractsWithHousehold, WithFileUploads;
 
     /** Attachment types that can be archived to Paperless (documents and photos). */
     public const PAPERLESS_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'];
@@ -73,6 +75,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $aPassword = '';
 
+    public string $aSignature = '';
+
     public string $testMessage = '';
 
     public ?bool $testOk = null;
@@ -84,9 +88,17 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $composeCc = '';
 
+    public string $composeBcc = '';
+
     public string $composeSubject = '';
 
     public string $composeBody = '';
+
+    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> newly picked attachments for the mail being composed */
+    public array $composeAttachments = [];
+
+    /** The draft being edited, so sending can remove it afterwards. */
+    public ?int $composeDraftId = null;
 
     /** The message being replied to/forwarded, for In-Reply-To/References headers. */
     public ?int $composeReplyToId = null;
@@ -275,7 +287,8 @@ new #[Layout('layouts.app')] class extends Component
     // ── Compose / reply / forward (SMTP) ─────────────────────────────
     public function compose(): void
     {
-        $this->reset(['composeTo', 'composeCc', 'composeSubject', 'composeBody', 'composeReplyToId']);
+        $this->resetCompose();
+        $this->composeBody = $this->signatureBlock();
         $this->showCompose = true;
     }
 
@@ -287,10 +300,10 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
+        $this->resetCompose();
         $this->composeTo = (string) $message->from_address;
-        $this->composeCc = '';
         $this->composeSubject = $this->prefixedSubject('Re', (string) $message->subject);
-        $this->composeBody = "\n\n".$this->quote($message);
+        $this->composeBody = $this->signatureBlock()."\n\n".$this->quote($message);
         $this->composeReplyToId = $message->id;
         $this->showCompose = true;
     }
@@ -303,12 +316,31 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        $this->composeTo = '';
-        $this->composeCc = '';
+        $this->resetCompose();
         $this->composeSubject = $this->prefixedSubject('Fwd', (string) $message->subject);
-        $this->composeBody = "\n\n".$this->quote($message);
-        $this->composeReplyToId = null;
+        $this->composeBody = $this->signatureBlock()."\n\n".$this->quote($message);
         $this->showCompose = true;
+    }
+
+    private function resetCompose(): void
+    {
+        $this->reset(['composeTo', 'composeCc', 'composeBcc', 'composeSubject', 'composeBody', 'composeReplyToId', 'composeDraftId', 'composeAttachments']);
+    }
+
+    /**
+     * The selected account's signature as a sign-off block ("-- \n…"), or an empty string.
+     */
+    private function signatureBlock(): string
+    {
+        $signature = trim((string) $this->selectedAccount?->signature);
+
+        return $signature !== '' ? "\n\n-- \n".$signature : '';
+    }
+
+    public function removeAttachment(int $index): void
+    {
+        unset($this->composeAttachments[$index]);
+        $this->composeAttachments = array_values($this->composeAttachments);
     }
 
     public function sendMail(MailSender $sender): void
@@ -327,7 +359,11 @@ new #[Layout('layouts.app')] class extends Component
             'composeBody' => ['nullable', 'string', 'max:100000'],
         ])->validate();
 
-        $options = ['cc' => $this->composeCc];
+        $options = [
+            'cc' => $this->composeCc,
+            'bcc' => $this->composeBcc,
+            'attachments' => $this->collectedAttachments(),
+        ];
 
         if ($this->composeReplyToId) {
             $original = $this->ownedMessage($this->composeReplyToId);
@@ -346,9 +382,136 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
+        if ($this->composeDraftId) {
+            MailDraft::query()->forUser($this->currentUser(), (int) $this->householdId)->whereKey($this->composeDraftId)->delete();
+            unset($this->drafts);
+        }
+
         $this->showCompose = false;
-        $this->reset(['composeTo', 'composeCc', 'composeSubject', 'composeBody', 'composeReplyToId']);
+        $this->resetCompose();
         $this->flash = __('Mail sent.');
+    }
+
+    /**
+     * Reads the picked uploads into the shape {@see MailSender} attaches.
+     *
+     * @return list<array{name: string, mime: string, content: string}>
+     */
+    private function collectedAttachments(): array
+    {
+        $attachments = [];
+
+        foreach ($this->composeAttachments as $file) {
+            $path = $file->getRealPath();
+
+            if ($path === false) {
+                continue;
+            }
+
+            $attachments[] = [
+                'name' => mb_substr($file->getClientOriginalName(), 0, 255),
+                'mime' => $file->getMimeType() ?: 'application/octet-stream',
+                'content' => (string) file_get_contents($path),
+            ];
+        }
+
+        return $attachments;
+    }
+
+    public function updatedComposeAttachments(): void
+    {
+        $max = 10 * 1024 * 1024;
+        $kept = [];
+
+        foreach ($this->composeAttachments as $file) {
+            if (count($kept) >= 5) {
+                break;
+            }
+
+            if ($file->getSize() !== false && $file->getSize() <= $max) {
+                $kept[] = $file;
+            } else {
+                $this->flash = __(':file is too large (max. 10 MB).', ['file' => $file->getClientOriginalName()]);
+            }
+        }
+
+        $this->composeAttachments = $kept;
+    }
+
+    // ── Drafts ───────────────────────────────────────────────────────
+    /**
+     * @return Collection<int, MailDraft>
+     */
+    #[Computed]
+    public function drafts(): Collection
+    {
+        if (! $this->selectedAccount) {
+            return collect();
+        }
+
+        return MailDraft::query()->where('mail_account_id', $this->selectedAccount->id)->latest('updated_at')->limit(50)->get();
+    }
+
+    public function saveDraft(): void
+    {
+        $account = $this->selectedAccount;
+
+        if (! $account) {
+            return;
+        }
+
+        $data = [
+            'to_addresses' => mb_substr($this->composeTo, 0, 2000) ?: null,
+            'cc' => mb_substr($this->composeCc, 0, 2000) ?: null,
+            'bcc' => mb_substr($this->composeBcc, 0, 2000) ?: null,
+            'subject' => mb_substr($this->composeSubject, 0, 998) ?: null,
+            'body' => mb_substr($this->composeBody, 0, 100000) ?: null,
+            'reply_to_id' => $this->composeReplyToId,
+        ];
+
+        $draft = $this->composeDraftId
+            ? MailDraft::query()->forUser($this->currentUser(), (int) $this->householdId)->find($this->composeDraftId)
+            : null;
+
+        if ($draft) {
+            $draft->update($data);
+        } else {
+            $draft = MailDraft::create(array_merge($data, ['mail_account_id' => $account->id, 'user_id' => $this->currentUser()->id]));
+        }
+
+        $this->composeDraftId = $draft->id;
+        unset($this->drafts);
+        $this->flash = __('Draft saved.');
+    }
+
+    public function loadDraft(int $id): void
+    {
+        $draft = MailDraft::query()->forUser($this->currentUser(), (int) $this->householdId)->find($id);
+
+        if (! $draft) {
+            return;
+        }
+
+        $this->composeTo = (string) $draft->to_addresses;
+        $this->composeCc = (string) $draft->cc;
+        $this->composeBcc = (string) $draft->bcc;
+        $this->composeSubject = (string) $draft->subject;
+        $this->composeBody = (string) $draft->body;
+        $this->composeReplyToId = $draft->reply_to_id;
+        $this->composeDraftId = $draft->id;
+        $this->composeAttachments = [];
+        $this->showCompose = true;
+    }
+
+    public function deleteDraft(int $id): void
+    {
+        MailDraft::query()->forUser($this->currentUser(), (int) $this->householdId)->whereKey($id)->delete();
+
+        if ($this->composeDraftId === $id) {
+            $this->composeDraftId = null;
+        }
+
+        unset($this->drafts);
     }
 
     private function ownedMessage(int $id): ?MailMessage
@@ -378,7 +541,7 @@ new #[Layout('layouts.app')] class extends Component
     // ── Account management ───────────────────────────────────────────
     public function newAccount(): void
     {
-        $this->reset(['editingAccountId', 'aLabel', 'aImapHost', 'aSmtpHost', 'aUsername', 'aPassword', 'testMessage', 'testOk']);
+        $this->reset(['editingAccountId', 'aLabel', 'aImapHost', 'aSmtpHost', 'aUsername', 'aPassword', 'aSignature', 'testMessage', 'testOk']);
         $this->aProvider = MailAccount::PROVIDER_GENERIC;
         $this->aImapPort = 993;
         $this->aImapEncryption = 'ssl';
@@ -426,6 +589,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->aValidateCert = $account->validate_cert;
         $this->aUsername = $account->username;
         $this->aPassword = '';
+        $this->aSignature = (string) $account->signature;
         $this->testMessage = '';
         $this->testOk = null;
         $this->showAccountForm = true;
@@ -447,6 +611,7 @@ new #[Layout('layouts.app')] class extends Component
             'smtp_encryption' => trim($this->aSmtpHost) !== '' ? $this->aSmtpEncryption : null,
             'validate_cert' => $this->aValidateCert,
             'username' => trim($this->aUsername),
+            'signature' => trim($this->aSignature) ?: null,
         ];
     }
 
@@ -1007,6 +1172,24 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </div>
             @else
+                {{-- Drafts --}}
+                @if ($this->selectedAccount->smtp_host && $this->drafts->isNotEmpty())
+                    <div class="mb-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                        <h3 class="mb-2 text-xs font-medium uppercase text-gray-400">📝 {{ __('Drafts') }} ({{ $this->drafts->count() }})</h3>
+                        <div class="space-y-1">
+                            @foreach ($this->drafts as $draft)
+                                <div class="flex items-center gap-2" wire:key="draft{{ $draft->id }}">
+                                    <button type="button" wire:click="loadDraft({{ $draft->id }})" class="flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800">
+                                        {{ $draft->previewLabel() }}
+                                        <span class="text-xs text-gray-400">· {{ $draft->updated_at?->isoFormat('DD.MM. HH:mm') }}</span>
+                                    </button>
+                                    <button type="button" wire:click="deleteDraft({{ $draft->id }})" class="shrink-0 px-2 text-gray-400 hover:text-rose-600">🗑️</button>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 {{-- List --}}
                 @if ($this->messages->isEmpty())
                     <div class="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-700">{{ __('No mails yet – use “Sync now”.') }}</div>
@@ -1047,9 +1230,15 @@ new #[Layout('layouts.app')] class extends Component
                         <input type="text" wire:model="composeTo" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="name@example.com, …" />
                         @error('composeTo')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Cc') }}</label>
-                        <input type="text" wire:model="composeCc" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="{{ __('optional') }}" />
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Cc') }}</label>
+                            <input type="text" wire:model="composeCc" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="{{ __('optional') }}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Bcc') }}</label>
+                            <input type="text" wire:model="composeBcc" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="{{ __('optional') }}" />
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Subject') }}</label>
@@ -1060,14 +1249,34 @@ new #[Layout('layouts.app')] class extends Component
                         <textarea wire:model="composeBody" rows="10" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800"></textarea>
                         @error('composeBody')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Attachments') }} <span class="text-xs text-gray-400">({{ __('max. 5, 10 MB each') }})</span></label>
+                        <input type="file" wire:model="composeAttachments" multiple class="mt-1 w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm dark:text-gray-300 dark:file:bg-gray-800" />
+                        <div wire:loading wire:target="composeAttachments" class="mt-1 text-xs text-gray-400">{{ __('Uploading …') }}</div>
+                        @if (count($composeAttachments))
+                            <ul class="mt-2 space-y-1">
+                                @foreach ($composeAttachments as $index => $file)
+                                    <li class="flex items-center justify-between rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                        <span class="truncate">📎 {{ $file->getClientOriginalName() }}</span>
+                                        <button type="button" wire:click="removeAttachment({{ $index }})" class="ml-2 shrink-0 text-gray-400 hover:text-rose-600">✕</button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
                 </div>
 
-                <div class="mt-5 flex items-center justify-end gap-2">
-                    <button type="button" wire:click="$set('showCompose', false)" class="rounded-lg px-3 py-2 text-sm text-gray-500">{{ __('Cancel') }}</button>
-                    <button type="button" wire:click="sendMail" wire:loading.attr="disabled" wire:target="sendMail" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                        <span wire:loading.remove wire:target="sendMail">{{ __('Send') }}</span>
-                        <span wire:loading wire:target="sendMail">{{ __('Sending …') }}</span>
+                <div class="mt-5 flex items-center justify-between gap-2">
+                    <button type="button" wire:click="saveDraft" wire:loading.attr="disabled" wire:target="saveDraft" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                        💾 {{ __('Save draft') }}
                     </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" wire:click="$set('showCompose', false)" class="rounded-lg px-3 py-2 text-sm text-gray-500">{{ __('Cancel') }}</button>
+                        <button type="button" wire:click="sendMail" wire:loading.attr="disabled" wire:target="sendMail,composeAttachments" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50">
+                            <span wire:loading.remove wire:target="sendMail">{{ __('Send') }}</span>
+                            <span wire:loading wire:target="sendMail">{{ __('Sending …') }}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1144,6 +1353,11 @@ new #[Layout('layouts.app')] class extends Component
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input type="checkbox" wire:model="aValidateCert" class="rounded" /> {{ __('Validate TLS certificate (off for Proton Bridge)') }}
                     </label>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Signature') }} <span class="text-xs text-gray-400">({{ __('appended to new mails') }})</span></label>
+                        <textarea wire:model="aSignature" rows="3" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="{{ __('e.g. your name') }}"></textarea>
+                    </div>
 
                     @if ($testMessage)
                         <div class="rounded-lg px-3 py-2 text-sm {{ $testOk ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' : 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-200' }}">

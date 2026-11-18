@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.145.0] – 2026-11-18
+
+### Neu (App-Schnittstelle)
+- **Mail in der App:** Eigene Mailkonten (IMAP, Proton über Bridge) anlegen, testen und synchronisieren, Mails lesen und durchsuchen sowie eine Mail als Aufgabe, in den Eingang oder in die Einkaufsliste übernehmen.
+
 ## [1.144.0] – 2026-11-17
 
 ### Neu (Mail – Stufe 1: Lesen & Weiterverwenden)

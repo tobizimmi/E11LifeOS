@@ -7234,5 +7234,6 @@
     "On :date, :sender wrote:": "Am :date schrieb :sender:",
     "(No subject)": "(Kein Betreff)",
     "This account has no SMTP server set up.": "Für dieses Konto ist kein SMTP-Server eingerichtet.",
-    "Please enter at least one valid recipient.": "Bitte mindestens einen gültigen Empfänger angeben."
+    "Please enter at least one valid recipient.": "Bitte mindestens einen gültigen Empfänger angeben.",
+    "Load external images": "Externe Bilder laden"
 }

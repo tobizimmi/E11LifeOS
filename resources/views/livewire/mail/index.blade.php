@@ -5,6 +5,7 @@ use App\Models\MailAccount;
 use App\Models\MailMessage;
 use App\Models\ShoppingList;
 use App\Support\Mail\Mailbox;
+use App\Support\Mail\MailHtml;
 use App\Support\Mail\MailSender;
 use App\Support\Mail\MailSync;
 use App\Support\QuickCapture;
@@ -22,6 +23,10 @@ new #[Layout('layouts.app')] class extends Component
     public ?int $selectedAccountId = null;
 
     public ?int $openId = null;
+
+    public bool $showHtml = true;
+
+    public bool $loadImages = false;
 
     public string $search = '';
 
@@ -123,6 +128,24 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * The open mail's HTML body prepared for the sandboxed iframe, or null when it has no HTML part
+     * or the member switched to the plain-text view.
+     *
+     * @return array{html: string, blocked: bool}|null
+     */
+    #[Computed]
+    public function renderedHtml(): ?array
+    {
+        $message = $this->openMessage;
+
+        if (! $this->showHtml || ! $message || ! $message->body_html) {
+            return null;
+        }
+
+        return MailHtml::render((string) $message->body_html, $this->loadImages);
+    }
+
+    /**
      * @return array<int, int> account id => unread count
      */
     #[Computed]
@@ -151,10 +174,17 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->openId = $message->id;
+        $this->showHtml = true;
+        $this->loadImages = false;
 
         if (! $message->is_read) {
             $message->forceFill(['is_read' => true])->save();
         }
+    }
+
+    public function loadRemoteImages(): void
+    {
+        $this->loadImages = true;
     }
 
     public function close(): void
@@ -595,7 +625,26 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     @endif
 
-                    <div class="mt-4 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200">{{ $msg->body_text ?: __('(No text content.)') }}</div>
+                    @if ($msg->body_html)
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <div class="inline-flex overflow-hidden rounded-lg border border-gray-300 text-xs dark:border-gray-700">
+                                <button type="button" wire:click="$set('showHtml', true)" class="px-2 py-1 {{ $showHtml ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300' }}">HTML</button>
+                                <button type="button" wire:click="$set('showHtml', false)" class="px-2 py-1 {{ $showHtml ? 'text-gray-600 dark:text-gray-300' : 'bg-indigo-600 text-white' }}">{{ __('Text') }}</button>
+                            </div>
+                            @if ($this->renderedHtml && $this->renderedHtml['blocked'])
+                                <button type="button" wire:click="loadRemoteImages" class="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200">🖼️ {{ __('Load external images') }}</button>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if ($this->renderedHtml)
+                        @php($srcdoc = '<!doctype html><html><head><meta charset="utf-8"><base target="_blank"></head><body style="margin:0;padding:8px;font-family:system-ui,sans-serif;color:#111;background:#fff;">'.$this->renderedHtml['html'].'</body></html>')
+                        <iframe wire:key="html-{{ $msg->id }}-{{ $loadImages ? '1' : '0' }}" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"
+                            srcdoc="{{ $srcdoc }}"
+                            class="mt-4 h-[60vh] w-full rounded-lg border border-gray-200 bg-white dark:border-gray-700"></iframe>
+                    @else
+                        <div class="mt-4 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200">{{ $msg->body_text ?: __('(No text content.)') }}</div>
+                    @endif
 
                     @if ($this->selectedAccount->smtp_host)
                         <div class="mt-4 flex flex-wrap gap-2">

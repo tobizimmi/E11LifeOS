@@ -17,8 +17,11 @@ class MailSync
     /** Newest mails fetched per folder and run. */
     public const MAX_PER_RUN = 50;
 
-    /** Folders that are synced (ones the server does not have are skipped). */
+    /** Folders that are always synced first (ones the server does not have are skipped). */
     public const FOLDERS = ['INBOX', 'Sent', 'Archive'];
+
+    /** Upper bound on the number of folders synced per run, so an account with many folders stays bounded. */
+    public const MAX_FOLDERS = 30;
 
     /** Mails larger than this are listed but their body is not stored. */
     private const MAX_BYTES = 30 * 1024 * 1024;
@@ -34,7 +37,7 @@ class MailSync
         $total = 0;
 
         try {
-            foreach (self::FOLDERS as $folder) {
+            foreach ($this->folderList() as $folder) {
                 try {
                     $total += $this->syncFolder($account, $folder, $limit);
                 } catch (Throwable) {
@@ -48,6 +51,25 @@ class MailSync
         } finally {
             $this->mailbox->logout();
         }
+    }
+
+    /**
+     * The folders to sync: the fixed ones first, then everything the server lists, capped so an
+     * account with very many folders stays bounded. Falls back to the fixed list when LIST fails.
+     *
+     * @return list<string>
+     */
+    private function folderList(): array
+    {
+        try {
+            $listed = $this->mailbox->listFolders();
+        } catch (Throwable) {
+            $listed = [];
+        }
+
+        $folders = array_values(array_unique([...self::FOLDERS, ...$listed]));
+
+        return array_slice($folders, 0, self::MAX_FOLDERS);
     }
 
     /**

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.148.0] – 2026-11-18
+
+### Neu (Mail – Ordner & Konversationen)
+- **Ordner:** Neben dem Posteingang werden jetzt auch **Gesendet** und **Archiv** synchronisiert; Umschalten per Ordner-Chips. UIDVALIDITY wird pro Ordner geführt.
+- **Konversationen (Threads):** Zusammengehörige Mails werden anhand von `References`/`In-Reply-To` zu einer Konversation gruppiert – die Liste zeigt eine Zeile pro Unterhaltung mit Anzahl, die Leseansicht blendet die übrigen Mails der Unterhaltung ein (auch über Ordner wie Gesendet hinweg).
+
 ## [1.147.0] – 2026-11-18
 
 ### Neu (Mail – HTML-Ansicht)

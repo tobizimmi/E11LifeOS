@@ -55,6 +55,7 @@ class Navigation
             'journal' => ['everyday', __('Routines & journal'), 'face-smile', 'journal.index', ['journal.*']],
             'focus' => ['everyday', __('Focus & time boxing'), 'viewfinder-circle', 'focus.index', ['focus.*']],
             'bookmarks' => ['everyday', __('Bookmarks & read later'), 'bookmark', 'bookmarks.index', ['bookmarks.*']],
+            'mail' => ['everyday', __('Mail'), 'envelope', 'mail.index', ['mail.*']],
             'shopping' => ['everyday', __('Shopping List'), 'shopping-cart', 'shopping-list.index', ['shopping-list.*']],
             'cards' => ['everyday', __('Loyalty cards'), 'credit-card', 'loyalty-cards.index', ['loyalty-cards.*']],
             'pantry' => ['everyday', __('Pantry'), 'archive-box', 'pantry.index', ['pantry.*']],

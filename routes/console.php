@@ -68,4 +68,5 @@ Schedule::command('queue:work --queue=admin --stop-when-empty --max-time=3000 --
 Schedule::command('maps:warm')->everySixHours();
 Schedule::command('push:release-quiet')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('mail:fetch')->everyTwoMinutes()->withoutOverlapping(10);
+Schedule::command('mail:sync')->everyFiveMinutes()->withoutOverlapping(10);
 Schedule::command('paperless:flush-uploads')->everyFiveMinutes()->withoutOverlapping(10);

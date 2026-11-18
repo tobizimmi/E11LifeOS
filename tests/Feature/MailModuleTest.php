@@ -165,6 +165,39 @@ class MailModuleTest extends TestCase
         $this->assertCount(0, $sender->sent);
     }
 
+    public function test_folders_are_listed_and_the_list_is_filtered_by_folder(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'subject' => 'Posteingang-Mail']);
+        MailMessage::factory()->for($account, 'account')->create(['folder' => 'Sent', 'subject' => 'Gesendet-Mail']);
+
+        $component = Volt::test('mail.index')->call('selectAccount', $account->id);
+        $component->assertSet('folder', 'INBOX')->assertSee('Posteingang-Mail')->assertDontSee('Gesendet-Mail');
+
+        $component->call('openFolder', 'Sent')->assertSet('folder', 'Sent')->assertSee('Gesendet-Mail')->assertDontSee('Posteingang-Mail');
+    }
+
+    public function test_a_conversation_is_grouped_and_siblings_are_shown_when_opened(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'thread_key' => 't1', 'subject' => 'Alpha', 'body_text' => 'Alpha-Body', 'date' => now()->subDay()]);
+        $head = MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'thread_key' => 't1', 'subject' => 'Beta', 'body_text' => 'Beta-Body', 'date' => now()]);
+        MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'thread_key' => 't2', 'subject' => 'Gamma']);
+
+        // List shows the thread head (newest = Beta) and Gamma, but not the older Alpha as its own row.
+        $component = Volt::test('mail.index')->call('selectAccount', $account->id)
+            ->assertSee('Beta')->assertSee('Gamma')->assertDontSee('Alpha');
+
+        // Opening the thread head shows the older sibling in the conversation.
+        $component->call('open', $head->id)->assertSee('Alpha-Body');
+    }
+
     private function recordingSender(): MailSender
     {
         return new class extends MailSender

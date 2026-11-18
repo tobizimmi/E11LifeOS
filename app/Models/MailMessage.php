@@ -20,6 +20,9 @@ use Illuminate\Support\Carbon;
  * @property string $folder
  * @property int $uid
  * @property ?string $message_id
+ * @property ?string $in_reply_to
+ * @property ?string $references_ids
+ * @property ?string $thread_key
  * @property ?string $from_address
  * @property ?string $from_name
  * @property ?string $to_addresses
@@ -34,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property ?array<int, array{name: string, mime: string, size: int}> $attachments_meta
  * @property ?string $processed_as
  */
-#[Fillable(['mail_account_id', 'folder', 'uid', 'message_id', 'from_address', 'from_name', 'to_addresses', 'subject', 'body_text', 'body_html', 'date', 'size', 'is_read', 'is_flagged', 'has_attachments', 'attachments_meta', 'processed_as'])]
+#[Fillable(['mail_account_id', 'folder', 'uid', 'message_id', 'in_reply_to', 'references_ids', 'thread_key', 'from_address', 'from_name', 'to_addresses', 'subject', 'body_text', 'body_html', 'date', 'size', 'is_read', 'is_flagged', 'has_attachments', 'attachments_meta', 'processed_as'])]
 class MailMessage extends Model
 {
     /** @use HasFactory<MailMessageFactory> */

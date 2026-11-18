@@ -20,7 +20,7 @@ class SyncMailAccounts extends Command
 
         foreach ($accounts as $account) {
             try {
-                $synced += $sync->sync($account, 'INBOX', (int) $this->option('limit'));
+                $synced += $sync->syncAccount($account, (int) $this->option('limit'));
             } catch (Throwable $exception) {
                 report($exception);
                 $account->forceFill(['last_error' => mb_substr($exception->getMessage(), 0, 300)])->save();

@@ -62,7 +62,7 @@ class MailSyncTest extends TestCase
         $second = $account->messages()->where('uid', 2)->sole();
         $this->assertTrue($second->is_read); // \Seen on the server
 
-        $this->assertSame(100, $account->fresh()->uid_validity);
+        $this->assertSame(100, $account->fresh()->folder_uidvalidity['INBOX']);
         $this->assertNotNull($account->fresh()->last_synced_at);
 
         $commands = stream_get_contents($server);
@@ -76,7 +76,7 @@ class MailSyncTest extends TestCase
 
     public function test_only_newer_uids_are_fetched_on_the_next_run(): void
     {
-        $account = MailAccount::factory()->create(['imap_encryption' => 'none', 'uid_validity' => 100]);
+        $account = MailAccount::factory()->create(['imap_encryption' => 'none', 'folder_uidvalidity' => ['INBOX' => 100]]);
         $account->messages()->create(['folder' => 'INBOX', 'uid' => 1, 'subject' => 'alt', 'is_read' => true]);
 
         $mail = "From: n@example.com\nSubject: Neu\n\nNeuer Text";
@@ -102,7 +102,7 @@ class MailSyncTest extends TestCase
 
     public function test_a_changed_uidvalidity_drops_the_cached_folder_and_resyncs(): void
     {
-        $account = MailAccount::factory()->create(['imap_encryption' => 'none', 'uid_validity' => 100]);
+        $account = MailAccount::factory()->create(['imap_encryption' => 'none', 'folder_uidvalidity' => ['INBOX' => 100]]);
         $account->messages()->create(['folder' => 'INBOX', 'uid' => 9, 'subject' => 'stale', 'is_read' => true]);
 
         $mail = "From: n@example.com\nSubject: Frisch\n\nFrischer Text";
@@ -122,6 +122,6 @@ class MailSyncTest extends TestCase
 
         $this->assertNull($account->messages()->where('uid', 9)->first()); // stale cache dropped
         $this->assertNotNull($account->messages()->where('uid', 1)->first());
-        $this->assertSame(777, $account->fresh()->uid_validity);
+        $this->assertSame(777, $account->fresh()->folder_uidvalidity['INBOX']);
     }
 }

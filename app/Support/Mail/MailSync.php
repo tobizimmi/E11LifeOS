@@ -146,7 +146,7 @@ class MailSync
     {
         preg_match_all('/<([^<>\s]+)>/', $raw, $matches);
 
-        return array_values(array_map(fn (string $id) => mb_substr($id, 0, 990), $matches[1]));
+        return array_map(fn (string $id) => mb_substr($id, 0, 990), $matches[1]);
     }
 
     private static function date(MimeMessage $message): ?Carbon
@@ -159,7 +159,7 @@ class MailSync
 
         try {
             return Carbon::parse($raw);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\MailAccount;
+use App\Models\User;
 use App\Support\Mail\Mailbox;
 use App\Support\Mail\MailSync;
+use App\Support\WebPush;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -183,5 +185,62 @@ class MailSyncTest extends TestCase
 
         $this->assertContains('INBOX', $mailbox->selected);
         $this->assertContains('Werbung', $mailbox->selected);
+    }
+
+    public function test_the_sync_command_pushes_a_notification_for_new_inbox_mail(): void
+    {
+        MailAccount::factory()->create(['notify_new_mail' => true]);
+        $this->app->instance(MailSync::class, $this->syncStub());
+        $this->app->instance(WebPush::class, $push = $this->recordingPush());
+
+        $this->artisan('mail:sync')->assertSuccessful();
+
+        $this->assertCount(1, $push->sent);
+        $this->assertStringContainsString('Neue Mail', $push->sent[0]['body']);
+    }
+
+    public function test_the_sync_command_does_not_push_when_notifications_are_off(): void
+    {
+        MailAccount::factory()->create(['notify_new_mail' => false]);
+        $this->app->instance(MailSync::class, $this->syncStub());
+        $this->app->instance(WebPush::class, $push = $this->recordingPush());
+
+        $this->artisan('mail:sync')->assertSuccessful();
+
+        $this->assertCount(0, $push->sent);
+    }
+
+    /**
+     * A MailSync that stores one new unread inbox mail, standing in for a real IMAP fetch.
+     */
+    private function syncStub(): MailSync
+    {
+        return new class extends MailSync
+        {
+            public function __construct() {}
+
+            public function syncAccount(MailAccount $account, int $limit = self::MAX_PER_RUN): int
+            {
+                $account->messages()->create(['folder' => 'INBOX', 'uid' => 42, 'subject' => 'Neue Mail', 'is_read' => false]);
+
+                return 1;
+            }
+        };
+    }
+
+    private function recordingPush(): WebPush
+    {
+        return new class extends WebPush
+        {
+            /** @var list<array{title: string, body: string}> */
+            public array $sent = [];
+
+            public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true, array $actions = []): int
+            {
+                $this->sent[] = ['title' => $title, 'body' => $body];
+
+                return 1;
+            }
+        };
     }
 }

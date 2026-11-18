@@ -7231,6 +7231,8 @@
     "Sending …": "Senden …",
     "Mail sent.": "Mail gesendet.",
     "Sending failed: :error": "Senden fehlgeschlagen: :error",
+    "Notify me about new mail": "Bei neuer Mail benachrichtigen",
+    ":count new mail|:count new mails": ":count neue Mail|:count neue Mails",
     "Bcc": "Bcc",
     "max. 5, 10 MB each": "max. 5, je 10 MB",
     "Drafts": "Entwürfe",

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.147.0] – 2026-11-18
+
+### Neu (Mail – HTML-Ansicht)
+- **HTML-Mails anzeigen:** formatierte Mails werden jetzt sicher in einer abgeschotteten Sandbox dargestellt (kein JavaScript, keine aktiven Inhalte). Umschalter zwischen **HTML** und **Text**.
+- **Tracking-Schutz:** externe Bilder/Ressourcen werden standardmäßig blockiert (keine Zählpixel); per Button „Externe Bilder laden" bei Bedarf nachladbar.
+
 ## [1.146.0] – 2026-11-18
 
 ### Neu (Mail – Senden & Antworten)

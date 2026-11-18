@@ -3,12 +3,16 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\MailAccount;
 use App\Models\MailMessage;
+use App\Models\PaperlessInstance;
 use App\Models\ShoppingList;
 use App\Support\Mail\Mailbox;
 use App\Support\Mail\MailHtml;
 use App\Support\Mail\MailSender;
 use App\Support\Mail\MailSync;
+use App\Support\Mail\MimeMessage;
+use App\Support\Paperless\PaperlessUploader;
 use App\Support\QuickCapture;
+use App\Support\Security\VirusScanner;
 use App\Support\ShoppingLists;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
@@ -19,6 +23,9 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.app')] class extends Component
 {
     use InteractsWithHousehold;
+
+    /** Attachment types that can be archived to Paperless (documents and photos). */
+    public const PAPERLESS_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
     public ?int $selectedAccountId = null;
 
@@ -205,6 +212,15 @@ new #[Layout('layouts.app')] class extends Component
             ->where('is_read', false)
             ->selectRaw('mail_account_id, count(*) as total')->groupBy('mail_account_id')
             ->pluck('total', 'mail_account_id')->all();
+    }
+
+    /**
+     * Whether a Paperless archive is connected for the member, so attachments can be archived.
+     */
+    #[Computed]
+    public function paperlessConnected(): bool
+    {
+        return PaperlessInstance::defaultFor($this->currentUser()) !== null;
     }
 
     public function selectAccount(int $id): void
@@ -613,6 +629,118 @@ new #[Layout('layouts.app')] class extends Component
     {
         return MailMessage::query()->where('mail_account_id', $this->selectedAccount?->id)->find($id);
     }
+
+    /**
+     * Archives one of the open mail's attachments to Paperless. The attachment is not stored
+     * locally, so it is re-fetched from the server by the mail's UID, virus-checked and then sent
+     * (or queued when the archive is unreachable, via {@see PaperlessUploader}).
+     */
+    public function toPaperless(int $id, int $index): void
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $meta = ($message->attachments_meta ?? [])[$index] ?? null;
+
+        if (! $meta || ! in_array($meta['mime'], self::PAPERLESS_TYPES, true)) {
+            $this->flash = __('This attachment cannot be archived.');
+
+            return;
+        }
+
+        $instance = PaperlessInstance::defaultFor($this->currentUser());
+
+        if (! $instance) {
+            $this->flash = __('Connect Paperless first to archive attachments.');
+
+            return;
+        }
+
+        $attachment = $this->fetchAttachment($message, $index, $meta);
+
+        if ($attachment === null) {
+            $this->flash = __('The attachment could not be fetched from the server.');
+
+            return;
+        }
+
+        if (VirusScanner::isEnabled()) {
+            $scan = app(VirusScanner::class)->scanString($attachment['content']);
+
+            if ($scan['status'] === VirusScanner::INFECTED || ($scan['status'] === VirusScanner::UNAVAILABLE && config('security.clamav.fail_closed'))) {
+                $this->flash = __(':file was not archived (virus check).', ['file' => $meta['name']]);
+
+                return;
+            }
+        }
+
+        $title = pathinfo($meta['name'], PATHINFO_FILENAME) ?: ((string) $message->subject ?: __('Mail attachment'));
+
+        try {
+            $queued = app(PaperlessUploader::class)->store(
+                $instance,
+                $this->currentUser(),
+                (int) $this->householdId,
+                $attachment['content'],
+                mb_substr($meta['name'], 0, 255),
+                mb_substr($title, 0, 255),
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->flash = __('Archiving failed: :error', ['error' => $exception->getMessage()]);
+
+            return;
+        }
+
+        $this->flash = $queued
+            ? __(':file is queued for Paperless (the archive is currently unreachable).', ['file' => $meta['name']])
+            : __(':file was sent to Paperless.', ['file' => $meta['name']]);
+    }
+
+    /**
+     * Re-fetches one attachment's raw content by the mail's UID (attachments stay on the server).
+     * The attachment at the given index must still match the stored meta, otherwise null is returned.
+     *
+     * @param  array{name: string, mime: string, size: int}  $meta
+     * @return array{name: string, mime: string, content: string}|null
+     */
+    private function fetchAttachment(MailMessage $message, int $index, array $meta): ?array
+    {
+        $account = $this->selectedAccount;
+
+        if (! $account) {
+            return null;
+        }
+
+        $mailbox = app(Mailbox::class);
+
+        try {
+            $mailbox->open($account->imapConfig(), false);
+            $mailbox->selectFolder($message->folder);
+            $raw = $mailbox->uidFetch($message->uid)['raw'];
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return null;
+        } finally {
+            rescue(fn () => $mailbox->logout(), report: false);
+        }
+
+        if ($raw === '') {
+            return null;
+        }
+
+        $attachment = MimeMessage::parse($raw)->attachments[$index] ?? null;
+
+        if (! $attachment || $attachment['mime'] !== $meta['mime'] || $attachment['content'] === '') {
+            return null;
+        }
+
+        return $attachment;
+    }
 }; ?>
 
 <div class="mx-auto max-w-5xl px-4 py-6">
@@ -689,8 +817,16 @@ new #[Layout('layouts.app')] class extends Component
 
                     @if ($msg->has_attachments && $msg->attachments_meta)
                         <div class="mt-3 flex flex-wrap gap-2">
-                            @foreach ($msg->attachments_meta as $attachment)
-                                <span class="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">📎 {{ $attachment['name'] }}</span>
+                            @foreach ($msg->attachments_meta as $index => $attachment)
+                                <span class="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                    📎 {{ $attachment['name'] }}
+                                    @if ($this->paperlessConnected && in_array($attachment['mime'], $this::PAPERLESS_TYPES, true))
+                                        <button type="button" wire:click="toPaperless({{ $msg->id }}, {{ $index }})" wire:loading.attr="disabled" wire:target="toPaperless({{ $msg->id }}, {{ $index }})"
+                                            class="rounded bg-indigo-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-indigo-500 disabled:opacity-50" title="{{ __('Archive to Paperless') }}">
+                                            → Paperless
+                                        </button>
+                                    @endif
+                                </span>
                             @endforeach
                         </div>
                     @endif

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.149.0] – 2026-11-18
+
+### Neu (Mail – Anhänge archivieren)
+- **Anhänge nach Paperless:** In der Leseansicht lässt sich jeder Dokument-/Foto-Anhang (PDF, JPG, PNG, WebP, HEIC) mit einem Klick ins Paperless-Archiv übernehmen. Der Anhang wird dabei bei Bedarf per UID frisch vom Server geladen (Anhänge liegen nicht lokal), virengeprüft und – wenn das Archiv gerade nicht erreichbar ist – für einen späteren Upload vorgemerkt. Der Button erscheint nur, wenn ein Paperless-Archiv verbunden ist.
+
 ## [1.148.0] – 2026-11-18
 
 ### Neu (Mail – Ordner & Konversationen)

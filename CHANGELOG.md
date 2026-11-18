@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.153.0] – 2026-11-18
+
+### Neu (Mail – Benachrichtigungen & Sync)
+- **Push bei neuer Mail:** Kommt im Posteingang neue, ungelesene Mail an, gibt es eine Push-Benachrichtigung (Absender + Betreff, Tippen öffnet das Mail-Modul). Pro Konto an-/abschaltbar.
+- **Ungelesen-Zähler:** Der Mail-Eintrag in der Navigation zeigt jetzt ein Badge mit der Zahl der ungelesenen Posteingangs-Mails.
+- **Häufigerer Sync:** Mails werden jetzt alle 2 Minuten (statt alle 5) abgeholt.
+
 ## [1.152.0] – 2026-11-18
 
 ### Neu (Mail – Ordner & Suche)

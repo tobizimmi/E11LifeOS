@@ -71,6 +71,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public bool $aValidateCert = true;
 
+    public bool $aNotify = true;
+
     public string $aUsername = '';
 
     public string $aPassword = '';
@@ -551,6 +553,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->aSmtpPort = 465;
         $this->aSmtpEncryption = 'ssl';
         $this->aValidateCert = true;
+        $this->aNotify = true;
         $this->showAccountForm = true;
     }
 
@@ -590,6 +593,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->aSmtpPort = $account->smtp_port;
         $this->aSmtpEncryption = (string) ($account->smtp_encryption ?: 'ssl');
         $this->aValidateCert = $account->validate_cert;
+        $this->aNotify = $account->notify_new_mail;
         $this->aUsername = $account->username;
         $this->aPassword = '';
         $this->aSignature = (string) $account->signature;
@@ -613,6 +617,7 @@ new #[Layout('layouts.app')] class extends Component
             'smtp_port' => $this->aSmtpPort,
             'smtp_encryption' => trim($this->aSmtpHost) !== '' ? $this->aSmtpEncryption : null,
             'validate_cert' => $this->aValidateCert,
+            'notify_new_mail' => $this->aNotify,
             'username' => trim($this->aUsername),
             'signature' => trim($this->aSignature) ?: null,
         ];
@@ -1356,6 +1361,10 @@ new #[Layout('layouts.app')] class extends Component
 
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input type="checkbox" wire:model="aValidateCert" class="rounded" /> {{ __('Validate TLS certificate (off for Proton Bridge)') }}
+                    </label>
+
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input type="checkbox" wire:model="aNotify" class="rounded" /> {{ __('Notify me about new mail') }}
                     </label>
 
                     <div>

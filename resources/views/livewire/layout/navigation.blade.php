@@ -88,12 +88,16 @@ new class extends Component
         $modules = Navigation::modules($user);
         $preferences = Navigation::preferences($user);
 
+        $mailUnread = isset($modules['mail'])
+            ? \App\Models\MailMessage::query()->forUser($user, (int) $this->householdId)->where('folder', 'INBOX')->where('is_read', false)->count()
+            : 0;
+
         return [
             'navModules' => $modules,
             'navHidden' => $preferences['hidden'],
             'navPinned' => array_values(array_filter($preferences['pinned'], fn (string $key) => isset($modules[$key]))),
             'navFrequent' => Navigation::frequent($user),
-            'navBadges' => ['inbox' => $inboxCount, 'tasks' => $todayTaskCount, 'shopping' => $shoppingCount],
+            'navBadges' => ['inbox' => $inboxCount, 'tasks' => $todayTaskCount, 'shopping' => $shoppingCount, 'mail' => $mailUnread],
             'navActive' => fn (string $key) => isset($modules[$key]) && (request()->routeIs(...$modules[$key]['active']) || ($key === 'tasks' && $tasksCollectionId !== null && $this->currentCollectionId === $tasksCollectionId)),
         ];
     }

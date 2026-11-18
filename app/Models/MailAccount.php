@@ -31,13 +31,14 @@ use Illuminate\Support\Carbon;
  * @property string $username
  * @property string $password
  * @property bool $active
+ * @property bool $notify_new_mail
  * @property ?int $uid_validity
  * @property ?array<string, int> $folder_uidvalidity
  * @property ?Carbon $last_synced_at
  * @property ?string $last_error
  * @property ?string $signature
  */
-#[Fillable(['user_id', 'household_id', 'label', 'provider', 'imap_host', 'imap_port', 'imap_encryption', 'smtp_host', 'smtp_port', 'smtp_encryption', 'validate_cert', 'username', 'password', 'active', 'uid_validity', 'folder_uidvalidity', 'last_synced_at', 'last_error', 'signature'])]
+#[Fillable(['user_id', 'household_id', 'label', 'provider', 'imap_host', 'imap_port', 'imap_encryption', 'smtp_host', 'smtp_port', 'smtp_encryption', 'validate_cert', 'username', 'password', 'active', 'notify_new_mail', 'uid_validity', 'folder_uidvalidity', 'last_synced_at', 'last_error', 'signature'])]
 class MailAccount extends Model
 {
     /** @use HasFactory<MailAccountFactory> */
@@ -61,6 +62,7 @@ class MailAccount extends Model
             'username' => 'encrypted',
             'password' => 'encrypted',
             'active' => 'boolean',
+            'notify_new_mail' => 'boolean',
             'uid_validity' => 'integer',
             'folder_uidvalidity' => 'array',
             'last_synced_at' => 'datetime',

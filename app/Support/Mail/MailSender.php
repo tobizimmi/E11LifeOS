@@ -62,7 +62,7 @@ class MailSender
         $transport->setUsername($account->username);
         $transport->setPassword($account->password);
 
-        if ($account->smtp_encryption === 'none' && method_exists($transport, 'setAutoTls')) {
+        if ($account->smtp_encryption === 'none') {
             $transport->setAutoTls(false);
         }
 

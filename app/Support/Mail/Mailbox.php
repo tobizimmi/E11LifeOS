@@ -254,6 +254,34 @@ class Mailbox
         $this->command('UID STORE '.$uid.' +FLAGS.SILENT (\\Seen)');
     }
 
+    /**
+     * Adds or removes an IMAP flag (e.g. \Seen, \Flagged) on a mail by its UID.
+     */
+    public function uidStore(int $uid, string $flag, bool $add): void
+    {
+        $this->command('UID STORE '.$uid.' '.($add ? '+' : '-').'FLAGS.SILENT ('.$flag.')');
+    }
+
+    /**
+     * Moves a mail to another folder on the server. Uses UID MOVE (RFC 6851) and, on servers that
+     * do not support it, falls back to copy + mark deleted + expunge that single UID.
+     */
+    public function uidMove(int $uid, string $folder): void
+    {
+        try {
+            $this->command('UID MOVE '.$uid.' '.$this->quote($folder));
+        } catch (RuntimeException) {
+            $this->command('UID COPY '.$uid.' '.$this->quote($folder));
+            $this->command('UID STORE '.$uid.' +FLAGS.SILENT (\\Deleted)');
+
+            try {
+                $this->command('UID EXPUNGE '.$uid);
+            } catch (RuntimeException) {
+                $this->command('EXPUNGE');
+            }
+        }
+    }
+
     private function connect(string $host, int $port, string $encryption, bool $validateCertificate): void
     {
         $context = stream_context_create(['ssl' => [

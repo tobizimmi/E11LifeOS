@@ -27,6 +27,11 @@ new #[Layout('layouts.app')] class extends Component
     /** Attachment types that can be archived to Paperless (documents and photos). */
     public const PAPERLESS_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
+    /** Server folders the archive / trash actions move a mail into. */
+    public const ARCHIVE_FOLDER = 'Archive';
+
+    public const TRASH_FOLDER = 'Trash';
+
     public ?int $selectedAccountId = null;
 
     public ?int $openId = null;
@@ -630,6 +635,103 @@ new #[Layout('layouts.app')] class extends Component
         return MailMessage::query()->where('mail_account_id', $this->selectedAccount?->id)->find($id);
     }
 
+    // ── Client actions on the server (mark / flag / archive / delete) ─
+    public function toggleRead(int $id): void
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $target = ! $message->is_read;
+
+        if ($this->onServer($message, fn (Mailbox $mailbox) => $mailbox->uidStore($message->uid, '\\Seen', $target))) {
+            $message->forceFill(['is_read' => $target])->save();
+            unset($this->messages, $this->unreadCounts);
+        }
+    }
+
+    public function toggleFlag(int $id): void
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $target = ! $message->is_flagged;
+
+        if ($this->onServer($message, fn (Mailbox $mailbox) => $mailbox->uidStore($message->uid, '\\Flagged', $target))) {
+            $message->forceFill(['is_flagged' => $target])->save();
+            unset($this->messages);
+        }
+    }
+
+    public function archive(int $id): void
+    {
+        $this->moveAway($id, self::ARCHIVE_FOLDER, __('Mail archived.'));
+    }
+
+    public function trash(int $id): void
+    {
+        $this->moveAway($id, self::TRASH_FOLDER, __('Mail moved to the trash.'));
+    }
+
+    /**
+     * Moves a mail to another server folder and drops the local copy (the next sync re-adds it under
+     * the new folder with its new UID). Does nothing when it is already in the target folder.
+     */
+    private function moveAway(int $id, string $folder, string $success): void
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message || $message->folder === $folder) {
+            return;
+        }
+
+        if ($this->onServer($message, fn (Mailbox $mailbox) => $mailbox->uidMove($message->uid, $folder))) {
+            $message->delete();
+
+            if ($this->openId === $id) {
+                $this->openId = null;
+            }
+
+            unset($this->messages, $this->unreadCounts, $this->folders);
+            $this->flash = $success;
+        }
+    }
+
+    /**
+     * Runs an action against the mail's folder on the account's IMAP server. Returns whether it
+     * succeeded; a failure is reported to the member via the flash message.
+     */
+    private function onServer(MailMessage $message, \Closure $operation): bool
+    {
+        $account = $this->selectedAccount;
+
+        if (! $account) {
+            return false;
+        }
+
+        $mailbox = app(Mailbox::class);
+
+        try {
+            $mailbox->open($account->imapConfig(), false);
+            $mailbox->selectFolder($message->folder);
+            $operation($mailbox);
+
+            return true;
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->flash = __('The action could not be completed on the server: :error', ['error' => $exception->getMessage()]);
+
+            return false;
+        } finally {
+            rescue(fn () => $mailbox->logout(), report: false);
+        }
+    }
+
     /**
      * Archives one of the open mail's attachments to Paperless. The attachment is not stored
      * locally, so it is re-fetched from the server by the mail's UID, virus-checked and then sent
@@ -815,6 +917,26 @@ new #[Layout('layouts.app')] class extends Component
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $msg->subject ?: __('Mail without subject') }}</h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $msg->fromLabel() }} @if($msg->date) · {{ $msg->date->isoFormat('LLL') }} @endif</p>
 
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" wire:click="toggleFlag({{ $msg->id }})" title="{{ $msg->is_flagged ? __('Remove star') : __('Mark with star') }}"
+                            class="rounded-lg border px-3 py-1.5 text-sm {{ $msg->is_flagged ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200' : 'border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800' }}">
+                            {{ $msg->is_flagged ? '⭐' : '☆' }} {{ __('Star') }}
+                        </button>
+                        <button type="button" wire:click="toggleRead({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+                            {{ $msg->is_read ? '📩 '.__('Mark as unread') : '📖 '.__('Mark as read') }}
+                        </button>
+                        @if ($msg->folder !== $this::ARCHIVE_FOLDER)
+                            <button type="button" wire:click="archive({{ $msg->id }})" wire:loading.attr="disabled" wire:target="archive({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800">
+                                🗄️ {{ __('Archive') }}
+                            </button>
+                        @endif
+                        <button type="button" wire:click="trash({{ $msg->id }})" wire:loading.attr="disabled" wire:target="trash({{ $msg->id }})"
+                            wire:confirm="{{ __('Move this mail to the trash on the server?') }}"
+                            class="rounded-lg border border-rose-300 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-900/40">
+                            🗑️ {{ __('Delete') }}
+                        </button>
+                    </div>
+
                     @if ($msg->has_attachments && $msg->attachments_meta)
                         <div class="mt-3 flex flex-wrap gap-2">
                             @foreach ($msg->attachments_meta as $index => $attachment)
@@ -898,6 +1020,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="w-40 shrink-0 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100' }}">{{ $message->fromLabel() }}</span>
                                 <span class="flex-1 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-gray-100' }}">{{ $message->subject ?: __('Mail without subject') }}</span>
                                 @if ($row['count'] > 1)<span class="shrink-0 rounded-full bg-gray-200 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $row['count'] }}</span>@endif
+                                @if ($message->is_flagged)<span class="text-xs">⭐</span>@endif
                                 @if ($message->has_attachments)<span class="text-xs text-gray-400">📎</span>@endif
                                 @if ($message->processed_as)<span class="text-xs text-emerald-500">✓</span>@endif
                                 <span class="w-24 shrink-0 text-right text-xs text-gray-400">{{ $message->date?->isoFormat('DD.MM.') }}</span>

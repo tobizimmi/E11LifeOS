@@ -5,7 +5,11 @@ namespace Tests\Feature;
 use App\Models\Item;
 use App\Models\MailAccount;
 use App\Models\MailMessage;
+use App\Models\PaperlessInstance;
+use App\Models\User;
+use App\Support\Mail\Mailbox;
 use App\Support\Mail\MailSender;
+use App\Support\Paperless\PaperlessUploader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -196,6 +200,94 @@ class MailModuleTest extends TestCase
 
         // Opening the thread head shows the older sibling in the conversation.
         $component->call('open', $head->id)->assertSee('Alpha-Body');
+    }
+
+    public function test_an_attachment_can_be_archived_to_paperless(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create([
+            'folder' => 'INBOX', 'uid' => 5, 'subject' => 'Rechnung', 'has_attachments' => true,
+            'attachments_meta' => [['name' => 'rechnung.pdf', 'mime' => 'application/pdf', 'size' => 13]],
+        ]);
+        PaperlessInstance::create(['user_id' => $user->id, 'household_id' => $household->id, 'name' => 'Archiv', 'url' => 'https://paperless.test', 'token' => 'secret-token']);
+
+        $this->app->instance(Mailbox::class, $this->mailboxWithAttachment('rechnung.pdf', 'application/pdf', '%PDF-1.4 fake'));
+        $this->app->instance(PaperlessUploader::class, $uploader = $this->recordingUploader());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('open', $message->id)
+            ->call('toPaperless', $message->id, 0);
+
+        $this->assertCount(1, $uploader->stored);
+        $this->assertSame('rechnung.pdf', $uploader->stored[0]['filename']);
+        $this->assertSame('%PDF-1.4 fake', $uploader->stored[0]['content']);
+    }
+
+    public function test_archiving_needs_a_connected_paperless(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create([
+            'folder' => 'INBOX', 'uid' => 5, 'has_attachments' => true,
+            'attachments_meta' => [['name' => 'rechnung.pdf', 'mime' => 'application/pdf', 'size' => 13]],
+        ]);
+
+        $this->app->instance(PaperlessUploader::class, $uploader = $this->recordingUploader());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('open', $message->id)
+            ->call('toPaperless', $message->id, 0);
+
+        $this->assertCount(0, $uploader->stored);
+    }
+
+    private function mailboxWithAttachment(string $name, string $mime, string $content): Mailbox
+    {
+        $raw = "From: a@b.example\r\nSubject: Rechnung\r\nContent-Type: multipart/mixed; boundary=\"X\"\r\n\r\n"
+            ."--X\r\nContent-Type: text/plain\r\n\r\nText\r\n"
+            ."--X\r\nContent-Type: {$mime}; name=\"{$name}\"\r\nContent-Disposition: attachment; filename=\"{$name}\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+            .chunk_split(base64_encode($content))
+            ."--X--\r\n";
+
+        return new class($raw) extends Mailbox
+        {
+            public function __construct(private string $raw) {}
+
+            public function open(?array $config = null, bool $select = true): void {}
+
+            /** @return array{uidvalidity: int, exists: int} */
+            public function selectFolder(string $folder = 'INBOX'): array
+            {
+                return ['uidvalidity' => 1, 'exists' => 1];
+            }
+
+            /** @return array{seen: bool, size: int, raw: string} */
+            public function uidFetch(int $uid): array
+            {
+                return ['seen' => false, 'size' => strlen($this->raw), 'raw' => $this->raw];
+            }
+
+            public function logout(): void {}
+        };
+    }
+
+    private function recordingUploader(): PaperlessUploader
+    {
+        return new class extends PaperlessUploader
+        {
+            /** @var list<array{filename: string, title: string, content: string}> */
+            public array $stored = [];
+
+            public function store(PaperlessInstance $instance, User $user, int $householdId, string $contents, string $filename, string $title, array $tagIds = [], ?int $correspondentId = null, ?int $documentTypeId = null): bool
+            {
+                $this->stored[] = ['filename' => $filename, 'title' => $title, 'content' => $contents];
+
+                return false;
+            }
+        };
     }
 
     private function recordingSender(): MailSender

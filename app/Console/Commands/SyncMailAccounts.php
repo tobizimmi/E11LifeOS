@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\MailAccount;
+use App\Models\User;
 use App\Support\Mail\MailSync;
 use App\Support\WebPush;
 use Illuminate\Console\Attributes\Description;
@@ -48,7 +49,7 @@ class SyncMailAccounts extends Command
         $new = $account->messages()->where('folder', 'INBOX')->where('id', '>', $sinceId)->where('is_read', false)->orderByDesc('id')->get();
         $user = $account->user;
 
-        if ($new->isEmpty() || $user === null) {
+        if ($new->isEmpty() || ! $user instanceof User) {
             return;
         }
 

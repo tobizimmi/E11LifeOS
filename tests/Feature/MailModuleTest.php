@@ -186,6 +186,24 @@ class MailModuleTest extends TestCase
         $component->call('openFolder', 'Sent')->assertSet('folder', 'Sent')->assertSee('Gesendet-Mail')->assertDontSee('Posteingang-Mail');
     }
 
+    public function test_search_finds_mails_across_folders(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'subject' => 'Normale Posteingangsmail']);
+        MailMessage::factory()->for($account, 'account')->create(['folder' => 'Werbung', 'subject' => 'Angebot mit Rabatt']);
+
+        $component = Volt::test('mail.index')->call('selectAccount', $account->id);
+
+        // In the inbox the Werbung mail is not shown …
+        $component->assertSee('Normale Posteingangsmail')->assertDontSee('Angebot mit Rabatt');
+
+        // … but a search finds it across folders.
+        $component->set('search', 'Rabatt')->assertSee('Angebot mit Rabatt');
+    }
+
     public function test_a_conversation_is_grouped_and_siblings_are_shown_when_opened(): void
     {
         [$user, $household] = $this->memberWithHousehold();

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.152.0] – 2026-11-18
+
+### Neu (Mail – Ordner & Suche)
+- **Alle Ordner:** Der Sync holt jetzt nicht mehr nur Posteingang/Gesendet/Archiv, sondern **alle Ordner** des Kontos (bis zu 30, über `LIST` erkannt; nicht wählbare Container werden übersprungen). Die Ordner erscheinen als Chips zum Umschalten.
+- **Ordnerübergreifende Suche:** Die Suche durchsucht jetzt **alle Ordner** des Kontos (nicht nur den gerade geöffneten); Treffer zeigen ihren Ordner als kleines Label.
+
 ## [1.151.0] – 2026-11-18
 
 ### Neu (Mail – Verfassen erweitert)

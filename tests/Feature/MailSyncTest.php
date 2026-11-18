@@ -124,4 +124,64 @@ class MailSyncTest extends TestCase
         $this->assertNotNull($account->messages()->where('uid', 1)->first());
         $this->assertSame(777, $account->fresh()->folder_uidvalidity['INBOX']);
     }
+
+    public function test_list_folders_parses_the_selectable_mailboxes(): void
+    {
+        [$mailbox, $server] = $this->mailboxWithServer(
+            "* OK ready\nA0001 OK Logged in\n"
+            ."* LIST (\\HasNoChildren) \"/\" \"INBOX\"\n"
+            ."* LIST (\\HasChildren \\Noselect) \"/\" \"[Gmail]\"\n"
+            ."* LIST (\\HasNoChildren) \"/\" \"Werbung\"\n"
+            ."A0002 OK List completed\n"
+        );
+        $this->assertIsResource($server);
+        $mailbox->open(['host' => 'x', 'port' => 143, 'encryption' => 'none', 'validate_cert' => false, 'username' => 'u', 'password' => 'p'], false);
+
+        $folders = $mailbox->listFolders();
+
+        $this->assertContains('INBOX', $folders);
+        $this->assertContains('Werbung', $folders);
+        $this->assertNotContains('[Gmail]', $folders); // \Noselect container is skipped
+    }
+
+    public function test_sync_account_visits_every_listed_folder(): void
+    {
+        $account = MailAccount::factory()->create(['imap_encryption' => 'none']);
+
+        $mailbox = new class extends Mailbox
+        {
+            /** @var list<string> */
+            public array $selected = [];
+
+            public function open(?array $config = null, bool $select = true): void {}
+
+            /** @return list<string> */
+            public function listFolders(): array
+            {
+                return ['INBOX', 'Werbung'];
+            }
+
+            /** @return array{uidvalidity: int, exists: int} */
+            public function selectFolder(string $folder = 'INBOX'): array
+            {
+                $this->selected[] = $folder;
+
+                return ['uidvalidity' => 1, 'exists' => 0];
+            }
+
+            /** @return list<int> */
+            public function uidSearchAll(): array
+            {
+                return [];
+            }
+
+            public function logout(): void {}
+        };
+        $this->app->instance(Mailbox::class, $mailbox);
+
+        app(MailSync::class)->syncAccount($account);
+
+        $this->assertContains('INBOX', $mailbox->selected);
+        $this->assertContains('Werbung', $mailbox->selected);
+    }
 }

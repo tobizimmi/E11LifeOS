@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.150.0] – 2026-11-18
+
+### Neu (Mail – Client-Aktionen)
+- **Markieren:** Mails lassen sich in der Leseansicht als **gelesen/ungelesen** markieren und mit einem **Stern** (Flag) versehen – der Status wird direkt auf dem IMAP-Server gesetzt. Sterne erscheinen auch in der Liste.
+- **Archivieren & Papierkorb:** Mails können per Klick ins **Archiv** oder in den **Papierkorb** verschoben werden (echtes `UID MOVE` auf dem Server, mit Fallback für Server ohne MOVE). Die lokale Kopie wird entfernt und beim nächsten Sync im Zielordner wieder eingelesen. Löschen ist mit einer Rückfrage abgesichert.
+
 ## [1.149.0] – 2026-11-18
 
 ### Neu (Mail – Anhänge archivieren)

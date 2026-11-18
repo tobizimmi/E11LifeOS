@@ -244,6 +244,107 @@ class MailModuleTest extends TestCase
         $this->assertCount(0, $uploader->stored);
     }
 
+    public function test_marking_read_unread_updates_the_server_and_local_state(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'uid' => 7, 'is_read' => true]);
+
+        $this->app->instance(Mailbox::class, $mailbox = $this->recordingMailbox());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('toggleRead', $message->id);
+
+        $this->assertFalse($message->fresh()->is_read);
+        $this->assertContains(['store', 7, '\\Seen', false], $mailbox->calls);
+    }
+
+    public function test_flagging_a_mail_updates_the_server_and_local_state(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'uid' => 7, 'is_flagged' => false]);
+
+        $this->app->instance(Mailbox::class, $mailbox = $this->recordingMailbox());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('toggleFlag', $message->id);
+
+        $this->assertTrue($message->fresh()->is_flagged);
+        $this->assertContains(['store', 7, '\\Flagged', true], $mailbox->calls);
+    }
+
+    public function test_archiving_moves_the_mail_on_the_server_and_drops_the_local_copy(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'uid' => 7]);
+
+        $this->app->instance(Mailbox::class, $mailbox = $this->recordingMailbox());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('archive', $message->id);
+
+        $this->assertNull($message->fresh());
+        $this->assertContains(['move', 7, 'Archive'], $mailbox->calls);
+    }
+
+    public function test_deleting_moves_the_mail_to_the_trash(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create(['folder' => 'INBOX', 'uid' => 7]);
+
+        $this->app->instance(Mailbox::class, $mailbox = $this->recordingMailbox());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('trash', $message->id);
+
+        $this->assertNull($message->fresh());
+        $this->assertContains(['move', 7, 'Trash'], $mailbox->calls);
+    }
+
+    private function recordingMailbox(): Mailbox
+    {
+        return new class extends Mailbox
+        {
+            /** @var list<array<int, mixed>> */
+            public array $calls = [];
+
+            public function open(?array $config = null, bool $select = true): void
+            {
+                $this->calls[] = ['open'];
+            }
+
+            /** @return array{uidvalidity: int, exists: int} */
+            public function selectFolder(string $folder = 'INBOX'): array
+            {
+                $this->calls[] = ['select', $folder];
+
+                return ['uidvalidity' => 1, 'exists' => 1];
+            }
+
+            public function uidStore(int $uid, string $flag, bool $add): void
+            {
+                $this->calls[] = ['store', $uid, $flag, $add];
+            }
+
+            public function uidMove(int $uid, string $folder): void
+            {
+                $this->calls[] = ['move', $uid, $folder];
+            }
+
+            public function logout(): void
+            {
+                $this->calls[] = ['logout'];
+            }
+        };
+    }
+
     private function mailboxWithAttachment(string $name, string $mime, string $content): Mailbox
     {
         $raw = "From: a@b.example\r\nSubject: Rechnung\r\nContent-Type: multipart/mixed; boundary=\"X\"\r\n\r\n"

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Item;
 use App\Models\MailAccount;
+use App\Models\MailDraft;
 use App\Models\MailMessage;
 use App\Models\PaperlessInstance;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Support\Mail\Mailbox;
 use App\Support\Mail\MailSender;
 use App\Support\Paperless\PaperlessUploader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
@@ -306,6 +308,84 @@ class MailModuleTest extends TestCase
 
         $this->assertNull($message->fresh());
         $this->assertContains(['move', 7, 'Trash'], $mailbox->calls);
+    }
+
+    public function test_composing_prefills_the_account_signature(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id, 'signature' => 'Tobias Z.']);
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('compose')
+            ->assertSet('showCompose', true)
+            ->assertSet('composeBody', "\n\n-- \nTobias Z.");
+    }
+
+    public function test_sending_includes_bcc_and_attachments(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $this->app->instance(MailSender::class, $sender = $this->recordingSender());
+        $file = UploadedFile::fake()->createWithContent('rechnung.pdf', '%PDF-1.4 x');
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)
+            ->set('composeTo', 'a@example.com')
+            ->set('composeBcc', 'secret@example.com')
+            ->set('composeAttachments', [$file])
+            ->set('composeSubject', 'Hallo')
+            ->set('composeBody', 'Text')
+            ->call('sendMail')
+            ->assertHasNoErrors();
+
+        $this->assertCount(1, $sender->sent);
+        $this->assertSame('secret@example.com', $sender->sent[0]['options']['bcc']);
+
+        $attachments = $sender->sent[0]['options']['attachments'];
+        $this->assertIsArray($attachments);
+        $this->assertCount(1, $attachments);
+        $this->assertSame('rechnung.pdf', $attachments[0]['name']);
+    }
+
+    public function test_a_draft_can_be_saved_loaded_and_is_removed_on_send(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+
+        $component = Volt::test('mail.index')->call('selectAccount', $account->id)->call('compose')
+            ->set('composeTo', 'a@example.com')
+            ->set('composeSubject', 'Entwurf')
+            ->set('composeBody', 'Noch nicht fertig')
+            ->call('saveDraft');
+
+        $this->assertDatabaseHas('mail_drafts', ['mail_account_id' => $account->id, 'user_id' => $user->id]);
+        $draft = MailDraft::query()->sole();
+        $this->assertSame('Entwurf', $draft->subject); // decrypted via cast
+
+        $component->set('composeSubject', '')->call('loadDraft', $draft->id)
+            ->assertSet('composeSubject', 'Entwurf')
+            ->assertSet('composeTo', 'a@example.com');
+
+        $this->app->instance(MailSender::class, $this->recordingSender());
+        $component->call('sendMail')->assertHasNoErrors();
+
+        $this->assertDatabaseCount('mail_drafts', 0);
+    }
+
+    public function test_drafts_are_private_to_the_member(): void
+    {
+        [$owner, $household] = $this->memberWithHousehold();
+        $other = $this->addMemberTo($household);
+
+        $account = MailAccount::factory()->create(['user_id' => $owner->id, 'household_id' => $household->id]);
+        MailDraft::factory()->for($account, 'account')->create(['user_id' => $owner->id, 'subject' => 'Owner Draft']);
+
+        $this->actingAs($other);
+        Volt::test('mail.index')->call('selectAccount', $account->id)->assertDontSee('Owner Draft');
     }
 
     private function recordingMailbox(): Mailbox

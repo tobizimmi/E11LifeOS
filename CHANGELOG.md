@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.151.0] – 2026-11-18
+
+### Neu (Mail – Verfassen erweitert)
+- **CC/BCC:** Beim Verfassen, Antworten und Weiterleiten gibt es jetzt zusätzlich **Cc-** und **Bcc-Felder**.
+- **Anhänge:** Dateien lassen sich an eine Mail anhängen (bis zu 5 Dateien, je 10 MB) und vor dem Senden wieder entfernen.
+- **Signatur:** Pro Konto kann eine **Signatur** hinterlegt werden, die automatisch an neue Mails angehängt wird.
+- **Entwürfe:** Begonnene Mails können als **Entwurf** gespeichert, später geladen, weitergeschrieben oder gelöscht werden; beim Senden wird der Entwurf automatisch entfernt.
+
 ## [1.150.0] – 2026-11-18
 
 ### Neu (Mail – Client-Aktionen)

@@ -7223,5 +7223,16 @@
     "Sync failed: :error": "Synchronisierung fehlgeschlagen: :error",
     "Added as a task.": "Als Aufgabe hinzugefügt.",
     "(No text content.)": "(Kein Textinhalt.)",
-    "Unknown sender": "Unbekannter Absender"
+    "Unknown sender": "Unbekannter Absender",
+    "New mail": "Neue Mail",
+    "Reply": "Antworten",
+    "Forward": "Weiterleiten",
+    "Cc": "Cc",
+    "Sending …": "Senden …",
+    "Mail sent.": "Mail gesendet.",
+    "Sending failed: :error": "Senden fehlgeschlagen: :error",
+    "On :date, :sender wrote:": "Am :date schrieb :sender:",
+    "(No subject)": "(Kein Betreff)",
+    "This account has no SMTP server set up.": "Für dieses Konto ist kein SMTP-Server eingerichtet.",
+    "Please enter at least one valid recipient.": "Bitte mindestens einen gültigen Empfänger angeben."
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Item;
 use App\Models\MailAccount;
 use App\Models\MailMessage;
+use App\Support\Mail\MailSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -110,5 +111,71 @@ class MailModuleTest extends TestCase
 
         $this->actingAs($other);
         Volt::test('mail.index')->assertDontSee('Owner Proton');
+    }
+
+    public function test_replying_prefills_the_compose_form(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create([
+            'from_address' => 'chef@work.example', 'subject' => 'Meeting', 'body_text' => 'Morgen 9 Uhr', 'message_id' => 'm1@work.example',
+        ]);
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('reply', $message->id)
+            ->assertSet('showCompose', true)
+            ->assertSet('composeTo', 'chef@work.example')
+            ->assertSet('composeSubject', 'Re: Meeting')
+            ->assertSet('composeReplyToId', $message->id);
+    }
+
+    public function test_sending_a_mail_uses_the_account_smtp(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $this->app->instance(MailSender::class, $sender = $this->recordingSender());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)
+            ->set('composeTo', 'a@example.com')
+            ->set('composeSubject', 'Hallo')
+            ->set('composeBody', 'Text')
+            ->call('sendMail')
+            ->assertHasNoErrors()
+            ->assertSet('showCompose', false);
+
+        $this->assertCount(1, $sender->sent);
+        $this->assertSame('a@example.com', $sender->sent[0]['to']);
+        $this->assertSame('Hallo', $sender->sent[0]['subject']);
+    }
+
+    public function test_sending_requires_a_recipient(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $this->app->instance(MailSender::class, $sender = $this->recordingSender());
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('compose')->call('sendMail')
+            ->assertHasErrors('composeTo');
+
+        $this->assertCount(0, $sender->sent);
+    }
+
+    private function recordingSender(): MailSender
+    {
+        return new class extends MailSender
+        {
+            /** @var list<array{to: string, subject: string, body: string, options: array<string, mixed>}> */
+            public array $sent = [];
+
+            public function send(MailAccount $account, string $to, string $subject, string $body, array $options = []): void
+            {
+                $this->sent[] = ['to' => $to, 'subject' => $subject, 'body' => $body, 'options' => $options];
+            }
+        };
     }
 }

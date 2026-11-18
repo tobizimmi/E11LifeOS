@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.146.0] – 2026-11-18
+
+### Neu (Mail – Senden & Antworten)
+- **Mails senden:** Im Mail-Modul neue Mail verfassen sowie **Antworten** und **Weiterleiten** (über den SMTP-Server des Kontos, z. B. Proton Bridge auf Port 1025). Antworten zitieren die Ursprungsmail und setzen `In-Reply-To`/`References`.
+- Senden erscheint nur bei Konten mit SMTP-Server; TLS/STARTTLS wird automatisch ausgehandelt, bei der Bridge ohne Zertifikatsprüfung.
+
 ## [1.145.0] – 2026-11-18
 
 ### Neu (App-Schnittstelle)

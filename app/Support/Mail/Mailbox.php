@@ -175,6 +175,40 @@ class Mailbox
     }
 
     /**
+     * The selectable mailbox folders on the server (skips \Noselect/\NonExistent containers).
+     *
+     * @return list<string>
+     */
+    public function listFolders(): array
+    {
+        $folders = [];
+
+        foreach ($this->command('LIST "" "*"') as $response) {
+            if (! preg_match('/^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL|\S+) (.+)$/i', $response['line'], $match)) {
+                continue;
+            }
+
+            $flags = strtolower($match[1]);
+
+            if (str_contains($flags, '\\noselect') || str_contains($flags, '\\nonexistent')) {
+                continue;
+            }
+
+            $name = trim($match[2]);
+
+            if (str_starts_with($name, '"') && str_ends_with($name, '"')) {
+                $name = stripcslashes(substr($name, 1, -1));
+            }
+
+            if ($name !== '') {
+                $folders[] = $name;
+            }
+        }
+
+        return $folders;
+    }
+
+    /**
      * Selects a folder and returns its UIDVALIDITY and message count. A changed UIDVALIDITY means
      * the server reassigned UIDs, so a client must drop what it cached for that folder and resync.
      *

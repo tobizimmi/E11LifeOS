@@ -149,13 +149,16 @@ new #[Layout('layouts.app')] class extends Component
             return collect();
         }
 
-        $messages = MailMessage::query()
-            ->where('mail_account_id', $this->selectedAccount->id)
-            ->where('folder', $this->folder)
-            ->orderByDesc('date')->orderByDesc('uid')
-            ->limit(500)->get();
-
         $search = trim(mb_strtolower($this->search));
+
+        $query = MailMessage::query()->where('mail_account_id', $this->selectedAccount->id);
+
+        // A search spans every folder of the account; otherwise only the selected folder is shown.
+        if ($search === '') {
+            $query->where('folder', $this->folder);
+        }
+
+        $messages = $query->orderByDesc('date')->orderByDesc('uid')->limit(500)->get();
 
         if ($search !== '') {
             // Subject and sender are encrypted at rest, so filtering happens after decryption.
@@ -1202,6 +1205,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @unless ($message->is_read)<span class="h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>@else<span class="h-2 w-2 shrink-0"></span>@endunless
                                 <span class="w-40 shrink-0 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100' }}">{{ $message->fromLabel() }}</span>
                                 <span class="flex-1 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-gray-100' }}">{{ $message->subject ?: __('Mail without subject') }}</span>
+                                @if (trim($this->search) !== '')<span class="shrink-0 rounded-full bg-gray-100 px-1.5 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">{{ __($message->folder) }}</span>@endif
                                 @if ($row['count'] > 1)<span class="shrink-0 rounded-full bg-gray-200 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $row['count'] }}</span>@endif
                                 @if ($message->is_flagged)<span class="text-xs">⭐</span>@endif
                                 @if ($message->has_attachments)<span class="text-xs text-gray-400">📎</span>@endif

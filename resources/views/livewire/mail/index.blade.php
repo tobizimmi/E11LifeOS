@@ -24,6 +24,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?int $openId = null;
 
+    public string $folder = 'INBOX';
+
     public bool $showHtml = true;
 
     public bool $loadImages = false;
@@ -93,7 +95,28 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * @return Collection<int, MailMessage>
+     * The folders that hold synced mail for the account, with INBOX/Sent/Archive first.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function folders(): array
+    {
+        if (! $this->selectedAccount) {
+            return [];
+        }
+
+        $present = MailMessage::query()->where('mail_account_id', $this->selectedAccount->id)->distinct()->pluck('folder')->all();
+        $order = MailSync::FOLDERS;
+        usort($present, fn (string $a, string $b) => (array_search($a, $order, true) === false ? 99 : array_search($a, $order, true)) <=> (array_search($b, $order, true) === false ? 99 : array_search($b, $order, true)));
+
+        return $present !== [] ? $present : ['INBOX'];
+    }
+
+    /**
+     * The selected folder's mail, grouped into conversations (one row per thread, newest first).
+     *
+     * @return Collection<int, array{message: MailMessage, count: int}>
      */
     #[Computed]
     public function messages(): Collection
@@ -104,17 +127,43 @@ new #[Layout('layouts.app')] class extends Component
 
         $messages = MailMessage::query()
             ->where('mail_account_id', $this->selectedAccount->id)
+            ->where('folder', $this->folder)
             ->orderByDesc('date')->orderByDesc('uid')
-            ->limit(300)->get();
+            ->limit(500)->get();
 
         $search = trim(mb_strtolower($this->search));
 
         if ($search !== '') {
             // Subject and sender are encrypted at rest, so filtering happens after decryption.
-            $messages = $messages->filter(fn (MailMessage $message) => str_contains(mb_strtolower((string) $message->subject.' '.$message->from_address.' '.$message->from_name), $search))->values();
+            $messages = $messages->filter(fn (MailMessage $message) => str_contains(mb_strtolower((string) $message->subject.' '.$message->from_address.' '.$message->from_name), $search));
         }
 
-        return $messages;
+        return $messages
+            ->groupBy(fn (MailMessage $message) => $message->thread_key ?: 'id:'.$message->id)
+            ->map(fn (Collection $group) => ['message' => $group->firstOrFail(), 'count' => $group->count()])
+            ->sortByDesc(fn (array $row) => $row['message']->date?->getTimestamp() ?? 0)
+            ->values();
+    }
+
+    /**
+     * The other mails in the open mail's conversation (across folders, oldest first).
+     *
+     * @return Collection<int, MailMessage>
+     */
+    #[Computed]
+    public function threadSiblings(): Collection
+    {
+        $message = $this->openMessage;
+
+        if (! $message || ! $message->thread_key) {
+            return collect();
+        }
+
+        return MailMessage::query()
+            ->where('mail_account_id', $message->mail_account_id)
+            ->where('thread_key', $message->thread_key)
+            ->where('id', '!=', $message->id)
+            ->orderBy('date')->get();
     }
 
     #[Computed]
@@ -163,6 +212,16 @@ new #[Layout('layouts.app')] class extends Component
         $this->selectedAccountId = $this->accounts->firstWhere('id', $id)?->id;
         $this->openId = null;
         $this->search = '';
+        $this->folder = 'INBOX';
+    }
+
+    public function openFolder(string $folder): void
+    {
+        if (in_array($folder, $this->folders, true)) {
+            $this->folder = $folder;
+            $this->openId = null;
+            $this->search = '';
+        }
     }
 
     public function open(int $id): void
@@ -476,7 +535,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         try {
-            $new = app(MailSync::class)->sync($account);
+            $new = app(MailSync::class)->syncAccount($account);
             unset($this->messages, $this->unreadCounts);
             $this->flash = trans_choice(':count new mail loaded.|:count new mails loaded.', $new, ['count' => $new]);
         } catch (\Throwable $exception) {
@@ -605,6 +664,17 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
+            @if (count($this->folders) > 1)
+                <div class="mb-3 flex flex-wrap gap-1.5">
+                    @foreach ($this->folders as $folderName)
+                        <button type="button" wire:click="openFolder(@js($folderName))"
+                            class="rounded-full px-3 py-1 text-xs {{ $folder === $folderName ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' }}">
+                            {{ __($folderName) }}
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+
             @if ($this->selectedAccount->last_error)
                 <div class="mb-3 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{{ __('Last error') }}: {{ $this->selectedAccount->last_error }}</div>
             @endif
@@ -662,6 +732,21 @@ new #[Layout('layouts.app')] class extends Component
                             <span class="self-center text-xs text-emerald-600 dark:text-emerald-300">✓ {{ __('Already taken over') }}</span>
                         @endif
                     </div>
+
+                    @if ($this->threadSiblings->isNotEmpty())
+                        <div class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
+                            <h3 class="mb-2 text-xs font-medium uppercase text-gray-400">{{ __('Conversation') }} ({{ $this->threadSiblings->count() + 1 }})</h3>
+                            <div class="space-y-1">
+                                @foreach ($this->threadSiblings as $sibling)
+                                    <button type="button" wire:key="sib{{ $sibling->id }}" wire:click="open({{ $sibling->id }})" class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <span class="w-36 shrink-0 truncate text-gray-600 dark:text-gray-300">{{ $sibling->fromLabel() }}</span>
+                                        <span class="flex-1 truncate text-gray-500 dark:text-gray-400">{{ \Illuminate\Support\Str::limit((string) $sibling->body_text, 60) }}</span>
+                                        <span class="shrink-0 text-xs text-gray-400">{{ $sibling->date?->isoFormat('DD.MM.') }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @else
                 {{-- List --}}
@@ -669,12 +754,14 @@ new #[Layout('layouts.app')] class extends Component
                     <div class="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-700">{{ __('No mails yet – use “Sync now”.') }}</div>
                 @else
                     <div class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-700">
-                        @foreach ($this->messages as $message)
+                        @foreach ($this->messages as $row)
+                            @php($message = $row['message'])
                             <button type="button" wire:key="m{{ $message->id }}" wire:click="open({{ $message->id }})"
                                 class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 {{ $message->is_read ? 'bg-white dark:bg-gray-900' : 'bg-indigo-50/40 dark:bg-indigo-900/10' }}">
                                 @unless ($message->is_read)<span class="h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>@else<span class="h-2 w-2 shrink-0"></span>@endunless
                                 <span class="w-40 shrink-0 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100' }}">{{ $message->fromLabel() }}</span>
                                 <span class="flex-1 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-gray-100' }}">{{ $message->subject ?: __('Mail without subject') }}</span>
+                                @if ($row['count'] > 1)<span class="shrink-0 rounded-full bg-gray-200 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $row['count'] }}</span>@endif
                                 @if ($message->has_attachments)<span class="text-xs text-gray-400">📎</span>@endif
                                 @if ($message->processed_as)<span class="text-xs text-emerald-500">✓</span>@endif
                                 <span class="w-24 shrink-0 text-right text-xs text-gray-400">{{ $message->date?->isoFormat('DD.MM.') }}</span>

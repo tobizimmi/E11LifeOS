@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
 use RuntimeException;
+use Throwable;
 
 /**
  * Reads CSV exports of German banks (Sparkasse CSV-CAMT, ING, DKB, comdirect, N26,
@@ -169,40 +170,57 @@ class BankCsvImporter
     public function importBookings(BankAccount $account, array $bookings, Categorizer $categorizer): array
     {
         $result = ['imported' => 0, 'skipped' => 0, 'errors' => 0, 'transactions' => []];
+        $seen = [];
 
         foreach ($bookings as $booking) {
-            $base = [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')];
+            try {
+                $base = [$booking['date'], number_format($booking['amount'], 2, '.', ''), mb_strtolower($booking['counterparty'] ?? ''), mb_strtolower($booking['purpose'] ?? '')];
 
-            // FinTS carries an end-to-end reference, so two otherwise identical bookings (same
-            // date, amount, counterparty and purpose) still get different hashes with it.
-            $hash = sha1(implode('|', [...$base, $booking['reference'] ?? '']));
+                // FinTS carries an end-to-end reference, so two otherwise identical bookings (same
+                // date, amount, counterparty and purpose) still get different hashes with it.
+                $reference = (string) ($booking['reference'] ?? '');
 
-            // Transactions imported before the reference was added to the hash are stored under
-            // the OLD (shorter) hash — check that first, or every one of them would re-import as
-            // "new" the next time this account syncs. Only once neither hash matches is this
-            // genuinely a new booking, stored from now on under the new, more precise hash.
-            $legacyHash = sha1(implode('|', $base));
-            $transaction = Transaction::where('bank_account_id', $account->id)->where('import_hash', $legacyHash)->first()
-                ?? Transaction::firstOrNew(['bank_account_id' => $account->id, 'import_hash' => $hash]);
+                // Without a reference the bank gives us nothing to tell two real same-day bookings of
+                // the same amount apart, so a running number within this batch keeps the second one
+                // from collapsing into the first (same guard as the CSV import). Baked into the hash
+                // INPUT, not appended to the output (import_hash is a fixed-width char(40) column).
+                $signature = implode('|', [...$base, $reference]);
+                $seen[$signature] = ($seen[$signature] ?? 0) + 1;
+                $hash = $reference !== '' || $seen[$signature] === 1
+                    ? sha1($signature)
+                    : sha1(implode('|', [...$base, $reference, $seen[$signature]]));
 
-            if ($transaction->exists) {
-                $result['skipped']++;
+                // Transactions imported before the reference was added to the hash are stored under
+                // the OLD (shorter) hash — check that first, or every one of them would re-import as
+                // "new" the next time this account syncs. Only once neither hash matches is this
+                // genuinely a new booking, stored from now on under the new, more precise hash.
+                $legacyHash = $seen[$signature] === 1 ? sha1(implode('|', $base)) : null;
+                $transaction = ($legacyHash !== null ? Transaction::where('bank_account_id', $account->id)->where('import_hash', $legacyHash)->first() : null)
+                    ?? Transaction::firstOrNew(['bank_account_id' => $account->id, 'import_hash' => $hash]);
 
-                continue;
+                if ($transaction->exists) {
+                    $result['skipped']++;
+
+                    continue;
+                }
+
+                $transaction->fill([
+                    'household_id' => $account->household_id,
+                    'user_id' => $account->user_id,
+                    'booked_on' => $booking['date'],
+                    'amount' => $booking['amount'],
+                    'counterparty' => $booking['counterparty'] !== null ? mb_substr($booking['counterparty'], 0, 255) : null,
+                    'purpose' => $booking['purpose'] !== null ? mb_substr($booking['purpose'], 0, 2000) : null,
+                    'category' => $categorizer->categorize($booking['counterparty'], $booking['purpose'], $booking['amount'], null),
+                ])->save();
+
+                $result['imported']++;
+                $result['transactions'][] = $transaction;
+            } catch (Throwable $exception) {
+                // One malformed booking must not abort the whole account's sync.
+                report($exception);
+                $result['errors']++;
             }
-
-            $transaction->fill([
-                'household_id' => $account->household_id,
-                'user_id' => $account->user_id,
-                'booked_on' => $booking['date'],
-                'amount' => $booking['amount'],
-                'counterparty' => $booking['counterparty'] !== null ? mb_substr($booking['counterparty'], 0, 255) : null,
-                'purpose' => $booking['purpose'] !== null ? mb_substr($booking['purpose'], 0, 2000) : null,
-                'category' => $categorizer->categorize($booking['counterparty'], $booking['purpose'], $booking['amount'], null),
-            ])->save();
-
-            $result['imported']++;
-            $result['transactions'][] = $transaction;
         }
 
         return $result;
@@ -394,7 +412,7 @@ class BankCsvImporter
             if (preg_match($pattern, $value, $match)) {
                 try {
                     return Carbon::createFromFormat('!'.$format, $match[0])->toDateString();
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     return null;
                 }
             }

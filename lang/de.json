@@ -6835,6 +6835,7 @@
     "Compare with previous period": "Mit Vorperiode vergleichen",
     "vs. previous": "ggü. Vorperiode",
     "Compared to :from – :to": "Verglichen mit :from – :to",
+    ":count account could not be imported and was skipped.|:count accounts could not be imported and were skipped.": "Bei :count Konto gab es ein Problem beim Import; es wurde übersprungen.|Bei :count Konten gab es ein Problem beim Import; sie wurden übersprungen.",
     "Expenses by account": "Ausgaben je Konto",
     "Only :category": "Nur :category",
     "Your own categories": "Eigene Kategorien",

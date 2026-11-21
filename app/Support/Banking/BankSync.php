@@ -221,15 +221,24 @@ class BankSync
             $newTransactions = [];
             $products = collect($connection->accounts ?? [])->pluck('product', 'iban');
 
+            $failedAccounts = 0;
+
             foreach ($result['accounts'] as $iban => $bookings) {
-                $account = BankAccount::firstOrCreate(
-                    ['user_id' => $connection->user_id, 'iban' => $iban],
-                    ['household_id' => $connection->household_id, 'name' => trim($connection->bank_name.' '.($products[$iban] ?? '')).' '.substr((string) $iban, -4)],
-                );
-                $import = $importer->importBookings($account, $bookings, $categorizer);
-                $imported += $import['imported'];
-                $skipped += $import['skipped'];
-                $newTransactions = [...$newTransactions, ...$import['transactions']];
+                // One account failing (a locked row, a malformed booking) must not drop the bookings
+                // of the other accounts in the same statement run.
+                try {
+                    $account = BankAccount::firstOrCreate(
+                        ['user_id' => $connection->user_id, 'iban' => $iban],
+                        ['household_id' => $connection->household_id, 'name' => trim($connection->bank_name.' '.($products[$iban] ?? '')).' '.substr((string) $iban, -4)],
+                    );
+                    $import = $importer->importBookings($account, $bookings, $categorizer);
+                    $imported += $import['imported'];
+                    $skipped += $import['skipped'];
+                    $newTransactions = [...$newTransactions, ...$import['transactions']];
+                } catch (Throwable $exception) {
+                    report($exception);
+                    $failedAccounts++;
+                }
             }
 
             $this->alert($connection, $newTransactions, $balanceChanges);
@@ -238,6 +247,10 @@ class BankSync
 
             if ($skipped > 0) {
                 $message .= ' '.trans_choice(':count booking was already there|:count bookings were already there', $skipped);
+            }
+
+            if ($failedAccounts > 0) {
+                $message .= ' '.trans_choice(':count account could not be imported and was skipped.|:count accounts could not be imported and were skipped.', $failedAccounts);
             }
 
             return ['message' => trim($message.' '.$errors), 'imported' => $imported];

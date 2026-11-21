@@ -2,6 +2,7 @@
 
 namespace App\Support\Finance;
 
+use App\Models\BankAccount;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -49,13 +50,19 @@ class FinanceReport
             ->sortByDesc('amount')->values()->all();
 
         $byAccount = $expenseBookings->groupBy('bank_account_id')
-            ->map(fn (Collection $group) => [
-                'label' => (string) ($group->first()->account?->name ?? __('Account')),
-                'amount' => round((float) -$group->sum('amount'), 2),
-                'count' => $group->count(),
-                'share' => $expenses > 0 ? round(-$group->sum('amount') / $expenses * 100, 1) : 0.0,
-            ])
-            ->sortByDesc('amount')->values()->all();
+            ->map(function (Collection $group): array {
+                /** @var BankAccount|null $account */
+                $account = $group->first()->account;
+
+                return [
+                    'label' => (string) ($account?->name ?? __('Account')),
+                    'amount' => round((float) -$group->sum('amount'), 2),
+                    'count' => $group->count(),
+                ];
+            })
+            ->sortByDesc('amount')->values()
+            ->map(fn (array $row) => $row + ['share' => $expenses > 0 ? round($row['amount'] / $expenses * 100, 1) : 0.0])
+            ->all();
 
         $monthly = collect($months)->map(function (string $month) use ($bookings, $includeSavings) {
             $inMonth = $bookings->filter(fn (Transaction $transaction) => $transaction->booked_on->format('Y-m') === $month);

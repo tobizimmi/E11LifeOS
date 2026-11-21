@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.155.0] – 2026-11-21
+
+### Neu (Finanzen – flexible Auswertung: Zeitraum)
+- **Freier Zeitraum:** Neben den Vorgaben (3/6/12 Monate, dieses/letztes Jahr) lässt sich im Bericht jetzt ein **eigener Von–Bis-Zeitraum** wählen.
+- **Zeitraumvergleich:** Ein Schalter „Mit Vorperiode vergleichen" blendet auf den Kennzahl-Kacheln die Veränderung gegenüber dem gleich langen Zeitraum davor ein (Pfeil + Differenz, grün/rot je nach Richtung).
+
 ## [1.154.0] – 2026-11-21
 
 ### Neu (Finanzen – Umbuchungen & Duplikate erkennen)

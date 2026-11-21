@@ -38,6 +38,17 @@ new #[Layout('layouts.app')] class extends Component
     #[Url(except: FinancePeriod::DEFAULT)]
     public string $period = FinancePeriod::DEFAULT;
 
+    /** Free from/to range, used when $period is "custom" (YYYY-MM-DD). */
+    #[Url(as: 'from', except: '')]
+    public string $customFrom = '';
+
+    #[Url(as: 'to', except: '')]
+    public string $customTo = '';
+
+    /** Compare the report to the equally long period right before it. */
+    #[Url(except: false)]
+    public bool $compare = false;
+
     #[Url(as: 'account', except: '')]
     public string $accountFilter = '';
 
@@ -587,8 +598,8 @@ new #[Layout('layouts.app')] class extends Component
     public function askAnalyst(FinanceAi $ai): void
     {
         $this->aiError = null;
-        [$from, $to] = FinancePeriod::range($this->period);
-        $report = FinanceReport::build(FinancePeriod::query($this->currentUser(), (int) $this->householdId, $this->period, $this->accountId())->get(), $from, $to);
+        [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
+        $report = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())->get(), $from, $to);
 
         if ($report['count'] === 0) {
             return;
@@ -662,9 +673,24 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         if ($this->tab === 'report') {
-            [$from, $to] = FinancePeriod::range($this->period);
-            $data['report'] = FinanceReport::build(FinancePeriod::query($this->currentUser(), (int) $this->householdId, $this->period, $this->accountId())->get(), $from, $to);
+            [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
+            $report = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())->get(), $from, $to);
+            $data['report'] = $report;
             $data['openCount'] = Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->whereIn('category', [FinanceCategories::OTHER, FinanceCategories::OTHER_INCOME])->where('category_locked', false)->count();
+
+            $data['comparison'] = null;
+            $data['deltas'] = [];
+
+            if ($this->compare) {
+                [$prevFrom, $prevTo] = FinancePeriod::previousRange($from, $to);
+                $previous = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $prevFrom, $prevTo, $this->accountId())->get(), $prevFrom, $prevTo);
+                $data['comparison'] = ['from' => $prevFrom, 'to' => $prevTo];
+                $data['deltas'] = [
+                    ['label' => __('Income'), 'delta' => round((float) $report['income'] - (float) $previous['income'], 2), 'higherBetter' => true],
+                    ['label' => __('Expenses'), 'delta' => round((float) $report['expenses'] - (float) $previous['expenses'], 2), 'higherBetter' => false],
+                    ['label' => __('Left over'), 'delta' => round((float) $report['balance'] - (float) $previous['balance'], 2), 'higherBetter' => true],
+                ];
+            }
 
             $review = app(TransactionReview::class);
             $data['reviewTransfers'] = $review->transfers($this->currentUser(), (int) $this->householdId);
@@ -702,6 +728,11 @@ new #[Layout('layouts.app')] class extends Component
                             <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach
                     </select>
+                    @if ($period === \App\Support\Finance\FinancePeriod::CUSTOM)
+                        <input type="date" wire:model.live="customFrom" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('From') }}" />
+                        <span class="text-gray-400" aria-hidden="true">–</span>
+                        <input type="date" wire:model.live="customTo" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('To') }}" />
+                    @endif
                     @if ($accounts->count() > 1)
                         <select wire:model.live="accountFilter" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Account') }}">
                             <option value="">{{ __('All accounts') }}</option>
@@ -709,6 +740,11 @@ new #[Layout('layouts.app')] class extends Component
                                 <option value="{{ $account->id }}">{{ $account->name }}</option>
                             @endforeach
                         </select>
+                    @endif
+                    @if ($tab === 'report')
+                        <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+                            <input type="checkbox" wire:model.live="compare" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Compare with previous period') }}
+                        </label>
                     @endif
                 @endif
             </div>

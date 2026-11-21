@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.165.0] – 2026-11-21
+
+### Neu (Depot-Abgleich: angleichen oder komplett ersetzen)
+- Beim Depot-Abgleich per FinTS gibt es jetzt zwei Optionen: **„Stückzahlen angleichen"** (wie bisher – nur die von der Bank gemeldeten Positionen werden angepasst) und **„Gesamten Bestand ersetzen"** – dabei werden zusätzlich Positionen ausgebucht, die du im E11LifeOS-Depot noch hältst, die die Bank aber nicht mehr meldet. So spiegelt das Depot nach dem Ersetzen exakt den Bank-Bestand.
+
 ## [1.164.0] – 2026-11-21
 
 ### Verbessert (Finanzen – Bankensuche bei Enable Banking)

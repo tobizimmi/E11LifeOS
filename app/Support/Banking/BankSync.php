@@ -13,6 +13,7 @@ use App\Support\Finance\Categorizer;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\Positions;
 use Fhp\CurlException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
@@ -335,8 +336,12 @@ class BankSync
 
     /**
      * Brings the linked portfolios to the bank's quantities with transfer bookings.
+     *
+     * @param  string  $mode  "add" adjusts the holdings the bank reports (default); "replace" also
+     *                        books out every position the linked portfolio still holds but the bank
+     *                        no longer reports, so the portfolio mirrors the depot exactly.
      */
-    public function applyToPortfolio(BankConnection $connection): int
+    public function applyToPortfolio(BankConnection $connection, string $mode = 'add'): int
     {
         $rows = collect($this->compare($connection))->filter(fn (array $row) => $row['portfolio_id'] !== null);
 
@@ -371,8 +376,58 @@ class BankSync
             $count++;
         }
 
+        if ($mode === 'replace') {
+            $count += $this->bookOutMissingPositions($connection, $rows, $portfolios);
+        }
+
         $portfolios->each(fn (Portfolio $portfolio) => Positions::recalculate($portfolio));
 
         return $count;
+    }
+
+    /**
+     * Books out (to zero) every position a linked portfolio still holds that the bank no longer
+     * reports for it – used by the "replace" reconcile so the portfolio exactly mirrors the depot.
+     *
+     * @param  Collection<int, array{position: BankDepotPosition, portfolio_id: int, symbol: ?string, portfolio_quantity: float, difference: float}>  $rows  bank holdings from {@see compare()}
+     * @param  Collection<int, Portfolio>  $portfolios
+     */
+    private function bookOutMissingPositions(BankConnection $connection, Collection $rows, Collection $portfolios): int
+    {
+        $cleared = 0;
+
+        foreach ($rows->groupBy('portfolio_id') as $portfolioId => $portfolioRows) {
+            $portfolio = $portfolios[$portfolioId] ?? null;
+
+            if (! $portfolio) {
+                continue;
+            }
+
+            $bankIsins = $portfolioRows->pluck('position.isin')->filter()->map(fn ($isin) => mb_strtoupper((string) $isin))->unique();
+            $bankSymbols = $portfolioRows->pluck('symbol')->filter()->unique();
+
+            $leftovers = PortfolioPosition::where('portfolio_id', $portfolioId)->where('quantity', '>', 0)->get()
+                ->reject(fn (PortfolioPosition $position) => ($position->isin && $bankIsins->contains(mb_strtoupper((string) $position->isin)))
+                    || ($position->symbol && $bankSymbols->contains($position->symbol)));
+
+            foreach ($leftovers as $position) {
+                $portfolio->transactions()->create([
+                    'symbol' => $position->symbol,
+                    'name' => $position->name,
+                    'isin' => $position->isin,
+                    'wkn' => null,
+                    'type' => 'transfer_out',
+                    'quantity' => abs((float) $position->quantity),
+                    'price' => (float) $position->avg_buy_price,
+                    'currency' => $position->currency ?: 'EUR',
+                    'executed_on' => today()->toDateString(),
+                    'notes' => __('Removed on full reconcile with :bank', ['bank' => $connection->bank_name]),
+                    'import_source' => 'fints',
+                ]);
+                $cleared++;
+            }
+        }
+
+        return $cleared;
     }
 }

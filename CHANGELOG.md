@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.162.0] – 2026-11-21
+
+### Behoben (Mail – Absturz bei großen Anhängen)
+- Mails mit großen Anhängen ließen den Mail-Abruf (`mail:sync`) mit „Allowed memory size exhausted" abstürzen, weil der MIME-Parser große Teile mehrfach kopierte. Der Parser bekommt jetzt genug Speicher-Reserve und überspringt übergroße Teile, die ohnehin über der 20-MB-Anhanggrenze lägen – der Abruf läuft wieder durch.
+
 ## [1.161.0] – 2026-11-21
 
 ### Behoben (Finanzen – Enable-Banking-Abruf scheiterte bei Konten ohne IBAN)

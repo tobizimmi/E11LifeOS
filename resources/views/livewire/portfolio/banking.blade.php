@@ -257,10 +257,12 @@ new #[Layout('layouts.app')] class extends Component
         $this->handle($connection, fn () => $sync->checkDecoupled($connection) ?? ['status' => 'waiting']);
     }
 
-    public function applyToPortfolio(int $connectionId, BankSync $sync): void
+    public function applyToPortfolio(int $connectionId, string $mode, BankSync $sync): void
     {
+        $mode = $mode === 'replace' ? 'replace' : 'add';
+
         try {
-            $count = $sync->applyToPortfolio($this->findConnection($connectionId));
+            $count = $sync->applyToPortfolio($this->findConnection($connectionId), $mode);
             $this->dispatch('toast', message: trans_choice(':count position reconciled.|:count positions reconciled.', $count));
         } catch (RuntimeException $exception) {
             $this->addError('sync', $exception->getMessage());
@@ -654,9 +656,16 @@ new #[Layout('layouts.app')] class extends Component
                             </table>
                         </div>
                         @php($differing = collect($comparisons[$connection->id])->filter(fn ($row) => $row['portfolio_id'] && abs($row['difference']) > 0.000001 && $row['symbol']))
-                        @if ($differing->isNotEmpty())
-                            @php($targets = $differing->pluck('portfolio_id')->unique())
-                            <button type="button" wire:click="applyToPortfolio({{ $connection->id }})" wire:confirm="{{ __('Book transfers so that the portfolio matches the bank?') }}" class="mt-3 rounded-lg px-3 py-1.5 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-gray-700">⇄ {{ $targets->count() === 1 ? __('Adopt the bank\'s quantities in :portfolio', ['portfolio' => $portfolioList->firstWhere('id', $targets->first())?->name]) : __('Adopt the bank\'s quantities in the linked portfolios') }}</button>
+                        @php($linked = collect($comparisons[$connection->id])->filter(fn ($row) => $row['portfolio_id']))
+                        @if ($linked->isNotEmpty())
+                            @php($targets = $linked->pluck('portfolio_id')->unique())
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                @if ($differing->isNotEmpty())
+                                    <button type="button" wire:click="applyToPortfolio({{ $connection->id }}, 'add')" wire:confirm="{{ __('Book transfers so that the portfolio matches the bank?') }}" class="rounded-lg px-3 py-1.5 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-gray-700">⇄ {{ $targets->count() === 1 ? __('Adjust quantities in :portfolio', ['portfolio' => $portfolioList->firstWhere('id', $targets->first())?->name]) : __('Adjust quantities in the linked portfolios') }}</button>
+                                @endif
+                                <button type="button" wire:click="applyToPortfolio({{ $connection->id }}, 'replace')" wire:confirm="{{ __('Replace the whole depot: adopt the bank\'s holdings and book out positions the bank no longer reports. Continue?') }}" class="rounded-lg px-3 py-1.5 text-sm text-red-800 ring-1 ring-red-200 hover:bg-red-50 dark:text-red-200 dark:ring-red-800 dark:hover:bg-gray-700">♻️ {{ __('Replace entire holdings with the bank\'s') }}</button>
+                            </div>
+                            <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">{{ __('“Adjust” only changes quantities the bank reports. “Replace” also removes positions you hold that the bank no longer lists.') }}</p>
                         @endif
                     @endif
                 </section>

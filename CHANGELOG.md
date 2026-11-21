@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.161.0] – 2026-11-21
+
+### Behoben (Finanzen – Enable-Banking-Abruf scheiterte bei Konten ohne IBAN)
+- Konten, die die Bank ohne IBAN freigibt (z. B. manche Depot-/Verrechnungskonten), ließen den Abruf mit „Data too long for column 'iban'" abbrechen, weil die (lange) Konto-Kennung der Bank nicht in das IBAN-Feld passte. Das Feld fasst jetzt auch lange Kennungen – der Abruf läuft durch.
+
 ## [1.160.0] – 2026-11-21
 
 ### Verbessert (Finanzen – Enable Banking transparenter & robuster)

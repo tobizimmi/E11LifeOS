@@ -2,7 +2,6 @@
 
 namespace App\Support\Finance;
 
-use App\Models\BankAccount;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -50,16 +49,11 @@ class FinanceReport
             ->sortByDesc('amount')->values()->all();
 
         $byAccount = $expenseBookings->groupBy('bank_account_id')
-            ->map(function (Collection $group): array {
-                /** @var BankAccount|null $account */
-                $account = $group->first()->account;
-
-                return [
-                    'label' => (string) ($account?->name ?? __('Account')),
-                    'amount' => round((float) -$group->sum('amount'), 2),
-                    'count' => $group->count(),
-                ];
-            })
+            ->map(fn (Collection $group) => [
+                'label' => (string) (data_get($group->first(), 'account.name') ?: __('Account')),
+                'amount' => round((float) -$group->sum('amount'), 2),
+                'count' => $group->count(),
+            ])
             ->sortByDesc('amount')->values()
             ->map(fn (array $row) => $row + ['share' => $expenses > 0 ? round($row['amount'] / $expenses * 100, 1) : 0.0])
             ->all();

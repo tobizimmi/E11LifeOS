@@ -88,11 +88,14 @@ class FinanceFlexTest extends TestCase
         $this->actingAs($user);
 
         $giro = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
-        Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -100, 'booked_on' => now(), 'category' => 'groceries']);
-        Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -40, 'booked_on' => now(), 'category' => 'restaurants']);
+        Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -100, 'booked_on' => '2026-06-15', 'category' => 'groceries']);
+        Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -40, 'booked_on' => '2026-06-16', 'category' => 'restaurants']);
 
         Volt::test('finance.index')
             ->set('tab', 'report')
+            ->set('period', FinancePeriod::CUSTOM)
+            ->set('customFrom', '2026-06-01')
+            ->set('customTo', '2026-06-30')
             ->set('categoryFilter', 'groceries')
             ->assertViewHas('report', fn (array $report) => $report['expenses'] === 100.0 && count($report['categories']) === 1);
     }

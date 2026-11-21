@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.153.1] – 2026-11-21
+
+### Behoben (Bankverbindung – Enable Banking)
+- **Echte Fehlerursache sichtbar:** Scheitert der Start der Bankverbindung (z. B. weil die Redirect-URL nicht in der Enable-Banking-Anwendung hinterlegt ist), zeigt das Banking die konkrete Fehlermeldung der Bank/API inkl. Hinweis auf die zu registrierende Callback-URL – statt eines generischen Hinweises.
+- **Fehlerbanner jetzt rot:** Fehlermeldungen im Banking wurden bislang irreführend grün (wie Erfolg) dargestellt; Fehler erscheinen nun rot, Erfolge weiterhin grün.
+
 ## [1.153.0] – 2026-11-18
 
 ### Neu (Mail – Benachrichtigungen & Sync)

@@ -37,6 +37,18 @@
             @endforeach
         </div>
 
+        {{-- Comparison with the previous, equally long period --}}
+        @if (! empty($deltas) && $comparison)
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white px-4 py-2.5 text-xs shadow-xs dark:bg-gray-800">
+                <span class="text-gray-400">{{ __('Compared to :from – :to', ['from' => $comparison['from']->isoFormat('DD.MM.YY'), 'to' => $comparison['to']->isoFormat('DD.MM.YY')]) }}:</span>
+                @foreach ($deltas as $d)
+                    <span class="font-medium {{ $d['delta'] == 0 ? 'text-gray-400' : (($d['delta'] > 0) === $d['higherBetter'] ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400') }}">
+                        {{ $d['label'] }} {{ $d['delta'] > 0 ? '▲' : ($d['delta'] < 0 ? '▼' : '=') }} {{ $euro(abs($d['delta']), 0) }}
+                    </span>
+                @endforeach
+            </div>
+        @endif
+
         @if ($openCount > 0)
             <p class="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">
                 {{ trans_choice(':count booking has no clear category yet.|:count bookings have no clear category yet.', $openCount) }}

@@ -14,6 +14,8 @@ class FinancePeriod
 {
     public const DEFAULT = '6m';
 
+    public const CUSTOM = 'custom';
+
     /**
      * @return array<string, string>
      */
@@ -25,16 +27,21 @@ class FinancePeriod
             '12m' => __('Last 12 months'),
             'ytd' => __('This year'),
             'last_year' => __('Last year'),
+            self::CUSTOM => __('Custom range'),
         ];
     }
 
     /**
-     * Full months up to today (the current month included).
+     * Full months up to today (the current month included), or a free custom range.
      *
      * @return array{0: Carbon, 1: Carbon}
      */
-    public static function range(string $period): array
+    public static function range(string $period, ?string $customFrom = null, ?string $customTo = null): array
     {
+        if ($period === self::CUSTOM) {
+            return self::customRange($customFrom, $customTo);
+        }
+
         $today = now()->endOfDay();
 
         return match ($period) {
@@ -47,12 +54,63 @@ class FinancePeriod
     }
 
     /**
+     * A free from–to range (dates swapped if given the wrong way round; sensible defaults otherwise).
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function customRange(?string $customFrom, ?string $customTo): array
+    {
+        $to = self::parse($customTo) ?? now();
+        $from = self::parse($customFrom) ?? $to->copy()->startOfMonth()->subMonths(5);
+
+        if ($from->greaterThan($to)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [$from->copy()->startOfDay(), $to->copy()->endOfDay()];
+    }
+
+    /**
+     * The equally long period immediately before the given one, for comparisons.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function previousRange(Carbon $from, Carbon $to): array
+    {
+        $days = (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay()) + 1;
+        $previousTo = $from->copy()->subDay()->endOfDay();
+
+        return [$previousTo->copy()->subDays($days - 1)->startOfDay(), $previousTo];
+    }
+
+    private static function parse(?string $value): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * @return Builder<Transaction>
      */
-    public static function query(User $user, int $householdId, string $period, ?int $accountId = null): Builder
+    public static function query(User $user, int $householdId, string $period, ?int $accountId = null, ?string $customFrom = null, ?string $customTo = null): Builder
     {
-        [$from, $to] = self::range($period);
+        [$from, $to] = self::range($period, $customFrom, $customTo);
 
+        return self::queryFor($user, $householdId, $from, $to, $accountId);
+    }
+
+    /**
+     * @return Builder<Transaction>
+     */
+    public static function queryFor(User $user, int $householdId, Carbon $from, Carbon $to, ?int $accountId = null): Builder
+    {
         return Transaction::query()
             ->where('user_id', $user->id)
             ->where('household_id', $householdId)

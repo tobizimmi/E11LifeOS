@@ -135,6 +135,42 @@ class BankLinkSyncTest extends TestCase
         $this->assertSame(2, $account->transactions()->count());
     }
 
+    public function test_one_failing_account_does_not_abort_the_other_accounts(): void
+    {
+        $this->configureEnableBanking();
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+
+            return match (true) {
+                str_contains($url, '/accounts/eb-good/balances') => Http::response(['balances' => [['balance_type' => 'CLBD', 'balance_amount' => ['amount' => '10.00', 'currency' => 'EUR'], 'reference_date' => '2026-11-06']]]),
+                str_contains($url, '/accounts/eb-good/transactions') => Http::response(['transactions' => [
+                    ['booking_date' => '2026-11-05', 'transaction_amount' => ['amount' => '5.00', 'currency' => 'EUR'], 'credit_debit_indicator' => 'DBIT', 'creditor' => ['name' => 'Shop'], 'remittance_information' => ['Kauf']],
+                ]]),
+                str_contains($url, '/accounts/eb-bad/') => Http::response(['error' => 'account blocked'], 500),
+                default => Http::response([], 404),
+            };
+        });
+
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $link = BankLink::create([
+            'user_id' => $user->id, 'household_id' => $user->currentHousehold()->id,
+            'provider' => BankLink::PROVIDER_ENABLEBANKING, 'institution_id' => 'Test Bank', 'institution_name' => 'Test Bank',
+            'reference' => 'ref', 'requisition_id' => 'authz', 'status' => BankLink::STATUS_LINKED,
+            'account_ids' => ['eb-good', 'eb-bad'],
+            'accounts_meta' => ['eb-good' => ['iban' => 'DE1', 'name' => 'Giro'], 'eb-bad' => ['iban' => 'DE2', 'name' => 'Spar']],
+            'consent_expires_at' => now()->addDays(80),
+        ]);
+
+        $result = app(BankLinkSync::class)->sync($link);
+
+        $this->assertSame(1, $result['accounts']);
+        $this->assertSame(1, $result['imported']);
+        $this->assertSame('ok', $link->fresh()->sync_status);
+        $this->assertNotNull($link->fresh()->sync_message);
+    }
+
     public function test_the_connect_panel_offers_enable_banking_and_no_longer_gocardless(): void
     {
         // GoCardless is set up in setUp(), but the connect panel must not offer it anymore.

@@ -327,8 +327,25 @@ new #[Layout('layouts.app')] class extends Component
 
             $this->dispatch('toast', message: $rateLimited
                 ? __('The bank\'s daily access limit is reached. Please try again tomorrow (the bank limits how often it can be queried without a new login).')
-                : __('The bank sync failed. Please try again later.'));
+                : __('The bank sync failed: :reason', ['reason' => $this->syncFailureReason($exception)]));
         }
+    }
+
+    /**
+     * A short, human-readable reason for a failed bank-link sync – the provider's error body when
+     * there is one (e.g. an expired consent or a 401), so the user sees why instead of a generic hint.
+     */
+    private function syncFailureReason(\Throwable $exception): string
+    {
+        if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+            $body = $exception->response->json();
+            $detail = is_array($body) ? ($body['message'] ?? $body['error'] ?? $body['detail'] ?? null) : null;
+            $reason = is_string($detail) && $detail !== '' ? $detail : \Illuminate\Support\Str::limit($exception->response->body(), 160);
+
+            return trim($reason) !== '' ? trim($reason) : __('the bank could not be reached. Please try again later or reconnect.');
+        }
+
+        return \Illuminate\Support\Str::limit($exception->getMessage(), 160) ?: __('the bank could not be reached. Please try again later or reconnect.');
     }
 
     public function toggleBankLinkAutoSync(int $linkId): void

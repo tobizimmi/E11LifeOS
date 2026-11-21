@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BankAccount;
 use App\Models\Transaction;
 use App\Support\Finance\FinancePeriod;
+use App\Support\Finance\FinanceReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Volt\Volt;
@@ -61,5 +62,41 @@ class FinanceFlexTest extends TestCase
 
         $this->assertSame('2026-09-01', $from->toDateString());
         $this->assertSame('2026-09-30', $to->toDateString());
+    }
+
+    public function test_transfers_count_as_income_and_expense_only_when_included(): void
+    {
+        $transactions = collect([
+            new Transaction(['amount' => 500, 'category' => 'transfer', 'booked_on' => now()]),
+            new Transaction(['amount' => -500, 'category' => 'transfer', 'booked_on' => now()]),
+            new Transaction(['amount' => -100, 'category' => 'groceries', 'booked_on' => now()]),
+        ]);
+        [$from, $to] = FinancePeriod::range('6m');
+
+        $default = FinanceReport::build($transactions, $from, $to);
+        $this->assertSame(0.0, $default['income']);
+        $this->assertSame(100.0, $default['expenses']);
+
+        $raw = FinanceReport::build($transactions, $from, $to, ['includeTransfers' => true]);
+        $this->assertSame(500.0, $raw['income']);
+        $this->assertSame(600.0, $raw['expenses']);
+    }
+
+    public function test_savings_count_as_expense_only_when_included(): void
+    {
+        $transactions = collect([
+            new Transaction(['amount' => 2000, 'category' => 'income', 'booked_on' => now()]),
+            new Transaction(['amount' => -500, 'category' => 'savings', 'booked_on' => now()]),
+            new Transaction(['amount' => -100, 'category' => 'groceries', 'booked_on' => now()]),
+        ]);
+        [$from, $to] = FinancePeriod::range('6m');
+
+        $default = FinanceReport::build($transactions, $from, $to);
+        $this->assertSame(100.0, $default['expenses']);
+        $this->assertSame(500.0, $default['savingsTransfers']);
+
+        $withSavings = FinanceReport::build($transactions, $from, $to, ['includeSavings' => true]);
+        $this->assertSame(600.0, $withSavings['expenses']);
+        $this->assertSame(0.0, $withSavings['savingsTransfers']);
     }
 }

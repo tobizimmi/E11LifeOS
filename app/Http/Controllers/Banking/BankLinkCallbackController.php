@@ -27,7 +27,9 @@ class BankLinkCallbackController extends Controller
             ->first();
 
         if (! $link) {
-            return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank connection could not be found.'));
+            return redirect()->route('portfolio.banking')
+                ->with('bankLinkStatus', __('The bank connection could not be found.'))
+                ->with('bankLinkStatusType', 'error');
         }
 
         // The bank/aggregator redirects back with an "error" instead of a "code" when the approval was
@@ -47,7 +49,9 @@ class BankLinkCallbackController extends Controller
             };
             $link->update(['status' => BankLink::STATUS_ERROR, 'sync_message' => $message]);
 
-            return redirect()->route('portfolio.banking')->with('bankLinkStatus', $message);
+            return redirect()->route('portfolio.banking')
+                ->with('bankLinkStatus', $message)
+                ->with('bankLinkStatusType', 'error');
         }
 
         try {
@@ -61,20 +65,26 @@ class BankLinkCallbackController extends Controller
                     implode(', ', array_keys($request->query())) ?: 'none'
                 )));
 
-                return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank did not confirm the connection.'));
+                return redirect()->route('portfolio.banking')
+                    ->with('bankLinkStatus', __('The bank did not confirm the connection.'))
+                    ->with('bankLinkStatusType', 'error');
             }
 
             $result = $sync->sync($link);
 
-            return redirect()->route('portfolio.banking')->with('bankLinkStatus', trim(
-                __(':bank connected.', ['bank' => $link->institution_name]).' '.
-                trans_choice(':count booking imported into Finances.|:count bookings imported into Finances.', $result['imported'])
-            ));
+            return redirect()->route('portfolio.banking')
+                ->with('bankLinkStatus', trim(
+                    __(':bank connected.', ['bank' => $link->institution_name]).' '.
+                    trans_choice(':count booking imported into Finances.|:count bookings imported into Finances.', $result['imported'])
+                ))
+                ->with('bankLinkStatusType', 'success');
         } catch (Throwable $exception) {
             // Log it so the real reason shows under Admin › System instead of being swallowed.
             report($exception);
 
-            return redirect()->route('portfolio.banking')->with('bankLinkStatus', __('The bank connection was set up, but the first sync failed. Please try "Sync now".'));
+            return redirect()->route('portfolio.banking')
+                ->with('bankLinkStatus', __('The bank connection was set up, but the first sync failed. Please try "Sync now".'))
+                ->with('bankLinkStatusType', 'error');
         }
     }
 }

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.164.0] – 2026-11-21
+
+### Verbessert (Finanzen – Bankensuche bei Enable Banking)
+- **Treffsicherere Suche:** Die Banksuche berücksichtigt jetzt auch die BIC und ignoriert Bindestriche/Leerzeichen, sodass z. B. „ing", „ING-DiBa" und „ingdiba" dieselbe Bank finden.
+- **Transparenz:** Unter dem Suchfeld steht nun, wie viele Banken über Enable Banking verfügbar sind. Ist die Liste auffällig kurz, weist ein Hinweis darauf hin, dass die Enable-Banking-Anwendung vermutlich noch nicht für den Produktivbetrieb freigeschaltet ist (dann fehlen echte Banken wie ING).
+
 ## [1.163.0] – 2026-11-21
 
 ### Neu (Finanzen – FinTS-Depotabruf für neuere Banken)

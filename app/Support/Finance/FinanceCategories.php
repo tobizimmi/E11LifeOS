@@ -2,9 +2,15 @@
 
 namespace App\Support\Finance;
 
+use App\Models\FinanceCategory;
+use Illuminate\Support\Facades\Auth;
+
 /**
  * Spending and income categories. "group" sorts them for the 50/30/20 check:
  * needs (fixed necessities), wants (lifestyle), savings, income, transfer (ignored).
+ *
+ * The fixed catalogue below is extended by the signed-in household's own categories
+ * ({@see FinanceCategory}); those carry "custom" => true so the UI can offer to delete them.
  */
 class FinanceCategories
 {
@@ -15,9 +21,30 @@ class FinanceCategories
     public const TRANSFER = 'transfer';
 
     /**
-     * @return array<string, array{label: string, icon: string, group: string}>
+     * Custom categories per household id, memoised for the request.
+     *
+     * @var array<int, array<string, array{label: string, icon: string, group: string, custom: bool}>>
+     */
+    private static array $customCache = [];
+
+    /**
+     * The fixed catalogue plus the current household's own categories.
+     *
+     * @return array<string, array{label: string, icon: string, group: string, custom: bool}>
      */
     public static function all(): array
+    {
+        $fixed = array_map(fn (array $category) => $category + ['custom' => false], self::fixed());
+
+        return $fixed + self::custom();
+    }
+
+    /**
+     * The built-in categories.
+     *
+     * @return array<string, array{label: string, icon: string, group: string}>
+     */
+    private static function fixed(): array
     {
         return [
             'housing' => ['label' => __('Housing & rent'), 'icon' => '🏠', 'group' => 'needs'],
@@ -45,6 +72,45 @@ class FinanceCategories
             self::OTHER_INCOME => ['label' => __('Other income'), 'icon' => '💰', 'group' => 'income'],
             self::TRANSFER => ['label' => __('Own transfers'), 'icon' => '🔁', 'group' => 'transfer'],
         ];
+    }
+
+    /**
+     * The signed-in household's own categories, memoised. Empty without an authenticated household.
+     *
+     * @return array<string, array{label: string, icon: string, group: string, custom: bool}>
+     */
+    public static function custom(): array
+    {
+        $householdId = Auth::check() ? Auth::user()->currentHousehold()?->id : null;
+
+        if ($householdId === null) {
+            return [];
+        }
+
+        return self::$customCache[$householdId] ??= FinanceCategory::query()
+            ->where('household_id', $householdId)
+            ->orderBy('label')
+            ->get()
+            ->mapWithKeys(fn (FinanceCategory $category) => [$category->key => [
+                'label' => (string) $category->label,
+                'icon' => (string) $category->icon,
+                'group' => (string) $category->group,
+                'custom' => true,
+            ]])
+            ->all();
+    }
+
+    /**
+     * Forgets the memoised custom categories (after a create/update/delete).
+     */
+    public static function flush(): void
+    {
+        self::$customCache = [];
+    }
+
+    public static function isCustom(string $key): bool
+    {
+        return (self::all()[$key]['custom'] ?? false) === true;
     }
 
     public static function label(string $key): string

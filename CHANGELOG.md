@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.158.0] – 2026-11-21
+
+### Neu (Finanzen – eigene Kategorien)
+- **Eigene Kategorien:** Im Budgets-Tab lassen sich jetzt eigene Kategorien anlegen (Name, Icon und 50/30/20-Gruppe needs/wants/savings). Sie funktionieren überall wie die festen Kategorien – bei der Zuordnung von Buchungen, im Bericht (inkl. Filter), bei Budgets und im 50/30/20-Check. Beim Löschen einer eigenen Kategorie wandern ihre Buchungen zurück nach „Sonstige Ausgaben".
+- Die „Sparen"-Logik im Bericht ist nun gruppenbasiert: auch eine eigene Kategorie der Gruppe „Sparen" wird korrekt aus den Ausgaben herausgerechnet.
+
 ## [1.157.0] – 2026-11-21
 
 ### Neu (Finanzen – Filtern & Gruppieren im Bericht)

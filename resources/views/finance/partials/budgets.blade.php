@@ -40,3 +40,42 @@
         @endforeach
     </ul>
 </section>
+
+{{-- Custom categories --}}
+<section class="mt-5 rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+    <h3 class="font-semibold text-gray-900 dark:text-gray-100">🏷️ {{ __('Your own categories') }}</h3>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Add categories that fit your life. They work everywhere like the built-in ones – for bookings, budgets and the 50/30/20 check.') }}</p>
+
+    @if ($customCategories->isNotEmpty())
+        <ul class="mt-4 flex flex-wrap gap-2">
+            @foreach ($customCategories as $category)
+                <li wire:key="cat-{{ $category->id }}" class="inline-flex items-center gap-2 rounded-full bg-gray-100 py-1 pl-3 pr-1.5 text-sm dark:bg-gray-700">
+                    <span>{{ $category->icon }} {{ $category->label }}</span>
+                    <span class="text-xs text-gray-400">{{ ['needs' => __('Needs'), 'wants' => __('Wishes & lifestyle'), 'savings' => __('Saving')][$category->group] ?? $category->group }}</span>
+                    <button type="button" wire:click="deleteCategory(@js($category->key))" wire:confirm="{{ __('Remove this category? Its bookings become “Other expenses”.') }}" class="rounded-full px-1.5 text-gray-400 hover:bg-gray-200 hover:text-red-600 dark:hover:bg-gray-600" aria-label="{{ __('Remove') }}">✕</button>
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
+    <form wire:submit="addCategory" class="mt-4 flex flex-wrap items-end gap-2">
+        <label class="text-xs text-gray-500 dark:text-gray-400">
+            {{ __('Icon') }}
+            <input type="text" wire:model="newCategory.icon" maxlength="16" class="mt-1 block w-16 rounded-lg border-gray-300 text-center text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" />
+        </label>
+        <label class="flex-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ __('Name') }}
+            <input type="text" wire:model="newCategory.label" maxlength="40" placeholder="{{ __('e.g. Hobby, garden, side job') }}" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" />
+        </label>
+        <label class="text-xs text-gray-500 dark:text-gray-400">
+            {{ __('50/30/20 group') }}
+            <select wire:model="newCategory.group" class="mt-1 block rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                <option value="needs">{{ __('Needs') }}</option>
+                <option value="wants">{{ __('Wishes & lifestyle') }}</option>
+                <option value="savings">{{ __('Saving') }}</option>
+            </select>
+        </label>
+        <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>
+    </form>
+    @error('newCategory.label')<p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+</section>

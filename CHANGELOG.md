@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.157.0] – 2026-11-21
+
+### Neu (Finanzen – Filtern & Gruppieren im Bericht)
+- **Kategorie-Drilldown:** Über die neue Auswahl „Alle Kategorien" lässt sich der komplette Bericht (inkl. Monatsverlauf, Vergleich und PDF-Basis) auf eine einzelne Kategorie einschränken – ein kleiner Chip zeigt den aktiven Filter und lässt ihn mit einem Klick wieder entfernen.
+- **Aufschlüsselung nach Konto:** Bei mehreren Konten zeigt der Bericht jetzt zusätzlich, wie sich die Ausgaben auf die einzelnen Konten verteilen.
+
 ## [1.156.0] – 2026-11-21
 
 ### Neu (Finanzen – Umbuchungen/Sparen einblenden)

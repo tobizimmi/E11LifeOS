@@ -168,8 +168,12 @@ class BankLinkSync
         $imported = 0;
         $accounts = 0;
 
-        try {
-            foreach ($link->account_ids ?? [] as $accountId) {
+        $firstException = null;
+
+        foreach ($link->account_ids ?? [] as $accountId) {
+            // One account failing (an expired single consent, a locked account) must not drop the
+            // others; only when every account fails is the whole sync treated as failed.
+            try {
                 // Account IBAN/name: Enable Banking returned it on the session; GoCardless has a
                 // dedicated details call.
                 if ($isEnableBanking) {
@@ -194,14 +198,24 @@ class BankLinkSync
                 $bookings = $client->transactions($accountId, now()->subDays(90)->toDateString());
                 $imported += $importer->importBookings($account, $bookings, $categorizer)['imported'];
                 $accounts++;
+            } catch (Throwable $exception) {
+                report($exception);
+                $firstException ??= $exception;
             }
-
-            $link->update(['last_synced_at' => now(), 'sync_status' => 'ok', 'sync_message' => null]);
-        } catch (Throwable $exception) {
-            $link->update(['sync_status' => 'error', 'sync_message' => Str::limit($exception->getMessage(), 200)]);
-
-            throw $exception;
         }
+
+        // Nothing came through at all: surface the real reason to the caller (and the UI).
+        if ($accounts === 0 && $firstException !== null) {
+            $link->update(['sync_status' => 'error', 'sync_message' => Str::limit($firstException->getMessage(), 200)]);
+
+            throw $firstException;
+        }
+
+        $link->update([
+            'last_synced_at' => now(),
+            'sync_status' => 'ok',
+            'sync_message' => $firstException === null ? null : Str::limit(__('Some accounts could not be fetched: :reason', ['reason' => $firstException->getMessage()]), 200),
+        ]);
 
         return ['imported' => $imported, 'accounts' => $accounts];
     }

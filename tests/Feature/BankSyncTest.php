@@ -10,6 +10,7 @@ use App\Models\Security;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Banking\FinTsClient;
+use App\Support\Portfolio\Positions;
 use Fhp\CurlException;
 use Fhp\FinTs;
 use Fhp\Model\SEPAAccount;
@@ -100,10 +101,36 @@ class BankSyncTest extends TestCase
         $page = Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->assertHasNoErrors()->assertSee('SAP SE');
         $this->assertSame(['success', 1], [$connection->fresh()->sync_status, $connection->depotPositions()->count()]);
 
-        $page->call('applyToPortfolio', $connection->id);
+        $page->call('applyToPortfolio', $connection->id, 'add');
         $transaction = $portfolio->transactions()->sole();
         $this->assertSame(['transfer_in', 'SAP.DE', 12.0, 98.5], [$transaction->type, $transaction->symbol, $transaction->quantity, $transaction->price]);
         $this->assertSame(12.0, $portfolio->positions()->sole()->quantity);
+    }
+
+    public function test_replace_mode_books_out_positions_the_bank_no_longer_reports(): void
+    {
+        [$user, $household] = $this->owner();
+        $portfolio = Portfolio::factory()->for($user)->create(['name' => 'DKB-Depot']);
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'portfolio_id' => $portfolio->id]);
+        Security::factory()->create(['symbol' => 'SAP.DE', 'name' => 'SAP SE', 'isin' => 'DE0007164600', 'price_updated_at' => now()]);
+
+        // A position the user already holds that the bank will NOT report.
+        $portfolio->transactions()->create(['symbol' => 'AAPL', 'name' => 'Apple', 'isin' => 'US0378331005', 'type' => 'buy', 'quantity' => 5, 'price' => 100, 'currency' => 'USD', 'executed_on' => '2026-01-10', 'import_source' => 'manual']);
+        Positions::recalculate($portfolio);
+        $this->assertSame(5.0, (float) $portfolio->positions()->where('symbol', 'AAPL')->sole()->quantity);
+
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->andReturn([
+            'status' => 'done', 'accounts' => [], 'errors' => [],
+            'holdings' => [['isin' => 'DE0007164600', 'wkn' => '716460', 'name' => 'SAP SE', 'quantity' => 12.0, 'acquisition_price' => 98.5, 'price' => 120.0, 'value' => 1440.0, 'currency' => 'EUR', 'price_date' => '2026-09-25']],
+        ]));
+
+        $page = Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->assertHasNoErrors();
+        $page->call('applyToPortfolio', $connection->id, 'replace');
+
+        // SAP adopted from the bank, AAPL (not reported) booked out to zero.
+        $this->assertSame(12.0, (float) $portfolio->positions()->where('symbol', 'SAP.DE')->sole()->quantity);
+        $this->assertFalse($portfolio->positions()->where('symbol', 'AAPL')->where('quantity', '>', 0)->exists());
+        $this->assertTrue($portfolio->transactions()->where('symbol', 'AAPL')->where('type', 'transfer_out')->where('quantity', 5)->exists());
     }
 
     public function test_bookings_need_the_pin_and_a_tan_and_land_in_finances(): void
@@ -360,8 +387,8 @@ class BankSyncTest extends TestCase
         $page->call('setAccountPortfolio', $connection->id, '6006', (string) $kids->id)
             ->call('sync', $connection->id, 'depot')
             ->assertSee('Junior-Depot')
-            ->assertSee('in den verknüpften Depots übernehmen')
-            ->call('applyToPortfolio', $connection->id);
+            ->assertSee('angleichen')
+            ->call('applyToPortfolio', $connection->id, 'add');
 
         $this->assertSame(12.0, $main->positions()->sole()->quantity);
         $this->assertSame(3.0, $kids->positions()->sole()->quantity);

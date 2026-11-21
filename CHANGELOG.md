@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.159.0] – 2026-11-21
+
+### Verbessert (Finanzen – Bank-Sync robuster)
+- **Keine fehlenden Umsätze mehr:** Zwei echte, am selben Tag gleich hohe Buchungen ohne Bank-Referenz werden beim FinTS-Sync nicht mehr fälschlich als Dublette zusammengefasst – beide landen jetzt zuverlässig in den Finanzen (wie beim CSV-Import).
+- **Kein Abbruch mehr:** Eine einzelne fehlerhafte Buchung oder ein problematisches Konto bricht den Sync nicht mehr komplett ab; der Rest wird importiert und das übersprungene Konto wird gemeldet.
+
 ## [1.158.0] – 2026-11-21
 
 ### Neu (Finanzen – eigene Kategorien)

@@ -1,0 +1,134 @@
+diff --git a/src/Action/GetDepotAufstellung.php b/src/Action/GetDepotAufstellung.php
+index 17e644e..c67493b 100644
+--- a/src/Action/GetDepotAufstellung.php
++++ b/src/Action/GetDepotAufstellung.php
+@@ -15,7 +15,9 @@ use Fhp\Segment\HIRMS\Rueckmeldungscode;
+ use Fhp\Segment\WPD\HIWPD;
+ use Fhp\Segment\WPD\HIWPDS;
+ use Fhp\Segment\WPD\HIWPDv5;
++use Fhp\Segment\WPD\HIWPDv6;
+ use Fhp\Segment\WPD\HKWPDv5;
++use Fhp\Segment\WPD\HKWPDv6;
+ use Fhp\UnsupportedException;
+ 
+ /**
+@@ -119,6 +121,8 @@ class GetDepotAufstellung extends PaginateableAction
+         switch ($hiwpds->getVersion()) {
+             case 5:
+                 return HKWPDv5::create(KtvV3::fromAccount($this->account));
++            case 6:
++                return HKWPDv6::create(KtvV3::fromAccount($this->account));
+             default:
+                 throw new UnsupportedException('Unsupported HKWPD version: ' . $hiwpds->getVersion());
+         }
+@@ -129,7 +133,10 @@ class GetDepotAufstellung extends PaginateableAction
+         parent::processResponse($response);
+ 
+         $isUnavailable = $response->findRueckmeldung(Rueckmeldungscode::NICHT_VERFUEGBAR) !== null;
+-        $responseHiwpd = $response->findSegments(HIWPDv5::class);
++        $responseHiwpd = array_merge(
++            $response->findSegments(HIWPDv5::class),
++            $response->findSegments(HIWPDv6::class)
++        );
+ 
+         $numResponseSegments = count($responseHiwpd);
+         if (!$isUnavailable && $numResponseSegments < count($this->getRequestSegmentNumbers())) {
+diff --git a/src/Segment/WPD/HIWPDSv6.php b/src/Segment/WPD/HIWPDSv6.php
+new file mode 100644
+index 0000000..70d6ae8
+--- /dev/null
++++ b/src/Segment/WPD/HIWPDSv6.php
+@@ -0,0 +1,22 @@
++<?php
++/** @noinspection PhpUnused */
++
++namespace Fhp\Segment\WPD;
++
++use Fhp\Segment\BaseGeschaeftsvorfallparameter;
++
++/**
++ * Segment: Parameter Depotaufstellung
++ *
++ * @link https://www.hbci-zka.de/dokumente/spezifikation_deutsch/fintsv3/FinTS_3.0_Messages_Geschaeftsvorfaelle_2015-08-07_final_version.pdf
++ * Section: O - Parameter Depotaufstellung
++ */
++class HIWPDSv6 extends BaseGeschaeftsvorfallparameter implements HIWPDS
++{
++    public ParameterDepotaufstellungV2 $parameter;
++
++    public function getParameter(): ParameterDepotaufstellung
++    {
++        return $this->parameter;
++    }
++}
+diff --git a/src/Segment/WPD/HIWPDv6.php b/src/Segment/WPD/HIWPDv6.php
+new file mode 100644
+index 0000000..efdae18
+--- /dev/null
++++ b/src/Segment/WPD/HIWPDv6.php
+@@ -0,0 +1,24 @@
++<?php
++/** @noinspection PhpUnused */
++
++namespace Fhp\Segment\WPD;
++
++use Fhp\Segment\BaseSegment;
++use Fhp\Syntax\Bin;
++
++/**
++ * Segment: Depotaufstellung Kreditinstitutsrückmledung (Version 6)
++ *
++ * @link https://www.hbci-zka.de/dokumente/spezifikation_deutsch/fintsv3/FinTS_3.0_Messages_Geschaeftsvorfaelle_2015-08-07_final_version.pdf
++ * Section: C.4.3.1b
++ */
++class HIWPDv6 extends BaseSegment implements HIWPD
++{
++    /** Uses SWIFT format MT353, version SRG 1998 */
++    public Bin $depotaufstellung;
++
++    public function getDepotaufstellung(): Bin
++    {
++        return $this->depotaufstellung;
++    }
++}
+diff --git a/src/Segment/WPD/HKWPDv6.php b/src/Segment/WPD/HKWPDv6.php
+new file mode 100644
+index 0000000..9041094
+--- /dev/null
++++ b/src/Segment/WPD/HKWPDv6.php
+@@ -0,0 +1,35 @@
++<?php
++/** @noinspection PhpUnused */
++
++namespace Fhp\Segment\WPD;
++
++use Fhp\Segment\BaseSegment;
++use Fhp\Segment\Paginateable;
++
++/**
++ * Segment: Depotaufstellung anfordern (Version 6)
++ *
++ * @link https://www.hbci-zka.de/dokumente/spezifikation_deutsch/fintsv3/FinTS_3.0_Messages_Geschaeftsvorfaelle_2015-08-07_final_version.pdf
++ * Section: C.4.3.1a
++ */
++class HKWPDv6 extends BaseSegment implements Paginateable
++{
++    public \Fhp\Segment\Common\KtvV3 $depot;
++    public ?string $waehrungDerDepotaufstellung = null;
++    public ?\Fhp\Segment\Common\Kursqualitaet $kursqualitaet = null;
++    /** Only allowed if {@link ParameterDepotaufstellungV2::$eingabeAnzahlEintraegeErlaubt} says so. */
++    public ?int $maximaleAnzahlEintraege = null;
++    public ?string $aufsetzpunkt = null;
++
++    public static function create(\Fhp\Segment\Common\KtvV3 $ktv): HKWPDv6
++    {
++        $result = HKWPDv6::createEmpty();
++        $result->depot = $ktv;
++        return $result;
++    }
++
++    public function setPaginationToken(string $paginationToken)
++    {
++        $this->aufsetzpunkt = $paginationToken;
++    }
++}

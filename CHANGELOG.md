@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.163.0] – 2026-11-21
+
+### Neu (Finanzen – FinTS-Depotabruf für neuere Banken)
+- **HKWPD v6:** Der FinTS-Depotabruf unterstützt jetzt auch Banken, die die Depotaufstellung nur in der neueren Protokoll-Version 6 anbieten (z. B. DKB). Dafür wird der bereits in der FinTS-Bibliothek gemergte, aber noch nicht veröffentlichte v6-Support als gepinnter Patch mitgeliefert und beim Deploy angewandt. Ob dein Depot damit abrufbar ist, hängt davon ab, welche Version deine Bank ankündigt – ING und Smartbroker (Baader) bitte einmal neu testen.
+
 ## [1.162.0] – 2026-11-21
 
 ### Behoben (Mail – Absturz bei großen Anhängen)

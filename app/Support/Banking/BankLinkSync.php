@@ -182,7 +182,9 @@ class BankLinkSync
                     $details = $this->client->accountDetails($accountId);
                 }
 
-                $iban = $details['iban'] ?: $accountId;
+                // No real IBAN? Fall back to the provider's account id as the stable identifier,
+                // capped to the column width so an unusually long id can never overflow.
+                $iban = mb_substr((string) ($details['iban'] ?: $accountId), 0, 255);
 
                 $account = BankAccount::firstOrCreate(
                     ['user_id' => $link->user_id, 'iban' => $iban],

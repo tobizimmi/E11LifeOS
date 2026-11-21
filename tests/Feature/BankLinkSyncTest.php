@@ -135,6 +135,41 @@ class BankLinkSyncTest extends TestCase
         $this->assertSame(2, $account->transactions()->count());
     }
 
+    public function test_an_account_without_an_iban_uses_its_long_uid_without_overflowing(): void
+    {
+        $this->configureEnableBanking();
+        $uid = 'eb-'.str_repeat('a', 50); // longer than the former 34-char IBAN limit
+
+        Http::fake(function (Request $request) use ($uid) {
+            $url = $request->url();
+
+            return match (true) {
+                str_contains($url, "/accounts/{$uid}/balances") => Http::response(['balances' => [['balance_type' => 'CLBD', 'balance_amount' => ['amount' => '1.00', 'currency' => 'EUR'], 'reference_date' => '2026-11-06']]]),
+                str_contains($url, "/accounts/{$uid}/transactions") => Http::response(['transactions' => [
+                    ['booking_date' => '2026-11-05', 'transaction_amount' => ['amount' => '3.00', 'currency' => 'EUR'], 'credit_debit_indicator' => 'DBIT', 'creditor' => ['name' => 'Shop'], 'remittance_information' => ['Kauf']],
+                ]]),
+                default => Http::response([], 404),
+            };
+        });
+
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $link = BankLink::create([
+            'user_id' => $user->id, 'household_id' => $user->currentHousehold()->id,
+            'provider' => BankLink::PROVIDER_ENABLEBANKING, 'institution_id' => 'Test Bank', 'institution_name' => 'Test Bank',
+            'reference' => 'ref', 'requisition_id' => 'authz', 'status' => BankLink::STATUS_LINKED,
+            'account_ids' => [$uid],
+            'accounts_meta' => [$uid => ['iban' => null, 'name' => 'Depotkonto']],
+            'consent_expires_at' => now()->addDays(80),
+        ]);
+
+        $result = app(BankLinkSync::class)->sync($link);
+
+        $this->assertSame(['imported' => 1, 'accounts' => 1], $result);
+        $this->assertDatabaseHas('bank_accounts', ['user_id' => $user->id, 'iban' => $uid]);
+    }
+
     public function test_one_failing_account_does_not_abort_the_other_accounts(): void
     {
         $this->configureEnableBanking();

@@ -31,9 +31,12 @@ class FinanceReport
         $months = self::months($from, $to);
         $monthCount = max(1, count($months));
 
+        // "Saving" is a group, so a user's own savings category counts like the built-in one.
+        $isSaving = fn (Transaction $transaction) => FinanceCategories::group((string) $transaction->category) === 'savings';
+
         $income = (float) $bookings->where('amount', '>', 0)->sum('amount');
-        $savingsOut = $includeSavings ? 0.0 : (float) -$bookings->where('amount', '<', 0)->where('category', 'savings')->sum('amount');
-        $expenseBookings = $bookings->filter(fn (Transaction $transaction) => $transaction->amount < 0 && ($includeSavings || $transaction->category !== 'savings'));
+        $savingsOut = $includeSavings ? 0.0 : (float) -$bookings->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $isSaving($transaction))->sum('amount');
+        $expenseBookings = $bookings->filter(fn (Transaction $transaction) => $transaction->amount < 0 && ($includeSavings || ! $isSaving($transaction)));
         $expenses = (float) -$expenseBookings->sum('amount');
 
         $categories = $expenseBookings->groupBy('category')
@@ -58,23 +61,27 @@ class FinanceReport
             ->map(fn (array $row) => $row + ['share' => $expenses > 0 ? round($row['amount'] / $expenses * 100, 1) : 0.0])
             ->all();
 
-        $monthly = collect($months)->map(function (string $month) use ($bookings, $includeSavings) {
+        $monthly = collect($months)->map(function (string $month) use ($bookings, $includeSavings, $isSaving) {
             $inMonth = $bookings->filter(fn (Transaction $transaction) => $transaction->booked_on->format('Y-m') === $month);
 
             return [
                 'month' => $month,
                 'label' => Carbon::createFromFormat('!Y-m', $month)->translatedFormat('M y'),
                 'income' => round((float) $inMonth->where('amount', '>', 0)->sum('amount'), 2),
-                'expenses' => round((float) -$inMonth->filter(fn (Transaction $transaction) => $transaction->amount < 0 && ($includeSavings || $transaction->category !== 'savings'))->sum('amount'), 2),
+                'expenses' => round((float) -$inMonth->filter(fn (Transaction $transaction) => $transaction->amount < 0 && ($includeSavings || ! $isSaving($transaction)))->sum('amount'), 2),
             ];
         })->all();
 
-        $recurring = self::recurring($includeSavings ? $expenseBookings : $expenseBookings->concat($bookings->where('category', 'savings')));
+        $recurring = self::recurring($includeSavings ? $expenseBookings : $expenseBookings->concat($bookings->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $isSaving($transaction))));
         $groups = ['needs' => 0.0, 'wants' => 0.0, 'savings' => $savingsOut];
 
         foreach ($categories as $category) {
             $group = FinanceCategories::group($category['key']);
-            $groups[$group === 'needs' ? 'needs' : 'wants'] += $category['amount'];
+            $groups[match ($group) {
+                'needs' => 'needs',
+                'savings' => 'savings',
+                default => 'wants',
+            }] += $category['amount'];
         }
 
         $report = [

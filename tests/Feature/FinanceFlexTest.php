@@ -43,7 +43,8 @@ class FinanceFlexTest extends TestCase
         Volt::test('finance.index')
             ->set('tab', 'report')
             ->set('compare', true)
-            ->assertViewHas('comparison', fn (?array $comparison) => $comparison !== null && isset($comparison['report']));
+            ->assertViewHas('comparison', fn (?array $comparison) => $comparison !== null && isset($comparison['from'], $comparison['to']))
+            ->assertViewHas('deltas', fn (array $deltas) => count($deltas) === 3);
     }
 
     public function test_the_previous_range_precedes_and_matches_the_length(): void

@@ -674,19 +674,21 @@ new #[Layout('layouts.app')] class extends Component
 
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
-            $data['report'] = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())->get(), $from, $to);
-            $data['rangeFrom'] = $from;
-            $data['rangeTo'] = $to;
+            $report = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())->get(), $from, $to);
+            $data['report'] = $report;
             $data['openCount'] = Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->whereIn('category', [FinanceCategories::OTHER, FinanceCategories::OTHER_INCOME])->where('category_locked', false)->count();
 
             $data['comparison'] = null;
+            $data['deltas'] = [];
 
             if ($this->compare) {
                 [$prevFrom, $prevTo] = FinancePeriod::previousRange($from, $to);
-                $data['comparison'] = [
-                    'from' => $prevFrom,
-                    'to' => $prevTo,
-                    'report' => FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $prevFrom, $prevTo, $this->accountId())->get(), $prevFrom, $prevTo),
+                $previous = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $prevFrom, $prevTo, $this->accountId())->get(), $prevFrom, $prevTo);
+                $data['comparison'] = ['from' => $prevFrom, 'to' => $prevTo];
+                $data['deltas'] = [
+                    ['label' => __('Income'), 'delta' => round((float) $report['income'] - (float) $previous['income'], 2), 'higherBetter' => true],
+                    ['label' => __('Expenses'), 'delta' => round((float) $report['expenses'] - (float) $previous['expenses'], 2), 'higherBetter' => false],
+                    ['label' => __('Left over'), 'delta' => round((float) $report['balance'] - (float) $previous['balance'], 2), 'higherBetter' => true],
                 ];
             }
 

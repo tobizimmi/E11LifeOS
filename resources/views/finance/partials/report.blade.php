@@ -18,38 +18,35 @@
     @if ($report['count'] === 0)
         <p class="rounded-2xl bg-white p-6 text-sm text-gray-600 shadow-xs dark:bg-gray-800 dark:text-gray-300">{{ __('No bookings in this period.') }}</p>
     @else
-        {{-- Headline figures (with comparison deltas when a previous period is selected) --}}
-        @php($prev = ($comparison ?? null) ? $comparison['report'] : null)
+        {{-- Headline figures --}}
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
             @foreach ([
-                [__('Income'), $euro($report['income'], 0), __('Ø :amount per month', ['amount' => $euro($report['avgIncome'], 0)]), 'var(--fin-income)', 'income', true],
-                [__('Expenses'), $euro($report['expenses'], 0), __('Ø :amount per month', ['amount' => $euro($report['avgExpenses'], 0)]), 'var(--fin-expense)', 'expenses', false],
-                [__('Left over'), $euro($report['balance'], 0), $report['savingsTransfers'] > 0 ? __(':amount of it moved to savings', ['amount' => $euro($report['savingsTransfers'], 0)]) : __('Income minus expenses'), null, 'balance', true],
-                [__('Savings rate'), $report['savingsRate'] !== null ? number_format($report['savingsRate'], 1, ',', '.').' %' : '—', __('Guideline: at least 10–20 %'), null, 'savingsRate', true],
-            ] as [$label, $value, $hint, $color, $metric, $higherBetter])
+                [__('Income'), $euro($report['income'], 0), __('Ø :amount per month', ['amount' => $euro($report['avgIncome'], 0)]), 'var(--fin-income)'],
+                [__('Expenses'), $euro($report['expenses'], 0), __('Ø :amount per month', ['amount' => $euro($report['avgExpenses'], 0)]), 'var(--fin-expense)'],
+                [__('Left over'), $euro($report['balance'], 0), $report['savingsTransfers'] > 0 ? __(':amount of it moved to savings', ['amount' => $euro($report['savingsTransfers'], 0)]) : __('Income minus expenses'), null],
+                [__('Savings rate'), $report['savingsRate'] !== null ? number_format($report['savingsRate'], 1, ',', '.').' %' : '—', __('Guideline: at least 10–20 %'), null],
+            ] as [$label, $value, $hint, $color])
                 <div class="rounded-2xl bg-white p-4 shadow-xs dark:bg-gray-800">
                     <p class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                         @if ($color)<span class="h-2.5 w-2.5 rounded-full" style="background: {{ $color }}" aria-hidden="true"></span>@endif
                         {{ $label }}
                     </p>
                     <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $value }}</p>
-                    @if ($prev)
-                        @php($delta = round((float) ($report[$metric] ?? 0) - (float) ($prev[$metric] ?? 0), $metric === 'savingsRate' ? 1 : 2))
-                        @php($good = $delta == 0 ? null : (($delta > 0) === $higherBetter))
-                        <p class="mt-0.5 text-xs font-medium {{ $good === null ? 'text-gray-400' : ($good ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400') }}">
-                            {{ $delta > 0 ? '▲' : ($delta < 0 ? '▼' : '=') }}
-                            {{ $metric === 'savingsRate' ? number_format(abs($delta), 1, ',', '.').' pp' : $euro(abs($delta), 0) }}
-                            <span class="font-normal text-gray-400">{{ __('vs. previous') }}</span>
-                        </p>
-                    @else
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $hint }}</p>
-                    @endif
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $hint }}</p>
                 </div>
             @endforeach
         </div>
 
-        @if ($comparison)
-            <p class="-mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Compared to :from – :to', ['from' => $comparison['from']->isoFormat('DD.MM.YY'), 'to' => $comparison['to']->isoFormat('DD.MM.YY')]) }}</p>
+        {{-- Comparison with the previous, equally long period --}}
+        @if (! empty($deltas) && $comparison)
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white px-4 py-2.5 text-xs shadow-xs dark:bg-gray-800">
+                <span class="text-gray-400">{{ __('Compared to :from – :to', ['from' => $comparison['from']->isoFormat('DD.MM.YY'), 'to' => $comparison['to']->isoFormat('DD.MM.YY')]) }}:</span>
+                @foreach ($deltas as $d)
+                    <span class="font-medium {{ $d['delta'] == 0 ? 'text-gray-400' : (($d['delta'] > 0) === $d['higherBetter'] ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400') }}">
+                        {{ $d['label'] }} {{ $d['delta'] > 0 ? '▲' : ($d['delta'] < 0 ? '▼' : '=') }} {{ $euro(abs($d['delta']), 0) }}
+                    </span>
+                @endforeach
+            </div>
         @endif
 
         @if ($openCount > 0)

@@ -82,6 +82,42 @@ class FinanceFlexTest extends TestCase
         $this->assertSame(600.0, $raw['expenses']);
     }
 
+    public function test_the_category_filter_drills_the_report_to_one_category(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $giro = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -100, 'booked_on' => '2026-06-15', 'category' => 'groceries']);
+        Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -40, 'booked_on' => '2026-06-16', 'category' => 'restaurants']);
+
+        Volt::test('finance.index')
+            ->set('tab', 'report')
+            ->set('period', FinancePeriod::CUSTOM)
+            ->set('customFrom', '2026-06-01')
+            ->set('customTo', '2026-06-30')
+            ->set('categoryFilter', 'groceries')
+            ->assertViewHas('report', fn (array $report) => $report['expenses'] === 100.0 && count($report['categories']) === 1);
+    }
+
+    public function test_expenses_are_broken_down_by_account(): void
+    {
+        $giro = new Transaction(['amount' => -100, 'category' => 'groceries', 'booked_on' => now()]);
+        $giro->bank_account_id = 1;
+        $giro->setRelation('account', new BankAccount(['name' => 'Giro']));
+
+        $visa = new Transaction(['amount' => -60, 'category' => 'restaurants', 'booked_on' => now()]);
+        $visa->bank_account_id = 2;
+        $visa->setRelation('account', new BankAccount(['name' => 'Visa']));
+
+        [$from, $to] = FinancePeriod::range('6m');
+        $report = FinanceReport::build(collect([$giro, $visa]), $from, $to);
+
+        $this->assertCount(2, $report['byAccount']);
+        $this->assertSame('Giro', $report['byAccount'][0]['label']);
+        $this->assertSame(100.0, $report['byAccount'][0]['amount']);
+    }
+
     public function test_savings_count_as_expense_only_when_included(): void
     {
         $transactions = collect([

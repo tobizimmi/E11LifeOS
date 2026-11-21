@@ -13,6 +13,12 @@ class MimeMessage
     private const MAX_DEPTH = 8;
 
     /**
+     * A single MIME part larger than this is skipped unparsed: decoded it would exceed the 20 MB
+     * attachment limit anyway, and copying it while parsing would blow the memory limit.
+     */
+    private const MAX_PART_BYTES = 30 * 1024 * 1024;
+
+    /**
      * @param  array<string, string>  $headers  lower-case names, last value wins
      * @param  list<string>  $recipients  addresses from To, Cc, Delivered-To and X-Original-To
      * @param  list<array{name: string, mime: string, content: string}>  $attachments
@@ -30,6 +36,10 @@ class MimeMessage
 
     public static function parse(string $raw): self
     {
+        // Decoding a mail with a large (up to 20 MB) attachment copies the part several times, which
+        // overruns PHP's default 128 MB limit. Give the parse enough headroom (raising only upward).
+        self::ensureMemoryHeadroom();
+
         [$headers, $body, $all] = self::split($raw);
         $parts = ['text' => '', 'html' => '', 'attachments' => []];
         self::walk($headers, $body, $parts);
@@ -54,6 +64,41 @@ class MimeMessage
             $parts['html'],
             $parts['attachments'],
         );
+    }
+
+    /**
+     * Raises PHP's memory limit to at least 512 MB for the parse (only upward, never lowering an
+     * already higher or unlimited limit). A platform that forbids the change is left as it is.
+     */
+    private static function ensureMemoryHeadroom(): void
+    {
+        $target = 512 * 1024 * 1024;
+        $current = self::bytes((string) ini_get('memory_limit'));
+
+        if ($current !== -1 && $current < $target) {
+            @ini_set('memory_limit', (string) $target);
+        }
+    }
+
+    /**
+     * Turns a php.ini size ("128M", "1G", "-1") into bytes; -1 means unlimited.
+     */
+    private static function bytes(string $value): int
+    {
+        $value = trim($value);
+
+        if ($value === '' || $value === '-1') {
+            return $value === '-1' ? -1 : 0;
+        }
+
+        $number = (int) $value;
+
+        return match (strtolower(substr($value, -1))) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => $number,
+        };
     }
 
     /**
@@ -101,6 +146,12 @@ class MimeMessage
                 foreach (array_slice(explode('--'.$match[1], $body), 1) as $part) {
                     if (str_starts_with($part, '--')) {
                         break;
+                    }
+
+                    // A part bigger than the limit would be dropped as an oversized attachment later;
+                    // skip it here so decoding it never blows the memory limit.
+                    if (strlen($part) > self::MAX_PART_BYTES) {
+                        continue;
                     }
 
                     [$partHeaders, $partBody] = self::split(ltrim($part, "\n"));

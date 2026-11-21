@@ -196,6 +196,17 @@ jobs:
             done
 
             composer install --no-dev --optimize-autoloader --no-scripts
+
+            # composer runs with --no-scripts here, so apply the vendored FinTS patch explicitly
+            # (adds HKWPD v6 support for depot holdings at banks announcing HIWPDS v6, e.g. DKB).
+            # Re-applied every deploy because composer install rewrites vendor/ from scratch.
+            if [ -f patches/nemiah-phpfints-hkwpd-v6.patch ]; then
+              git apply -p1 --directory=vendor/nemiah/php-fints --check patches/nemiah-phpfints-hkwpd-v6.patch 2>/dev/null \
+                && git apply -p1 --directory=vendor/nemiah/php-fints patches/nemiah-phpfints-hkwpd-v6.patch \
+                && echo "Applied nemiah/php-fints HKWPD v6 patch" \
+                || echo "nemiah/php-fints HKWPD v6 patch already applied or not applicable"
+            fi
+
             php artisan package:discover --ansi
 
             # Live: back up database and files before migrating (stops the deploy if the backup fails)

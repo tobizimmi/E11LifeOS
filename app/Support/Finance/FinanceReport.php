@@ -48,6 +48,16 @@ class FinanceReport
             ])
             ->sortByDesc('amount')->values()->all();
 
+        $byAccount = $expenseBookings->groupBy('bank_account_id')
+            ->map(fn (Collection $group) => [
+                'label' => (string) (data_get($group->first(), 'account.name') ?: __('Account')),
+                'amount' => round((float) -$group->sum('amount'), 2),
+                'count' => $group->count(),
+            ])
+            ->sortByDesc('amount')->values()
+            ->map(fn (array $row) => $row + ['share' => $expenses > 0 ? round($row['amount'] / $expenses * 100, 1) : 0.0])
+            ->all();
+
         $monthly = collect($months)->map(function (string $month) use ($bookings, $includeSavings) {
             $inMonth = $bookings->filter(fn (Transaction $transaction) => $transaction->booked_on->format('Y-m') === $month);
 
@@ -80,6 +90,7 @@ class FinanceReport
             'avgExpenses' => round($expenses / $monthCount, 2),
             'avgIncome' => round($income / $monthCount, 2),
             'categories' => $categories,
+            'byAccount' => $byAccount,
             'monthly' => $monthly,
             'payees' => self::payees($expenseBookings),
             'largest' => $expenseBookings->sortBy('amount')->take(5)->values()->all(),

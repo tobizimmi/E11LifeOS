@@ -6835,6 +6835,8 @@
     "Compare with previous period": "Mit Vorperiode vergleichen",
     "vs. previous": "ggü. Vorperiode",
     "Compared to :from – :to": "Verglichen mit :from – :to",
+    "Expenses by account": "Ausgaben je Konto",
+    "Only :category": "Nur :category",
     "Please check: these bookings may be inflating your totals.": "Bitte prüfen: Diese Buchungen könnten deine Summen aufblähen.",
     "Internal transfer?": "Umbuchung?",
     "Mark as transfer": "Als Umbuchung markieren",

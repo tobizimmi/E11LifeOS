@@ -19,6 +19,8 @@ use App\Support\Finance\FinanceReport;
 use App\Support\Finance\TransactionReview;
 use App\Support\Finance\TaxCategories;
 use App\Support\Finance\TaxYear;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -172,6 +174,24 @@ new #[Layout('layouts.app')] class extends Component
     public function updatedAccountFilter(): void
     {
         $this->advice = null;
+    }
+
+    public function updatedCategoryFilter(): void
+    {
+        $this->advice = null;
+    }
+
+    /**
+     * The bookings behind the report: period + account + (on the report) the category drill-down.
+     * Eager-loads the account so the report can break expenses down per account.
+     *
+     * @return Builder<Transaction>
+     */
+    private function reportQuery(Carbon $from, Carbon $to): Builder
+    {
+        return FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())
+            ->with('account')
+            ->when($this->categoryFilter !== '' && FinanceCategories::exists($this->categoryFilter), fn (Builder $query) => $query->where('category', $this->categoryFilter));
     }
 
     // ── Import ───────────────────────────────────────────────────────────
@@ -606,7 +626,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->aiError = null;
         [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
-        $report = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())->get(), $from, $to, ['includeTransfers' => $this->includeTransfers, 'includeSavings' => $this->includeSavings]);
+        $report = FinanceReport::build($this->reportQuery($from, $to)->get(), $from, $to, ['includeTransfers' => $this->includeTransfers, 'includeSavings' => $this->includeSavings]);
 
         if ($report['count'] === 0) {
             return;
@@ -682,7 +702,7 @@ new #[Layout('layouts.app')] class extends Component
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
             $reportOptions = ['includeTransfers' => $this->includeTransfers, 'includeSavings' => $this->includeSavings];
-            $report = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $from, $to, $this->accountId())->get(), $from, $to, $reportOptions);
+            $report = FinanceReport::build($this->reportQuery($from, $to)->get(), $from, $to, $reportOptions);
             $data['report'] = $report;
             $data['openCount'] = Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->whereIn('category', [FinanceCategories::OTHER, FinanceCategories::OTHER_INCOME])->where('category_locked', false)->count();
 
@@ -691,7 +711,7 @@ new #[Layout('layouts.app')] class extends Component
 
             if ($this->compare) {
                 [$prevFrom, $prevTo] = FinancePeriod::previousRange($from, $to);
-                $previous = FinanceReport::build(FinancePeriod::queryFor($this->currentUser(), (int) $this->householdId, $prevFrom, $prevTo, $this->accountId())->get(), $prevFrom, $prevTo, $reportOptions);
+                $previous = FinanceReport::build($this->reportQuery($prevFrom, $prevTo)->get(), $prevFrom, $prevTo, $reportOptions);
                 $data['comparison'] = ['from' => $prevFrom, 'to' => $prevTo];
                 $data['deltas'] = [
                     ['label' => __('Income'), 'delta' => round((float) $report['income'] - (float) $previous['income'], 2), 'higherBetter' => true],
@@ -750,6 +770,12 @@ new #[Layout('layouts.app')] class extends Component
                         </select>
                     @endif
                     @if ($tab === 'report')
+                        <select wire:model.live="categoryFilter" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Category') }}">
+                            <option value="">{{ __('All categories') }}</option>
+                            @foreach ($categories as $key => $category)
+                                <option value="{{ $key }}">{{ $category['icon'] }} {{ $category['label'] }}</option>
+                            @endforeach
+                        </select>
                         <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
                             <input type="checkbox" wire:model.live="compare" class="rounded-sm border-gray-300 text-indigo-600"> {{ __('Compare with previous period') }}
                         </label>

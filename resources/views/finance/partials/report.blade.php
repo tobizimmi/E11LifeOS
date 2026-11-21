@@ -37,6 +37,16 @@
             @endforeach
         </div>
 
+        {{-- Active category drill-down --}}
+        @if ($categoryFilter !== '' && isset($categories[$categoryFilter]))
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200">
+                    {{ $categories[$categoryFilter]['icon'] }} {{ __('Only :category', ['category' => $categories[$categoryFilter]['label']]) }}
+                    <button type="button" wire:click="$set('categoryFilter', '')" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-300" aria-label="{{ __('Remove filter') }}">✕</button>
+                </span>
+            </div>
+        @endif
+
         {{-- Comparison with the previous, equally long period --}}
         @if (! empty($deltas) && $comparison)
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white px-4 py-2.5 text-xs shadow-xs dark:bg-gray-800">
@@ -311,6 +321,27 @@
                 </section>
             </div>
         </div>
+
+        {{-- Expenses per account (only with more than one account) --}}
+        @if (count($report['byAccount']) > 1)
+            @php $maxAccount = max(1, collect($report['byAccount'])->max('amount') ?? 1); @endphp
+            <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800">
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ __('Expenses by account') }}</h3>
+                <ul class="mt-4 space-y-2.5">
+                    @foreach ($report['byAccount'] as $row)
+                        <li>
+                            <div class="flex items-baseline justify-between gap-2 text-sm">
+                                <span class="truncate text-gray-700 dark:text-gray-200">🏦 {{ $row['label'] }} <span class="text-xs text-gray-400">({{ $row['count'] }}×)</span></span>
+                                <span class="shrink-0 tabular-nums text-gray-900 dark:text-gray-100">{{ $euro($row['amount'], 0) }} <span class="text-xs text-gray-500">· {{ number_format($row['share'], 0, ',', '.') }} %</span></span>
+                            </div>
+                            <div class="mt-1 h-2 rounded-full bg-gray-100 dark:bg-gray-700">
+                                <div class="h-2 rounded-full" style="width: {{ round($row['amount'] / $maxAccount * 100, 2) }}%; background: var(--fin-expense)"></div>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
 
         <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __(':count bookings from :from to :to. Own transfers are not counted.', ['count' => $report['count'], 'from' => $report['from']->translatedFormat('j. M Y'), 'to' => $report['to']->translatedFormat('j. M Y')]) }}</p>

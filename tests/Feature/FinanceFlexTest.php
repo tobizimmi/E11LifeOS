@@ -18,6 +18,12 @@ class FinanceFlexTest extends TestCase
 {
     use CreatesHouseholdMembers, RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        FinanceCategories::flush();
+    }
+
     public function test_a_custom_range_limits_the_report_to_the_chosen_dates(): void
     {
         [$user, $household] = $this->memberWithHousehold();
@@ -128,16 +134,20 @@ class FinanceFlexTest extends TestCase
 
     public function test_deleting_a_custom_category_moves_its_bookings_to_other(): void
     {
-        [$user, $household] = $this->memberWithHousehold();
+        [$user] = $this->memberWithHousehold();
         $this->actingAs($user);
 
-        $giro = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
-        FinanceCategory::factory()->create(['user_id' => $user->id, 'household_id' => $household->id, 'key' => 'cat_test1234', 'label' => 'Garten', 'group' => 'wants']);
-        $booking = Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -20, 'booked_on' => now(), 'category' => 'cat_test1234']);
+        $component = Volt::test('finance.index');
+        $householdId = (int) $component->get('householdId');
 
-        Volt::test('finance.index')->call('deleteCategory', 'cat_test1234');
+        $giro = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $householdId]);
+        FinanceCategory::factory()->create(['user_id' => $user->id, 'household_id' => $householdId, 'key' => 'cat_test1234', 'label' => 'Garten', 'group' => 'wants']);
+        $booking = Transaction::factory()->create(['bank_account_id' => $giro->id, 'household_id' => $householdId, 'user_id' => $user->id, 'amount' => -20, 'booked_on' => now(), 'category' => 'cat_test1234']);
 
-        $this->assertDatabaseMissing('finance_categories', ['key' => 'cat_test1234', 'household_id' => $household->id]);
+        FinanceCategories::flush();
+        $component->call('deleteCategory', 'cat_test1234');
+
+        $this->assertDatabaseMissing('finance_categories', ['key' => 'cat_test1234']);
         $this->assertSame('other', $booking->fresh()->category);
     }
 

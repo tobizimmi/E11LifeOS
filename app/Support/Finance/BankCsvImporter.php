@@ -412,7 +412,7 @@ class BankCsvImporter
             if (preg_match($pattern, $value, $match)) {
                 try {
                     return Carbon::createFromFormat('!'.$format, $match[0])->toDateString();
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     return null;
                 }
             }

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.156.0] – 2026-11-21
+
+### Neu (Finanzen – Umbuchungen/Sparen einblenden)
+- **Umschalter im Bericht:** Zwei neue Optionen „Umbuchungen einbeziehen" und „Sparen als Ausgabe zählen" zeigen auf Wunsch die Roh-Zahlen – Umbuchungen zwischen eigenen Konten zählen dann wieder als Einnahme/Ausgabe, Sparbeträge als normale Ausgabe. Standard bleibt: beides herausgerechnet.
+
 ## [1.155.0] – 2026-11-21
 
 ### Neu (Finanzen – flexible Auswertung: Zeitraum)

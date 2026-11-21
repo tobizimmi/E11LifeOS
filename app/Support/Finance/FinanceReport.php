@@ -17,17 +17,23 @@ class FinanceReport
 
     /**
      * @param  Collection<int, Transaction>  $transactions
+     * @param  array{includeTransfers?: bool, includeSavings?: bool}  $options
      * @return array<string, mixed>
      */
-    public static function build(Collection $transactions, Carbon $from, Carbon $to): array
+    public static function build(Collection $transactions, Carbon $from, Carbon $to, array $options = []): array
     {
-        $bookings = $transactions->filter(fn (Transaction $transaction) => $transaction->category !== FinanceCategories::TRANSFER)->values();
+        $includeTransfers = (bool) ($options['includeTransfers'] ?? false);
+        $includeSavings = (bool) ($options['includeSavings'] ?? false);
+
+        $bookings = ($includeTransfers
+            ? $transactions
+            : $transactions->filter(fn (Transaction $transaction) => $transaction->category !== FinanceCategories::TRANSFER))->values();
         $months = self::months($from, $to);
         $monthCount = max(1, count($months));
 
         $income = (float) $bookings->where('amount', '>', 0)->sum('amount');
-        $savingsOut = (float) -$bookings->where('amount', '<', 0)->where('category', 'savings')->sum('amount');
-        $expenseBookings = $bookings->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $transaction->category !== 'savings');
+        $savingsOut = $includeSavings ? 0.0 : (float) -$bookings->where('amount', '<', 0)->where('category', 'savings')->sum('amount');
+        $expenseBookings = $bookings->filter(fn (Transaction $transaction) => $transaction->amount < 0 && ($includeSavings || $transaction->category !== 'savings'));
         $expenses = (float) -$expenseBookings->sum('amount');
 
         $categories = $expenseBookings->groupBy('category')
@@ -42,18 +48,18 @@ class FinanceReport
             ])
             ->sortByDesc('amount')->values()->all();
 
-        $monthly = collect($months)->map(function (string $month) use ($bookings) {
+        $monthly = collect($months)->map(function (string $month) use ($bookings, $includeSavings) {
             $inMonth = $bookings->filter(fn (Transaction $transaction) => $transaction->booked_on->format('Y-m') === $month);
 
             return [
                 'month' => $month,
                 'label' => Carbon::createFromFormat('!Y-m', $month)->translatedFormat('M y'),
                 'income' => round((float) $inMonth->where('amount', '>', 0)->sum('amount'), 2),
-                'expenses' => round((float) -$inMonth->filter(fn (Transaction $transaction) => $transaction->amount < 0 && $transaction->category !== 'savings')->sum('amount'), 2),
+                'expenses' => round((float) -$inMonth->filter(fn (Transaction $transaction) => $transaction->amount < 0 && ($includeSavings || $transaction->category !== 'savings'))->sum('amount'), 2),
             ];
         })->all();
 
-        $recurring = self::recurring($expenseBookings->concat($bookings->where('category', 'savings')));
+        $recurring = self::recurring($includeSavings ? $expenseBookings : $expenseBookings->concat($bookings->where('category', 'savings')));
         $groups = ['needs' => 0.0, 'wants' => 0.0, 'savings' => $savingsOut];
 
         foreach ($categories as $category) {

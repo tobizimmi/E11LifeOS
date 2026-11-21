@@ -51,6 +51,41 @@
             </p>
         @endif
 
+        {{-- Review: internal transfers & duplicates (detection; the owner confirms each) --}}
+        @if (count($reviewTransfers) || count($reviewDuplicates))
+            <div class="space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900/50 dark:bg-indigo-900/20">
+                <p class="text-sm font-medium text-indigo-900 dark:text-indigo-100">🔎 {{ __('Please check: these bookings may be inflating your totals.') }}</p>
+
+                @foreach ($reviewTransfers as $pair)
+                    <div class="flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-xs dark:bg-gray-800" wire:key="tr-{{ $pair['out']->id }}-{{ $pair['in']->id }}">
+                        <span class="text-base" aria-hidden="true">🔁</span>
+                        <span class="flex-1">
+                            <span class="font-medium">{{ __('Internal transfer?') }}</span>
+                            {{ $euro(abs($pair['out']->amount), 2) }} ·
+                            {{ $pair['out']->account?->name ?? __('Account') }} → {{ $pair['in']->account?->name ?? __('Account') }} ·
+                            {{ $pair['out']->booked_on->isoFormat('DD.MM.YY') }}
+                        </span>
+                        <button type="button" wire:click="confirmTransfer({{ $pair['out']->id }}, {{ $pair['in']->id }})" class="rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700">{{ __('Mark as transfer') }}</button>
+                        <button type="button" wire:click="ignoreTransfer({{ $pair['out']->id }}, {{ $pair['in']->id }})" class="rounded-lg px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Keep') }}</button>
+                    </div>
+                @endforeach
+
+                @foreach ($reviewDuplicates as $pair)
+                    <div class="flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-xs dark:bg-gray-800" wire:key="dup-{{ $pair['keep']->id }}-{{ $pair['duplicate']->id }}">
+                        <span class="text-base" aria-hidden="true">👯</span>
+                        <span class="flex-1">
+                            <span class="font-medium">{{ __('Possible duplicate?') }}</span>
+                            {{ $euro($pair['duplicate']->amount, 2) }} ·
+                            {{ $pair['duplicate']->counterparty ?: ($pair['duplicate']->purpose ? \Illuminate\Support\Str::limit($pair['duplicate']->purpose, 40) : __('Booking')) }} ·
+                            {{ $pair['keep']->booked_on->isoFormat('DD.MM.YY') }} + {{ $pair['duplicate']->booked_on->isoFormat('DD.MM.YY') }}
+                        </span>
+                        <button type="button" wire:click="confirmDuplicate({{ $pair['keep']->id }}, {{ $pair['duplicate']->id }})" class="rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700">{{ __('Remove duplicate') }}</button>
+                        <button type="button" wire:click="ignoreDuplicate({{ $pair['keep']->id }}, {{ $pair['duplicate']->id }})" class="rounded-lg px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">{{ __('Keep') }}</button>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         <div class="grid gap-5 lg:grid-cols-5">
             {{-- Month by month --}}
             <section class="rounded-2xl bg-white p-5 shadow-xs dark:bg-gray-800 lg:col-span-3">

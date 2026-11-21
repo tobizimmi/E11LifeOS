@@ -16,6 +16,7 @@ use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\FinancePeriod;
 use App\Support\Finance\FinanceReceiptAi;
 use App\Support\Finance\FinanceReport;
+use App\Support\Finance\TransactionReview;
 use App\Support\Finance\TaxCategories;
 use App\Support\Finance\TaxYear;
 use Illuminate\Validation\Rule;
@@ -253,6 +254,37 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->advice = null;
+    }
+
+    // ── Review: internal transfers & duplicates (detection + confirm) ─
+    public function confirmTransfer(int $outId, int $inId): void
+    {
+        $this->findTransaction($outId)->update(['category' => FinanceCategories::TRANSFER, 'category_locked' => true]);
+        $this->findTransaction($inId)->update(['category' => FinanceCategories::TRANSFER, 'category_locked' => true]);
+        $this->dispatch('toast', message: __('Marked as an internal transfer – no longer counted as income or expense.'));
+    }
+
+    public function ignoreTransfer(int $outId, int $inId): void
+    {
+        $this->findTransaction($outId)->update(['review_ignored_at' => now()]);
+        $this->findTransaction($inId)->update(['review_ignored_at' => now()]);
+    }
+
+    public function confirmDuplicate(int $keepId, int $duplicateId): void
+    {
+        $keep = $this->findTransaction($keepId);
+        $duplicate = $this->findTransaction($duplicateId);
+
+        if ($keep->id !== $duplicate->id) {
+            $duplicate->update(['duplicate_of_id' => $keep->id]);
+            $this->dispatch('toast', message: __('Duplicate removed from the totals.'));
+        }
+    }
+
+    public function ignoreDuplicate(int $keepId, int $duplicateId): void
+    {
+        $this->findTransaction($keepId)->update(['review_ignored_at' => now()]);
+        $this->findTransaction($duplicateId)->update(['review_ignored_at' => now()]);
     }
 
     public function deleteRule(int $ruleId): void
@@ -633,6 +665,10 @@ new #[Layout('layouts.app')] class extends Component
             [$from, $to] = FinancePeriod::range($this->period);
             $data['report'] = FinanceReport::build(FinancePeriod::query($this->currentUser(), (int) $this->householdId, $this->period, $this->accountId())->get(), $from, $to);
             $data['openCount'] = Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->whereIn('category', [FinanceCategories::OTHER, FinanceCategories::OTHER_INCOME])->where('category_locked', false)->count();
+
+            $review = app(TransactionReview::class);
+            $data['reviewTransfers'] = $review->transfers($this->currentUser(), (int) $this->householdId);
+            $data['reviewDuplicates'] = $review->duplicates($this->currentUser(), (int) $this->householdId);
         }
 
         return $data;

@@ -56,6 +56,7 @@ class FinancePeriod
         return Transaction::query()
             ->where('user_id', $user->id)
             ->where('household_id', $householdId)
+            ->whereNull('duplicate_of_id') // confirmed duplicates never count in reports or totals
             ->when($accountId, fn (Builder $query) => $query->where('bank_account_id', $accountId))
             ->whereBetween('booked_on', [$from->toDateString(), $to->toDateString()]);
     }

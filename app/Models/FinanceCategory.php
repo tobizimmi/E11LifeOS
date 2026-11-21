@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\FinanceCategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['household_id', 'user_id', 'key', 'label', 'icon', 'group'])]
 class FinanceCategory extends Model
 {
-    /** @use HasFactory<\Database\Factories\FinanceCategoryFactory> */
+    /** @use HasFactory<FinanceCategoryFactory> */
     use HasFactory;
 
     public function user(): BelongsTo

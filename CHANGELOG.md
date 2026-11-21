@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.154.0] – 2026-11-21
+
+### Neu (Finanzen – Umbuchungen & Duplikate erkennen)
+- **Umbuchungs-Erkennung:** Überweisungen zwischen deinen eigenen Konten (eine Abbuchung, die eine gleich hohe Gutschrift auf einem anderen Konto findet) werden im Bericht als Vorschlag angezeigt. Bestätigst du sie, zählen sie nicht mehr als Einnahme **und** Ausgabe – das korrigiert zu hohe Monatswerte.
+- **Duplikat-Erkennung:** Buchungen, die (gleicher Betrag, fast gleiches Datum, gleiche Gegenpartei/Verwendungszweck) doppelt importiert wurden – z. B. einmal per CSV und einmal per Bank-Sync – werden als mögliches Duplikat vorgeschlagen; bestätigt wird eine aus den Summen herausgerechnet (nicht gelöscht).
+- Beides bleibt eine reine **Erkennung mit Bestätigung** („Behalten" lässt die Buchung unverändert und blendet den Vorschlag künftig aus). Bestätigte Umbuchungen/Duplikate fließen nirgends mehr in die Auswertung ein.
+
 ## [1.153.1] – 2026-11-21
 
 ### Behoben (Bankverbindung – Enable Banking)

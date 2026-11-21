@@ -22,9 +22,11 @@ use Illuminate\Support\Carbon;
  * @property ?string $purpose
  * @property ?string $category
  * @property ?string $tax_category
+ * @property ?int $duplicate_of_id
+ * @property ?Carbon $review_ignored_at
  * @property-read ?BankAccount $account
  */
-#[Fillable(['household_id', 'user_id', 'bank_account_id', 'booked_on', 'amount', 'counterparty', 'purpose', 'category', 'category_locked', 'tax_category', 'tax_amount', 'import_hash'])]
+#[Fillable(['household_id', 'user_id', 'bank_account_id', 'booked_on', 'amount', 'counterparty', 'purpose', 'category', 'category_locked', 'tax_category', 'tax_amount', 'import_hash', 'duplicate_of_id', 'review_ignored_at'])]
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
@@ -37,6 +39,8 @@ class Transaction extends Model
             'amount' => 'float',
             'category_locked' => 'boolean',
             'tax_amount' => 'float',
+            'duplicate_of_id' => 'integer',
+            'review_ignored_at' => 'datetime',
         ];
     }
 

@@ -365,12 +365,23 @@ new #[Layout('layouts.app')] class extends Component
 
         $enablebankingInstitutions = [];
         $enablebankingError = null;
+        $enablebankingCount = 0;
         $search = trim(mb_strtolower($this->bankSearch));
+        $needle = (string) preg_replace('/[^a-z0-9]/', '', $search);
 
         if ($this->showConnect && $enableBanking->configured()) {
             try {
-                $enablebankingInstitutions = collect($enableBanking->institutions('DE'))
-                    ->when($search !== '', fn ($banks) => $banks->filter(fn (array $bank) => str_contains(mb_strtolower($bank['name']), $search)))
+                $allInstitutions = collect($enableBanking->institutions('DE'));
+                $enablebankingCount = $allInstitutions->count();
+
+                // Match the typed text against the name and the BIC, ignoring punctuation/spacing, so
+                // "ing", "ING-DiBa" and "ingdiba" all find the same bank.
+                $enablebankingInstitutions = $allInstitutions
+                    ->when($search !== '', fn ($banks) => $banks->filter(function (array $bank) use ($search, $needle) {
+                        $normalised = (string) preg_replace('/[^a-z0-9]/', '', mb_strtolower($bank['name'].' '.($bank['bic'] ?? '')));
+
+                        return str_contains(mb_strtolower($bank['name']), $search) || ($needle !== '' && str_contains($normalised, $needle));
+                    }))
                     ->take(60)
                     ->values()
                     ->all();
@@ -391,6 +402,7 @@ new #[Layout('layouts.app')] class extends Component
             'bankLinks' => $this->bankLinks()->orderBy('institution_name')->get(),
             'enablebankingConfigured' => $enableBanking->configured(),
             'enablebankingInstitutions' => $enablebankingInstitutions,
+            'enablebankingCount' => $enablebankingCount,
         ];
     }
 }; ?>
@@ -433,6 +445,15 @@ new #[Layout('layouts.app')] class extends Component
                     @if ($showConnect)
                         <div class="mt-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-900/40">
                             <input type="text" wire:model.live.debounce.400ms="bankSearch" class="block w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" placeholder="{{ __('Search your bank (e.g. Sparkasse Köln, N26, DKB) …') }}" aria-label="{{ __('Search bank') }}">
+
+                            @if ($enablebankingConfigured && ! $enablebankingError)
+                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    {{ trans_choice(':count bank available via Enable Banking.|:count banks available via Enable Banking.', $enablebankingCount) }}
+                                    @if ($enablebankingCount > 0 && $enablebankingCount < 20)
+                                        — {{ __('That looks like the test list. If real banks (e.g. ING) are missing, the Enable Banking application is probably not yet activated for production in the Enable Banking control panel.') }}
+                                    @endif
+                                </p>
+                            @endif
 
                             @if ($enablebankingConfigured)
                                 @if ($enablebankingError)

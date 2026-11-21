@@ -6839,6 +6839,8 @@
     "vs. previous": "ggü. Vorperiode",
     "Compared to :from – :to": "Verglichen mit :from – :to",
     ":count account could not be imported and was skipped.|:count accounts could not be imported and were skipped.": "Bei :count Konto gab es ein Problem beim Import; es wurde übersprungen.|Bei :count Konten gab es ein Problem beim Import; sie wurden übersprungen.",
+    ":count bank available via Enable Banking.|:count banks available via Enable Banking.": ":count Bank über Enable Banking verfügbar.|:count Banken über Enable Banking verfügbar.",
+    "That looks like the test list. If real banks (e.g. ING) are missing, the Enable Banking application is probably not yet activated for production in the Enable Banking control panel.": "Das sieht nach der Test-Liste aus. Fehlen echte Banken (z. B. ING), ist die Enable-Banking-Anwendung vermutlich noch nicht für den Produktivbetrieb freigeschaltet (im Enable-Banking-Control-Panel).",
     "Expenses by account": "Ausgaben je Konto",
     "Only :category": "Nur :category",
     "Your own categories": "Eigene Kategorien",

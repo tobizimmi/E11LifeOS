@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Support\Banking\BankLinkSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 use Tests\Concerns\CreatesHouseholdMembers;
@@ -168,6 +169,27 @@ class BankLinkSyncTest extends TestCase
 
         $this->assertSame(['imported' => 1, 'accounts' => 1], $result);
         $this->assertDatabaseHas('bank_accounts', ['user_id' => $user->id, 'iban' => $uid]);
+    }
+
+    public function test_the_bank_search_matches_name_and_bic_ignoring_punctuation(): void
+    {
+        Cache::flush();
+        $this->configureEnableBanking();
+        Http::fake(fn (Request $request) => str_contains($request->url(), '/aspsps')
+            ? Http::response(['aspsps' => [
+                ['name' => 'ING-DiBa', 'country' => 'DE', 'bic' => 'INGDDEFFXXX', 'logo' => null],
+                ['name' => 'Sparkasse Köln', 'country' => 'DE', 'bic' => 'COLSDE33XXX', 'logo' => null],
+            ]])
+            : Http::response([], 404));
+
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('portfolio.banking')
+            ->set('showConnect', true)
+            ->set('bankSearch', 'ingdiba')
+            ->assertViewHas('enablebankingCount', 2)
+            ->assertViewHas('enablebankingInstitutions', fn (array $list) => count($list) === 1 && $list[0]['name'] === 'ING-DiBa');
     }
 
     public function test_one_failing_account_does_not_abort_the_other_accounts(): void

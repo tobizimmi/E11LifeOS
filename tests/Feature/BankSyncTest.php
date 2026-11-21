@@ -10,6 +10,7 @@ use App\Models\Security;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Banking\FinTsClient;
+use App\Support\Portfolio\Positions;
 use Fhp\CurlException;
 use Fhp\FinTs;
 use Fhp\Model\SEPAAccount;
@@ -115,7 +116,7 @@ class BankSyncTest extends TestCase
 
         // A position the user already holds that the bank will NOT report.
         $portfolio->transactions()->create(['symbol' => 'AAPL', 'name' => 'Apple', 'isin' => 'US0378331005', 'type' => 'buy', 'quantity' => 5, 'price' => 100, 'currency' => 'USD', 'executed_on' => '2026-01-10', 'import_source' => 'manual']);
-        \App\Support\Portfolio\Positions::recalculate($portfolio);
+        Positions::recalculate($portfolio);
         $this->assertSame(5.0, (float) $portfolio->positions()->where('symbol', 'AAPL')->sole()->quantity);
 
         $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->andReturn([

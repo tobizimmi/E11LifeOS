@@ -389,7 +389,7 @@ class BankSync
      * Books out (to zero) every position a linked portfolio still holds that the bank no longer
      * reports for it – used by the "replace" reconcile so the portfolio exactly mirrors the depot.
      *
-     * @param  Collection<int, array<string, mixed>>  $rows  bank holdings from {@see compare()}
+     * @param  Collection<int, array{position: BankDepotPosition, portfolio_id: int, symbol: ?string, portfolio_quantity: float, difference: float}>  $rows  bank holdings from {@see compare()}
      * @param  Collection<int, Portfolio>  $portfolios
      */
     private function bookOutMissingPositions(BankConnection $connection, Collection $rows, Collection $portfolios): int

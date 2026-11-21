@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\BankAccount;
+use App\Models\FinanceCategory;
 use App\Models\Transaction;
+use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\FinancePeriod;
 use App\Support\Finance\FinanceReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,6 +100,45 @@ class FinanceFlexTest extends TestCase
             ->set('customTo', '2026-06-30')
             ->set('categoryFilter', 'groceries')
             ->assertViewHas('report', fn (array $report) => $report['expenses'] === 100.0 && count($report['categories']) === 1);
+    }
+
+    public function test_a_custom_category_is_added_and_joins_the_catalogue(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('finance.index')
+            ->set('tab', 'budgets')
+            ->set('newCategory.label', 'Garten')
+            ->set('newCategory.icon', '🌱')
+            ->set('newCategory.group', 'wants')
+            ->call('addCategory')
+            ->assertHasNoErrors();
+
+        $category = FinanceCategory::where('label', 'Garten')->first();
+        $this->assertNotNull($category);
+        $this->assertSame('wants', $category->group);
+
+        FinanceCategories::flush();
+        $this->assertTrue(FinanceCategories::exists($category->key));
+        $this->assertSame('Garten', FinanceCategories::label($category->key));
+        $this->assertTrue(FinanceCategories::isCustom($category->key));
+        $this->assertFalse(FinanceCategories::isCustom('groceries'));
+    }
+
+    public function test_deleting_a_custom_category_moves_its_bookings_to_other(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $giro = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        FinanceCategory::factory()->create(['user_id' => $user->id, 'household_id' => $household->id, 'key' => 'cat_test1234', 'label' => 'Garten', 'group' => 'wants']);
+        $booking = Transaction::factory()->create(['bank_account_id' => $giro->id, 'amount' => -20, 'booked_on' => now(), 'category' => 'cat_test1234']);
+
+        Volt::test('finance.index')->call('deleteCategory', 'cat_test1234');
+
+        $this->assertDatabaseMissing('finance_categories', ['key' => 'cat_test1234', 'household_id' => $household->id]);
+        $this->assertSame('other', $booking->fresh()->category);
     }
 
     public function test_expenses_are_broken_down_by_account(): void

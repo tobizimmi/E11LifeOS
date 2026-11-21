@@ -64,6 +64,13 @@ new #[Layout('layouts.app')] class extends Component
     /** Days the balance forecast looks ahead. */
     public int $forecastDays = 60;
 
+    /**
+     * New custom category form (Budgets tab).
+     *
+     * @var array{label: string, icon: string, group: string}
+     */
+    public array $newCategory = ['label' => '', 'icon' => '🏷️', 'group' => 'wants'];
+
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
@@ -622,6 +629,49 @@ new #[Layout('layouts.app')] class extends Component
         $budget->update(['rollover_from' => $budget->rollover_from ? null : now()->startOfMonth()]);
     }
 
+    /**
+     * Creates a household category of your own (name, icon, 50/30/20 group).
+     */
+    public function addCategory(): void
+    {
+        $data = $this->validate([
+            'newCategory.label' => ['required', 'string', 'max:40'],
+            'newCategory.icon' => ['nullable', 'string', 'max:16'],
+            'newCategory.group' => ['required', Rule::in(['needs', 'wants', 'savings'])],
+        ], attributes: ['newCategory.label' => __('Name')])['newCategory'];
+
+        \App\Models\FinanceCategory::create([
+            'household_id' => $this->householdId,
+            'user_id' => $this->currentUser()->id,
+            'key' => 'cat_'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(8)),
+            'label' => trim($data['label']),
+            'icon' => trim($data['icon']) ?: '🏷️',
+            'group' => $data['group'],
+        ]);
+
+        FinanceCategories::flush();
+        $this->newCategory = ['label' => '', 'icon' => '🏷️', 'group' => 'wants'];
+        $this->dispatch('toast', message: __('Category added.'));
+    }
+
+    /**
+     * Removes a custom category; its bookings and budget fall back to "Other expenses".
+     */
+    public function deleteCategory(string $key): void
+    {
+        abort_unless(FinanceCategories::isCustom($key), 404);
+
+        \App\Models\FinanceCategory::where('household_id', $this->householdId)->where('key', $key)->delete();
+        Transaction::where('user_id', $this->currentUser()->id)->where('household_id', $this->householdId)->where('category', $key)
+            ->update(['category' => FinanceCategories::OTHER]);
+        FinanceBudget::where('household_id', $this->householdId)->where('category', $key)->delete();
+        FinanceRule::where('user_id', $this->currentUser()->id)->where('category', $key)->update(['category' => FinanceCategories::OTHER]);
+
+        FinanceCategories::flush();
+        $this->advice = null;
+        $this->dispatch('toast', message: __('Category removed – its bookings are now “Other expenses”.'));
+    }
+
     public function askAnalyst(FinanceAi $ai): void
     {
         $this->aiError = null;
@@ -678,6 +728,7 @@ new #[Layout('layouts.app')] class extends Component
             $data['budgetStatus'] = $status;
             $data['spentThisMonth'] = $spentThisMonth;
             $data['budgetCategories'] = collect(FinanceCategories::all())->reject(fn (array $category) => in_array($category['group'], ['income', 'transfer'], true));
+            $data['customCategories'] = \App\Models\FinanceCategory::where('household_id', $this->householdId)->orderBy('label')->get();
         }
 
         if ($this->tab === 'tax') {

@@ -398,7 +398,7 @@ new #[Layout('layouts.app')] class extends Component
             @include('portfolio.partials.nav', ['active' => 'portfolio.banking'])
 
             @if (session('bankLinkStatus'))
-                <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ session('bankLinkStatus') }}</div>
+                <div class="rounded-2xl px-4 py-3 text-sm {{ session('bankLinkStatusType') === 'error' ? 'bg-red-50 text-red-800 dark:bg-red-900/40 dark:text-red-200' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' }}">{{ session('bankLinkStatus') }}</div>
             @endif
 
             @if ($enablebankingConfigured || $bankLinks->isNotEmpty())

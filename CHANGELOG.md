@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.160.0] – 2026-11-21
+
+### Verbessert (Finanzen – Enable Banking transparenter & robuster)
+- **Echter Fehlergrund:** Scheitert der Bankabruf eines verknüpften Kontos (Enable Banking/GoCardless), zeigt die Meldung jetzt den tatsächlichen Grund der Bank (z. B. abgelaufene Zustimmung oder 401) statt nur „bitte später erneut versuchen".
+- **Kein Abbruch bei mehreren Konten:** Scheitert ein einzelnes Konto, werden die übrigen trotzdem abgerufen; nur wenn gar kein Konto durchkommt, gilt der Abruf als fehlgeschlagen.
+
 ## [1.159.0] – 2026-11-21
 
 ### Verbessert (Finanzen – Bank-Sync robuster)

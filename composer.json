@@ -63,7 +63,14 @@
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
         ],
+        "apply-fints-patch": [
+            "git apply -p1 --directory=vendor/nemiah/php-fints --check patches/nemiah-phpfints-hkwpd-v6.patch 2>/dev/null && git apply -p1 --directory=vendor/nemiah/php-fints patches/nemiah-phpfints-hkwpd-v6.patch || true"
+        ],
+        "post-install-cmd": [
+            "@composer apply-fints-patch"
+        ],
         "post-update-cmd": [
+            "@composer apply-fints-patch",
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
         "post-root-package-install": [

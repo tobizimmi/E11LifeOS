@@ -5,6 +5,7 @@ use App\Models\BankAccount;
 use App\Models\FinanceBudget;
 use App\Models\ExternalLink;
 use App\Models\FinanceRule;
+use App\Models\Portfolio;
 use App\Models\Transaction;
 use App\Support\AiException;
 use App\Support\Finance\BalanceForecast;
@@ -142,6 +143,16 @@ new #[Layout('layouts.app')] class extends Component
      * Booking whose documents & mail links are shown.
      */
     public ?int $documentsFor = null;
+
+    /**
+     * Booking currently being edited inline, and its edit form.
+     */
+    public ?int $editingTxId = null;
+
+    /**
+     * @var array{booked_on: string, counterparty: string, purpose: string, amount: string}
+     */
+    public array $txEdit = ['booked_on' => '', 'counterparty' => '', 'purpose' => '', 'amount' => ''];
 
     public function mount(): void
     {
@@ -301,6 +312,63 @@ new #[Layout('layouts.app')] class extends Component
         $this->advice = null;
     }
 
+    /**
+     * Opens inline editing for a booking (date, counterparty, purpose, amount).
+     */
+    public function editTransaction(int $id): void
+    {
+        $transaction = $this->findTransaction($id);
+        $this->editingTxId = $transaction->id;
+        $this->txEdit = [
+            'booked_on' => $transaction->booked_on->toDateString(),
+            'counterparty' => (string) $transaction->counterparty,
+            'purpose' => (string) $transaction->purpose,
+            'amount' => number_format((float) $transaction->amount, 2, ',', ''),
+        ];
+        $this->resetValidation();
+    }
+
+    public function cancelEditTransaction(): void
+    {
+        $this->reset('editingTxId', 'txEdit');
+    }
+
+    public function updateTransaction(): void
+    {
+        if ($this->editingTxId === null) {
+            return;
+        }
+
+        $data = $this->validate([
+            'txEdit.booked_on' => ['required', 'date'],
+            'txEdit.counterparty' => ['nullable', 'string', 'max:255'],
+            'txEdit.purpose' => ['nullable', 'string', 'max:2000'],
+            'txEdit.amount' => ['required', 'regex:/^-?\d{1,9}([.,]\d{1,2})?$/'],
+        ], attributes: ['txEdit.amount' => __('Amount'), 'txEdit.booked_on' => __('Date')])['txEdit'];
+
+        $this->findTransaction($this->editingTxId)->update([
+            'booked_on' => $data['booked_on'],
+            'counterparty' => trim($data['counterparty']) !== '' ? mb_substr(trim($data['counterparty']), 0, 255) : null,
+            'purpose' => trim($data['purpose']) !== '' ? mb_substr(trim($data['purpose']), 0, 2000) : null,
+            'amount' => round((float) str_replace(',', '.', $data['amount']), 2),
+        ]);
+
+        $this->reset('editingTxId', 'txEdit');
+        $this->advice = null;
+        $this->dispatch('toast', message: __('Booking updated.'));
+    }
+
+    public function deleteTransaction(int $id): void
+    {
+        $transaction = $this->findTransaction($id);
+        ExternalLink::where('linkable_type', 'transaction')->where('linkable_id', $transaction->id)->get()->each->delete();
+        $transaction->delete();
+
+        $this->reset('editingTxId', 'txEdit');
+        $this->advice = null;
+        $this->dispatch('toast', message: __('Booking deleted.'));
+    }
+
     // ── Review: internal transfers & duplicates (detection + confirm) ─
     public function confirmTransfer(int $outId, int $inId): void
     {
@@ -313,6 +381,23 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->findTransaction($outId)->update(['review_ignored_at' => now()]);
         $this->findTransaction($inId)->update(['review_ignored_at' => now()]);
+    }
+
+    /**
+     * Marks every detected transfer pair at once as an internal transfer, so they drop out of the
+     * income/expense totals in one step instead of confirming each pair by hand.
+     */
+    public function confirmAllTransfers(): void
+    {
+        $pairs = app(TransactionReview::class)->transfers($this->currentUser(), (int) $this->householdId);
+
+        foreach ($pairs as $pair) {
+            $this->findTransaction($pair['out']->id)->update(['category' => FinanceCategories::TRANSFER, 'category_locked' => true]);
+            $this->findTransaction($pair['in']->id)->update(['category' => FinanceCategories::TRANSFER, 'category_locked' => true]);
+        }
+
+        $this->advice = null;
+        $this->dispatch('toast', message: trans_choice(':count transfer confirmed.|:count transfers confirmed.', count($pairs)));
     }
 
     public function confirmDuplicate(int $keepId, int $duplicateId): void
@@ -417,6 +502,22 @@ new #[Layout('layouts.app')] class extends Component
         if ($name !== '') {
             ($this->accounts()->find($accountId) ?? abort(404))->update(['name' => mb_substr($name, 0, 100)]);
         }
+    }
+
+    /**
+     * Sets (or with an empty value clears) an account's balance anchor as of today, so the current
+     * balance and the net total can be shown. Bank-synced accounts keep getting it from the sync.
+     */
+    public function setBalance(int $accountId, string $value): void
+    {
+        $account = $this->accounts()->find($accountId) ?? abort(404);
+        $parsed = trim($value) === '' ? null : BankCsvImporter::parseAmount($value);
+
+        $account->update([
+            'balance' => $parsed,
+            'balance_on' => $parsed === null ? null : today()->toDateString(),
+        ]);
+        $this->advice = null;
     }
 
     // ── Report ───────────────────────────────────────────────────────────
@@ -750,6 +851,27 @@ new #[Layout('layouts.app')] class extends Component
             $data['forecast'] = BalanceForecast::for($accounts, $this->forecastDays);
         }
 
+        if ($this->tab === 'accounts') {
+            $accountRows = $accounts->map(fn (BankAccount $account) => [
+                'account' => $account,
+                'balance' => $account->currentBalance(),
+                'bookings' => (int) ($account->transactions_count ?? 0),
+            ])->values();
+            $data['accountRows'] = $accountRows;
+            $data['accountsTotal'] = round((float) $accountRows->sum(fn (array $row) => (float) ($row['balance'] ?? 0)), 2);
+            $data['accountsMissing'] = $accountRows->filter(fn (array $row) => $row['balance'] === null)->count();
+
+            $portfolios = Portfolio::where('user_id', $this->currentUser()->id)
+                ->with(['snapshots' => fn ($query) => $query->latest('taken_at')->limit(1)])
+                ->orderBy('name')->get();
+            $data['depotRows'] = $portfolios->map(fn (Portfolio $portfolio) => [
+                'portfolio' => $portfolio,
+                'value' => $portfolio->snapshots->first()?->total_value,
+                'date' => $portfolio->snapshots->first()?->taken_at,
+            ])->values();
+            $data['depotsTotal'] = round((float) $portfolios->sum(fn (Portfolio $portfolio) => (float) ($portfolio->snapshots->first()?->total_value ?? 0)), 2);
+        }
+
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
             $reportOptions = ['includeTransfers' => $this->includeTransfers, 'includeSavings' => $this->includeSavings];
@@ -798,10 +920,10 @@ new #[Layout('layouts.app')] class extends Component
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
                 <x-section-nav class="w-full md:w-auto" :label="__('Finances')" :active="$tab" :groups="[
-                    __('Overview') => ['report' => ['📊', __('Report')], 'forecast' => ['🔮', __('Forecast')], 'budgets' => ['🎯', __('Budgets')]],
+                    __('Overview') => ['report' => ['📊', __('Report')], 'accounts' => ['🏦', __('Accounts')], 'forecast' => ['🔮', __('Forecast')], 'budgets' => ['🎯', __('Budgets')]],
                     __('Data') => ['transactions' => ['📄', __('Bookings')], 'tax' => ['🏛', __('Tax')], 'import' => ['⬆', __('Import')]],
                 ]" />
-                @if (! in_array($tab, ['import', 'budgets', 'tax', 'forecast'], true))
+                @if (! in_array($tab, ['import', 'budgets', 'tax', 'forecast', 'accounts'], true))
                     <select wire:model.live="period" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Period') }}">
                         @foreach ($periods as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -852,6 +974,8 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($tab === 'report')
                 @include('finance.partials.report')
+            @elseif ($tab === 'accounts')
+                @include('finance.partials.accounts')
             @elseif ($tab === 'forecast')
                 @include('finance.partials.forecast')
             @elseif ($tab === 'transactions')

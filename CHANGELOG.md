@@ -3,6 +3,33 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.171.0] – 2026-11-22
+
+### Verbessert (Finanzen – Umbuchungen schneller bestätigen)
+- Werden mehrere Umbuchungen zwischen deinen Konten erkannt, lassen sie sich jetzt mit **einem Klick „Alle bestätigen"** als interne Umbuchung markieren – sie fallen dann gesammelt aus der Einnahmen-/Ausgabenrechnung heraus (statt jede einzeln zu bestätigen).
+
+## [1.170.0] – 2026-11-22
+
+### Neu (Finanzen – Buchungen bearbeiten)
+- **Buchungen direkt bearbeiten:** Jede Buchung lässt sich über das ✏️-Symbol inline anpassen – Datum, Gegenseite, Verwendungszweck und Betrag – oder ganz löschen. (Die Kategorie war schon direkt änderbar.)
+
+## [1.169.0] – 2026-11-22
+
+### Neu (Finanzen – Konten-Übersicht)
+- **Neuer Tab „Konten":** Zeigt oben die Summen **Gesamt auf Konten**, **Gesamt in Depots** und beides zusammen. Darunter jedes Konto mit aktuellem Saldo und Buchungsanzahl – direkt umbenennen, Saldo setzen (bank-synchronisierte Konten aktualisieren sich weiter automatisch), Buchungen öffnen oder das Konto löschen. Depots werden mit ihrem letzten Wert gelistet; ein Link führt zum vollen Gesamtvermögen inkl. Immobilien.
+
+## [1.168.0] – 2026-11-22
+
+### Neu (Mail – einfache interne Weiterverwendung)
+- **Mehr Übernehmen-Ziele:** Eine Mail lässt sich jetzt zusätzlich als **Notiz** übernehmen (neben Aufgabe, Einkaufsliste und Inbox).
+- **Anhänge mit einem Klick:** Jeder Anhang hat jetzt einen **Download**-Button (direkt speichern) – zusätzlich zur bestehenden Paperless-Archivierung.
+
+## [1.167.0] – 2026-11-22
+
+### Neu (Mail – Swipe-Gesten wie in Profi-Mail-Apps)
+- **Wischen auf der Mailliste:** Jede Mail lässt sich jetzt nach links und rechts wischen, um eine Aktion auszulösen (mit farbigem Hintergrund und haptischem Feedback, armt ab ~35 %).
+- **Frei konfigurierbar:** Über „👆 Swipe-Aktionen" wählst du pro Richtung die Aktion – Archivieren, Löschen, Gelesen/Ungelesen, Markieren oder keine. Standard: rechts markieren, links archivieren.
+
 ## [1.166.0] – 2026-11-22
 
 ### Neu (Einkaufsliste – angepinnte Hinweise)

@@ -21,6 +21,60 @@ class MailModuleTest extends TestCase
 {
     use CreatesHouseholdMembers, RefreshDatabase;
 
+    public function test_swipe_actions_default_and_can_be_configured(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // Defaults from the migration: right = flag, left = archive.
+        $this->assertSame(['flag', 'archive'], [$user->fresh()->mail_swipe_right, $user->fresh()->mail_swipe_left]);
+
+        Volt::test('mail.index')
+            ->call('saveSwipe', 'right', 'read')
+            ->call('saveSwipe', 'left', 'trash');
+
+        $this->assertSame(['read', 'trash'], [$user->fresh()->mail_swipe_right, $user->fresh()->mail_swipe_left]);
+
+        // An unknown action is ignored.
+        Volt::test('mail.index')->call('saveSwipe', 'right', 'bogus');
+        $this->assertSame('read', $user->fresh()->mail_swipe_right);
+    }
+
+    public function test_a_mail_can_be_saved_as_a_note(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create([
+            'folder' => 'INBOX', 'uid' => 7, 'subject' => 'Infos', 'body_text' => 'Wichtiger Inhalt', 'attachments_meta' => [],
+        ]);
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('open', $message->id)
+            ->call('toNote', $message->id);
+
+        $this->assertSame('note', $message->fresh()->processed_as);
+        $this->assertTrue(Item::query()->where('household_id', $household->id)->where('type', 'note')->exists());
+    }
+
+    public function test_an_attachment_can_be_downloaded(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $account = MailAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $message = MailMessage::factory()->for($account, 'account')->create([
+            'folder' => 'INBOX', 'uid' => 9, 'subject' => 'Rechnung', 'has_attachments' => true,
+            'attachments_meta' => [['name' => 'rechnung.pdf', 'mime' => 'application/pdf', 'size' => 13]],
+        ]);
+
+        $this->app->instance(Mailbox::class, $this->mailboxWithAttachment('rechnung.pdf', 'application/pdf', '%PDF-1.4 fake'));
+
+        Volt::test('mail.index')->call('selectAccount', $account->id)->call('open', $message->id)
+            ->call('downloadAttachment', $message->id, 0)
+            ->assertFileDownloaded('rechnung.pdf');
+    }
+
     public function test_a_member_can_add_a_mail_account(): void
     {
         [$user] = $this->memberWithHousehold();

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.170.0] – 2026-11-22
+
+### Neu (Finanzen – Buchungen bearbeiten)
+- **Buchungen direkt bearbeiten:** Jede Buchung lässt sich über das ✏️-Symbol inline anpassen – Datum, Gegenseite, Verwendungszweck und Betrag – oder ganz löschen. (Die Kategorie war schon direkt änderbar.)
+
 ## [1.169.0] – 2026-11-22
 
 ### Neu (Finanzen – Konten-Übersicht)

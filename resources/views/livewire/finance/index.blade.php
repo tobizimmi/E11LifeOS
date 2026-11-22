@@ -144,6 +144,16 @@ new #[Layout('layouts.app')] class extends Component
      */
     public ?int $documentsFor = null;
 
+    /**
+     * Booking currently being edited inline, and its edit form.
+     */
+    public ?int $editingTxId = null;
+
+    /**
+     * @var array{booked_on: string, counterparty: string, purpose: string, amount: string}
+     */
+    public array $txEdit = ['booked_on' => '', 'counterparty' => '', 'purpose' => '', 'amount' => ''];
+
     public function mount(): void
     {
         if (! array_key_exists($this->period, FinancePeriod::options())) {
@@ -300,6 +310,63 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->advice = null;
+    }
+
+    /**
+     * Opens inline editing for a booking (date, counterparty, purpose, amount).
+     */
+    public function editTransaction(int $id): void
+    {
+        $transaction = $this->findTransaction($id);
+        $this->editingTxId = $transaction->id;
+        $this->txEdit = [
+            'booked_on' => $transaction->booked_on->toDateString(),
+            'counterparty' => (string) $transaction->counterparty,
+            'purpose' => (string) $transaction->purpose,
+            'amount' => number_format((float) $transaction->amount, 2, ',', ''),
+        ];
+        $this->resetValidation();
+    }
+
+    public function cancelEditTransaction(): void
+    {
+        $this->reset('editingTxId', 'txEdit');
+    }
+
+    public function updateTransaction(): void
+    {
+        if ($this->editingTxId === null) {
+            return;
+        }
+
+        $data = $this->validate([
+            'txEdit.booked_on' => ['required', 'date'],
+            'txEdit.counterparty' => ['nullable', 'string', 'max:255'],
+            'txEdit.purpose' => ['nullable', 'string', 'max:2000'],
+            'txEdit.amount' => ['required', 'regex:/^-?\d{1,9}([.,]\d{1,2})?$/'],
+        ], attributes: ['txEdit.amount' => __('Amount'), 'txEdit.booked_on' => __('Date')])['txEdit'];
+
+        $this->findTransaction($this->editingTxId)->update([
+            'booked_on' => $data['booked_on'],
+            'counterparty' => trim($data['counterparty']) !== '' ? mb_substr(trim($data['counterparty']), 0, 255) : null,
+            'purpose' => trim($data['purpose']) !== '' ? mb_substr(trim($data['purpose']), 0, 2000) : null,
+            'amount' => round((float) str_replace(',', '.', $data['amount']), 2),
+        ]);
+
+        $this->reset('editingTxId', 'txEdit');
+        $this->advice = null;
+        $this->dispatch('toast', message: __('Booking updated.'));
+    }
+
+    public function deleteTransaction(int $id): void
+    {
+        $transaction = $this->findTransaction($id);
+        ExternalLink::where('linkable_type', 'transaction')->where('linkable_id', $transaction->id)->get()->each->delete();
+        $transaction->delete();
+
+        $this->reset('editingTxId', 'txEdit');
+        $this->advice = null;
+        $this->dispatch('toast', message: __('Booking deleted.'));
     }
 
     // ── Review: internal transfers & duplicates (detection + confirm) ─

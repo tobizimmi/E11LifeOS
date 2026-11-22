@@ -187,10 +187,36 @@
                             {{ $transaction->amount >= 0 ? '+' : '' }}{{ $euro($transaction->amount) }}
                         </div>
                         <button type="button" wire:click="$set('documentsFor', {{ $documentsFor === $transaction->id ? 'null' : $transaction->id }})" @class(['shrink-0 text-sm', 'text-indigo-600' => $documentsFor === $transaction->id, 'text-gray-400 hover:text-indigo-600' => $documentsFor !== $transaction->id]) title="{{ __('Documents & e-mails') }}" aria-label="{{ __('Documents & e-mails') }}" aria-expanded="{{ $documentsFor === $transaction->id ? 'true' : 'false' }}">🗂@if ($documentCounts[$transaction->id] ?? 0)<span class="ms-0.5 align-top text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">{{ $documentCounts[$transaction->id] }}</span>@endif</button>
+                        <button type="button" wire:click="editTransaction({{ $transaction->id }})" @class(['shrink-0 text-sm', 'text-indigo-600' => $editingTxId === $transaction->id, 'text-gray-400 hover:text-indigo-600' => $editingTxId !== $transaction->id]) title="{{ __('Edit booking') }}" aria-label="{{ __('Edit booking') }}">✏️</button>
                         @if ($documentsFor === $transaction->id)
                             <div class="w-full rounded-lg bg-gray-50 p-3 dark:bg-gray-900/40">
                                 <livewire:documents-panel type="transaction" :id="$transaction->id" :wire:key="'documents-transaction-'.$transaction->id" />
                             </div>
+                        @endif
+                        @if ($editingTxId === $transaction->id)
+                            <form wire:submit="updateTransaction" class="w-full rounded-lg bg-indigo-50/60 p-3 dark:bg-indigo-900/20">
+                                <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                                    <label class="text-xs text-gray-500 dark:text-gray-400">{{ __('Date') }}
+                                        <input type="date" wire:model="txEdit.booked_on" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                    </label>
+                                    <label class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">{{ __('Counterparty') }}
+                                        <input type="text" wire:model="txEdit.counterparty" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                    </label>
+                                    <label class="text-xs text-gray-500 dark:text-gray-400">{{ __('Amount') }} (€)
+                                        <input type="text" inputmode="decimal" wire:model="txEdit.amount" class="mt-1 block w-full rounded-lg border-gray-300 text-end text-sm tabular-nums dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" placeholder="-12,30">
+                                    </label>
+                                    <label class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-4">{{ __('Purpose') }}
+                                        <input type="text" wire:model="txEdit.purpose" class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                    </label>
+                                </div>
+                                <x-input-error :messages="$errors->get('txEdit.amount')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('txEdit.booked_on')" class="mt-1" />
+                                <div class="mt-2 flex flex-wrap items-center gap-2">
+                                    <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
+                                    <button type="button" wire:click="cancelEditTransaction" class="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ __('Cancel') }}</button>
+                                    <button type="button" wire:click="deleteTransaction({{ $transaction->id }})" wire:confirm="{{ __('Delete this booking? This cannot be undone.') }}" class="ms-auto rounded-lg px-3 py-1.5 text-sm text-red-700 ring-1 ring-red-200 hover:bg-red-50 dark:text-red-300 dark:ring-red-800 dark:hover:bg-gray-700">🗑 {{ __('Delete') }}</button>
+                                </div>
+                            </form>
                         @endif
                     </li>
                 @endforeach

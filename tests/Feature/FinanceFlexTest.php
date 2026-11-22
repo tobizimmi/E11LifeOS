@@ -134,6 +134,28 @@ class FinanceFlexTest extends TestCase
         $this->assertNotNull($visa->fresh()->balance_on);
     }
 
+    public function test_a_booking_can_be_edited_and_deleted(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $giro = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $booking = Transaction::factory()->create(['bank_account_id' => $giro->id, 'household_id' => $household->id, 'user_id' => $user->id, 'amount' => -10, 'booked_on' => now(), 'counterparty' => 'Alt', 'category' => 'groceries']);
+
+        $component = Volt::test('finance.index')
+            ->set('tab', 'transactions')
+            ->call('editTransaction', $booking->id)
+            ->set('txEdit.counterparty', 'Neu')
+            ->set('txEdit.amount', '-25,50')
+            ->call('updateTransaction')
+            ->assertHasNoErrors();
+
+        $this->assertSame(['Neu', -25.5], [$booking->fresh()->counterparty, (float) $booking->fresh()->amount]);
+
+        $component->call('deleteTransaction', $booking->id);
+        $this->assertDatabaseMissing('transactions', ['id' => $booking->id]);
+    }
+
     public function test_a_custom_category_is_added_and_joins_the_catalogue(): void
     {
         [$user] = $this->memberWithHousehold();

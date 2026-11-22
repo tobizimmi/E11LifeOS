@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ShoppingListEntry;
+use App\Models\ShoppingListReminder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -29,6 +30,40 @@ class ShoppingListIndexTest extends TestCase
             'quantity' => '2 Liter',
             'checked' => false,
         ]);
+    }
+
+    public function test_a_member_can_pin_toggle_and_remove_a_reminder(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $component = Volt::test('shopping-list.index')
+            ->set('newReminder', 'Pfandflaschen mitnehmen')
+            ->call('addReminder')
+            ->assertSet('newReminder', '')
+            ->assertSee('Pfandflaschen mitnehmen');
+
+        $reminder = ShoppingListReminder::where('text', 'Pfandflaschen mitnehmen')->sole();
+        $this->assertNull($reminder->done_at);
+
+        $component->call('toggleReminder', $reminder->id);
+        $this->assertNotNull($reminder->fresh()->done_at);
+
+        $component->call('toggleReminder', $reminder->id);
+        $this->assertNull($reminder->fresh()->done_at);
+
+        $component->call('deleteReminder', $reminder->id);
+        $this->assertDatabaseMissing('shopping_list_reminders', ['id' => $reminder->id]);
+    }
+
+    public function test_blank_reminders_are_ignored(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        Volt::test('shopping-list.index')->set('newReminder', '   ')->call('addReminder');
+
+        $this->assertSame(0, ShoppingListReminder::count());
     }
 
     public function test_entries_are_sorted_into_supermarket_sections_and_choices_are_learned(): void

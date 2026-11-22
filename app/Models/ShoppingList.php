@@ -60,6 +60,16 @@ class ShoppingList extends Model
         return $this->hasMany(ShoppingListEntry::class);
     }
 
+    /**
+     * Free-text reminders pinned above the list (open ones first, newest first within each).
+     *
+     * @return HasMany<ShoppingListReminder, $this>
+     */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(ShoppingListReminder::class)->orderBy('done_at')->orderByDesc('id');
+    }
+
     protected function casts(): array
     {
         return ['share_expires_at' => 'datetime'];

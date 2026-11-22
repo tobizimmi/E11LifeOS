@@ -383,6 +383,23 @@ new #[Layout('layouts.app')] class extends Component
         $this->findTransaction($inId)->update(['review_ignored_at' => now()]);
     }
 
+    /**
+     * Marks every detected transfer pair at once as an internal transfer, so they drop out of the
+     * income/expense totals in one step instead of confirming each pair by hand.
+     */
+    public function confirmAllTransfers(): void
+    {
+        $pairs = app(TransactionReview::class)->transfers($this->currentUser(), (int) $this->householdId);
+
+        foreach ($pairs as $pair) {
+            $this->findTransaction($pair['out']->id)->update(['category' => FinanceCategories::TRANSFER, 'category_locked' => true]);
+            $this->findTransaction($pair['in']->id)->update(['category' => FinanceCategories::TRANSFER, 'category_locked' => true]);
+        }
+
+        $this->advice = null;
+        $this->dispatch('toast', message: trans_choice(':count transfer confirmed.|:count transfers confirmed.', count($pairs)));
+    }
+
     public function confirmDuplicate(int $keepId, int $duplicateId): void
     {
         $keep = $this->findTransaction($keepId);

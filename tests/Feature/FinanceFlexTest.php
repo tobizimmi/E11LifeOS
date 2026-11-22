@@ -134,6 +134,22 @@ class FinanceFlexTest extends TestCase
         $this->assertNotNull($visa->fresh()->balance_on);
     }
 
+    public function test_all_detected_transfers_can_be_confirmed_at_once(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        $a = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $b = BankAccount::factory()->create(['user_id' => $user->id, 'household_id' => $household->id]);
+        $out = Transaction::factory()->create(['bank_account_id' => $a->id, 'household_id' => $household->id, 'user_id' => $user->id, 'amount' => -100, 'booked_on' => now(), 'category' => 'other']);
+        $in = Transaction::factory()->create(['bank_account_id' => $b->id, 'household_id' => $household->id, 'user_id' => $user->id, 'amount' => 100, 'booked_on' => now(), 'category' => 'other_income']);
+
+        Volt::test('finance.index')->set('tab', 'report')->call('confirmAllTransfers');
+
+        $this->assertSame('transfer', $out->fresh()->category);
+        $this->assertSame('transfer', $in->fresh()->category);
+    }
+
     public function test_a_booking_can_be_edited_and_deleted(): void
     {
         [$user, $household] = $this->memberWithHousehold();

@@ -76,7 +76,12 @@
         {{-- Review: internal transfers & duplicates (detection; the owner confirms each) --}}
         @if (count($reviewTransfers) || count($reviewDuplicates))
             <div class="space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900/50 dark:bg-indigo-900/20">
-                <p class="text-sm font-medium text-indigo-900 dark:text-indigo-100">🔎 {{ __('Please check: these bookings may be inflating your totals.') }}</p>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-sm font-medium text-indigo-900 dark:text-indigo-100">🔎 {{ __('Please check: these bookings may be inflating your totals.') }}</p>
+                    @if (count($reviewTransfers) > 1)
+                        <button type="button" wire:click="confirmAllTransfers" class="rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700">🔁 {{ __('Confirm all :count transfers', ['count' => count($reviewTransfers)]) }}</button>
+                    @endif
+                </div>
 
                 @foreach ($reviewTransfers as $pair)
                     <div class="flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-xs dark:bg-gray-800" wire:key="tr-{{ $pair['out']->id }}-{{ $pair['in']->id }}">

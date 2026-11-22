@@ -9,6 +9,7 @@ use App\Models\ShoppingList;
 use App\Support\Mail\Mailbox;
 use App\Support\Mail\MailHtml;
 use App\Support\Mail\MailSender;
+use App\Support\Mail\MailSwipeActions;
 use App\Support\Mail\MailSync;
 use App\Support\Mail\MimeMessage;
 use App\Support\Paperless\PaperlessUploader;
@@ -781,6 +782,23 @@ new #[Layout('layouts.app')] class extends Component
         $this->flash = __('Saved to the inbox.');
     }
 
+    public function toNote(int $id): void
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $subject = (string) ($message->subject ?: __('Mail without subject'));
+        $text = trim($subject."\n\n".(string) $message->body_text);
+
+        QuickCapture::note($this->currentUser(), (int) $this->householdId, $text !== '' ? $text : $subject);
+
+        $this->markProcessed($message, 'note');
+        $this->flash = __('Saved as a note.');
+    }
+
     public function toShoppingList(int $id): void
     {
         $message = $this->openMessageOwned($id);
@@ -822,6 +840,32 @@ new #[Layout('layouts.app')] class extends Component
         if ($this->onServer($message, fn (Mailbox $mailbox) => $mailbox->uidStore($message->uid, '\\Seen', $target))) {
             $message->forceFill(['is_read' => $target])->save();
             unset($this->messages, $this->unreadCounts);
+        }
+    }
+
+    /**
+     * The resolved swipe actions (right/left) for the mail list, plus the raw keys for the settings.
+     *
+     * @return array<string, mixed>
+     */
+    #[Computed]
+    public function swipe(): array
+    {
+        $user = $this->currentUser();
+
+        return [
+            'right' => MailSwipeActions::resolve($user->mail_swipe_right),
+            'left' => MailSwipeActions::resolve($user->mail_swipe_left),
+            'rightKey' => $user->mail_swipe_right ?? MailSwipeActions::DEFAULT_RIGHT,
+            'leftKey' => $user->mail_swipe_left ?? MailSwipeActions::DEFAULT_LEFT,
+        ];
+    }
+
+    public function saveSwipe(string $side, string $action): void
+    {
+        if (in_array($side, ['left', 'right'], true) && MailSwipeActions::exists($action)) {
+            $this->currentUser()->update(['mail_swipe_'.$side => $action]);
+            unset($this->swipe);
         }
     }
 
@@ -976,6 +1020,40 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Streams one attachment to the browser as a download (re-fetched from the server by UID).
+     */
+    public function downloadAttachment(int $id, int $index): ?\Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return null;
+        }
+
+        $meta = ($message->attachments_meta ?? [])[$index] ?? null;
+
+        if (! $meta) {
+            $this->flash = __('This attachment is not available.');
+
+            return null;
+        }
+
+        $attachment = $this->fetchAttachment($message, $index, $meta);
+
+        if ($attachment === null) {
+            $this->flash = __('The attachment could not be fetched from the server.');
+
+            return null;
+        }
+
+        return response()->streamDownload(
+            fn () => print ($attachment['content']),
+            mb_substr($meta['name'], 0, 255) ?: 'attachment',
+            ['Content-Type' => $meta['mime'] ?: 'application/octet-stream'],
+        );
+    }
+
+    /**
      * Re-fetches one attachment's raw content by the mail's UID (attachments stay on the server).
      * The attachment at the given index must still match the stored meta, otherwise null is returned.
      *
@@ -1115,6 +1193,10 @@ new #[Layout('layouts.app')] class extends Component
                             @foreach ($msg->attachments_meta as $index => $attachment)
                                 <span class="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                                     📎 {{ $attachment['name'] }}
+                                    <button type="button" wire:click="downloadAttachment({{ $msg->id }}, {{ $index }})" wire:loading.attr="disabled" wire:target="downloadAttachment({{ $msg->id }}, {{ $index }})"
+                                        class="rounded bg-gray-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-gray-500 disabled:opacity-50" title="{{ __('Download') }}">
+                                        ↓ {{ __('Download') }}
+                                    </button>
                                     @if ($this->paperlessConnected && in_array($attachment['mime'], $this::PAPERLESS_TYPES, true))
                                         <button type="button" wire:click="toPaperless({{ $msg->id }}, {{ $index }})" wire:loading.attr="disabled" wire:target="toPaperless({{ $msg->id }}, {{ $index }})"
                                             class="rounded bg-indigo-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-indigo-500 disabled:opacity-50" title="{{ __('Archive to Paperless') }}">
@@ -1158,6 +1240,7 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="self-center text-xs font-medium uppercase text-gray-400">{{ __('Use in the tool') }}:</span>
                         <button type="button" wire:click="toTask({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">✅ {{ __('Task') }}</button>
                         <button type="button" wire:click="toShoppingList({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">🛒 {{ __('Shopping list') }}</button>
+                        <button type="button" wire:click="toNote({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">📝 {{ __('Note') }}</button>
                         <button type="button" wire:click="toInbox({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">📥 {{ __('Inbox') }}</button>
                         @if ($msg->processed_as)
                             <span class="self-center text-xs text-emerald-600 dark:text-emerald-300">✓ {{ __('Already taken over') }}</span>
@@ -1198,25 +1281,67 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 @endif
 
+                {{-- Tailwind safelist for the dynamic swipe-action backgrounds --}}
+                <span class="hidden bg-amber-500 bg-red-600 bg-indigo-500 bg-yellow-500 bg-gray-400"></span>
+
+                {{-- Swipe settings: pick the action for a right and a left swipe (Spark-style) --}}
+                <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400" x-data="{ open: false }">
+                    <button type="button" x-on:click="open = ! open" class="inline-flex items-center gap-1 rounded-md px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">👆 {{ __('Swipe actions') }}</button>
+                    <div x-show="open" x-cloak class="flex flex-wrap items-center gap-3">
+                        <label class="inline-flex items-center gap-1">{{ __('Swipe right') }} →
+                            <select wire:change="saveSwipe('right', $event.target.value)" class="rounded-md border-gray-300 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                @foreach (\App\Support\Mail\MailSwipeActions::all() as $key => $action)
+                                    <option value="{{ $key }}" @selected($this->swipe['rightKey'] === $key)>{{ trim($action['icon'].' '.$action['label']) }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="inline-flex items-center gap-1">← {{ __('Swipe left') }}
+                            <select wire:change="saveSwipe('left', $event.target.value)" class="rounded-md border-gray-300 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+                                @foreach (\App\Support\Mail\MailSwipeActions::all() as $key => $action)
+                                    <option value="{{ $key }}" @selected($this->swipe['leftKey'] === $key)>{{ trim($action['icon'].' '.$action['label']) }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
                 {{-- List --}}
                 @if ($this->messages->isEmpty())
                     <div class="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-700">{{ __('No mails yet – use “Sync now”.') }}</div>
                 @else
+                    @php($sr = $this->swipe['right'])
+                    @php($sl = $this->swipe['left'])
                     <div class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-700">
                         @foreach ($this->messages as $row)
                             @php($message = $row['message'])
-                            <button type="button" wire:key="m{{ $message->id }}" wire:click="open({{ $message->id }})"
-                                class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 {{ $message->is_read ? 'bg-white dark:bg-gray-900' : 'bg-indigo-50/40 dark:bg-indigo-900/10' }}">
-                                @unless ($message->is_read)<span class="h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>@else<span class="h-2 w-2 shrink-0"></span>@endunless
-                                <span class="w-40 shrink-0 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100' }}">{{ $message->fromLabel() }}</span>
-                                <span class="flex-1 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-gray-100' }}">{{ $message->subject ?: __('Mail without subject') }}</span>
-                                @if (trim($this->search) !== '')<span class="shrink-0 rounded-full bg-gray-100 px-1.5 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">{{ __($message->folder) }}</span>@endif
-                                @if ($row['count'] > 1)<span class="shrink-0 rounded-full bg-gray-200 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $row['count'] }}</span>@endif
-                                @if ($message->is_flagged)<span class="text-xs">⭐</span>@endif
-                                @if ($message->has_attachments)<span class="text-xs text-gray-400">📎</span>@endif
-                                @if ($message->processed_as)<span class="text-xs text-emerald-500">✓</span>@endif
-                                <span class="w-24 shrink-0 text-right text-xs text-gray-400">{{ $message->date?->isoFormat('DD.MM.') }}</span>
-                            </button>
+                            <div wire:key="m{{ $message->id }}"
+                                x-data="e11Swipe({
+                                    onRight: {{ $sr['method'] ? '() => $wire.'.$sr['method'].'('.$message->id.')' : 'null' }},
+                                    leaveOnRight: {{ $sr['leave'] ? 'true' : 'false' }},
+                                    onLeft: {{ $sl['method'] ? '() => $wire.'.$sl['method'].'('.$message->id.')' : 'null' }},
+                                    leaveOnLeft: {{ $sl['leave'] ? 'true' : 'false' }},
+                                })"
+                                class="relative overflow-hidden">
+                                <div class="absolute inset-0 flex items-center justify-between px-4 text-sm font-medium text-white" aria-hidden="true" :class="dx > 0 ? '{{ $sr['bg'] }}' : (dx < 0 ? '{{ $sl['bg'] }}' : '')">
+                                    <span x-show="dx > 0">{{ trim($sr['icon'].' '.$sr['label']) }}</span>
+                                    <span x-show="dx < 0" class="ml-auto">{{ trim($sl['label'].' '.$sl['icon']) }}</span>
+                                </div>
+                                <button type="button" wire:click="open({{ $message->id }})"
+                                    x-ref="content" style="touch-action: pan-y"
+                                    x-on:pointerdown="start($event)" x-on:pointermove="move($event)" x-on:pointerup="end()" x-on:pointercancel="end()"
+                                    :class="{ 'opacity-40': leaving }"
+                                    class="relative flex w-full items-center gap-3 px-4 py-3 text-left transition-opacity duration-300 hover:bg-gray-50 dark:hover:bg-gray-800 {{ $message->is_read ? 'bg-white dark:bg-gray-900' : 'bg-indigo-50/40 dark:bg-indigo-900/10' }}">
+                                    @unless ($message->is_read)<span class="h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>@else<span class="h-2 w-2 shrink-0"></span>@endunless
+                                    <span class="w-40 shrink-0 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100' }}">{{ $message->fromLabel() }}</span>
+                                    <span class="flex-1 truncate text-sm {{ $message->is_read ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-gray-100' }}">{{ $message->subject ?: __('Mail without subject') }}</span>
+                                    @if (trim($this->search) !== '')<span class="shrink-0 rounded-full bg-gray-100 px-1.5 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">{{ __($message->folder) }}</span>@endif
+                                    @if ($row['count'] > 1)<span class="shrink-0 rounded-full bg-gray-200 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $row['count'] }}</span>@endif
+                                    @if ($message->is_flagged)<span class="text-xs">⭐</span>@endif
+                                    @if ($message->has_attachments)<span class="text-xs text-gray-400">📎</span>@endif
+                                    @if ($message->processed_as)<span class="text-xs text-emerald-500">✓</span>@endif
+                                    <span class="w-24 shrink-0 text-right text-xs text-gray-400">{{ $message->date?->isoFormat('DD.MM.') }}</span>
+                                </button>
+                            </div>
                         @endforeach
                     </div>
                 @endif

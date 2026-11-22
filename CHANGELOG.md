@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.168.0] – 2026-11-22
+
+### Neu (Mail – einfache interne Weiterverwendung)
+- **Mehr Übernehmen-Ziele:** Eine Mail lässt sich jetzt zusätzlich als **Notiz** übernehmen (neben Aufgabe, Einkaufsliste und Inbox).
+- **Anhänge mit einem Klick:** Jeder Anhang hat jetzt einen **Download**-Button (direkt speichern) – zusätzlich zur bestehenden Paperless-Archivierung.
+
 ## [1.167.0] – 2026-11-22
 
 ### Neu (Mail – Swipe-Gesten wie in Profi-Mail-Apps)

@@ -782,6 +782,23 @@ new #[Layout('layouts.app')] class extends Component
         $this->flash = __('Saved to the inbox.');
     }
 
+    public function toNote(int $id): void
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return;
+        }
+
+        $subject = (string) ($message->subject ?: __('Mail without subject'));
+        $text = trim($subject."\n\n".(string) $message->body_text);
+
+        QuickCapture::note($this->currentUser(), (int) $this->householdId, $text !== '' ? $text : $subject);
+
+        $this->markProcessed($message, 'note');
+        $this->flash = __('Saved as a note.');
+    }
+
     public function toShoppingList(int $id): void
     {
         $message = $this->openMessageOwned($id);
@@ -1003,6 +1020,40 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
+     * Streams one attachment to the browser as a download (re-fetched from the server by UID).
+     */
+    public function downloadAttachment(int $id, int $index): ?\Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $message = $this->openMessageOwned($id);
+
+        if (! $message) {
+            return null;
+        }
+
+        $meta = ($message->attachments_meta ?? [])[$index] ?? null;
+
+        if (! $meta) {
+            $this->flash = __('This attachment is not available.');
+
+            return null;
+        }
+
+        $attachment = $this->fetchAttachment($message, $index, $meta);
+
+        if ($attachment === null) {
+            $this->flash = __('The attachment could not be fetched from the server.');
+
+            return null;
+        }
+
+        return response()->streamDownload(
+            fn () => print ($attachment['content']),
+            mb_substr($meta['name'], 0, 255) ?: 'attachment',
+            ['Content-Type' => $meta['mime'] ?: 'application/octet-stream'],
+        );
+    }
+
+    /**
      * Re-fetches one attachment's raw content by the mail's UID (attachments stay on the server).
      * The attachment at the given index must still match the stored meta, otherwise null is returned.
      *
@@ -1142,6 +1193,10 @@ new #[Layout('layouts.app')] class extends Component
                             @foreach ($msg->attachments_meta as $index => $attachment)
                                 <span class="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                                     📎 {{ $attachment['name'] }}
+                                    <button type="button" wire:click="downloadAttachment({{ $msg->id }}, {{ $index }})" wire:loading.attr="disabled" wire:target="downloadAttachment({{ $msg->id }}, {{ $index }})"
+                                        class="rounded bg-gray-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-gray-500 disabled:opacity-50" title="{{ __('Download') }}">
+                                        ↓ {{ __('Download') }}
+                                    </button>
                                     @if ($this->paperlessConnected && in_array($attachment['mime'], $this::PAPERLESS_TYPES, true))
                                         <button type="button" wire:click="toPaperless({{ $msg->id }}, {{ $index }})" wire:loading.attr="disabled" wire:target="toPaperless({{ $msg->id }}, {{ $index }})"
                                             class="rounded bg-indigo-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-indigo-500 disabled:opacity-50" title="{{ __('Archive to Paperless') }}">
@@ -1185,6 +1240,7 @@ new #[Layout('layouts.app')] class extends Component
                         <span class="self-center text-xs font-medium uppercase text-gray-400">{{ __('Use in the tool') }}:</span>
                         <button type="button" wire:click="toTask({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">✅ {{ __('Task') }}</button>
                         <button type="button" wire:click="toShoppingList({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">🛒 {{ __('Shopping list') }}</button>
+                        <button type="button" wire:click="toNote({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">📝 {{ __('Note') }}</button>
                         <button type="button" wire:click="toInbox({{ $msg->id }})" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">📥 {{ __('Inbox') }}</button>
                         @if ($msg->processed_as)
                             <span class="self-center text-xs text-emerald-600 dark:text-emerald-300">✓ {{ __('Already taken over') }}</span>

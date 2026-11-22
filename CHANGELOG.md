@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.171.0] – 2026-11-22
+
+### Verbessert (Finanzen – Umbuchungen schneller bestätigen)
+- Werden mehrere Umbuchungen zwischen deinen Konten erkannt, lassen sie sich jetzt mit **einem Klick „Alle bestätigen"** als interne Umbuchung markieren – sie fallen dann gesammelt aus der Einnahmen-/Ausgabenrechnung heraus (statt jede einzeln zu bestätigen).
+
 ## [1.170.0] – 2026-11-22
 
 ### Neu (Finanzen – Buchungen bearbeiten)

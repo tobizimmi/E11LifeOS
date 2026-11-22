@@ -6856,6 +6856,8 @@
     "Swipe left": "Nach links wischen",
     "Read / unread": "Gelesen / ungelesen",
     "Flag": "Markieren",
+    ":count transfer confirmed.|:count transfers confirmed.": ":count Umbuchung bestätigt.|:count Umbuchungen bestätigt.",
+    "Confirm all :count transfers": "Alle :count Umbuchungen bestätigen",
     "Booking updated.": "Buchung aktualisiert.",
     "Booking deleted.": "Buchung gelöscht.",
     "Delete this booking? This cannot be undone.": "Diese Buchung löschen? Das kann nicht rückgängig gemacht werden.",

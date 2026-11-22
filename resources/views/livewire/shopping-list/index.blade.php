@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListEntry;
+use App\Models\ShoppingListReminder;
 use App\Models\ShoppingStore;
 use App\Support\ProductLookup;
 use App\Support\ShoppingAisles;
@@ -26,6 +27,9 @@ new #[Layout('layouts.app')] class extends Component
     public string $label = '';
 
     public string $quantity = '';
+
+    /** New pinned reminder text (e.g. "take the deposit bottles"). */
+    public string $newReminder = '';
 
     /**
      * Group by supermarket section (true) or show the newest first (false); kept for the session.
@@ -117,6 +121,36 @@ new #[Layout('layouts.app')] class extends Component
 
         ShoppingLists::add($this->currentList(), $validated['label'], $validated['quantity'], Auth::id());
         $this->reset('label', 'quantity');
+    }
+
+    // ── Pinned reminders ─────────────────────────────────────────────────
+
+    private function findReminder(int $id): ShoppingListReminder
+    {
+        return ShoppingListReminder::where('shopping_list_id', $this->currentList()->id)->findOrFail($id);
+    }
+
+    public function addReminder(): void
+    {
+        $text = trim($this->newReminder);
+
+        if ($text === '') {
+            return;
+        }
+
+        $this->currentList()->reminders()->create(['text' => mb_substr($text, 0, 255)]);
+        $this->reset('newReminder');
+    }
+
+    public function toggleReminder(int $id): void
+    {
+        $reminder = $this->findReminder($id);
+        $reminder->update(['done_at' => $reminder->done_at ? null : now()]);
+    }
+
+    public function deleteReminder(int $id): void
+    {
+        $this->findReminder($id)->delete();
     }
 
     public function addFrequent(string $label, ?string $quantity = null): void
@@ -424,6 +458,7 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'list' => $list->load('shareGroups'),
+            'reminders' => $list->reminders()->get(),
             'lists' => $lists,
             'sharedWithMe' => ShoppingList::query()->whereIn('id', ShoppingList::sharedIdsFor(Auth::user()))->where('household_id', '!=', $this->householdId)->with('household')->orderBy('name')->get(),
             'entries' => $entries,
@@ -592,6 +627,25 @@ new #[Layout('layouts.app')] class extends Component
                         <button type="submit" class="rounded-md bg-indigo-600 px-4 font-medium">{{ __('Find product') }}</button>
                     </form>
                 </div>
+            </section>
+
+            {{-- Pinned reminders: free-text notes that stay visible while scrolling the list --}}
+            <section class="sticky top-[4.5rem] z-10 rounded-2xl bg-amber-50 p-3 shadow-xs ring-1 ring-amber-200 lg:top-4 dark:bg-amber-900/25 dark:ring-amber-900/50">
+                @if ($reminders->isNotEmpty())
+                    <ul class="space-y-1.5">
+                        @foreach ($reminders as $reminder)
+                            <li wire:key="reminder-{{ $reminder->id }}" class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" wire:click="toggleReminder({{ $reminder->id }})" @checked($reminder->done_at) class="rounded-sm border-amber-300 text-amber-600 focus:ring-amber-500" aria-label="{{ __('Done') }}">
+                                <span class="min-w-0 flex-1 break-words {{ $reminder->done_at ? 'text-amber-500/70 line-through dark:text-amber-200/50' : 'font-medium text-amber-900 dark:text-amber-100' }}">📌 {{ $reminder->text }}</span>
+                                <button type="button" wire:click="deleteReminder({{ $reminder->id }})" class="shrink-0 rounded-full px-1.5 text-amber-500 hover:bg-amber-100 hover:text-red-600 dark:hover:bg-amber-900/40" aria-label="{{ __('Remove') }}">✕</button>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+                <form wire:submit="addReminder" class="flex items-center gap-2 {{ $reminders->isNotEmpty() ? 'mt-2' : '' }}">
+                    <input type="text" wire:model="newReminder" maxlength="255" class="block w-full rounded-lg border-amber-200 bg-white/70 text-sm placeholder:text-amber-500/70 focus:border-amber-400 focus:ring-amber-400 dark:border-amber-900/50 dark:bg-gray-900/40 dark:text-amber-50" placeholder="{{ __('Pin a note (e.g. take the deposit bottles) …') }}" aria-label="{{ __('Pinned note') }}">
+                    <button type="submit" class="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600">📌 {{ __('Pin') }}</button>
+                </form>
             </section>
 
             {{-- Items --}}

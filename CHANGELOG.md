@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.166.0] – 2026-11-22
+
+### Neu (Einkaufsliste – angepinnte Hinweise)
+- Über der Einkaufsliste lassen sich jetzt frei formulierte Hinweise anpinnen (z. B. „Pfandflaschen mitnehmen"). Sie bleiben beim Scrollen durch die Liste sichtbar, du kannst mehrere anlegen, einzeln abhaken (bleiben durchgestrichen stehen) und wieder entfernen.
+
 ## [1.165.0] – 2026-11-21
 
 ### Neu (Depot-Abgleich: angleichen oder komplett ersetzen)

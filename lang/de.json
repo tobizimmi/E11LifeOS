@@ -6847,6 +6847,8 @@
     "Replace entire holdings with the bank's": "Gesamten Bestand durch Bank-Bestand ersetzen",
     "“Adjust” only changes quantities the bank reports. “Replace” also removes positions you hold that the bank no longer lists.": "„Angleichen\" ändert nur die von der Bank gemeldeten Stückzahlen. „Ersetzen\" bucht zusätzlich Positionen aus, die du hältst, die die Bank aber nicht mehr listet.",
     "Removed on full reconcile with :bank": "Beim vollständigen Abgleich mit :bank ausgebucht",
+    "Pin a note (e.g. take the deposit bottles) …": "Hinweis anpinnen (z. B. Pfandflaschen mitnehmen) …",
+    "Pinned note": "Angepinnter Hinweis",
     "Expenses by account": "Ausgaben je Konto",
     "Only :category": "Nur :category",
     "Your own categories": "Eigene Kategorien",

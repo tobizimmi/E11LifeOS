@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.169.0] – 2026-11-22
+
+### Neu (Finanzen – Konten-Übersicht)
+- **Neuer Tab „Konten":** Zeigt oben die Summen **Gesamt auf Konten**, **Gesamt in Depots** und beides zusammen. Darunter jedes Konto mit aktuellem Saldo und Buchungsanzahl – direkt umbenennen, Saldo setzen (bank-synchronisierte Konten aktualisieren sich weiter automatisch), Buchungen öffnen oder das Konto löschen. Depots werden mit ihrem letzten Wert gelistet; ein Link führt zum vollen Gesamtvermögen inkl. Immobilien.
+
 ## [1.168.0] – 2026-11-22
 
 ### Neu (Mail – einfache interne Weiterverwendung)

@@ -5,6 +5,7 @@ use App\Models\BankAccount;
 use App\Models\FinanceBudget;
 use App\Models\ExternalLink;
 use App\Models\FinanceRule;
+use App\Models\Portfolio;
 use App\Models\Transaction;
 use App\Support\AiException;
 use App\Support\Finance\BalanceForecast;
@@ -419,6 +420,22 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    /**
+     * Sets (or with an empty value clears) an account's balance anchor as of today, so the current
+     * balance and the net total can be shown. Bank-synced accounts keep getting it from the sync.
+     */
+    public function setBalance(int $accountId, string $value): void
+    {
+        $account = $this->accounts()->find($accountId) ?? abort(404);
+        $parsed = trim($value) === '' ? null : BankCsvImporter::parseAmount($value);
+
+        $account->update([
+            'balance' => $parsed,
+            'balance_on' => $parsed === null ? null : today()->toDateString(),
+        ]);
+        $this->advice = null;
+    }
+
     // ── Report ───────────────────────────────────────────────────────────
 
     // ── Tax ──────────────────────────────────────────────────────────────
@@ -750,6 +767,27 @@ new #[Layout('layouts.app')] class extends Component
             $data['forecast'] = BalanceForecast::for($accounts, $this->forecastDays);
         }
 
+        if ($this->tab === 'accounts') {
+            $accountRows = $accounts->map(fn (BankAccount $account) => [
+                'account' => $account,
+                'balance' => $account->currentBalance(),
+                'bookings' => (int) ($account->transactions_count ?? 0),
+            ])->values();
+            $data['accountRows'] = $accountRows;
+            $data['accountsTotal'] = round((float) $accountRows->sum(fn (array $row) => (float) ($row['balance'] ?? 0)), 2);
+            $data['accountsMissing'] = $accountRows->filter(fn (array $row) => $row['balance'] === null)->count();
+
+            $portfolios = Portfolio::where('user_id', $this->currentUser()->id)
+                ->with(['snapshots' => fn ($query) => $query->latest('taken_at')->limit(1)])
+                ->orderBy('name')->get();
+            $data['depotRows'] = $portfolios->map(fn (Portfolio $portfolio) => [
+                'portfolio' => $portfolio,
+                'value' => $portfolio->snapshots->first()?->total_value,
+                'date' => $portfolio->snapshots->first()?->taken_at,
+            ])->values();
+            $data['depotsTotal'] = round((float) $portfolios->sum(fn (Portfolio $portfolio) => (float) ($portfolio->snapshots->first()?->total_value ?? 0)), 2);
+        }
+
         if ($this->tab === 'report') {
             [$from, $to] = FinancePeriod::range($this->period, $this->customFrom, $this->customTo);
             $reportOptions = ['includeTransfers' => $this->includeTransfers, 'includeSavings' => $this->includeSavings];
@@ -798,10 +836,10 @@ new #[Layout('layouts.app')] class extends Component
             {{-- Tabs + filters --}}
             <div class="flex flex-wrap items-center gap-3">
                 <x-section-nav class="w-full md:w-auto" :label="__('Finances')" :active="$tab" :groups="[
-                    __('Overview') => ['report' => ['📊', __('Report')], 'forecast' => ['🔮', __('Forecast')], 'budgets' => ['🎯', __('Budgets')]],
+                    __('Overview') => ['report' => ['📊', __('Report')], 'accounts' => ['🏦', __('Accounts')], 'forecast' => ['🔮', __('Forecast')], 'budgets' => ['🎯', __('Budgets')]],
                     __('Data') => ['transactions' => ['📄', __('Bookings')], 'tax' => ['🏛', __('Tax')], 'import' => ['⬆', __('Import')]],
                 ]" />
-                @if (! in_array($tab, ['import', 'budgets', 'tax', 'forecast'], true))
+                @if (! in_array($tab, ['import', 'budgets', 'tax', 'forecast', 'accounts'], true))
                     <select wire:model.live="period" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200" aria-label="{{ __('Period') }}">
                         @foreach ($periods as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -852,6 +890,8 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             @elseif ($tab === 'report')
                 @include('finance.partials.report')
+            @elseif ($tab === 'accounts')
+                @include('finance.partials.accounts')
             @elseif ($tab === 'forecast')
                 @include('finance.partials.forecast')
             @elseif ($tab === 'transactions')

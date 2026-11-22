@@ -630,7 +630,7 @@ new #[Layout('layouts.app')] class extends Component
             </section>
 
             {{-- Pinned reminders: free-text notes that stay visible while scrolling the list --}}
-            <section class="sticky top-[4.5rem] z-10 rounded-2xl bg-amber-50 p-3 shadow-xs ring-1 ring-amber-200 lg:top-4 dark:bg-amber-900/25 dark:ring-amber-900/50">
+            <section class="sticky top-[4.5rem] z-20 rounded-2xl bg-amber-100 p-3 shadow-md ring-1 ring-amber-300 lg:top-4 dark:bg-amber-900 dark:ring-amber-700">
                 @if ($reminders->isNotEmpty())
                     <ul class="space-y-1.5">
                         @foreach ($reminders as $reminder)
@@ -643,7 +643,7 @@ new #[Layout('layouts.app')] class extends Component
                     </ul>
                 @endif
                 <form wire:submit="addReminder" class="flex items-center gap-2 {{ $reminders->isNotEmpty() ? 'mt-2' : '' }}">
-                    <input type="text" wire:model="newReminder" maxlength="255" class="block w-full rounded-lg border-amber-200 bg-white/70 text-sm placeholder:text-amber-500/70 focus:border-amber-400 focus:ring-amber-400 dark:border-amber-900/50 dark:bg-gray-900/40 dark:text-amber-50" placeholder="{{ __('Pin a note (e.g. take the deposit bottles) …') }}" aria-label="{{ __('Pinned note') }}">
+                    <input type="text" wire:model="newReminder" maxlength="255" class="block w-full rounded-lg border-amber-300 bg-white text-sm placeholder:text-amber-500/80 focus:border-amber-400 focus:ring-amber-400 dark:border-amber-700 dark:bg-gray-900 dark:text-amber-50" placeholder="{{ __('Pin a note (e.g. take the deposit bottles) …') }}" aria-label="{{ __('Pinned note') }}">
                     <button type="submit" class="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600">📌 {{ __('Pin') }}</button>
                 </form>
             </section>

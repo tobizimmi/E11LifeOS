@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.167.0] – 2026-11-22
+
+### Neu (Mail – Swipe-Gesten wie in Profi-Mail-Apps)
+- **Wischen auf der Mailliste:** Jede Mail lässt sich jetzt nach links und rechts wischen, um eine Aktion auszulösen (mit farbigem Hintergrund und haptischem Feedback, armt ab ~35 %).
+- **Frei konfigurierbar:** Über „👆 Swipe-Aktionen" wählst du pro Richtung die Aktion – Archivieren, Löschen, Gelesen/Ungelesen, Markieren oder keine. Standard: rechts markieren, links archivieren.
+
 ## [1.166.0] – 2026-11-22
 
 ### Neu (Einkaufsliste – angepinnte Hinweise)

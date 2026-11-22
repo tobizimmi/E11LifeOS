@@ -21,6 +21,25 @@ class MailModuleTest extends TestCase
 {
     use CreatesHouseholdMembers, RefreshDatabase;
 
+    public function test_swipe_actions_default_and_can_be_configured(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $this->actingAs($user);
+
+        // Defaults from the migration: right = flag, left = archive.
+        $this->assertSame(['flag', 'archive'], [$user->fresh()->mail_swipe_right, $user->fresh()->mail_swipe_left]);
+
+        Volt::test('mail.index')
+            ->call('saveSwipe', 'right', 'read')
+            ->call('saveSwipe', 'left', 'trash');
+
+        $this->assertSame(['read', 'trash'], [$user->fresh()->mail_swipe_right, $user->fresh()->mail_swipe_left]);
+
+        // An unknown action is ignored.
+        Volt::test('mail.index')->call('saveSwipe', 'right', 'bogus');
+        $this->assertSame('read', $user->fresh()->mail_swipe_right);
+    }
+
     public function test_a_member_can_add_a_mail_account(): void
     {
         [$user] = $this->memberWithHousehold();

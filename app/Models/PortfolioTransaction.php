@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A buy, sale, dividend, split, fee or transfer in a portfolio.
  */
-#[Fillable(['portfolio_id', 'symbol', 'name', 'isin', 'wkn', 'type', 'quantity', 'price', 'fees', 'taxes', 'currency', 'exchange_rate', 'executed_on', 'broker', 'notes', 'import_source'])]
+#[Fillable(['portfolio_id', 'symbol', 'name', 'isin', 'wkn', 'type', 'quantity', 'price', 'cost_estimated', 'fees', 'taxes', 'currency', 'exchange_rate', 'executed_on', 'broker', 'notes', 'import_source'])]
 class PortfolioTransaction extends Model
 {
     /** @use HasFactory<PortfolioTransactionFactory> */
@@ -24,6 +24,7 @@ class PortfolioTransaction extends Model
         return [
             'quantity' => 'float',
             'price' => 'float',
+            'cost_estimated' => 'boolean',
             'fees' => 'float',
             'taxes' => 'float',
             'exchange_rate' => 'float',

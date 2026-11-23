@@ -112,6 +112,40 @@ class PortfolioTest extends TestCase
         $this->assertModelMissing($stale);
     }
 
+    public function test_a_manual_purchase_price_overrides_an_estimated_import_and_survives_recalculation(): void
+    {
+        [, , $portfolio] = $this->investor();
+        PortfolioTransaction::factory()->for($portfolio)->create([
+            'symbol' => 'NFLX', 'name' => 'Netflix', 'type' => 'transfer_in', 'quantity' => 10,
+            'price' => 532.40, 'cost_estimated' => true, 'currency' => 'EUR', 'executed_on' => '2026-11-20',
+        ]);
+        Positions::recalculate($portfolio);
+
+        $position = $portfolio->positions()->where('symbol', 'NFLX')->sole();
+        $this->assertTrue($position->cost_basis_estimated);
+        $this->assertTrue($position->needsManualCost());
+        $this->assertSame(5324.0, $position->costBasis());
+
+        Volt::test('portfolio.index')
+            ->call('editPosition', $position->id)
+            ->set('positionForm.avg_buy_price', '479,16')
+            ->call('savePosition')
+            ->assertHasNoErrors();
+
+        $position->refresh();
+        $this->assertSame(479.16, $position->cost_basis_override);
+        $this->assertFalse($position->needsManualCost());
+        $this->assertSame(4791.6, $position->costBasis());
+
+        // A later sync recalculates the quantity but keeps the hand-entered purchase price.
+        Positions::recalculate($portfolio);
+        $this->assertSame(479.16, $position->fresh()->cost_basis_override);
+
+        // Clearing the field removes the override again.
+        Volt::test('portfolio.index')->call('editPosition', $position->id)->set('positionForm.avg_buy_price', '')->call('savePosition')->assertHasNoErrors();
+        $this->assertNull($position->fresh()->cost_basis_override);
+    }
+
     public function test_the_overview_values_positions_in_euro_with_current_prices(): void
     {
         [$user, , $portfolio] = $this->investor();

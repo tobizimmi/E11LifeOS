@@ -360,6 +360,7 @@ class BankSync
             }
 
             $holding = $row['position'];
+            $basis = $this->costBasisFor($holding);
             $portfolio->transactions()->create([
                 'symbol' => $row['symbol'],
                 'name' => $holding->name,
@@ -367,7 +368,8 @@ class BankSync
                 'wkn' => $holding->wkn,
                 'type' => $row['difference'] > 0 ? 'transfer_in' : 'transfer_out',
                 'quantity' => abs($row['difference']),
-                'price' => $this->costBasisFor($holding),
+                'price' => $basis['price'],
+                'cost_estimated' => $basis['estimated'],
                 'currency' => $holding->currency ?: 'EUR',
                 'executed_on' => today()->toDateString(),
                 'notes' => __('Reconciled with :bank', ['bank' => $connection->bank_name]),
@@ -438,10 +440,13 @@ class BankSync
      * acquisition price (MT535 Einstandskurs, :70E:) is often missing or mis-scaled by the FinTS
      * library's parser. A mis-scaled Einstandskurs sinks the position's average buy price and blows
      * the displayed gain up out of all proportion, so the acquisition price is trusted only when it
-     * sits in a plausible band around the current unit price; otherwise the current price is used,
-     * which shows no gain until the member enters the real purchase price by hand.
+     * sits in a plausible band around the current unit price; otherwise the current price is used
+     * (and the booking is flagged as estimated), which shows no gain until the member enters the
+     * real purchase price by hand.
+     *
+     * @return array{price: float, estimated: bool}
      */
-    private function costBasisFor(BankDepotPosition $holding): float
+    private function costBasisFor(BankDepotPosition $holding): array
     {
         $currentUnitPrice = (float) ($holding->price ?: ($holding->quantity > 0 ? (float) $holding->value / (float) $holding->quantity : 0.0));
         $acquisition = (float) $holding->acquisition_price;
@@ -452,9 +457,9 @@ class BankSync
             && $acquisition <= $currentUnitPrice * 10;
 
         if ($plausible) {
-            return $acquisition;
+            return ['price' => $acquisition, 'estimated' => false];
         }
 
-        return $currentUnitPrice ?: $acquisition;
+        return ['price' => $currentUnitPrice ?: $acquisition, 'estimated' => true];
     }
 }

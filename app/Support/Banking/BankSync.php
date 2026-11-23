@@ -367,7 +367,7 @@ class BankSync
                 'wkn' => $holding->wkn,
                 'type' => $row['difference'] > 0 ? 'transfer_in' : 'transfer_out',
                 'quantity' => abs($row['difference']),
-                'price' => (float) ($holding->acquisition_price ?: $holding->price ?: 0),
+                'price' => $this->costBasisFor($holding),
                 'currency' => $holding->currency ?: 'EUR',
                 'executed_on' => today()->toDateString(),
                 'notes' => __('Reconciled with :bank', ['bank' => $connection->bank_name]),
@@ -429,5 +429,32 @@ class BankSync
         }
 
         return $cleared;
+    }
+
+    /**
+     * The per-unit cost basis to book a reconciled holding in at.
+     *
+     * Banks report the current market price ({@see BankDepotPosition::$price}) reliably, but the
+     * acquisition price (MT535 Einstandskurs, :70E:) is often missing or mis-scaled by the FinTS
+     * library's parser. A mis-scaled Einstandskurs sinks the position's average buy price and blows
+     * the displayed gain up out of all proportion, so the acquisition price is trusted only when it
+     * sits in a plausible band around the current unit price; otherwise the current price is used,
+     * which shows no gain until the member enters the real purchase price by hand.
+     */
+    private function costBasisFor(BankDepotPosition $holding): float
+    {
+        $currentUnitPrice = (float) ($holding->price ?: ($holding->quantity > 0 ? (float) $holding->value / (float) $holding->quantity : 0.0));
+        $acquisition = (float) $holding->acquisition_price;
+
+        $plausible = $acquisition > 0
+            && $currentUnitPrice > 0
+            && $acquisition >= $currentUnitPrice * 0.1
+            && $acquisition <= $currentUnitPrice * 10;
+
+        if ($plausible) {
+            return $acquisition;
+        }
+
+        return $currentUnitPrice ?: $acquisition;
     }
 }

@@ -29,10 +29,6 @@ class Positions
             $holding['isin'] = $transaction->isin ?: $holding['isin'];
             $rate = self::euroRate($transaction);
 
-            if (in_array($transaction->type, ['buy', 'transfer_in'], true) && $transaction->cost_estimated) {
-                $holding['estimated'] = true;
-            }
-
             if ($rate === null) {
                 $holding['currency'] = $transaction->currency;
                 $rate = 1.0;
@@ -43,6 +39,10 @@ class Positions
                 case 'transfer_in':
                     $holding['cost'] += ($transaction->quantity * $transaction->price + $transaction->fees) / $rate;
                     $holding['quantity'] += $transaction->quantity;
+
+                    if ($transaction->cost_estimated) {
+                        $holding['estimated'] = true;
+                    }
                     break;
                 case 'sell':
                 case 'transfer_out':

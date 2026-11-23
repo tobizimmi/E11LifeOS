@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Current holding of a security in a portfolio, calculated from the transactions (average cost
  * method) or entered by hand.
  */
-#[Fillable(['portfolio_id', 'symbol', 'name', 'isin', 'quantity', 'avg_buy_price', 'cost_basis_override', 'cost_basis_estimated', 'currency', 'asset_type', 'notes', 'labels', 'stop_loss_price', 'take_profit_price', 'stop_loss_notified_at', 'take_profit_notified_at', 'manual'])]
+#[Fillable(['portfolio_id', 'symbol', 'name', 'isin', 'quantity', 'avg_buy_price', 'cost_basis_override', 'cost_basis_estimated', 'cost_basis_override_stale', 'currency', 'asset_type', 'notes', 'labels', 'stop_loss_price', 'take_profit_price', 'stop_loss_notified_at', 'take_profit_notified_at', 'manual'])]
 class PortfolioPosition extends Model
 {
     protected function casts(): array
@@ -20,6 +20,7 @@ class PortfolioPosition extends Model
             'avg_buy_price' => 'float',
             'cost_basis_override' => 'float',
             'cost_basis_estimated' => 'boolean',
+            'cost_basis_override_stale' => 'boolean',
             'labels' => 'array',
             'stop_loss_price' => 'float',
             'take_profit_price' => 'float',
@@ -45,6 +46,15 @@ class PortfolioPosition extends Model
     public function needsManualCost(): bool
     {
         return $this->cost_basis_estimated && $this->cost_basis_override === null;
+    }
+
+    /**
+     * Whether a hand-entered purchase price should be re-checked because a later import changed the
+     * quantity (so the real average buy price has likely changed too).
+     */
+    public function overrideNeedsReview(): bool
+    {
+        return $this->cost_basis_override !== null && $this->cost_basis_override_stale;
     }
 
     public function portfolio(): BelongsTo

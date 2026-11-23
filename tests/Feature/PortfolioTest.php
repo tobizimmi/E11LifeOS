@@ -117,7 +117,7 @@ class PortfolioTest extends TestCase
         [, , $portfolio] = $this->investor();
         PortfolioTransaction::factory()->for($portfolio)->create([
             'symbol' => 'NFLX', 'name' => 'Netflix', 'type' => 'transfer_in', 'quantity' => 10,
-            'price' => 532.40, 'cost_estimated' => true, 'currency' => 'EUR', 'executed_on' => '2026-11-20',
+            'price' => 532.40, 'fees' => 0, 'taxes' => 0, 'cost_estimated' => true, 'currency' => 'EUR', 'executed_on' => '2026-11-20',
         ]);
         Positions::recalculate($portfolio);
 

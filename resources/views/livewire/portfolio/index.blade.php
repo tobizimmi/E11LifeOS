@@ -181,6 +181,8 @@ new #[Layout('layouts.app')] class extends Component
                 'cost_basis_override' => $data['avg_buy_price'] !== '' && (float) $position->quantity > 0
                     ? round((float) $data['avg_buy_price'] + (float) ($data['fees'] ?: 0) / (float) $position->quantity, 4)
                     : null,
+                // The member has just reviewed the purchase price, so clear the "please check" flag.
+                'cost_basis_override_stale' => false,
             ]);
         } else {
             if (! $position && $portfolio->positions()->where('symbol', $data['symbol'])->exists()) {
@@ -410,7 +412,9 @@ new #[Layout('layouts.app')] class extends Component
                                                         @elseif ($row['price'] !== null && $position->take_profit_price && $row['price'] >= $position->take_profit_price)
                                                             <span class="rounded-sm bg-emerald-100 px-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">🎯 {{ __('Target reached') }}</span>
                                                         @endif
-                                                        @if ($position->needsManualCost())
+                                                        @if ($position->overrideNeedsReview())
+                                                            <span class="rounded-sm bg-amber-100 px-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title="{{ __('The quantity changed on the last import – check the purchase price.') }}">⚠ {{ __('Check purchase price') }}</span>
+                                                        @elseif ($position->needsManualCost())
                                                             <span class="rounded-sm bg-amber-100 px-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title="{{ __('No reliable purchase price from the import – tap the pencil to enter it.') }}">⚠ {{ __('Set purchase price') }}</span>
                                                         @elseif ($position->cost_basis_override !== null)
                                                             <span class="rounded-sm bg-gray-100 px-1 text-gray-600 dark:bg-gray-700 dark:text-gray-300" title="{{ __('Purchase price entered by hand') }}">✎ {{ __('man. cost') }}</span>
@@ -483,7 +487,9 @@ new #[Layout('layouts.app')] class extends Component
 
             <form id="position-form" wire:submit="savePosition" class="grid gap-4 sm:grid-cols-2">
                 @if ($editingPosition && ! $editingPosition->manual)
-                    @if ($editingPosition->needsManualCost())
+                    @if ($editingPosition->overrideNeedsReview())
+                        <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-900/30 dark:text-amber-100">⚠️ {{ __('The quantity changed on the last import, so your purchase price may no longer fit. Please check it and re-enter it if needed.') }}</p>
+                    @elseif ($editingPosition->needsManualCost())
                         <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-900/30 dark:text-amber-100">⚠️ {{ __('The bank delivered no reliable purchase price for this holding, so the current price is used and no gain is shown. Enter your real purchase price below.') }}</p>
                     @else
                         <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:col-span-2 dark:bg-sky-900/30 dark:text-sky-100">{{ __('Quantity comes from the transactions. You can correct the purchase price by hand here (it is kept on the next sync) and add labels, notes and price marks.') }}</p>

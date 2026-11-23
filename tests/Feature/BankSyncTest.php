@@ -107,6 +107,47 @@ class BankSyncTest extends TestCase
         $this->assertSame(12.0, $portfolio->positions()->sole()->quantity);
     }
 
+    public function test_an_implausible_bank_acquisition_price_falls_back_to_the_current_price(): void
+    {
+        [$user, $household] = $this->owner();
+        $portfolio = Portfolio::factory()->for($user)->create(['name' => 'ING-Depot']);
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'portfolio_id' => $portfolio->id]);
+        Security::factory()->create(['symbol' => 'NFLX', 'name' => 'Netflix', 'isin' => 'US64110L1061', 'price_updated_at' => now()]);
+
+        // The FinTS library mis-parses the MT535 Einstandskurs here: it drops the leading digit, so
+        // 479,16 arrives as 47,916 – far too low. Trusting it would blow the shown gain up, so the
+        // reconcile must ignore it and book the holding in at the current price (no fake gain).
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->andReturn([
+            'status' => 'done', 'accounts' => [], 'errors' => [],
+            'holdings' => [['isin' => 'US64110L1061', 'wkn' => '552484', 'name' => 'Netflix', 'quantity' => 10.0, 'acquisition_price' => 47.916, 'price' => 532.40, 'value' => 5324.0, 'currency' => 'EUR', 'price_date' => '2026-09-25']],
+        ]));
+
+        $page = Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->assertHasNoErrors();
+        $page->call('applyToPortfolio', $connection->id, 'add');
+
+        $transaction = $portfolio->transactions()->sole();
+        $this->assertSame(532.40, $transaction->price);
+        $this->assertSame(532.40, (float) $portfolio->positions()->sole()->avg_buy_price);
+    }
+
+    public function test_a_missing_bank_acquisition_price_uses_the_current_unit_value(): void
+    {
+        [$user, $household] = $this->owner();
+        $portfolio = Portfolio::factory()->for($user)->create(['name' => 'ING-Depot']);
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'portfolio_id' => $portfolio->id]);
+        Security::factory()->create(['symbol' => 'NFLX', 'name' => 'Netflix', 'isin' => 'US64110L1061', 'price_updated_at' => now()]);
+
+        // No Einstandskurs and no per-unit price, only the total value: the unit price is derived.
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->andReturn([
+            'status' => 'done', 'accounts' => [], 'errors' => [],
+            'holdings' => [['isin' => 'US64110L1061', 'wkn' => '552484', 'name' => 'Netflix', 'quantity' => 10.0, 'acquisition_price' => null, 'price' => 0.0, 'value' => 5324.0, 'currency' => 'EUR', 'price_date' => '2026-09-25']],
+        ]));
+
+        Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->call('applyToPortfolio', $connection->id, 'add');
+
+        $this->assertSame(532.40, (float) $portfolio->transactions()->sole()->price);
+    }
+
     public function test_replace_mode_books_out_positions_the_bank_no_longer_reports(): void
     {
         [$user, $household] = $this->owner();

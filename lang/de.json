@@ -7331,5 +7331,14 @@
     "Mails": "Mails",
     "Important": "Wichtig",
     "Filter by category": "Nach Kategorie filtern",
-    ":count important notification|:count important notifications": ":count wichtige Benachrichtigung|:count wichtige Benachrichtigungen"
+    ":count important notification|:count important notifications": ":count wichtige Benachrichtigung|:count wichtige Benachrichtigungen",
+    "Purchase price per share (€)": "Kaufkurs pro Stück (€)",
+    "e.g. 479,16": "z. B. 479,16",
+    "Set purchase price": "Kaufkurs setzen",
+    "man. cost": "man. Einstand",
+    "Purchase price entered by hand": "Kaufkurs von Hand eingetragen",
+    "Leave empty to keep the value from the import. Order fees are added on top.": "Leer lassen, um den Wert aus dem Import zu behalten. Ordergebühren werden aufgeschlagen.",
+    "No reliable purchase price from the import – tap the pencil to enter it.": "Kein verlässlicher Kaufkurs aus dem Import – zum Eintragen auf den Stift tippen.",
+    "The bank delivered no reliable purchase price for this holding, so the current price is used and no gain is shown. Enter your real purchase price below.": "Die Bank hat für diese Position keinen verlässlichen Kaufkurs geliefert, daher wird der aktuelle Kurs verwendet und kein Gewinn angezeigt. Trage unten deinen echten Kaufkurs ein.",
+    "Quantity comes from the transactions. You can correct the purchase price by hand here (it is kept on the next sync) and add labels, notes and price marks.": "Die Stückzahl stammt aus den Transaktionen. Den Kaufkurs kannst du hier von Hand korrigieren (er bleibt beim nächsten Abgleich erhalten) und Labels, Notizen und Kursmarken ergänzen."
 }

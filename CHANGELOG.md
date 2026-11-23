@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.173.0] – 2026-11-23
+
+### Neu (Depot – Kaufkurs manuell setzen)
+- Importierte Depot-Positionen lassen sich jetzt mit einem **manuellen Kaufkurs** versehen. Liefert die Bank keinen verlässlichen Einstandskurs, wird die Position mit **„⚠ Kaufkurs setzen"** markiert; über den Stift trägst du deinen echten Kaufpreis (plus optionale Gebühren) ein. Der Gewinn/Verlust stimmt damit sofort.
+- Der manuelle Kaufkurs **bleibt beim nächsten Bankabgleich erhalten** (er wird nicht mehr vom Import überschrieben). Leeres Feld = wieder den Importwert verwenden.
+
 ## [1.172.0] – 2026-11-23
 
 ### Neu (Benachrichtigungen – getrennte Kategorien)

@@ -127,7 +127,12 @@ class BankSyncTest extends TestCase
 
         $transaction = $portfolio->transactions()->sole();
         $this->assertSame(532.40, $transaction->price);
-        $this->assertSame(532.40, (float) $portfolio->positions()->sole()->avg_buy_price);
+        $this->assertTrue($transaction->cost_estimated);
+        $position = $portfolio->positions()->sole();
+        $this->assertSame(532.40, (float) $position->avg_buy_price);
+        // The holding is flagged so the UI can ask for the real purchase price.
+        $this->assertTrue($position->cost_basis_estimated);
+        $this->assertTrue($position->needsManualCost());
     }
 
     public function test_a_missing_bank_acquisition_price_uses_the_current_unit_value(): void

@@ -134,7 +134,7 @@ new #[Layout('layouts.app')] class extends Component
             'symbol' => $position->symbol,
             'name' => $position->name,
             'quantity' => $number($position->quantity),
-            'avg_buy_price' => $number($position->avg_buy_price),
+            'avg_buy_price' => $number($position->cost_basis_override ?? $position->avg_buy_price),
             'fees' => '',
             'labels' => implode(', ', $position->labels ?? []),
             'notes' => (string) $position->notes,
@@ -173,9 +173,15 @@ new #[Layout('layouts.app')] class extends Component
             'take_profit_price' => $data['take_profit_price'] !== '' ? (float) $data['take_profit_price'] : null,
         ];
 
-        // Positions from transactions only take the extras; quantity and price follow the transactions.
+        // Positions from transactions only take the extras; quantity follows the transactions. The
+        // purchase price, however, can be corrected by hand (a persistent override), because an
+        // import often delivers no reliable one – the override survives the next recalculation.
         if ($position && ! $position->manual) {
-            $position->update($attributes);
+            $position->update($attributes + [
+                'cost_basis_override' => $data['avg_buy_price'] !== '' && (float) $position->quantity > 0
+                    ? round((float) $data['avg_buy_price'] + (float) ($data['fees'] ?: 0) / (float) $position->quantity, 4)
+                    : null,
+            ]);
         } else {
             if (! $position && $portfolio->positions()->where('symbol', $data['symbol'])->exists()) {
                 $this->addError('positionForm.symbol', __('This security is already in the portfolio – add a transaction instead.'));
@@ -404,6 +410,11 @@ new #[Layout('layouts.app')] class extends Component
                                                         @elseif ($row['price'] !== null && $position->take_profit_price && $row['price'] >= $position->take_profit_price)
                                                             <span class="rounded-sm bg-emerald-100 px-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">🎯 {{ __('Target reached') }}</span>
                                                         @endif
+                                                        @if ($position->needsManualCost())
+                                                            <span class="rounded-sm bg-amber-100 px-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title="{{ __('No reliable purchase price from the import – tap the pencil to enter it.') }}">⚠ {{ __('Set purchase price') }}</span>
+                                                        @elseif ($position->cost_basis_override !== null)
+                                                            <span class="rounded-sm bg-gray-100 px-1 text-gray-600 dark:bg-gray-700 dark:text-gray-300" title="{{ __('Purchase price entered by hand') }}">✎ {{ __('man. cost') }}</span>
+                                                        @endif
                                                     </span>
                                                 </a>
                                             </td>
@@ -472,7 +483,22 @@ new #[Layout('layouts.app')] class extends Component
 
             <form id="position-form" wire:submit="savePosition" class="grid gap-4 sm:grid-cols-2">
                 @if ($editingPosition && ! $editingPosition->manual)
-                    <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:col-span-2 dark:bg-sky-900/30 dark:text-sky-100">{{ __('Quantity and purchase price come from the transactions. Here you can add labels, notes and price marks.') }}</p>
+                    @if ($editingPosition->needsManualCost())
+                        <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-900/30 dark:text-amber-100">⚠️ {{ __('The bank delivered no reliable purchase price for this holding, so the current price is used and no gain is shown. Enter your real purchase price below.') }}</p>
+                    @else
+                        <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:col-span-2 dark:bg-sky-900/30 dark:text-sky-100">{{ __('Quantity comes from the transactions. You can correct the purchase price by hand here (it is kept on the next sync) and add labels, notes and price marks.') }}</p>
+                    @endif
+                    <div class="sm:col-span-2">
+                        <x-input-label for="position-cost-override" :value="__('Purchase price per share (€)')" />
+                        <x-text-input id="position-cost-override" wire:model="positionForm.avg_buy_price" inputmode="decimal" class="mt-1 block w-full" placeholder="{{ __('e.g. 479,16') }}" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Leave empty to keep the value from the import. Order fees are added on top.') }}</p>
+                        <x-input-error :messages="$errors->get('positionForm.avg_buy_price')" class="mt-1" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <x-input-label for="position-cost-fees" :value="__('Purchase fees (€)')" />
+                        <x-text-input id="position-cost-fees" wire:model="positionForm.fees" inputmode="decimal" class="mt-1 block w-full" placeholder="0" />
+                        <x-input-error :messages="$errors->get('positionForm.fees')" class="mt-1" />
+                    </div>
                 @else
                     <p class="text-sm text-gray-600 sm:col-span-2 dark:text-gray-400">{{ __('For holdings without transaction history. Better: add a purchase as transaction – then gains, dividends and taxes can be calculated.') }}</p>
                     <div>

@@ -2,6 +2,7 @@
 
 namespace App\Support\Banking;
 
+use App\Enums\NotificationCategory;
 use App\Models\BankAccount;
 use App\Models\BankConnection;
 use App\Models\BankDepotPosition;
@@ -12,6 +13,7 @@ use App\Support\Finance\BankCsvImporter;
 use App\Support\Finance\Categorizer;
 use App\Support\Portfolio\MarketData;
 use App\Support\Portfolio\Positions;
+use App\Support\WebPush;
 use Fhp\CurlException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -350,6 +352,13 @@ class BankSync
         }
 
         $portfolios = Portfolio::where('user_id', $connection->user_id)->whereIn('id', $rows->pluck('portfolio_id')->unique())->get()->keyBy('id');
+
+        // Hand-entered purchase prices that are in place before this reconcile: if the quantity of
+        // such a position changes, the member is asked to re-check the purchase price afterwards.
+        $overrideBefore = PortfolioPosition::whereIn('portfolio_id', $portfolios->keys())
+            ->whereNotNull('cost_basis_override')->get()
+            ->mapWithKeys(fn (PortfolioPosition $position) => [$position->portfolio_id.'|'.$position->symbol => (float) $position->quantity]);
+
         $count = 0;
 
         foreach ($rows as $row) {
@@ -384,7 +393,55 @@ class BankSync
 
         $portfolios->each(fn (Portfolio $portfolio) => Positions::recalculate($portfolio));
 
+        $this->flagChangedOverrides($connection, $portfolios, $overrideBefore);
+
         return $count;
+    }
+
+    /**
+     * Marks every position whose quantity changed in this reconcile although it carries a
+     * hand-entered purchase price, and notifies the member to re-check it (the real average buy
+     * price has likely changed) with a link straight to the portfolio.
+     *
+     * @param  Collection<int, Portfolio>  $portfolios
+     * @param  Collection<string, float>  $overrideBefore  "portfolioId|symbol" => quantity before the reconcile
+     */
+    private function flagChangedOverrides(BankConnection $connection, Collection $portfolios, Collection $overrideBefore): void
+    {
+        if ($overrideBefore->isEmpty()) {
+            return;
+        }
+
+        $review = PortfolioPosition::whereIn('portfolio_id', $portfolios->keys())->whereNotNull('cost_basis_override')->get()
+            ->filter(function (PortfolioPosition $position) use ($overrideBefore) {
+                $key = $position->portfolio_id.'|'.$position->symbol;
+
+                return $overrideBefore->has($key) && abs($overrideBefore[$key] - (float) $position->quantity) > 0.000001;
+            });
+
+        if ($review->isEmpty()) {
+            return;
+        }
+
+        $review->each(fn (PortfolioPosition $position) => $position->update(['cost_basis_override_stale' => true]));
+
+        if (! $connection->user) {
+            return;
+        }
+
+        $names = $review->map(fn (PortfolioPosition $position) => $position->name ?: $position->symbol)->implode(', ');
+
+        try {
+            app(WebPush::class)->send(
+                $connection->user,
+                '⚠️ '.trans_choice('Check the purchase price of :count position|Check the purchase price of :count positions', $review->count()),
+                __('The quantity changed on the bank import, so the entered purchase price may no longer fit: :names. Open the portfolio to adjust it.', ['names' => mb_strimwidth($names, 0, 200, '…')]),
+                route('portfolio.index'),
+                category: NotificationCategory::Important->value,
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**

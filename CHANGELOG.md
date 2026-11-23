@@ -8,6 +8,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 ### Neu (Depot – Kaufkurs manuell setzen)
 - Importierte Depot-Positionen lassen sich jetzt mit einem **manuellen Kaufkurs** versehen. Liefert die Bank keinen verlässlichen Einstandskurs, wird die Position mit **„⚠ Kaufkurs setzen"** markiert; über den Stift trägst du deinen echten Kaufpreis (plus optionale Gebühren) ein. Der Gewinn/Verlust stimmt damit sofort.
 - Der manuelle Kaufkurs **bleibt beim nächsten Bankabgleich erhalten** (er wird nicht mehr vom Import überschrieben). Leeres Feld = wieder den Importwert verwenden.
+- **Ändert sich beim Import die Stückzahl** einer Position mit manuellem Kaufkurs, wird sie mit **„⚠ Kaufkurs prüfen"** markiert und du bekommst eine **Benachrichtigung (Kategorie „Wichtig") mit Link ins Depot**, um den Kaufkurs bei Bedarf neu einzutragen – denn der Durchschnitts-Kaufwert ändert sich dann ja.
 
 ## [1.172.0] – 2026-11-23
 

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\NotificationCategory;
 use App\Models\PushMessage;
 use App\Models\PushSubscription;
 use App\Models\User;
@@ -52,10 +53,14 @@ class WebPush
      */
     /**
      * @param  list<array{label: string, url: string}>  $actions  buttons in the notification (answered by a POST to the url)
+     * @param  ?string  $category  the lane (see {@see NotificationCategory}); defaults to "important" for
+     *                             urgent pushes and "general" otherwise, so mails keep their own lane
      */
-    public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true, array $actions = []): int
+    public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true, array $actions = [], ?string $category = null): int
     {
-        InAppNotifications::record($user, $title, $body, $url);
+        $lane = NotificationCategory::fromValue($category ?? ($urgent ? NotificationCategory::Important->value : NotificationCategory::General->value));
+
+        InAppNotifications::record($user, $title, $body, $url, $lane);
 
         $quiet = ! $urgent && self::inQuietHours($user);
 
@@ -69,7 +74,7 @@ class WebPush
             return 0;
         }
 
-        $message = PushMessage::create(['user_id' => $user->id, 'title' => mb_substr($title, 0, 255), 'body' => $body, 'url' => $url, 'actions' => $actions ?: null]);
+        $message = PushMessage::create(['user_id' => $user->id, 'category' => $lane->value, 'title' => mb_substr($title, 0, 255), 'body' => $body, 'url' => $url, 'actions' => $actions ?: null]);
 
         if ($quiet) {
             // Queued for the devices; "push:release-quiet" wakes them when the quiet hours end.
@@ -172,37 +177,58 @@ class WebPush
     }
 
     /**
-     * What the service worker shows: three or more waiting messages become one summary (unless the
-     * user wants every message on its own).
+     * What the service worker shows. Messages are grouped by their lane ({@see NotificationCategory}),
+     * so new mails never get folded into – or bundled together with – the other notifications: each
+     * lane with three or more waiting messages becomes its own summary (unless the user wants every
+     * message on its own), and each summary carries the lane's own tag so it shows as a separate
+     * notification on the device.
      *
      * @param  Collection<int, PushMessage>  $messages
      * @return list<array{title: string, body: string, url: string, tag: string, actions?: list<array{label: string, url: string}>}>
      */
     public static function present(User $user, Collection $messages, bool $bundle = true): array
     {
-        if ($bundle && $user->push_bundle !== false && $messages->count() >= 3) {
-            return [[
-                'title' => trans_choice(':count new notification|:count new notifications', $messages->count()),
-                'body' => $messages->map(fn (PushMessage $message) => '• '.$message->title)->implode("\n"),
-                'url' => route('notifications.index'),
-                'tag' => 'e11-bundle',
-            ]];
+        $bundling = $bundle && $user->push_bundle !== false;
+
+        return $messages
+            ->groupBy(fn (PushMessage $message) => NotificationCategory::fromValue($message->category)->value)
+            ->flatMap(function (Collection $group, string $value) use ($bundling): array {
+                $category = NotificationCategory::from($value);
+
+                if ($bundling && $group->count() >= 3) {
+                    return [[
+                        'title' => $category->bundleTitle($group->count()),
+                        'body' => $group->map(fn (PushMessage $message) => '• '.$message->title)->implode("\n"),
+                        'url' => $category === NotificationCategory::Mail ? route('mail.index') : route('notifications.index'),
+                        'tag' => $category->bundleTag(),
+                    ]];
+                }
+
+                return $group->map(fn (PushMessage $message) => self::card($message))->all();
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * One notification for a single message.
+     *
+     * @return array{title: string, body: string, url: string, tag: string, actions?: list<array{label: string, url: string}>}
+     */
+    private static function card(PushMessage $message): array
+    {
+        $shown = [
+            'title' => $message->title,
+            'body' => (string) $message->body,
+            'url' => $message->url ?: route('dashboard'),
+            'tag' => 'e11-'.$message->id,
+        ];
+
+        if ($message->actions) {
+            $shown['actions'] = $message->actions;
         }
 
-        return $messages->map(function (PushMessage $message) {
-            $shown = [
-                'title' => $message->title,
-                'body' => (string) $message->body,
-                'url' => $message->url ?: route('dashboard'),
-                'tag' => 'e11-'.$message->id,
-            ];
-
-            if ($message->actions) {
-                $shown['actions'] = $message->actions;
-            }
-
-            return $shown;
-        })->values()->all();
+        return $shown;
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\NotificationCategory;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Str;
@@ -19,14 +20,14 @@ class InAppNotifications
 
     public const TYPE = 'app';
 
-    public static function record(User $user, string $title, string $body = '', ?string $url = null): DatabaseNotification
+    public static function record(User $user, string $title, string $body = '', ?string $url = null, NotificationCategory $category = NotificationCategory::General): DatabaseNotification
     {
         $user->notifications()->where('created_at', '<', now()->subDays(self::KEEP_DAYS))->delete();
 
         return $user->notifications()->create([
             'id' => (string) Str::uuid(),
             'type' => self::TYPE,
-            'data' => ['title' => mb_substr($title, 0, 255), 'body' => mb_substr($body, 0, 2000), 'url' => $url],
+            'data' => ['title' => mb_substr($title, 0, 255), 'body' => mb_substr($body, 0, 2000), 'url' => $url, 'category' => $category->value],
         ]);
     }
 

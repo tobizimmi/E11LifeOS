@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.171.1] – 2026-11-23
+
+### Behoben (Depot – unrealistischer Gewinn nach Bank-Import)
+- Beim Übernehmen von Depot-Beständen aus der Bank wurde der **Einstandskurs** ungeprüft übernommen. Einige Banken liefern über FinTS gar keinen oder einen falsch skalierten Einstandskurs (z. B. `47,92` statt `479,16`) – dadurch wurde der durchschnittliche Kaufpreis zu niedrig angesetzt und der angezeigte **Gewinn unrealistisch hoch** (bei Netflix z. B. ein Gewinn fast in Höhe des aktuellen Kurses). Der gemeldete Einstandskurs wird jetzt nur noch übernommen, wenn er plausibel zum aktuellen Kurs passt; andernfalls wird der aktuelle Kurs als Einstand gebucht (kein Gewinn, bis der echte Kaufpreis von Hand eingetragen wird).
+
 ## [1.171.0] – 2026-11-22
 
 ### Verbessert (Finanzen – Umbuchungen schneller bestätigen)

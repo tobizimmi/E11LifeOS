@@ -197,6 +197,7 @@ class MailSyncTest extends TestCase
 
         $this->assertCount(1, $push->sent);
         $this->assertStringContainsString('Neue Mail', $push->sent[0]['body']);
+        $this->assertSame('mail', $push->sent[0]['category']);
     }
 
     public function test_the_sync_command_does_not_push_when_notifications_are_off(): void
@@ -235,9 +236,9 @@ class MailSyncTest extends TestCase
             /** @var list<array{title: string, body: string}> */
             public array $sent = [];
 
-            public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true, array $actions = []): int
+            public function send(User $user, string $title, string $body, ?string $url = null, bool $urgent = false, bool $pushover = true, array $actions = [], ?string $category = null): int
             {
-                $this->sent[] = ['title' => $title, 'body' => $body];
+                $this->sent[] = ['title' => $title, 'body' => $body, 'category' => $category];
 
                 return 1;
             }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\NotificationCategory;
 use App\Models\User;
 use App\Support\InAppNotifications;
 use App\Support\WebPush;
@@ -50,7 +51,7 @@ class NotificationCenterTest extends TestCase
     public function test_the_bell_can_be_filtered_to_the_mail_lane(): void
     {
         [$user] = $this->memberWithHousehold();
-        InAppNotifications::record($user, '📬 1 neue Mail', 'Absender: Betreff', route('mail.index'), \App\Enums\NotificationCategory::Mail);
+        InAppNotifications::record($user, '📬 1 neue Mail', 'Absender: Betreff', route('mail.index'), NotificationCategory::Mail);
         InAppNotifications::record($user, 'Kursalarm', 'ACME über 100 €');
         $this->actingAs($user);
 

@@ -7327,5 +7327,9 @@
     "Please enter at least one valid recipient.": "Bitte mindestens einen gültigen Empfänger angeben.",
     "Load external images": "Externe Bilder laden",
     "INBOX": "Posteingang",
-    "Conversation": "Konversation"
+    "Conversation": "Konversation",
+    "Mails": "Mails",
+    "Important": "Wichtig",
+    "Filter by category": "Nach Kategorie filtern",
+    ":count important notification|:count important notifications": ":count wichtige Benachrichtigung|:count wichtige Benachrichtigungen"
 }

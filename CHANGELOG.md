@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.172.0] – 2026-11-23
+
+### Neu (Benachrichtigungen – getrennte Kategorien)
+- Benachrichtigungen haben jetzt **Kategorien**: **📬 Mails**, **❗ Wichtig** und 🔔 Allgemein. Neue-Mail-Hinweise laufen in einer eigenen Spur und werden **nicht mehr mit den übrigen Benachrichtigungen vermischt** – auf dem Handy erscheinen Mail-Sammelmeldungen getrennt von den anderen (jede Spur mit drei oder mehr Wartenden wird zu einer eigenen Sammelmeldung mit eigenem Hinweis). Dringende Hinweise (z. B. Medikamente, zeitgenaue Erinnerungen) landen in **Wichtig**, der Rest in Allgemein.
+- Im **Benachrichtigungs-Center** lässt sich jetzt oben nach **Alle / 📬 Mails / ❗ Wichtig** filtern; jede Zeile zeigt ihre Kategorie an.
+
 ## [1.171.1] – 2026-11-23
 
 ### Behoben (Depot – unrealistischer Gewinn nach Bank-Import)

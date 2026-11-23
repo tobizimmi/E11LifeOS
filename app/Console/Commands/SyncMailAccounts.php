@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\NotificationCategory;
 use App\Models\MailAccount;
 use App\Models\User;
 use App\Support\Mail\MailSync;
@@ -57,6 +58,6 @@ class SyncMailAccounts extends Command
         $title = '📬 '.trans_choice(':count new mail|:count new mails', $new->count(), ['count' => $new->count()]);
         $body = $latest->fromLabel().': '.($latest->subject ?: __('(No subject)'));
 
-        $push->send($user, $title, mb_substr($body, 0, 200), route('mail.index'));
+        $push->send($user, $title, mb_substr($body, 0, 200), route('mail.index'), category: NotificationCategory::Mail->value);
     }
 }

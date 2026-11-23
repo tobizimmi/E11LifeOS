@@ -47,6 +47,19 @@ class NotificationCenterTest extends TestCase
         $this->assertSame(0, $user->notifications()->count());
     }
 
+    public function test_the_bell_can_be_filtered_to_the_mail_lane(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        InAppNotifications::record($user, '📬 1 neue Mail', 'Absender: Betreff', route('mail.index'), \App\Enums\NotificationCategory::Mail);
+        InAppNotifications::record($user, 'Kursalarm', 'ACME über 100 €');
+        $this->actingAs($user);
+
+        Volt::test('notifications.index')
+            ->assertSee('📬 1 neue Mail')->assertSee('Kursalarm')
+            ->set('category', 'mail')
+            ->assertSee('📬 1 neue Mail')->assertDontSee('Kursalarm');
+    }
+
     public function test_notifications_of_other_members_are_not_reachable(): void
     {
         [$user] = $this->memberWithHousehold();

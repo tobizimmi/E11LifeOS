@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\NotificationCategory;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Models\PortfolioSetting;
@@ -108,7 +109,7 @@ class PushNotificationsTest extends TestCase
         PushSubscription::factory()->for($user)->create(['endpoint' => self::ENDPOINT, 'public_key' => null, 'auth_token' => null]);
         Http::fake(['fcm.googleapis.com/*' => Http::response('', 201)]);
 
-        app(WebPush::class)->send($user, '📬 1 neue Mail', 'Absender: Betreff', route('mail.index'), category: \App\Enums\NotificationCategory::Mail->value);
+        app(WebPush::class)->send($user, '📬 1 neue Mail', 'Absender: Betreff', route('mail.index'), category: NotificationCategory::Mail->value);
         app(WebPush::class)->send($user, '💊 Ibuprofen', 'Jetzt', urgent: true);
         app(WebPush::class)->send($user, 'Info', 'Text');
 

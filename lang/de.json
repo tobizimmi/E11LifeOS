@@ -7346,5 +7346,19 @@
     "The quantity changed on the last import, so your purchase price may no longer fit. Please check it and re-enter it if needed.": "Die Stückzahl hat sich beim letzten Import geändert, daher passt dein Kaufkurs evtl. nicht mehr. Bitte prüfen und bei Bedarf neu eintragen.",
     "Check the purchase price of :count position|Check the purchase price of :count positions": "Kaufkurs von :count Position prüfen|Kaufkurs von :count Positionen prüfen",
     "The quantity changed on the bank import, so the entered purchase price may no longer fit: :names. Open the portfolio to adjust it.": "Beim Bankimport hat sich die Stückzahl geändert, daher passt der eingetragene Kaufkurs evtl. nicht mehr: :names. Öffne das Depot, um ihn anzupassen.",
-    ":count position adopted from the bank. Check the holdings marked with ⚠ and enter their purchase price.|:count positions adopted from the bank. Check the holdings marked with ⚠ and enter their purchase price.": ":count Position aus der Bank übernommen. Prüfe die mit ⚠ markierten Positionen und trage ihren Kaufkurs ein.|:count Positionen aus der Bank übernommen. Prüfe die mit ⚠ markierten Positionen und trage ihren Kaufkurs ein."
+    ":count position adopted from the bank. Check the holdings marked with ⚠ and enter their purchase price.|:count positions adopted from the bank. Check the holdings marked with ⚠ and enter their purchase price.": ":count Position aus der Bank übernommen. Prüfe die mit ⚠ markierten Positionen und trage ihren Kaufkurs ein.|:count Positionen aus der Bank übernommen. Prüfe die mit ⚠ markierten Positionen und trage ihren Kaufkurs ein.",
+    "Insights & recommendations": "Einblicke & Empfehlungen",
+    "Top recommendations": "Top-Empfehlungen",
+    "from high": "vom Hoch",
+    "No buy candidates right now – the analysis runs daily.": "Aktuell keine Kaufkandidaten – die Analyse läuft täglich.",
+    "Latest headlines": "Aktuelle Schlagzeilen",
+    "No recent headlines on your securities.": "Keine aktuellen Schlagzeilen zu deinen Werten.",
+    "Strategy to-dos": "Strategie-To-dos",
+    "Nothing to do – your holdings are within the strategy.": "Nichts zu tun – dein Bestand liegt im Rahmen der Strategie.",
+    "Current market take": "Aktuelle Markteinschätzung",
+    "No analysed video yet.": "Noch kein analysiertes Video.",
+    "Buy tranche (:third) around :price": "Nachkauf-Tranche (:third) um :price",
+    "Sell signal": "Verkaufssignal",
+    "Concentration risk: :weight %": "Klumpenrisiko: :weight %",
+    "To-do": "To-do"
 }

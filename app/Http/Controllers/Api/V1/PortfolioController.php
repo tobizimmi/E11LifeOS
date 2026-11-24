@@ -29,7 +29,10 @@ class PortfolioController extends ApiController
             'symbol' => $row['position']->symbol,
             'name' => $row['position']->name ?: $row['security']?->name ?: $row['position']->symbol,
             'quantity' => $row['position']->quantity,
-            'avg_buy_price' => $row['position']->avg_buy_price,
+            'avg_buy_price' => $row['position']->effectiveBuyPrice(),
+            'manual' => (bool) $row['position']->manual,
+            'needs_cost' => $row['position']->needsManualCost(),
+            'cost_stale' => (bool) $row['position']->cost_basis_override_stale,
             'current_price' => $row['price'] ?? $row['position']->avg_buy_price,
             'current_value' => $row['value'],
             'cost_basis' => $row['cost'],
@@ -151,7 +154,19 @@ class PortfolioController extends ApiController
     public function updatePosition(Request $request, PortfolioPosition $position): JsonResponse
     {
         $this->authorizePosition($position);
-        $position->update($this->validatePosition($request, required: false));
+        $data = $this->validatePosition($request, required: false);
+
+        // Positions built from transactions keep their quantity; the purchase price can be corrected by hand
+        // (a persistent override that survives the next recalculation, plus optional purchase fees).
+        if (! $position->manual) {
+            $fees = (float) $request->validate(['fees' => ['nullable', 'numeric', 'min:0']])['fees'];
+            $price = array_key_exists('avg_buy_price', $data) && (float) $position->quantity > 0
+                ? round((float) $data['avg_buy_price'] + $fees / (float) $position->quantity, 4)
+                : $position->cost_basis_override;
+            $position->update(['notes' => $data['notes'] ?? $position->notes, 'cost_basis_override' => $price, 'cost_basis_override_stale' => false]);
+        } else {
+            $position->update($data);
+        }
 
         return $this->ok($this->positionData($position->fresh()));
     }
@@ -193,11 +208,13 @@ class PortfolioController extends ApiController
             'name' => $position->name,
             'isin' => $position->isin,
             'quantity' => (float) $position->quantity,
-            'avg_buy_price' => (float) $position->avg_buy_price,
+            'avg_buy_price' => $position->effectiveBuyPrice(),
             'currency' => $position->currency,
             'asset_type' => $position->asset_type,
             'notes' => $position->notes,
             'manual' => (bool) $position->manual,
+            'needs_cost' => $position->needsManualCost(),
+            'cost_stale' => (bool) $position->cost_basis_override_stale,
         ];
     }
 

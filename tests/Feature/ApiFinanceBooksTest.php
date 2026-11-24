@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Banking\BankSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Mockery;
 use Mockery\MockInterface;
 use RuntimeException;
@@ -125,6 +126,27 @@ class ApiFinanceBooksTest extends TestCase
         $this->deleteJson("/api/v1/shopping/notes/{$id}", [], $this->headersFor($stranger))->assertNotFound();
         $this->deleteJson("/api/v1/shopping/notes/{$id}", [], $headers)->assertOk();
         $this->assertSame(0, ShoppingList::defaultFor($household->id)->reminders()->count());
+    }
+
+    public function test_the_portfolio_overview_sums_up_all_depots(): void
+    {
+        Http::fake();
+        [$user] = $this->memberWithHousehold();
+        $a = Portfolio::create(['user_id' => $user->id, 'name' => 'Depot A', 'currency' => 'EUR']);
+        $b = Portfolio::create(['user_id' => $user->id, 'name' => 'Depot B', 'currency' => 'EUR']);
+        PortfolioPosition::create(['portfolio_id' => $a->id, 'symbol' => 'AAA', 'quantity' => 10, 'avg_buy_price' => 10, 'manual' => true]);
+        PortfolioPosition::create(['portfolio_id' => $b->id, 'symbol' => 'BBB', 'quantity' => 5, 'avg_buy_price' => 20, 'manual' => true]);
+        $headers = $this->headersFor($user);
+
+        $this->getJson('/api/v1/portfolio-overview?range=1m', $headers)->assertOk()
+            ->assertJsonPath('data.summary.count', 2)
+            ->assertJsonCount(2, 'data.depots')
+            ->assertJsonPath('data.depots.0.name', 'Depot A')
+            ->assertJsonCount(2, 'data.positions')
+            ->assertJsonStructure(['data' => ['chart', 'allocation', 'positions' => [['symbol', 'weight', 'portfolio']]]]);
+
+        [$stranger] = $this->memberWithHousehold();
+        $this->getJson('/api/v1/portfolio-overview', $this->headersFor($stranger))->assertOk()->assertJsonPath('data.summary.count', 0);
     }
 
     public function test_the_purchase_price_of_an_imported_position_can_be_corrected(): void

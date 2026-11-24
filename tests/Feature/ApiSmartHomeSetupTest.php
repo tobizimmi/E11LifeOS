@@ -94,4 +94,42 @@ class ApiSmartHomeSetupTest extends TestCase
         $this->postJson('/api/v1/smart-home/charging/1/limit', ['soc' => 90], $headers)->assertOk();
         Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/api/loadpoints/1/limitsoc/90'));
     }
+
+    public function test_dashboards_can_be_built_and_arranged(): void
+    {
+        [$owner, $household] = $this->memberWithHousehold();
+        $household->setAddon('smart_home', true);
+        $member = $this->addMemberTo($household);
+        $connection = SmartHomeConnection::create(['household_id' => $household->id, 'type' => 'homeassistant', 'name' => 'HA', 'url' => 'http://192.168.1.10:8123', 'token' => 't']);
+        $lamp = SmartHomeEntity::create(['household_id' => $household->id, 'smart_home_connection_id' => $connection->id, 'entity_id' => 'light.sofa', 'name' => 'Sofa', 'area' => 'Wohnzimmer', 'state' => 'on']);
+        SmartHomeEntity::create(['household_id' => $household->id, 'smart_home_connection_id' => $connection->id, 'entity_id' => 'light.tv', 'name' => 'TV', 'area' => 'Wohnzimmer', 'state' => 'off']);
+        $headers = $this->headersFor($owner);
+
+        $id = $this->postJson('/api/v1/smart-home/dashboards', ['name' => 'Wohnzimmer'], $headers)->assertCreated()->json('data.id');
+        $this->postJson("/api/v1/smart-home/dashboards/{$id}/cards", ['entity_id' => $lamp->id], $headers)->assertCreated();
+        $this->postJson("/api/v1/smart-home/dashboards/{$id}/cards", ['title' => 'Abends'], $headers)->assertCreated();
+        $this->postJson("/api/v1/smart-home/dashboards/{$id}/cards", ['area' => 'Wohnzimmer'], $headers)->assertCreated();
+        $this->postJson("/api/v1/smart-home/dashboards/{$id}/cards", ['area' => 'Keller'], $headers)->assertStatus(422);
+        $this->postJson("/api/v1/smart-home/dashboards/{$id}/cards", ['kind' => 'energy'], $headers)->assertCreated();
+
+        $show = $this->getJson("/api/v1/smart-home/dashboards/{$id}", $headers)->assertOk()->assertJsonPath('data.editable', true)->assertJsonPath('data.cards.0.device.name', 'Sofa');
+        $this->assertCount(6, $show->json('data.cards'));
+        $card = $show->json('data.cards.1.id');
+
+        $this->putJson("/api/v1/smart-home/cards/{$card}", ['title' => 'Am Abend', 'size' => 'full'], $headers)->assertOk();
+        $this->putJson("/api/v1/smart-home/cards/{$card}", ['size' => 'huge'], $headers)->assertStatus(422);
+        $this->postJson("/api/v1/smart-home/cards/{$card}/move", ['position' => 0], $headers)->assertOk();
+        $this->getJson("/api/v1/smart-home/dashboards/{$id}", $headers)->assertJsonPath('data.cards.0.title', 'Am Abend');
+        $this->deleteJson("/api/v1/smart-home/cards/{$card}", [], $headers)->assertOk();
+
+        // A member sees the shared dashboard but cannot change it.
+        $memberHeaders = $this->headersFor($member);
+        $this->getJson("/api/v1/smart-home/dashboards/{$id}", $memberHeaders)->assertOk()->assertJsonPath('data.editable', false);
+        $this->postJson("/api/v1/smart-home/dashboards/{$id}/cards", ['title' => 'X'], $memberHeaders)->assertForbidden();
+        $this->deleteJson("/api/v1/smart-home/dashboards/{$id}", [], $memberHeaders)->assertForbidden();
+
+        $this->putJson("/api/v1/smart-home/dashboards/{$id}", ['name' => 'Wohnen', 'personal' => true], $headers)->assertOk();
+        $this->getJson("/api/v1/smart-home/dashboards/{$id}", $memberHeaders)->assertNotFound();
+        $this->deleteJson("/api/v1/smart-home/dashboards/{$id}", [], $headers)->assertOk();
+    }
 }

@@ -11,6 +11,11 @@ Tailwind **v4** (kein `tailwind.config.js`, Auto-Content-Detection, `@source` in
   `main → Feature-Branch` zurückmergen. Feature-Branch nach jedem develop-Merge zurück-synchen.
 - CI-Status: `gh api repos/tobizimmi/E11LifeOS/commits/<sha>/check-runs`. Checks: `tests / tests`,
   `tests / tests-mysql`, `tests / security` (= composer/npm audit + **PHPStan/Larastan**).
+- **Deploy-Job (`.github/workflows/deploy.yml`)**: läuft nach grünen Tests auf dem Plesk-Server (SSH). Deploy-Zeit-
+  Artisan-Befehle nutzen das Server-Standard-PHP mit **128 MB memory_limit** → `backup:run` (Live-DB-Sicherung vor
+  Migrationen) und `app:install` (Migrationen) laufen daher mit `php -d memory_limit=-1`, sonst „Allowed memory size
+  exhausted" (DB wächst). Backup-Fehler **stoppt** den Deploy bewusst (kein Migrieren ohne Backup) – dann ist neuer
+  Code schon ausgerollt, aber Migrationen fehlen → Hotfix nötig. Laufzeit-PHP (pm2) = `/opt/plesk/php/8.4/bin/php`.
 - Version: oberster Eintrag in `CHANGELOG.md` ist die aktuelle Version (gelesen von `app/Support/AppVersion.php`).
   Jede nutzersichtbare Änderung bekommt einen CHANGELOG-Eintrag (deutsch, Abschnitt „Neu/Verbessert/Behoben (…)").
 - Commit-Footer: `Co-Authored-By: Claude …` + `Claude-Session: …` (siehe Session-Reminder). Committer-E-Mail muss

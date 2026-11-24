@@ -101,6 +101,15 @@ return [
         'tile_url' => env('MAPS_TILE_URL'),
     ],
 
+    // Push to the native iOS app (Apple developer account: Keys > Apple Push Notifications service).
+    'apns' => [
+        'key_id' => env('APNS_KEY_ID'),
+        'team_id' => env('APNS_TEAM_ID'),
+        'bundle_id' => env('APNS_BUNDLE_ID', 'de.e11lifeos.app'),
+        'key' => env('APNS_KEY'),
+        'key_path' => env('APNS_KEY_PATH'),
+    ],
+
     'webpush' => [
         'public_key' => env('VAPID_PUBLIC_KEY'),
         'private_key' => env('VAPID_PRIVATE_KEY'),

@@ -19,6 +19,84 @@ class PortfolioController extends ApiController
         return $this->ok($this->user()->portfolios()->get(['id', 'name', 'color', 'broker', 'description']));
     }
 
+    /**
+     * The overview over all portfolios (like the web start page): totals, value over time, every
+     * depot, the allocation by asset class and all positions with their weight.
+     */
+    public function overview(Request $request): JsonResponse
+    {
+        $range = (string) $request->query('range', '3m');
+        $from = match ($range) {
+            '1w' => now()->subWeek(),
+            '1m' => now()->subMonth(),
+            '1y' => now()->subYear(),
+            'max' => now()->subYears(50),
+            default => now()->subMonths(3),
+        };
+        $depots = Portfolio::where('user_id', $this->user()->id)->orderBy('id')->get();
+        $positions = PortfolioPosition::whereIn('portfolio_id', $depots->modelKeys())->get();
+        $rows = $this->valuation->rows($positions);
+        $summary = $this->valuation->summary($rows);
+
+        $perDepot = [];
+        foreach ($rows as $row) {
+            $perDepot[$row['position']->portfolio_id][] = $row;
+        }
+
+        $depotCards = [];
+        $names = [];
+        foreach ($depots as $depot) {
+            $names[$depot->id] = $depot->name;
+            $depotSummary = $this->valuation->summary($perDepot[$depot->id] ?? []);
+            $depotCards[] = [
+                'id' => $depot->id,
+                'name' => $depot->name,
+                'color' => $depot->color,
+                'value' => $depotSummary['value'],
+                'gain' => $depotSummary['gain'],
+                'gain_percent' => $depotSummary['gain_percent'],
+                'day_change' => $depotSummary['day_change'],
+                'count' => $depotSummary['count'],
+            ];
+        }
+
+        $classes = [];
+        foreach ($rows as $row) {
+            $type = (string) ($row['position']->asset_type ?: 'other');
+            $classes[$type] = ($classes[$type] ?? 0.0) + $row['value'];
+        }
+        arsort($classes);
+
+        return $this->ok([
+            'summary' => $summary,
+            'chart' => array_map(
+                fn (array $point) => ['date' => $point['at'], 'value' => $point['value'], 'cost' => $point['cost']],
+                $this->valuation->chart($depots->modelKeys(), $from, intraday: $range === '1w'),
+            ),
+            'depots' => $depotCards,
+            'allocation' => collect($classes)->map(fn (float $value, string $type) => [
+                'type' => $type,
+                'value' => round($value, 2),
+                'percent' => $summary['value'] > 0 ? round($value / $summary['value'] * 100, 1) : 0.0,
+            ])->values()->all(),
+            'positions' => array_map(fn (array $row) => [
+                'id' => $row['position']->id,
+                'portfolio_id' => $row['position']->portfolio_id,
+                'portfolio' => $names[$row['position']->portfolio_id] ?? '',
+                'symbol' => $row['position']->symbol,
+                'name' => $row['position']->name ?: $row['security']?->name ?: $row['position']->symbol,
+                'quantity' => $row['position']->quantity,
+                'price' => $row['price'],
+                'value' => $row['value'],
+                'gain' => $row['gain'],
+                'gain_percent' => $row['gain_percent'],
+                'day_change_percent' => $row['day_change_percent'],
+                'weight' => $row['weight'],
+                'needs_cost' => $row['position']->needsManualCost(),
+            ], $rows),
+        ]);
+    }
+
     public function positions(Portfolio $portfolio): JsonResponse
     {
         $this->authorizePortfolio($portfolio);

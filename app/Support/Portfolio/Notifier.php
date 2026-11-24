@@ -14,9 +14,9 @@ class Notifier
 {
     public function __construct(private WebPush $webPush, private Pushover $pushover) {}
 
-    public function send(User $user, string $title, string $body, ?string $url = null, bool $important = false): void
+    public function send(User $user, string $title, string $body, ?string $url = null, bool $important = false, ?string $category = null): void
     {
-        $this->webPush->send($user, $title, $body, $url, pushover: false);
+        $this->webPush->send($user, $title, $body, $url, pushover: false, category: $category);
         $this->pushover->send($user, $title, $body, $url, $important);
     }
 }

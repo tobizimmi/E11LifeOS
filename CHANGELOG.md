@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.179.1] – 2026-11-24
+
+### Sicherheit
+- Passkey-Bibliothek (`web-auth/webauthn-lib`) auf 5.3.17 aktualisiert; schließt mehrere gemeldete Lücken bei der Prüfung von Authenticator-Metadaten.
+
 ## [1.179.0] – 2026-11-24
 
 ### Neu (App-Schnittstelle – Bankabruf und Smart-Home-Dashboards)

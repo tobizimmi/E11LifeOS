@@ -62,6 +62,9 @@ class MailMessage extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<MailAccount, $this>
+     */
     public function account(): BelongsTo
     {
         return $this->belongsTo(MailAccount::class, 'mail_account_id');

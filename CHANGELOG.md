@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.177.0] – 2026-11-24
+
+### Neu (App-Schnittstelle – Mail komplett)
+- **Mail in der App wie im Web:** Ordner (Posteingang, Gesendet, Archiv …) und Konversationen, Suche über alle Ordner, HTML-Ansicht mit blockierten externen Bildern, Markieren (gelesen/ungelesen, Stern), Archivieren und Papierkorb direkt auf dem Mailserver, Wischen mit frei wählbaren Aktionen, Verfassen/Antworten/Weiterleiten mit Cc/Bcc, Anhängen, Signatur und Entwürfen, Anhänge öffnen oder ins Dokumentenarchiv, und Übernehmen als Aufgabe, Notiz, Eingang oder Einkaufsliste.
+
 ## [1.176.0] – 2026-11-24
 
 ### Neu (Benachrichtigungen – pro Thema einstellbar, Push in die App)

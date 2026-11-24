@@ -211,12 +211,14 @@ jobs:
 
             # Live: back up database and files before migrating (stops the deploy if the backup fails)
             # (skipped on a fresh installation without tables yet).
+            # The backup/migrate commands run under the server's default PHP (128 MB memory_limit),
+            # which the growing database dump exhausts – so lift the limit for these commands only.
             if [ "$DEPLOY_ENV" = live ] && php artisan migrate:status > /dev/null 2>&1; then
-              php artisan backup:run
+              php -d memory_limit=-1 artisan backup:run
             fi
 
             # Migrations, push keys and – on a fresh installation – the invite code for the first account
-            php artisan app:install --no-interaction
+            php -d memory_limit=-1 artisan app:install --no-interaction
 
             # The app sends live updates to the local Reverb process: tell it the port Reverb runs on.
             if grep -q '^REVERB_LOCAL_PORT=' .env; then

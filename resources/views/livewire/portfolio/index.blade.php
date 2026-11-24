@@ -282,6 +282,13 @@ new #[Layout('layouts.app')] class extends Component
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.index'])
 
+            @if (session('portfolioReconciled'))
+                <div class="flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100" role="status">
+                    <span aria-hidden="true">✅</span>
+                    <span>{{ session('portfolioReconciled') }}</span>
+                </div>
+            @endif
+
             @if ($portfolioList->isEmpty())
                 <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
                     <p class="text-4xl" aria-hidden="true">📈</p>

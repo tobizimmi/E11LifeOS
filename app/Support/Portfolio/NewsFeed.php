@@ -2,6 +2,7 @@
 
 namespace App\Support\Portfolio;
 
+use App\Enums\NotificationCategory;
 use App\Models\NewsArticle;
 use App\Models\PortfolioPosition;
 use App\Models\PortfolioSetting;
@@ -78,6 +79,7 @@ class NewsFeed
                 '📰 '.trans_choice(':count new headline about your securities|:count new headlines about your securities', $articles->count()),
                 $articles->take(3)->map(fn (NewsArticle $article) => '• '.$article->symbol.': '.mb_strimwidth($article->title, 0, 110, '…'))->implode("\n"),
                 route('portfolio.news', ['filter' => 'mine']),
+                category: NotificationCategory::Important->value,
             );
             $sent++;
         }

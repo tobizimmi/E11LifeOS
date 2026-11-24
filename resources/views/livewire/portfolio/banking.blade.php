@@ -260,13 +260,23 @@ new #[Layout('layouts.app')] class extends Component
     public function applyToPortfolio(int $connectionId, string $mode, BankSync $sync): void
     {
         $mode = $mode === 'replace' ? 'replace' : 'add';
+        $connection = $this->findConnection($connectionId);
 
         try {
-            $count = $sync->applyToPortfolio($this->findConnection($connectionId), $mode);
-            $this->dispatch('toast', message: trans_choice(':count position reconciled.|:count positions reconciled.', $count));
+            $count = $sync->applyToPortfolio($connection, $mode);
         } catch (RuntimeException $exception) {
             $this->addError('sync', $exception->getMessage());
+
+            return;
         }
+
+        // Jump straight into the portfolio so the member can check the holdings (and any that are
+        // marked ⚠ for a missing or to-be-checked purchase price) right away.
+        session()->flash('portfolioReconciled', trans_choice(
+            ':count position adopted from the bank. Check the holdings marked with ⚠ and enter their purchase price.|:count positions adopted from the bank. Check the holdings marked with ⚠ and enter their purchase price.',
+            $count,
+        ));
+        $this->redirect(route('portfolio.index', ['depot' => $connection->portfolio_id ?: 0]), navigate: true);
     }
 
     /**

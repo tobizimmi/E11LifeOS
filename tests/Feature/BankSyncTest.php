@@ -101,7 +101,8 @@ class BankSyncTest extends TestCase
         $page = Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->assertHasNoErrors()->assertSee('SAP SE');
         $this->assertSame(['success', 1], [$connection->fresh()->sync_status, $connection->depotPositions()->count()]);
 
-        $page->call('applyToPortfolio', $connection->id, 'add');
+        // The reconcile jumps straight into the linked portfolio so the member can check the holdings.
+        $page->call('applyToPortfolio', $connection->id, 'add')->assertRedirect(route('portfolio.index', ['depot' => $portfolio->id]));
         $transaction = $portfolio->transactions()->sole();
         $this->assertSame(['transfer_in', 'SAP.DE', 12.0, 98.5], [$transaction->type, $transaction->symbol, $transaction->quantity, $transaction->price]);
         $this->assertSame(12.0, $portfolio->positions()->sole()->quantity);

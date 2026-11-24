@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.174.0] – 2026-11-24
+
+### Verbessert (Depot & Benachrichtigungen)
+- **Nach dem Bankabgleich** springst du jetzt direkt ins betroffene Depot und siehst oben einen Hinweis, welche Positionen (⚠) noch einen Kaufkurs brauchen.
+- **Schlagzeilen zu deinen Aktien und Watchlist-Werten** erscheinen in den Benachrichtigungen jetzt unter **„Wichtig"** (statt „Allgemein").
+
 ## [1.173.0] – 2026-11-23
 
 ### Neu (Depot – Kaufkurs manuell setzen)

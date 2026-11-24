@@ -752,6 +752,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::post('portfolios/{portfolio}/transactions', [PortfolioWriteController::class, 'storeTransaction'])->whereNumber('portfolio')->name('portfolios.transactions.store');
             Route::put('transactions-portfolio/{transaction}', [PortfolioWriteController::class, 'updateTransaction'])->whereNumber('transaction')->name('portfolios.transactions.update');
             Route::delete('transactions-portfolio/{transaction}', [PortfolioWriteController::class, 'destroyTransaction'])->whereNumber('transaction')->name('portfolios.transactions.destroy');
+            Route::get('portfolio-overview', [PortfolioController::class, 'overview'])->middleware('throttle:api-30')->name('portfolios.overview');
             Route::get('portfolios/{portfolio}/positions', [PortfolioController::class, 'positions'])->name('portfolios.positions');
             Route::post('portfolios/{portfolio}/positions', [PortfolioController::class, 'storePosition'])->name('portfolios.positions.store');
             Route::put('positions/{position}', [PortfolioController::class, 'updatePosition'])->whereNumber('position')->name('positions.update');

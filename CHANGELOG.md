@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.180.0] – 2026-11-24
+
+### Neu (App-Schnittstelle – Portfolio-Übersicht)
+- **Gesamt-Übersicht aller Depots** für die App: Summen, Wertverlauf, jedes Depot, Verteilung nach Anlageklasse und alle Positionen mit Gewicht.
+
 ## [1.179.1] – 2026-11-24
 
 ### Sicherheit

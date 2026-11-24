@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Models\BankAccount;
 use App\Models\FinanceBudget;
 use App\Models\Household;
 use App\Models\Transaction;
 use App\Support\AiException;
 use App\Support\Finance\FinanceAi;
+use App\Support\Finance\FinanceCategories;
 use App\Support\Finance\FinancePeriod;
 use App\Support\Finance\FinanceReport;
 use App\Support\Finance\TaxCategories;
 use App\Support\Finance\TaxYear;
+use App\Support\Finance\TransactionReview;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,22 +26,51 @@ use Illuminate\Validation\ValidationException;
  */
 class FinanceInsightsController extends ApiController
 {
+    /**
+     * The report: a preset or free period, optionally compared with the one before, with the toggles for
+     * transfers and savings, a category drill-down and an account filter, plus the transfers and duplicates
+     * waiting for review.
+     */
     public function report(Request $request): JsonResponse
     {
         $period = $this->period($request);
-        $report = $this->buildReport($period);
+        [$from, $to] = FinancePeriod::range($period, $request->query('from'), $request->query('to'));
+        $options = $this->options($request);
+        $report = $this->buildReport($request);
+        $comparison = null;
+        $deltas = [];
+
+        if ($request->boolean('compare')) {
+            [$prevFrom, $prevTo] = FinancePeriod::previousRange($from, $to);
+            $previous = FinanceReport::build($this->reportQuery($request, $prevFrom, $prevTo)->get(), $prevFrom, $prevTo, $options);
+            $comparison = ['from' => $prevFrom->toDateString(), 'to' => $prevTo->toDateString()];
+            $deltas = [
+                ['key' => 'income', 'label' => __('Income'), 'delta' => round((float) $report['income'] - (float) $previous['income'], 2), 'higher_better' => true],
+                ['key' => 'expenses', 'label' => __('Expenses'), 'delta' => round((float) $report['expenses'] - (float) $previous['expenses'], 2), 'higher_better' => false],
+                ['key' => 'balance', 'label' => __('Left over'), 'delta' => round((float) $report['balance'] - (float) $previous['balance'], 2), 'higher_better' => true],
+            ];
+        }
+
+        $review = app(TransactionReview::class);
+        $household = $this->household();
 
         return $this->ok([
             'period' => $period,
             'periods' => collect(FinancePeriod::options())->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])->values()->all(),
             'ai' => FinanceAi::isConfigured(),
+            'categories' => collect(FinanceCategories::all())->reject(fn (array $category): bool => in_array($category['group'], ['income', 'transfer'], true))->map(fn (array $category, string $key): array => ['key' => $key, 'label' => $category['label'], 'icon' => $category['icon']])->values()->all(),
+            'accounts' => BankAccount::where('user_id', $this->user()->id)->where('household_id', $household->id)->orderBy('name')->get(['id', 'name'])->map(fn (BankAccount $account): array => ['id' => $account->id, 'name' => $account->name])->all(),
+            'comparison' => $comparison,
+            'deltas' => $deltas,
             'report' => $this->presentReport($report),
+            'transfers' => collect($review->transfers($this->user(), $household->id))->map(fn (array $pair): array => ['out' => $this->bookingData($pair['out']), 'in' => $this->bookingData($pair['in'])])->all(),
+            'duplicates' => collect($review->duplicates($this->user(), $household->id))->map(fn (array $pair): array => ['keep' => $this->bookingData($pair['keep']), 'duplicate' => $this->bookingData($pair['duplicate'])])->all(),
         ]);
     }
 
     public function advice(Request $request, FinanceAi $ai): JsonResponse
     {
-        $report = $this->buildReport($this->period($request));
+        $report = $this->buildReport($request);
         if ($report['count'] === 0) {
             throw ValidationException::withMessages(['period' => __('No bookings in this period.')]);
         }
@@ -148,11 +181,34 @@ class FinanceInsightsController extends ApiController
     /**
      * @return array<string, mixed>
      */
-    private function buildReport(string $period): array
+    private function buildReport(Request $request): array
     {
-        [$from, $to] = FinancePeriod::range($period);
+        [$from, $to] = FinancePeriod::range($this->period($request), $request->query('from'), $request->query('to'));
 
-        return FinanceReport::build(FinancePeriod::query($this->user(), $this->household()->id, $period)->get(), $from, $to);
+        return FinanceReport::build($this->reportQuery($request, $from, $to)->get(), $from, $to, $this->options($request));
+    }
+
+    /**
+     * @return array{includeTransfers: bool, includeSavings: bool}
+     */
+    private function options(Request $request): array
+    {
+        return ['includeTransfers' => $request->boolean('transfers'), 'includeSavings' => $request->boolean('savings')];
+    }
+
+    /**
+     * The bookings behind the report: period, account and (optionally) one category.
+     *
+     * @return Builder<Transaction>
+     */
+    private function reportQuery(Request $request, Carbon $from, Carbon $to): Builder
+    {
+        $account = (int) $request->query('account', 0);
+        $category = (string) $request->query('category', '');
+
+        return FinancePeriod::queryFor($this->user(), $this->household()->id, $from, $to, $account > 0 ? $account : null)
+            ->with('account')
+            ->when($category !== '' && FinanceCategories::exists($category), fn (Builder $query) => $query->where('category', $category));
     }
 
     /**
@@ -173,7 +229,7 @@ class FinanceInsightsController extends ApiController
     {
         $period = (string) $request->query('period', $request->input('period', FinancePeriod::DEFAULT));
 
-        return array_key_exists($period, FinancePeriod::options()) ? $period : FinancePeriod::DEFAULT;
+        return $period === FinancePeriod::CUSTOM || array_key_exists($period, FinancePeriod::options()) ? $period : FinancePeriod::DEFAULT;
     }
 
     private function year(Request $request): int

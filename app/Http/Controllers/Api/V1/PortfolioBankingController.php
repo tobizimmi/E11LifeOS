@@ -6,9 +6,12 @@ use App\Models\BankConnection;
 use App\Models\BankLink;
 use App\Support\Banking\BankAlerts;
 use App\Support\Banking\BankLinkSync;
+use App\Support\Banking\BankSync;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -109,6 +112,24 @@ class PortfolioBankingController extends ApiController
     /**
      * Switches whether bookings or holdings of a FinTS account are fetched.
      */
+    /**
+     * Takes the holdings last fetched from the bank into the linked portfolio: "add" adjusts the quantities the
+     * bank reports, "replace" also books out positions the bank no longer lists.
+     */
+    public function applyToPortfolio(Request $request, int $connection, BankSync $sync): JsonResponse
+    {
+        $data = $request->validate(['mode' => ['required', 'in:add,replace']]);
+        $model = BankConnection::where('user_id', $this->user()->id)->findOrFail($connection);
+
+        try {
+            $count = $sync->applyToPortfolio($model, $data['mode']);
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['mode' => $exception->getMessage()]);
+        }
+
+        return $this->ok(['adopted' => $count, 'portfolio_id' => $model->portfolio_id]);
+    }
+
     public function toggleAccount(Request $request, int $connection): JsonResponse
     {
         $data = $request->validate(['number' => ['required', 'string', 'max:60'], 'field' => ['required', 'in:use_bookings,use_holdings']]);

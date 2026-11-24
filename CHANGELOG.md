@@ -3,6 +3,41 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.176.0] – 2026-11-24
+
+### Neu (Benachrichtigungen – pro Thema einstellbar, Push in die App)
+- **Pro Thema festlegen, wie du benachrichtigt wirst:** Für Mail, Aufgaben & Kalender, Einkauf, Finanzen, Portfolio, Zuhause, Gesundheit, Familie & Reisen, Dokumente, Notfallordner und Sonstiges: **Push + Mitteilung**, **nur Mitteilung** (Glocke) oder **aus**. Das Thema ergibt sich aus dem Bereich, auf den die Benachrichtigung verweist. Der Notfallordner lässt sich nicht ganz abschalten.
+- **Push auf das iPhone (App):** Die App registriert ihr Gerät, der Server schickt Benachrichtigungen über Apples Push-Dienst (APNs; Schlüssel in `.env`: `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY` oder `APNS_KEY_PATH`, `APNS_BUNDLE_ID`). Ruhezeiten gelten auch hier.
+- **API:** `GET/PUT /notification-settings`, Geräte unter `/push/devices`, Testpush unter `/push/test`.
+
+## [1.175.0] – 2026-11-24
+
+### Neu (Depot-Übersicht – Einblicke & Empfehlungen)
+- Auf der Depot-Übersicht gibt es jetzt einen **auf-/zuklappbaren Block „💡 Einblicke & Empfehlungen"** (standardmäßig eingeklappt, damit die Übersicht aufgeräumt bleibt – der zuletzt gewählte Zustand wird gemerkt). Er bündelt vier Dinge:
+  - **🔎 Top-Empfehlungen** (Kaufkandidaten aus der täglichen Analyse, mit Score, klickbar),
+  - **📰 Aktuelle Schlagzeilen** zu deinen Depot- und Watchlist-Werten,
+  - **🎯 Strategie-To-dos** (Nachkauf-Tranchen, Verkaufssignale, Klumpenrisiko),
+  - **🎥 Aktuelle Markteinschätzung** – die wichtigsten Punkte aus dem zuletzt analysierten Video (Heiko Thieme / Instagram), inkl. „was zu tun ist".
+
+## [1.174.0] – 2026-11-24
+
+### Verbessert (Depot & Benachrichtigungen)
+- **Nach dem Bankabgleich** springst du jetzt direkt ins betroffene Depot und siehst oben einen Hinweis, welche Positionen (⚠) noch einen Kaufkurs brauchen.
+- **Schlagzeilen zu deinen Aktien und Watchlist-Werten** erscheinen in den Benachrichtigungen jetzt unter **„Wichtig"** (statt „Allgemein").
+
+## [1.173.0] – 2026-11-23
+
+### Neu (Depot – Kaufkurs manuell setzen)
+- Importierte Depot-Positionen lassen sich jetzt mit einem **manuellen Kaufkurs** versehen. Liefert die Bank keinen verlässlichen Einstandskurs, wird die Position mit **„⚠ Kaufkurs setzen"** markiert; über den Stift trägst du deinen echten Kaufpreis (plus optionale Gebühren) ein. Der Gewinn/Verlust stimmt damit sofort.
+- Der manuelle Kaufkurs **bleibt beim nächsten Bankabgleich erhalten** (er wird nicht mehr vom Import überschrieben). Leeres Feld = wieder den Importwert verwenden.
+- **Ändert sich beim Import die Stückzahl** einer Position mit manuellem Kaufkurs, wird sie mit **„⚠ Kaufkurs prüfen"** markiert und du bekommst eine **Benachrichtigung (Kategorie „Wichtig") mit Link ins Depot**, um den Kaufkurs bei Bedarf neu einzutragen – denn der Durchschnitts-Kaufwert ändert sich dann ja.
+
+## [1.172.0] – 2026-11-23
+
+### Neu (Benachrichtigungen – getrennte Kategorien)
+- Benachrichtigungen haben jetzt **Kategorien**: **📬 Mails**, **❗ Wichtig** und 🔔 Allgemein. Neue-Mail-Hinweise laufen in einer eigenen Spur und werden **nicht mehr mit den übrigen Benachrichtigungen vermischt** – auf dem Handy erscheinen Mail-Sammelmeldungen getrennt von den anderen (jede Spur mit drei oder mehr Wartenden wird zu einer eigenen Sammelmeldung mit eigenem Hinweis). Dringende Hinweise (z. B. Medikamente, zeitgenaue Erinnerungen) landen in **Wichtig**, der Rest in Allgemein.
+- Im **Benachrichtigungs-Center** lässt sich jetzt oben nach **Alle / 📬 Mails / ❗ Wichtig** filtern; jede Zeile zeigt ihre Kategorie an.
+
 ## [1.171.1] – 2026-11-23
 
 ### Behoben (Depot – unrealistischer Gewinn nach Bank-Import)

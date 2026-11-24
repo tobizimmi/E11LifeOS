@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\NotificationCategory;
 use App\Models\Collection;
 use App\Models\Item;
 use App\Models\PortfolioSetting;
@@ -100,6 +101,42 @@ class PushNotificationsTest extends TestCase
         $this->assertSame([self::ENDPOINT], PushSubscription::pluck('endpoint')->all());
         $this->assertNotNull($device->fresh()->last_success_at);
         $this->assertNotNull(PushMessage::where('title', 'Hallo')->sole()->delivered_at);
+    }
+
+    public function test_mail_urgent_and_other_pushes_each_use_their_own_lane(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        PushSubscription::factory()->for($user)->create(['endpoint' => self::ENDPOINT, 'public_key' => null, 'auth_token' => null]);
+        Http::fake(['fcm.googleapis.com/*' => Http::response('', 201)]);
+
+        app(WebPush::class)->send($user, '📬 1 neue Mail', 'Absender: Betreff', route('mail.index'), category: NotificationCategory::Mail->value);
+        app(WebPush::class)->send($user, '💊 Ibuprofen', 'Jetzt', urgent: true);
+        app(WebPush::class)->send($user, 'Info', 'Text');
+
+        $this->assertSame('mail', PushMessage::where('title', '📬 1 neue Mail')->sole()->category);
+        $this->assertSame('important', PushMessage::where('title', '💊 Ibuprofen')->sole()->category);
+        $this->assertSame('general', PushMessage::where('title', 'Info')->sole()->category);
+
+        $lanes = $user->notifications()->get()->map(fn ($notification) => $notification->data['category'])->sort()->values()->all();
+        $this->assertSame(['general', 'important', 'mail'], $lanes);
+    }
+
+    public function test_waiting_messages_are_bundled_into_a_separate_summary_per_lane(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $user->forceFill(['push_bundle' => true])->save();
+
+        foreach (range(1, 3) as $index) {
+            PushMessage::create(['user_id' => $user->id, 'category' => 'mail', 'title' => "Mail $index", 'body' => 'x']);
+            PushMessage::create(['user_id' => $user->id, 'category' => 'general', 'title' => "Info $index", 'body' => 'x']);
+        }
+
+        $shown = WebPush::present($user, PushMessage::where('user_id', $user->id)->get());
+
+        $this->assertSame(['e11-bundle-general', 'e11-bundle-mail'], collect($shown)->pluck('tag')->sort()->values()->all());
+        $mail = collect($shown)->firstWhere('tag', 'e11-bundle-mail');
+        $this->assertSame(route('mail.index'), $mail['url']);
+        $this->assertStringContainsString('• Mail 1', $mail['body']);
     }
 
     public function test_the_encryption_matches_the_rfc_8291_example(): void

@@ -2,9 +2,13 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
+use App\Models\InstagramPost;
+use App\Models\NewsArticle;
 use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
+use App\Models\PortfolioRecommendation;
 use App\Support\Portfolio\Positions;
+use App\Support\Portfolio\StrategyCoach;
 use App\Support\Portfolio\Valuation;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -40,13 +44,45 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $positionForm = [];
 
+    /** Whether the "Insights & recommendations" panel is expanded (remembered per member). */
+    public bool $insightsOpen = false;
+
     public function mount(): void
     {
         $this->resolveHousehold();
+        $this->insightsOpen = (bool) session('portfolio_insights_open', false);
 
         if ($this->portfolioId && ! $this->portfolios()->whereKey($this->portfolioId)->exists()) {
             $this->portfolioId = 0;
         }
+    }
+
+    /**
+     * Shows or hides the insights panel; the heavy data is only gathered while it is open.
+     */
+    public function toggleInsights(): void
+    {
+        $this->insightsOpen = ! $this->insightsOpen;
+        session(['portfolio_insights_open' => $this->insightsOpen]);
+    }
+
+    /**
+     * Top buy recommendations, fresh headlines on the member's securities, strategy to-dos and the
+     * latest market take (from the analysed Instagram/Heiko-Thieme posts) for the overview panel.
+     *
+     * @return array{recommendations: \Illuminate\Database\Eloquent\Collection<int, PortfolioRecommendation>, headlines: \Illuminate\Database\Eloquent\Collection<int, NewsArticle>, signals: list<array<string, mixed>>, marketTake: ?InstagramPost}
+     */
+    private function insights(Valuation $valuation): array
+    {
+        $symbols = PortfolioPosition::whereIn('portfolio_id', $this->portfolios()->select('id'))->pluck('symbol')
+            ->merge($this->watchlist()->pluck('symbol'))->filter()->unique()->values();
+
+        return [
+            'recommendations' => PortfolioRecommendation::where('user_id', $this->currentUser()->id)->orderByDesc('score')->limit(5)->get(),
+            'headlines' => NewsArticle::whereNotNull('symbol')->whereIn('symbol', $symbols->all())->orderByDesc('published_at')->limit(6)->get(),
+            'signals' => array_slice(StrategyCoach::forUser($this->currentUser(), $valuation)['signals'], 0, 6),
+            'marketTake' => InstagramPost::whereNotNull('analyzed_at')->where('summary', '!=', '')->orderByDesc('published_at')->first(),
+        ];
     }
 
     public function refreshPrices(Valuation $valuation): void
@@ -134,7 +170,7 @@ new #[Layout('layouts.app')] class extends Component
             'symbol' => $position->symbol,
             'name' => $position->name,
             'quantity' => $number($position->quantity),
-            'avg_buy_price' => $number($position->avg_buy_price),
+            'avg_buy_price' => $number($position->cost_basis_override ?? $position->avg_buy_price),
             'fees' => '',
             'labels' => implode(', ', $position->labels ?? []),
             'notes' => (string) $position->notes,
@@ -173,9 +209,17 @@ new #[Layout('layouts.app')] class extends Component
             'take_profit_price' => $data['take_profit_price'] !== '' ? (float) $data['take_profit_price'] : null,
         ];
 
-        // Positions from transactions only take the extras; quantity and price follow the transactions.
+        // Positions from transactions only take the extras; quantity follows the transactions. The
+        // purchase price, however, can be corrected by hand (a persistent override), because an
+        // import often delivers no reliable one – the override survives the next recalculation.
         if ($position && ! $position->manual) {
-            $position->update($attributes);
+            $position->update($attributes + [
+                'cost_basis_override' => $data['avg_buy_price'] !== '' && (float) $position->quantity > 0
+                    ? round((float) $data['avg_buy_price'] + (float) ($data['fees'] ?: 0) / (float) $position->quantity, 4)
+                    : null,
+                // The member has just reviewed the purchase price, so clear the "please check" flag.
+                'cost_basis_override_stale' => false,
+            ]);
         } else {
             if (! $position && $portfolio->positions()->where('symbol', $data['symbol'])->exists()) {
                 $this->addError('positionForm.symbol', __('This security is already in the portfolio – add a transaction instead.'));
@@ -251,6 +295,7 @@ new #[Layout('layouts.app')] class extends Component
             'summary' => $valuation->summary($rows),
             'chart' => $chart,
             'perPortfolio' => $this->portfolioId ? [] : collect($rows)->groupBy(fn (array $row) => $row['position']->portfolio_id)->map(fn ($group) => $valuation->summary($group->all()))->all(),
+            'insights' => $this->insightsOpen && $portfolios->isNotEmpty() ? $this->insights($valuation) : null,
         ];
     }
 }; ?>
@@ -273,6 +318,13 @@ new #[Layout('layouts.app')] class extends Component
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
             @include('portfolio.partials.nav', ['active' => 'portfolio.index'])
+
+            @if (session('portfolioReconciled'))
+                <div class="flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-100" role="status">
+                    <span aria-hidden="true">✅</span>
+                    <span>{{ session('portfolioReconciled') }}</span>
+                </div>
+            @endif
 
             @if ($portfolioList->isEmpty())
                 <div class="rounded-2xl bg-white p-8 text-center shadow-xs dark:bg-gray-800">
@@ -299,6 +351,23 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                         <button type="button" wire:click="refreshPrices" wire:loading.attr="disabled" class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800"><span wire:loading.remove wire:target="refreshPrices">↻</span><span wire:loading wire:target="refreshPrices">…</span> {{ __('Update prices') }}</button>
                     </div>
+                </div>
+
+                {{-- Insights & recommendations: collapsible so the overview stays tidy. --}}
+                <div class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
+                    <button type="button" wire:click="toggleInsights" class="flex w-full items-center justify-between gap-2 px-4 py-3 text-start" aria-expanded="{{ $insightsOpen ? 'true' : 'false' }}">
+                        <span class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Insights & recommendations') }}</span>
+                        <span class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                            <span wire:loading wire:target="toggleInsights">…</span>
+                            <span>{{ $insightsOpen ? __('Hide') : __('Show') }}</span>
+                            <span aria-hidden="true" class="text-xs">{{ $insightsOpen ? '▲' : '▼' }}</span>
+                        </span>
+                    </button>
+                    @if ($insightsOpen && $insights)
+                        <div class="border-t border-gray-100 p-4 dark:border-gray-700">
+                            @include('portfolio.partials.insights', ['insights' => $insights])
+                        </div>
+                    @endif
                 </div>
 
                 {{-- KPIs --}}
@@ -404,6 +473,13 @@ new #[Layout('layouts.app')] class extends Component
                                                         @elseif ($row['price'] !== null && $position->take_profit_price && $row['price'] >= $position->take_profit_price)
                                                             <span class="rounded-sm bg-emerald-100 px-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">🎯 {{ __('Target reached') }}</span>
                                                         @endif
+                                                        @if ($position->overrideNeedsReview())
+                                                            <span class="rounded-sm bg-amber-100 px-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title="{{ __('The quantity changed on the last import – check the purchase price.') }}">⚠ {{ __('Check purchase price') }}</span>
+                                                        @elseif ($position->needsManualCost())
+                                                            <span class="rounded-sm bg-amber-100 px-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title="{{ __('No reliable purchase price from the import – tap the pencil to enter it.') }}">⚠ {{ __('Set purchase price') }}</span>
+                                                        @elseif ($position->cost_basis_override !== null)
+                                                            <span class="rounded-sm bg-gray-100 px-1 text-gray-600 dark:bg-gray-700 dark:text-gray-300" title="{{ __('Purchase price entered by hand') }}">✎ {{ __('man. cost') }}</span>
+                                                        @endif
                                                     </span>
                                                 </a>
                                             </td>
@@ -472,7 +548,24 @@ new #[Layout('layouts.app')] class extends Component
 
             <form id="position-form" wire:submit="savePosition" class="grid gap-4 sm:grid-cols-2">
                 @if ($editingPosition && ! $editingPosition->manual)
-                    <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:col-span-2 dark:bg-sky-900/30 dark:text-sky-100">{{ __('Quantity and purchase price come from the transactions. Here you can add labels, notes and price marks.') }}</p>
+                    @if ($editingPosition->overrideNeedsReview())
+                        <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-900/30 dark:text-amber-100">⚠️ {{ __('The quantity changed on the last import, so your purchase price may no longer fit. Please check it and re-enter it if needed.') }}</p>
+                    @elseif ($editingPosition->needsManualCost())
+                        <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2 dark:bg-amber-900/30 dark:text-amber-100">⚠️ {{ __('The bank delivered no reliable purchase price for this holding, so the current price is used and no gain is shown. Enter your real purchase price below.') }}</p>
+                    @else
+                        <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:col-span-2 dark:bg-sky-900/30 dark:text-sky-100">{{ __('Quantity comes from the transactions. You can correct the purchase price by hand here (it is kept on the next sync) and add labels, notes and price marks.') }}</p>
+                    @endif
+                    <div class="sm:col-span-2">
+                        <x-input-label for="position-cost-override" :value="__('Purchase price per share (€)')" />
+                        <x-text-input id="position-cost-override" wire:model="positionForm.avg_buy_price" inputmode="decimal" class="mt-1 block w-full" placeholder="{{ __('e.g. 479,16') }}" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Leave empty to keep the value from the import. Order fees are added on top.') }}</p>
+                        <x-input-error :messages="$errors->get('positionForm.avg_buy_price')" class="mt-1" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <x-input-label for="position-cost-fees" :value="__('Purchase fees (€)')" />
+                        <x-text-input id="position-cost-fees" wire:model="positionForm.fees" inputmode="decimal" class="mt-1 block w-full" placeholder="0" />
+                        <x-input-error :messages="$errors->get('positionForm.fees')" class="mt-1" />
+                    </div>
                 @else
                     <p class="text-sm text-gray-600 sm:col-span-2 dark:text-gray-400">{{ __('For holdings without transaction history. Better: add a purchase as transaction – then gains, dividends and taxes can be calculated.') }}</p>
                     <div>

@@ -2245,6 +2245,12 @@ parameters:
 			path: app/Support/Portfolio/Positions.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cost_estimated\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Portfolio/Positions.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
 			identifier: property.notFound
 			count: 1

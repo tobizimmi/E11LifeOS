@@ -23,7 +23,7 @@ class Positions
 
         foreach ($transactions as $transaction) {
             $symbol = $transaction->symbol;
-            $holdings[$symbol] ??= ['quantity' => 0.0, 'cost' => 0.0, 'name' => $transaction->name, 'isin' => $transaction->isin, 'currency' => 'EUR'];
+            $holdings[$symbol] ??= ['quantity' => 0.0, 'cost' => 0.0, 'name' => $transaction->name, 'isin' => $transaction->isin, 'currency' => 'EUR', 'estimated' => false];
             $holding = &$holdings[$symbol];
             $holding['name'] = $transaction->name ?: $holding['name'];
             $holding['isin'] = $transaction->isin ?: $holding['isin'];
@@ -39,6 +39,10 @@ class Positions
                 case 'transfer_in':
                     $holding['cost'] += ($transaction->quantity * $transaction->price + $transaction->fees) / $rate;
                     $holding['quantity'] += $transaction->quantity;
+
+                    if ($transaction->cost_estimated) {
+                        $holding['estimated'] = true;
+                    }
                     break;
                 case 'sell':
                 case 'transfer_out':
@@ -77,6 +81,7 @@ class Positions
                     'isin' => $holding['isin'] ?: $position->isin,
                     'quantity' => round($holding['quantity'], 6),
                     'avg_buy_price' => round($holding['cost'] / $holding['quantity'], 4),
+                    'cost_basis_estimated' => $holding['estimated'],
                     'currency' => $holding['currency'],
                     'manual' => false,
                 ])->save();

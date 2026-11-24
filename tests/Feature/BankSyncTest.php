@@ -101,7 +101,8 @@ class BankSyncTest extends TestCase
         $page = Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->assertHasNoErrors()->assertSee('SAP SE');
         $this->assertSame(['success', 1], [$connection->fresh()->sync_status, $connection->depotPositions()->count()]);
 
-        $page->call('applyToPortfolio', $connection->id, 'add');
+        // The reconcile jumps straight into the linked portfolio so the member can check the holdings.
+        $page->call('applyToPortfolio', $connection->id, 'add')->assertRedirect(route('portfolio.index', ['depot' => $portfolio->id]));
         $transaction = $portfolio->transactions()->sole();
         $this->assertSame(['transfer_in', 'SAP.DE', 12.0, 98.5], [$transaction->type, $transaction->symbol, $transaction->quantity, $transaction->price]);
         $this->assertSame(12.0, $portfolio->positions()->sole()->quantity);
@@ -127,7 +128,12 @@ class BankSyncTest extends TestCase
 
         $transaction = $portfolio->transactions()->sole();
         $this->assertSame(532.40, $transaction->price);
-        $this->assertSame(532.40, (float) $portfolio->positions()->sole()->avg_buy_price);
+        $this->assertTrue($transaction->cost_estimated);
+        $position = $portfolio->positions()->sole();
+        $this->assertSame(532.40, (float) $position->avg_buy_price);
+        // The holding is flagged so the UI can ask for the real purchase price.
+        $this->assertTrue($position->cost_basis_estimated);
+        $this->assertTrue($position->needsManualCost());
     }
 
     public function test_a_missing_bank_acquisition_price_uses_the_current_unit_value(): void
@@ -146,6 +152,38 @@ class BankSyncTest extends TestCase
         Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->call('applyToPortfolio', $connection->id, 'add');
 
         $this->assertSame(532.40, (float) $portfolio->transactions()->sole()->price);
+    }
+
+    public function test_a_changed_quantity_flags_a_hand_entered_purchase_price_for_review_and_notifies(): void
+    {
+        [$user, $household] = $this->owner();
+        $portfolio = Portfolio::factory()->for($user)->create(['name' => 'DKB-Depot']);
+        $connection = $this->connection($user, $household, ['pin' => '1111', 'portfolio_id' => $portfolio->id]);
+        Security::factory()->create(['symbol' => 'SAP.DE', 'name' => 'SAP SE', 'isin' => 'DE0007164600', 'price_updated_at' => now()]);
+
+        // A holding of 10 with a hand-entered purchase price the member set earlier.
+        $portfolio->transactions()->create(['symbol' => 'SAP.DE', 'name' => 'SAP SE', 'isin' => 'DE0007164600', 'type' => 'transfer_in', 'quantity' => 10, 'price' => 100, 'currency' => 'EUR', 'executed_on' => '2026-01-10', 'import_source' => 'fints']);
+        Positions::recalculate($portfolio);
+        $portfolio->positions()->where('symbol', 'SAP.DE')->update(['cost_basis_override' => 95.0]);
+
+        // The bank now reports 15 shares – the quantity changed.
+        $this->mock(FinTsClient::class, fn (MockInterface $mock) => $mock->shouldReceive('start')->once()->andReturn([
+            'status' => 'done', 'accounts' => [], 'errors' => [],
+            'holdings' => [['isin' => 'DE0007164600', 'wkn' => '716460', 'name' => 'SAP SE', 'quantity' => 15.0, 'acquisition_price' => 100.0, 'price' => 120.0, 'value' => 1800.0, 'currency' => 'EUR', 'price_date' => '2026-09-25']],
+        ]));
+
+        Volt::test('portfolio.banking')->call('sync', $connection->id, 'depot')->call('applyToPortfolio', $connection->id, 'add');
+
+        $position = $portfolio->positions()->where('symbol', 'SAP.DE')->sole();
+        $this->assertSame(15.0, (float) $position->quantity);
+        $this->assertSame(95.0, (float) $position->cost_basis_override);
+        $this->assertTrue($position->overrideNeedsReview());
+
+        // The member is notified (in the bell) with a link to the portfolio.
+        $notification = $user->notifications()->sole();
+        $this->assertSame(route('portfolio.index'), $notification->data['url']);
+        $this->assertSame('important', $notification->data['category']);
+        $this->assertStringContainsString('SAP SE', $notification->data['body']);
     }
 
     public function test_replace_mode_books_out_positions_the_bank_no_longer_reports(): void

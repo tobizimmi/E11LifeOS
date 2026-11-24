@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\NotificationCategory;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -11,6 +12,9 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.app')] class extends Component
 {
     public bool $unreadOnly = false;
+
+    /** The lane to filter by (see {@see NotificationCategory}); "" shows every lane. */
+    public string $category = '';
 
     private function find(string $id): DatabaseNotification
     {
@@ -55,6 +59,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $notifications = Auth::user()->notifications()
             ->when($this->unreadOnly, fn ($query) => $query->whereNull('read_at'))
+            ->when($this->category !== '', fn ($query) => $query->where('data->category', $this->category))
             ->limit(100)->get();
 
         return [
@@ -66,6 +71,7 @@ new #[Layout('layouts.app')] class extends Component
             }),
             'unreadCount' => Auth::user()->unreadNotifications()->count(),
             'hasRead' => Auth::user()->readNotifications()->exists(),
+            'lanes' => [NotificationCategory::Mail, NotificationCategory::Important],
         ];
     }
 }; ?>
@@ -90,6 +96,13 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
+            <div class="inline-flex flex-wrap gap-1 rounded-lg bg-white p-0.5 text-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700" role="group" aria-label="{{ __('Filter by category') }}">
+                <button type="button" wire:click="$set('category', '')" aria-pressed="{{ $category === '' ? 'true' : 'false' }}" @class(['rounded-md px-3 py-1', 'bg-indigo-600 text-white' => $category === '', 'text-gray-600 dark:text-gray-300' => $category !== ''])>{{ __('All') }}</button>
+                @foreach ($lanes as $lane)
+                    <button type="button" wire:click="$set('category', '{{ $lane->value }}')" aria-pressed="{{ $category === $lane->value ? 'true' : 'false' }}" @class(['rounded-md px-3 py-1', 'bg-indigo-600 text-white' => $category === $lane->value, 'text-gray-600 dark:text-gray-300' => $category !== $lane->value])>{{ $lane->icon() }} {{ $lane->label() }}</button>
+                @endforeach
+            </div>
+
             @forelse ($groups as $label => $notifications)
                 <section wire:key="notification-group-{{ $loop->index }}">
                     <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }}</h3>
@@ -102,7 +115,11 @@ new #[Layout('layouts.app')] class extends Component
                                     @if (filled($notification->data['body'] ?? null))
                                         <span class="mt-0.5 block whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">{{ \Illuminate\Support\Str::limit($notification->data['body'], 300) }}</span>
                                     @endif
-                                    <span class="mt-1 block text-xs text-gray-400" title="{{ $notification->created_at->format('d.m.Y H:i') }}">{{ $notification->created_at->diffForHumans() }}</span>
+                                    @php($lane = \App\Enums\NotificationCategory::fromValue($notification->data['category'] ?? null))
+                                    <span class="mt-1 block text-xs text-gray-400" title="{{ $notification->created_at->format('d.m.Y H:i') }}">
+                                        @if ($lane !== \App\Enums\NotificationCategory::General)<span class="me-1 font-medium text-gray-500 dark:text-gray-400">{{ $lane->icon() }} {{ $lane->label() }}</span>·@endif
+                                        {{ $notification->created_at->diffForHumans() }}
+                                    </span>
                                 </button>
                                 <button type="button" wire:click="toggleRead('{{ $notification->id }}')" class="shrink-0 rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ $notification->unread() ? __('Mark as read') : __('Mark as unread') }}" aria-label="{{ $notification->unread() ? __('Mark as read') : __('Mark as unread') }}">{{ $notification->unread() ? '✓' : '↺' }}</button>
                             </li>

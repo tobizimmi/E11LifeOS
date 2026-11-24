@@ -192,6 +192,8 @@ ein Deploy (Push auf `main`/`develop`) startet nur, wenn beides grün ist.
 
 ## Aufbau
 
+- `.ai/rules/` – **kompakte Entwickler-/Agenten-Landkarte** der Codebasis (Modul-Übersicht, Konventionen,
+  Deploy-Flow, Fallstricke). Als Nachschlagewerk gedacht, statt den ganzen Code zu lesen. Start: `.ai/rules/index.md`.
 - `resources/views/livewire/` – Seiten und Komponenten (Volt, PHP und Blade in einer Datei)
 - `app/Livewire/Concerns/InteractsWithHousehold.php` – gemeinsame Haushaltslogik aller Module (Haushalt auflösen, Sichtbarkeit, Echtzeit-Refresh)
 - `app/Models/Item.php` – Seiten (`type = note`), Aufgaben und Inbox-Einträge, inkl. Sichtbarkeit, Hierarchie, Tags und Wikilinks

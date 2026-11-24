@@ -162,6 +162,8 @@ class PortfolioMarketTest extends TestCase
         $this->assertSame(2, NewsArticle::where('symbol', 'SAP.DE')->count());
         $this->assertSame(1, NewsArticle::whereNull('symbol')->count());
         Http::assertSent(fn (Request $request) => str_contains($request->url(), 'pushover') && str_contains($request['message'], 'SAP hebt Prognose an'));
+        // Headlines about the member's securities land in the "important" lane of the bell.
+        $this->assertSame('important', $user->notifications()->sole()->data['category']);
 
         // Already announced articles are not pushed again.
         $this->artisan('portfolio:fetch-news')->expectsOutputToContain('New articles: 0, notifications: 0');

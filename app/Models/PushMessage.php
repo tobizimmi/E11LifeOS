@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property list<array{label: string, url: string}>|null $actions
  */
-#[Fillable(['user_id', 'title', 'body', 'url', 'actions', 'delivered_at'])]
+#[Fillable(['user_id', 'category', 'title', 'body', 'url', 'actions', 'delivered_at'])]
 class PushMessage extends Model
 {
     protected function casts(): array

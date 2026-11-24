@@ -43,6 +43,8 @@ class PortfolioBankingController extends ApiController
                 'id' => $connection->id,
                 'name' => (string) $connection->getAttribute('bank_name'),
                 'auto_sync' => (bool) $connection->getAttribute('auto_sync'),
+                'has_pin' => filled($connection->pin),
+                'pending_tan' => $connection->hasPendingTan() ? (string) $connection->getAttribute('sync_message') : null,
                 'last_synced_at' => $connection->getAttribute('last_synced_at') === null ? null : (string) $connection->getAttribute('last_synced_at'),
                 'sync_status' => $connection->getAttribute('sync_status'),
                 'sync_message' => $connection->getAttribute('sync_message'),
@@ -128,6 +130,55 @@ class PortfolioBankingController extends ApiController
         }
 
         return $this->ok(['adopted' => $count, 'portfolio_id' => $model->portfolio_id]);
+    }
+
+    /**
+     * Starts a FinTS fetch ("depot", "statement", "accounts" or "test"). The PIN is only needed when it is not
+     * saved; the answer is the result or a TAN request ("tan_required", with the challenge and whether the
+     * confirmation happens in the banking app).
+     */
+    public function fetch(Request $request, int $connection, BankSync $sync): JsonResponse
+    {
+        $data = $request->validate(['operation' => ['required', 'in:depot,statement,accounts,test'], 'pin' => ['nullable', 'string', 'max:64']]);
+        $model = BankConnection::where('user_id', $this->user()->id)->findOrFail($connection);
+
+        if (! $model->pin && blank($data['pin'] ?? null)) {
+            return $this->ok(['status' => 'pin_required']);
+        }
+
+        return $this->bankResult(fn () => $sync->run($model, $data['operation'], $data['pin'] ?? null));
+    }
+
+    public function submitTan(Request $request, int $connection, BankSync $sync): JsonResponse
+    {
+        $data = $request->validate(['tan' => ['required', 'string', 'max:32']]);
+        $model = BankConnection::where('user_id', $this->user()->id)->findOrFail($connection);
+
+        return $this->bankResult(fn () => $sync->submitTan($model, trim($data['tan'])));
+    }
+
+    /**
+     * Polls while the member confirms in the banking app ("waiting" until it is done).
+     */
+    public function checkDecoupled(int $connection, BankSync $sync): JsonResponse
+    {
+        $model = BankConnection::where('user_id', $this->user()->id)->findOrFail($connection);
+
+        return $this->bankResult(fn () => $sync->checkDecoupled($model) ?? ['status' => 'waiting']);
+    }
+
+    /**
+     * @param  callable(): array<string, mixed>  $call
+     */
+    private function bankResult(callable $call): JsonResponse
+    {
+        try {
+            $result = $call();
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['bank' => $exception->getMessage()]);
+        }
+
+        return $this->ok(['status' => $result['status'], 'message' => $result['message'] ?? null, 'challenge' => $result['challenge'] ?? null, 'decoupled' => (bool) ($result['decoupled'] ?? false)]);
     }
 
     public function toggleAccount(Request $request, int $connection): JsonResponse

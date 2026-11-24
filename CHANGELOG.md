@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.179.0] – 2026-11-24
+
+### Neu (App-Schnittstelle – Bankabruf und Smart-Home-Dashboards)
+- **Bankabruf aus der App:** FinTS-Abruf (Depotbestand, Umsätze, Konten, Test) mit PIN und TAN bzw. Freigabe in der Banking-App; ist die PIN gespeichert, entfällt die Eingabe.
+- **Smart-Home-Dashboards in der App:** Dashboards öffnen (mit Live-Werten und Schalten), anlegen, umbenennen, löschen und die Karten anordnen (Gerät, ganzer Raum, Überschrift, Energiefluss, Wetter, Termine, Szenen).
+
 ## [1.178.0] – 2026-11-24
 
 ### Neu (App-Schnittstelle – Finanzen, Einkauf, Depot)

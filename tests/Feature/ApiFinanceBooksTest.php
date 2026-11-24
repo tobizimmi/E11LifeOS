@@ -9,7 +9,11 @@ use App\Models\PortfolioPosition;
 use App\Models\ShoppingList;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Banking\BankSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
+use Mockery\MockInterface;
+use RuntimeException;
 use Tests\Concerns\CreatesHouseholdMembers;
 use Tests\TestCase;
 
@@ -151,5 +155,28 @@ class ApiFinanceBooksTest extends TestCase
         $otherHeaders = $this->headersFor($other);
         $this->postJson('/api/v1/auth/confirm-password', ['password' => 'password'], $otherHeaders)->assertOk();
         $this->postJson("/api/v1/banking/connections/{$connection->id}/apply", ['mode' => 'add'], $otherHeaders)->assertNotFound();
+    }
+
+    public function test_a_fints_fetch_with_pin_and_tan_from_the_app(): void
+    {
+        [$user, $household] = $this->memberWithHousehold();
+        $household->setAddon('portfolio', true);
+        $connection = BankConnection::create(['user_id' => $user->id, 'household_id' => $household->id, 'bank' => 'dkb', 'bank_name' => 'DKB', 'fints_url' => 'https://fints.dkb.de/fints', 'blz' => '12030000', 'login_name' => 'tobi', 'auto_sync' => false, 'accounts' => []]);
+        $headers = $this->headersFor($user);
+        $this->postJson('/api/v1/auth/confirm-password', ['password' => 'password'], $headers)->assertOk();
+
+        $this->postJson("/api/v1/banking/connections/{$connection->id}/fetch", ['operation' => 'depot'], $headers)->assertOk()->assertJsonPath('data.status', 'pin_required');
+        $this->postJson("/api/v1/banking/connections/{$connection->id}/fetch", ['operation' => 'wipe', 'pin' => '1'], $headers)->assertStatus(422);
+
+        $this->mock(BankSync::class, function (MockInterface $sync) {
+            $sync->shouldReceive('run')->once()->with(Mockery::type(BankConnection::class), 'depot', '12345')->andReturn(['status' => 'tan_required', 'challenge' => 'Bitte in der App bestätigen', 'decoupled' => true]);
+            $sync->shouldReceive('checkDecoupled')->once()->andReturn(null);
+            $sync->shouldReceive('checkDecoupled')->once()->andReturn(['status' => 'done', 'message' => '3 Positionen abgerufen']);
+            $sync->shouldReceive('submitTan')->once()->with(Mockery::type(BankConnection::class), '999999')->andThrow(new RuntimeException('Die TAN ist falsch.'));
+        });
+        $this->postJson("/api/v1/banking/connections/{$connection->id}/fetch", ['operation' => 'depot', 'pin' => '12345'], $headers)->assertOk()->assertJsonPath('data.status', 'tan_required')->assertJsonPath('data.decoupled', true);
+        $this->postJson("/api/v1/banking/connections/{$connection->id}/decoupled", [], $headers)->assertOk()->assertJsonPath('data.status', 'waiting');
+        $this->postJson("/api/v1/banking/connections/{$connection->id}/decoupled", [], $headers)->assertOk()->assertJsonPath('data.status', 'done')->assertJsonPath('data.message', '3 Positionen abgerufen');
+        $this->postJson("/api/v1/banking/connections/{$connection->id}/tan", ['tan' => '999999'], $headers)->assertStatus(422)->assertJsonValidationErrors('bank');
     }
 }

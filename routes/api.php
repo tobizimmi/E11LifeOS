@@ -76,6 +76,7 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\ShoppingNotesController;
 use App\Http\Controllers\Api\V1\SmartHomeController;
+use App\Http\Controllers\Api\V1\SmartHomeDashboardsController;
 use App\Http\Controllers\Api\V1\SmartHomeSetupController;
 use App\Http\Controllers\Api\V1\SpacesController;
 use App\Http\Controllers\Api\V1\SplitController;
@@ -668,6 +669,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::post('banking/links/{link}/sync', [PortfolioBankingController::class, 'syncLink'])->whereNumber('link')->middleware('throttle:api-20')->name('banking.links.sync');
                 Route::post('banking/links/{link}/auto-sync', [PortfolioBankingController::class, 'toggleLinkAutoSync'])->whereNumber('link')->name('banking.links.auto');
                 Route::delete('banking/links/{link}', [PortfolioBankingController::class, 'destroyLink'])->whereNumber('link')->name('banking.links.destroy');
+                Route::post('banking/connections/{connection}/fetch', [PortfolioBankingController::class, 'fetch'])->whereNumber('connection')->middleware('throttle:api-20')->name('banking.connections.fetch');
+                Route::post('banking/connections/{connection}/tan', [PortfolioBankingController::class, 'submitTan'])->whereNumber('connection')->middleware('throttle:api-20')->name('banking.connections.tan');
+                Route::post('banking/connections/{connection}/decoupled', [PortfolioBankingController::class, 'checkDecoupled'])->whereNumber('connection')->middleware('throttle:api-60')->name('banking.connections.decoupled');
                 Route::post('banking/connections/{connection}/apply', [PortfolioBankingController::class, 'applyToPortfolio'])->whereNumber('connection')->middleware('throttle:api-20')->name('banking.connections.apply');
                 Route::post('banking/connections/{connection}/account', [PortfolioBankingController::class, 'toggleAccount'])->whereNumber('connection')->name('banking.connections.account');
             });
@@ -689,6 +693,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::middleware('addon:smart_home')->group(function () {
             Route::get('smart-home', [SmartHomeController::class, 'index'])->name('smart-home.index');
             Route::post('smart-home/devices/{entity}/press', [SmartHomeController::class, 'press'])->whereNumber('entity')->name('smart-home.press');
+            Route::post('smart-home/dashboards', [SmartHomeDashboardsController::class, 'store'])->name('smart-home.dashboards.store');
+            Route::get('smart-home/dashboards/{dashboard}', [SmartHomeDashboardsController::class, 'show'])->whereNumber('dashboard')->name('smart-home.dashboards.show');
+            Route::put('smart-home/dashboards/{dashboard}', [SmartHomeDashboardsController::class, 'update'])->whereNumber('dashboard')->name('smart-home.dashboards.update');
+            Route::delete('smart-home/dashboards/{dashboard}', [SmartHomeDashboardsController::class, 'destroy'])->whereNumber('dashboard')->name('smart-home.dashboards.destroy');
+            Route::post('smart-home/dashboards/{dashboard}/cards', [SmartHomeDashboardsController::class, 'addCard'])->whereNumber('dashboard')->name('smart-home.dashboards.cards.store');
+            Route::put('smart-home/cards/{card}', [SmartHomeDashboardsController::class, 'updateCard'])->whereNumber('card')->name('smart-home.cards.update');
+            Route::delete('smart-home/cards/{card}', [SmartHomeDashboardsController::class, 'removeCard'])->whereNumber('card')->name('smart-home.cards.destroy');
+            Route::post('smart-home/cards/{card}/move', [SmartHomeDashboardsController::class, 'moveCard'])->whereNumber('card')->name('smart-home.cards.move');
             Route::get('smart-home/setup', [SmartHomeSetupController::class, 'setup'])->name('smart-home.setup');
             Route::post('smart-home/connections', [SmartHomeSetupController::class, 'storeConnection'])->middleware('throttle:api-20')->name('smart-home.connections.store');
             Route::put('smart-home/connections/{connection}', [SmartHomeSetupController::class, 'updateConnection'])->whereNumber('connection')->middleware('throttle:api-20')->name('smart-home.connections.update');

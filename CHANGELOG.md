@@ -3,6 +3,18 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.178.0] – 2026-11-24
+
+### Neu (App-Schnittstelle – Finanzen, Einkauf, Depot)
+- **Finanzen in der App wie im Web:** Auswertung mit freiem Zeitraum und Vergleich zur Vorperiode, Umbuchungen und Sparen ein-/ausblenden, Filter nach Kategorie und Konto, Ausgaben je Konto, erkannte Umbuchungen und Duplikate bestätigen, Buchungen bearbeiten und löschen, eigene Kategorien sowie die Konten-Übersicht mit Salden und Depots.
+- **Einkaufsliste:** angepinnte, abhakbare Hinweise.
+- **Depot:** Kaufkurs importierter Positionen (inkl. Gebühren) manuell setzen, Hinweise „Kaufkurs setzen/prüfen“ und der Bestandsabgleich mit der Bank („angleichen“ oder „ersetzen“).
+
+## [1.177.0] – 2026-11-24
+
+### Neu (App-Schnittstelle – Mail komplett)
+- **Mail in der App wie im Web:** Ordner (Posteingang, Gesendet, Archiv …) und Konversationen, Suche über alle Ordner, HTML-Ansicht mit blockierten externen Bildern, Markieren (gelesen/ungelesen, Stern), Archivieren und Papierkorb direkt auf dem Mailserver, Wischen mit frei wählbaren Aktionen, Verfassen/Antworten/Weiterleiten mit Cc/Bcc, Anhängen, Signatur und Entwürfen, Anhänge öffnen oder ins Dokumentenarchiv, und Übernehmen als Aufgabe, Notiz, Eingang oder Einkaufsliste.
+
 ## [1.176.0] – 2026-11-24
 
 ### Neu (Benachrichtigungen – pro Thema einstellbar, Push in die App)

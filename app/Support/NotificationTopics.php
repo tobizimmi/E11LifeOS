@@ -61,7 +61,7 @@ class NotificationTopics
             $path = substr($path, strlen($base));
         }
 
-        $segment = explode('/', ltrim($path, '/'))[0] ?? '';
+        $segment = explode('/', ltrim($path, '/'))[0];
 
         foreach (self::topics() as $key => $topic) {
             if (in_array($segment, $topic['segments'], true)) {

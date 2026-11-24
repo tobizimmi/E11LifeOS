@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.176.0] – 2026-11-24
+
+### Neu (Benachrichtigungen – pro Thema einstellbar, Push in die App)
+- **Pro Thema festlegen, wie du benachrichtigt wirst:** Für Mail, Aufgaben & Kalender, Einkauf, Finanzen, Portfolio, Zuhause, Gesundheit, Familie & Reisen, Dokumente, Notfallordner und Sonstiges: **Push + Mitteilung**, **nur Mitteilung** (Glocke) oder **aus**. Das Thema ergibt sich aus dem Bereich, auf den die Benachrichtigung verweist. Der Notfallordner lässt sich nicht ganz abschalten.
+- **Push auf das iPhone (App):** Die App registriert ihr Gerät, der Server schickt Benachrichtigungen über Apples Push-Dienst (APNs; Schlüssel in `.env`: `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY` oder `APNS_KEY_PATH`, `APNS_BUNDLE_ID`). Ruhezeiten gelten auch hier.
+- **API:** `GET/PUT /notification-settings`, Geräte unter `/push/devices`, Testpush unter `/push/test`.
+
 ## [1.175.0] – 2026-11-24
 
 ### Neu (Depot-Übersicht – Einblicke & Empfehlungen)

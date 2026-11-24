@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\NotificationCategory;
+use App\Models\DevicePushToken;
 use App\Models\PushMessage;
 use App\Models\PushSubscription;
 use App\Models\User;
@@ -60,9 +61,21 @@ class WebPush
     {
         $lane = NotificationCategory::fromValue($category ?? ($urgent ? NotificationCategory::Important->value : NotificationCategory::General->value));
 
+        // What the member chose for this topic: everything, only the bell in the app, or nothing.
+        $level = NotificationTopics::level($user, NotificationTopics::fromUrl($url, $lane));
+
+        if ($level === NotificationTopics::OFF) {
+            return 0;
+        }
+
         InAppNotifications::record($user, $title, $body, $url, $lane);
 
+        if ($level === NotificationTopics::BELL) {
+            return 0;
+        }
+
         $quiet = ! $urgent && self::inQuietHours($user);
+        $devices = $quiet ? 0 : $this->sendToDevices($user, $title, $body, $url, $urgent, $lane);
 
         if ($pushover && $user->pushover_all && ! $quiet) {
             ($this->pushover ?? app(Pushover::class))->send($user, $title, $body, $url, $urgent);
@@ -71,7 +84,7 @@ class WebPush
         $subscriptions = $user->pushSubscriptions()->get();
 
         if (! self::isConfigured() || $subscriptions->isEmpty()) {
-            return 0;
+            return $devices;
         }
 
         $message = PushMessage::create(['user_id' => $user->id, 'category' => $lane->value, 'title' => mb_substr($title, 0, 255), 'body' => $body, 'url' => $url, 'actions' => $actions ?: null]);
@@ -81,7 +94,27 @@ class WebPush
             return $subscriptions->count();
         }
 
-        return $this->deliver($subscriptions, collect([$message]), $urgent ? 'high' : 'normal', self::present($user, collect([$message]), bundle: false));
+        return $devices + $this->deliver($subscriptions, collect([$message]), $urgent ? 'high' : 'normal', self::present($user, collect([$message]), bundle: false));
+    }
+
+    /**
+     * Sends the notification to the member's native app installations (Apple push service).
+     */
+    private function sendToDevices(User $user, string $title, string $body, ?string $url, bool $urgent, NotificationCategory $lane): int
+    {
+        if (! ApnsClient::isConfigured()) {
+            return 0;
+        }
+
+        $reached = 0;
+
+        foreach (DevicePushToken::where('user_id', $user->id)->get() as $device) {
+            if (app(ApnsClient::class)->send($device, $title, $body, $url, $urgent, 'e11-'.$lane->value)) {
+                $reached++;
+            }
+        }
+
+        return $reached;
     }
 
     /**

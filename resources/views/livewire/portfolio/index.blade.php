@@ -2,9 +2,13 @@
 
 use App\Livewire\Concerns\InteractsWithHousehold;
 use App\Livewire\Concerns\InteractsWithPortfolio;
+use App\Models\InstagramPost;
+use App\Models\NewsArticle;
 use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
+use App\Models\PortfolioRecommendation;
 use App\Support\Portfolio\Positions;
+use App\Support\Portfolio\StrategyCoach;
 use App\Support\Portfolio\Valuation;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -40,13 +44,45 @@ new #[Layout('layouts.app')] class extends Component
      */
     public array $positionForm = [];
 
+    /** Whether the "Insights & recommendations" panel is expanded (remembered per member). */
+    public bool $insightsOpen = false;
+
     public function mount(): void
     {
         $this->resolveHousehold();
+        $this->insightsOpen = (bool) session('portfolio_insights_open', false);
 
         if ($this->portfolioId && ! $this->portfolios()->whereKey($this->portfolioId)->exists()) {
             $this->portfolioId = 0;
         }
+    }
+
+    /**
+     * Shows or hides the insights panel; the heavy data is only gathered while it is open.
+     */
+    public function toggleInsights(): void
+    {
+        $this->insightsOpen = ! $this->insightsOpen;
+        session(['portfolio_insights_open' => $this->insightsOpen]);
+    }
+
+    /**
+     * Top buy recommendations, fresh headlines on the member's securities, strategy to-dos and the
+     * latest market take (from the analysed Instagram/Heiko-Thieme posts) for the overview panel.
+     *
+     * @return array{recommendations: \Illuminate\Database\Eloquent\Collection<int, PortfolioRecommendation>, headlines: \Illuminate\Database\Eloquent\Collection<int, NewsArticle>, signals: list<array<string, mixed>>, marketTake: ?InstagramPost}
+     */
+    private function insights(Valuation $valuation): array
+    {
+        $symbols = PortfolioPosition::whereIn('portfolio_id', $this->portfolios()->select('id'))->pluck('symbol')
+            ->merge($this->watchlist()->pluck('symbol'))->filter()->unique()->values();
+
+        return [
+            'recommendations' => PortfolioRecommendation::where('user_id', $this->currentUser()->id)->orderByDesc('score')->limit(5)->get(),
+            'headlines' => NewsArticle::whereNotNull('symbol')->whereIn('symbol', $symbols->all())->orderByDesc('published_at')->limit(6)->get(),
+            'signals' => array_slice(StrategyCoach::forUser($this->currentUser(), $valuation)['signals'], 0, 6),
+            'marketTake' => InstagramPost::whereNotNull('analyzed_at')->where('summary', '!=', '')->orderByDesc('published_at')->first(),
+        ];
     }
 
     public function refreshPrices(Valuation $valuation): void
@@ -259,6 +295,7 @@ new #[Layout('layouts.app')] class extends Component
             'summary' => $valuation->summary($rows),
             'chart' => $chart,
             'perPortfolio' => $this->portfolioId ? [] : collect($rows)->groupBy(fn (array $row) => $row['position']->portfolio_id)->map(fn ($group) => $valuation->summary($group->all()))->all(),
+            'insights' => $this->insightsOpen && $portfolios->isNotEmpty() ? $this->insights($valuation) : null,
         ];
     }
 }; ?>
@@ -314,6 +351,23 @@ new #[Layout('layouts.app')] class extends Component
                         @endif
                         <button type="button" wire:click="refreshPrices" wire:loading.attr="disabled" class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800"><span wire:loading.remove wire:target="refreshPrices">↻</span><span wire:loading wire:target="refreshPrices">…</span> {{ __('Update prices') }}</button>
                     </div>
+                </div>
+
+                {{-- Insights & recommendations: collapsible so the overview stays tidy. --}}
+                <div class="overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-gray-800">
+                    <button type="button" wire:click="toggleInsights" class="flex w-full items-center justify-between gap-2 px-4 py-3 text-start" aria-expanded="{{ $insightsOpen ? 'true' : 'false' }}">
+                        <span class="font-semibold text-gray-900 dark:text-gray-100">💡 {{ __('Insights & recommendations') }}</span>
+                        <span class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                            <span wire:loading wire:target="toggleInsights">…</span>
+                            <span>{{ $insightsOpen ? __('Hide') : __('Show') }}</span>
+                            <span aria-hidden="true" class="text-xs">{{ $insightsOpen ? '▲' : '▼' }}</span>
+                        </span>
+                    </button>
+                    @if ($insightsOpen && $insights)
+                        <div class="border-t border-gray-100 p-4 dark:border-gray-700">
+                            @include('portfolio.partials.insights', ['insights' => $insights])
+                        </div>
+                    @endif
                 </div>
 
                 {{-- KPIs --}}

@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.175.0] – 2026-11-24
+
+### Neu (Depot-Übersicht – Einblicke & Empfehlungen)
+- Auf der Depot-Übersicht gibt es jetzt einen **auf-/zuklappbaren Block „💡 Einblicke & Empfehlungen"** (standardmäßig eingeklappt, damit die Übersicht aufgeräumt bleibt – der zuletzt gewählte Zustand wird gemerkt). Er bündelt vier Dinge:
+  - **🔎 Top-Empfehlungen** (Kaufkandidaten aus der täglichen Analyse, mit Score, klickbar),
+  - **📰 Aktuelle Schlagzeilen** zu deinen Depot- und Watchlist-Werten,
+  - **🎯 Strategie-To-dos** (Nachkauf-Tranchen, Verkaufssignale, Klumpenrisiko),
+  - **🎥 Aktuelle Markteinschätzung** – die wichtigsten Punkte aus dem zuletzt analysierten Video (Heiko Thieme / Instagram), inkl. „was zu tun ist".
+
 ## [1.174.0] – 2026-11-24
 
 ### Verbessert (Depot & Benachrichtigungen)

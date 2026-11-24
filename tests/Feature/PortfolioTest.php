@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Household;
+use App\Models\InstagramPost;
+use App\Models\NewsArticle;
 use App\Models\Portfolio;
 use App\Models\PortfolioPosition;
+use App\Models\PortfolioRecommendation;
 use App\Models\PortfolioSetting;
 use App\Models\PortfolioTransaction;
 use App\Models\PriceAlert;
@@ -144,6 +147,28 @@ class PortfolioTest extends TestCase
         // Clearing the field removes the override again.
         Volt::test('portfolio.index')->call('editPosition', $position->id)->set('positionForm.avg_buy_price', '')->call('savePosition')->assertHasNoErrors();
         $this->assertNull($position->fresh()->cost_basis_override);
+    }
+
+    public function test_the_overview_insights_panel_is_collapsible_and_shows_the_four_blocks(): void
+    {
+        [$user, , $portfolio] = $this->investor();
+        Security::factory()->create(['symbol' => 'SAP.DE', 'name' => 'SAP SE', 'isin' => 'DE0007164600', 'price_updated_at' => now()]);
+        PortfolioTransaction::factory()->for($portfolio)->create(['symbol' => 'SAP.DE', 'type' => 'buy', 'quantity' => 1, 'price' => 100, 'fees' => 0]);
+        Positions::recalculate($portfolio);
+
+        PortfolioRecommendation::create(['user_id' => $user->id, 'symbol' => 'MSFT', 'name' => 'Microsoft', 'price' => 400, 'drop_percent' => 12, 'score' => 88, 'rating' => 'buy', 'computed_at' => now()]);
+        NewsArticle::create(['symbol' => 'SAP.DE', 'title' => 'SAP hebt die Prognose', 'url' => 'https://example.com/sap', 'url_hash' => md5('sap-insights'), 'published_at' => now()]);
+        InstagramPost::create(['profile' => 'heikothieme', 'instagram_id' => 'ig-1', 'summary' => 'Markt bleibt stark', 'key_points' => ['Qualität kaufen'], 'analyzed_at' => now(), 'published_at' => now()]);
+
+        Volt::test('portfolio.index')
+            ->assertDontSee('Microsoft')
+            ->call('toggleInsights')
+            ->assertSee('Microsoft')
+            ->assertSee('SAP hebt die Prognose')
+            ->assertSee('Markt bleibt stark')
+            ->assertSee('Qualität kaufen');
+
+        $this->assertTrue(session('portfolio_insights_open'));
     }
 
     public function test_the_overview_values_positions_in_euro_with_current_prices(): void

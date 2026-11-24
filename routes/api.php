@@ -139,6 +139,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('mail/accounts/{account}/sync', [MailController::class, 'sync'])->whereNumber('account')->middleware('throttle:api-20')->name('mail.accounts.sync');
         Route::get('mail/accounts/{account}/messages', [MailController::class, 'messages'])->whereNumber('account')->name('mail.messages.index');
         Route::get('mail/messages/{message}', [MailController::class, 'show'])->whereNumber('message')->name('mail.messages.show');
+        Route::post('mail/messages/{message}/read', [MailController::class, 'toggleRead'])->whereNumber('message')->middleware('throttle:api-60')->name('mail.messages.read');
+        Route::post('mail/messages/{message}/flag', [MailController::class, 'toggleFlag'])->whereNumber('message')->middleware('throttle:api-60')->name('mail.messages.flag');
+        Route::post('mail/messages/{message}/archive', [MailController::class, 'archive'])->whereNumber('message')->middleware('throttle:api-60')->name('mail.messages.archive');
+        Route::post('mail/messages/{message}/trash', [MailController::class, 'trash'])->whereNumber('message')->middleware('throttle:api-60')->name('mail.messages.trash');
+        Route::post('mail/messages/{message}/note', [MailController::class, 'toNote'])->whereNumber('message')->name('mail.messages.note');
+        Route::get('mail/messages/{message}/attachments/{index}', [MailController::class, 'attachment'])->whereNumber(['message', 'index'])->middleware('throttle:api-30')->name('mail.messages.attachment');
+        Route::post('mail/messages/{message}/attachments/{index}/paperless', [MailController::class, 'toPaperless'])->whereNumber(['message', 'index'])->middleware('throttle:api-20')->name('mail.messages.paperless');
+        Route::post('mail/accounts/{account}/send', [MailController::class, 'send'])->whereNumber('account')->middleware('throttle:api-20')->name('mail.accounts.send');
+        Route::get('mail/accounts/{account}/drafts', [MailController::class, 'drafts'])->whereNumber('account')->name('mail.drafts.index');
+        Route::post('mail/accounts/{account}/drafts', [MailController::class, 'saveDraft'])->whereNumber('account')->name('mail.drafts.store');
+        Route::delete('mail/drafts/{draft}', [MailController::class, 'destroyDraft'])->whereNumber('draft')->name('mail.drafts.destroy');
+        Route::put('mail/swipe', [MailController::class, 'saveSwipe'])->name('mail.swipe');
         Route::post('mail/messages/{message}/task', [MailController::class, 'toTask'])->whereNumber('message')->name('mail.messages.task');
         Route::post('mail/messages/{message}/inbox', [MailController::class, 'toInbox'])->whereNumber('message')->name('mail.messages.inbox');
         Route::post('mail/messages/{message}/shopping', [MailController::class, 'toShopping'])->whereNumber('message')->name('mail.messages.shopping');

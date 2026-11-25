@@ -106,7 +106,7 @@ class TripController extends ApiController
     public function storeBooking(Request $request, Trip $trip): JsonResponse
     {
         $this->authorizeTrip($trip);
-        $booking = $trip->bookings()->create($this->validateBooking($request));
+        $booking = $trip->bookings()->create($this->validateBooking($request) + ['kind' => 'other']);
 
         return $this->ok($this->bookingData($booking), 201);
     }
@@ -134,7 +134,7 @@ class TripController extends ApiController
      */
     private function validateStop(Request $request, bool $required = true): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'title' => [$required ? 'required' : 'sometimes', 'string', 'max:255'],
             'day' => ['nullable', 'date'],
             'time' => ['nullable', 'string', 'max:10'],
@@ -144,6 +144,8 @@ class TripController extends ApiController
             'notes' => ['nullable', 'string', 'max:5000'],
             'done' => ['sometimes', 'boolean'],
         ]);
+
+        return $this->withoutEmpty($data, 'kind');
     }
 
     /**
@@ -151,12 +153,14 @@ class TripController extends ApiController
      */
     private function validatePacking(Request $request, bool $required = true): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'label' => [$required ? 'required' : 'sometimes', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:60'],
             'person' => ['nullable', 'string', 'max:60'],
             'packed' => ['sometimes', 'boolean'],
         ]);
+
+        return $this->withoutEmpty($data, 'category');
     }
 
     /**
@@ -164,7 +168,7 @@ class TripController extends ApiController
      */
     private function validateBooking(Request $request, bool $required = true): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'title' => [$required ? 'required' : 'sometimes', 'string', 'max:255'],
             'kind' => ['nullable', 'string', 'max:40'],
             'provider' => ['nullable', 'string', 'max:255'],
@@ -174,6 +178,23 @@ class TripController extends ApiController
             'notes' => ['nullable', 'string', 'max:5000'],
             'paid' => ['sometimes', 'boolean'],
         ]);
+
+        return $this->withoutEmpty($data, 'kind');
+    }
+
+    /**
+     * The app sends empty fields as null; a column with a default must then be left out.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withoutEmpty(array $data, string $key): array
+    {
+        if (array_key_exists($key, $data) && $data[$key] === null) {
+            unset($data[$key]);
+        }
+
+        return $data;
     }
 
     // --- Serializers ---------------------------------------------------------

@@ -7360,5 +7360,12 @@
     "Buy tranche (:third) around :price": "Nachkauf-Tranche (:third) um :price",
     "Sell signal": "Verkaufssignal",
     "Concentration risk: :weight %": "Klumpenrisiko: :weight %",
-    "To-do": "To-do"
+    "To-do": "To-do",
+    "Too many attempts. Please wait a moment.": "Zu viele Versuche. Bitte einen Moment warten.",
+    "Nothing due in the next 30 days.": "In den nächsten 30 Tagen ist nichts fällig.",
+    "Set a place for the weather under Settings.": "Lege in den Einstellungen einen Ort für das Wetter fest.",
+    "No monthly costs recorded yet.": "Noch keine monatlichen Kosten erfasst.",
+    "Nothing planned for today.": "Für heute ist nichts geplant.",
+    "rain": "Regen",
+    "The inbox is empty.": "Der Eingang ist leer."
 }

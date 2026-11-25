@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.181.1] – 2026-11-25
+
+### Behoben (App-Schnittstelle)
+- **Kaufpreis aus der App wird gespeichert:** Eine importierte Position ließ sich nicht ändern (Serverfehler), und alle weiteren Änderungen der App blieben dahinter hängen.
+- Positionen, Packlisten-Einträge und Buchungen lassen sich aus der App anlegen, auch wenn Name, Währung, Kategorie oder Art leer sind.
+
 ## [1.181.0] – 2026-11-25
 
 ### Neu (App-Schnittstelle – Einstellungen und Startseite)

@@ -237,7 +237,7 @@ class PortfolioController extends ApiController
         // Positions built from transactions keep their quantity; the purchase price can be corrected by hand
         // (a persistent override that survives the next recalculation, plus optional purchase fees).
         if (! $position->manual) {
-            $fees = (float) $request->validate(['fees' => ['nullable', 'numeric', 'min:0']])['fees'];
+            $fees = (float) ($request->validate(['fees' => ['nullable', 'numeric', 'min:0']])['fees'] ?? 0);
             $price = array_key_exists('avg_buy_price', $data) && (float) $position->quantity > 0
                 ? round((float) $data['avg_buy_price'] + $fees / (float) $position->quantity, 4)
                 : $position->cost_basis_override;
@@ -262,7 +262,7 @@ class PortfolioController extends ApiController
      */
     private function validatePosition(Request $request, bool $required = true): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'symbol' => [$required ? 'required' : 'sometimes', 'string', 'max:32'],
             'name' => ['nullable', 'string', 'max:255'],
             'isin' => ['nullable', 'string', 'max:20'],
@@ -272,6 +272,13 @@ class PortfolioController extends ApiController
             'asset_type' => ['nullable', 'string', 'max:32'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        // The app sends every field, empty ones as null; these columns have no empty value.
+        if (array_key_exists('name', $data)) {
+            $data['name'] ??= '';
+        }
+
+        return array_filter($data, fn (mixed $value, string $key) => $value !== null || ! in_array($key, ['currency', 'asset_type'], true), ARRAY_FILTER_USE_BOTH);
     }
 
     /**

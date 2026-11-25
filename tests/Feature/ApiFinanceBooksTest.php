@@ -149,6 +149,18 @@ class ApiFinanceBooksTest extends TestCase
         $this->getJson('/api/v1/portfolio-overview', $this->headersFor($stranger))->assertOk()->assertJsonPath('data.summary.count', 0);
     }
 
+    public function test_the_app_can_save_a_purchase_price_without_fees(): void
+    {
+        [$user] = $this->memberWithHousehold();
+        $portfolio = Portfolio::create(['user_id' => $user->id, 'name' => 'Depot', 'currency' => 'EUR']);
+        $imported = PortfolioPosition::create(['portfolio_id' => $portfolio->id, 'symbol' => 'NFLX', 'quantity' => 10, 'avg_buy_price' => 5, 'manual' => false, 'cost_basis_estimated' => true]);
+
+        // Exactly what the app sends: no "fees" field.
+        $this->putJson("/api/v1/positions/{$imported->id}", ['symbol' => 'NFLX', 'name' => null, 'quantity' => 10, 'avg_buy_price' => 480, 'currency' => 'EUR', 'notes' => null], $this->headersFor($user))
+            ->assertOk()->assertJsonPath('data.avg_buy_price', 480);
+        $this->assertSame(480.0, (float) $imported->fresh()->cost_basis_override);
+    }
+
     public function test_the_purchase_price_of_an_imported_position_can_be_corrected(): void
     {
         [$user] = $this->memberWithHousehold();

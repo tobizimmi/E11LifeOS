@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationEditorController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContractController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DocumentLinksController;
 use App\Http\Controllers\Api\V1\DocumentsController;
 use App\Http\Controllers\Api\V1\DriveGoogleController;
@@ -111,6 +113,32 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('logout');
         Route::post('auth/confirm-password', [AuthController::class, 'confirmPassword'])->name('confirm-password');
         Route::delete('auth/confirm-password', [AuthController::class, 'forgetConfirmation'])->name('confirm-password.forget');
+
+        // Account & settings (the web profile page) and the start page cards.
+        Route::get('account', [AccountController::class, 'show'])->name('account.show');
+        Route::get('account/preview/{kind}', [AccountController::class, 'preview'])->where('kind', 'briefing|digest')->middleware('throttle:api-30')->name('account.preview');
+        Route::put('account/preferences', [AccountController::class, 'updatePreferences'])->middleware('throttle:api-30')->name('account.preferences');
+        Route::put('account/calendar-feed', [AccountController::class, 'updateCalendarFeed'])->name('account.calendar-feed');
+        Route::post('account/google-calendar/{action}', [AccountController::class, 'googleCalendar'])->where('action', 'sync|disconnect')->middleware('throttle:api-20')->name('account.google-calendar');
+        Route::delete('account/paperless/{instance}', [AccountController::class, 'destroyPaperless'])->whereNumber('instance')->name('account.paperless.destroy');
+        Route::delete('account/devices/{device}', [AccountController::class, 'revokeDevice'])->whereNumber('device')->name('account.devices.destroy');
+        Route::delete('account/sessions/{session}', [AccountController::class, 'revokeSession'])->where('session', '[A-Za-z0-9]+')->name('account.sessions.destroy');
+        Route::middleware('throttle:api-20')->group(function () {
+            Route::put('account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
+            Route::put('account/password', [AccountController::class, 'updatePassword'])->name('account.password');
+            Route::post('account/send/{kind}', [AccountController::class, 'sendNow'])->where('kind', 'briefing|digest')->name('account.send');
+            Route::post('account/paperless', [AccountController::class, 'savePaperless'])->name('account.paperless.store');
+            Route::put('account/paperless/{instance}', [AccountController::class, 'savePaperless'])->whereNumber('instance')->name('account.paperless.update');
+            Route::post('account/siri-token', [AccountController::class, 'siriToken'])->name('account.siri');
+            Route::post('account/logout-others', [AccountController::class, 'logoutOtherDevices'])->name('account.logout-others');
+            Route::post('account/two-factor', [AccountController::class, 'startTwoFactor'])->name('account.two-factor.start');
+            Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTwoFactor'])->name('account.two-factor.confirm');
+            Route::post('account/two-factor/recovery-codes', [AccountController::class, 'recoveryCodes'])->name('account.two-factor.codes');
+            Route::post('account/two-factor/disable', [AccountController::class, 'disableTwoFactor'])->name('account.two-factor.disable');
+            Route::post('account/delete', [AccountController::class, 'destroy'])->name('account.destroy');
+        });
+        Route::get('dashboard', [DashboardController::class, 'index'])->middleware('throttle:api-60')->name('dashboard.index');
+        Route::put('dashboard', [DashboardController::class, 'update'])->name('dashboard.update');
 
         Route::get('tasks', [LifeController::class, 'tasks'])->name('tasks.index');
         Route::post('tasks', [LifeController::class, 'storeTask'])->name('tasks.store');

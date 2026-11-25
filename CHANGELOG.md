@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.181.0] – 2026-11-25
+
+### Neu (App-Schnittstelle – Einstellungen und Startseite)
+- **Alle Konto-Einstellungen in der App:** Profil, Passwort, Zwei-Faktor, Geräte und Browser, Sicherheitsprotokoll, Morgenbriefing, Wochenübersicht, Erinnerungen, Kalender-Abo, Google Kalender, paperless, Siri-Kurzbefehl und Konto löschen. Geschützte Änderungen verlangen das Passwort.
+- **Startseiten-Karten in der App** wie im Web, mit eigener Auswahl und Reihenfolge.
+
 ## [1.180.0] – 2026-11-24
 
 ### Neu (App-Schnittstelle – Portfolio-Übersicht)

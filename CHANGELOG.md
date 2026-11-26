@@ -7,6 +7,7 @@ jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
 ### Sicherheit
 - **Siri-Kurzbefehle können nur noch etwas hinzufügen** (Einkauf, Aufgabe, Notiz, Inbox). Bisher gab ihr Zugang fast die gesamte App-Schnittstelle frei, auch zum Lesen und Löschen. Gilt auch für bereits eingerichtete Kurzbefehle; sie funktionieren weiter.
+- Symfony-Pakete auf 8.1.12 aktualisiert; schließt sieben am 25.11. gemeldete Lücken (u. a. in Mailversand und Adresserzeugung).
 
 ## [1.181.1] – 2026-11-25
 

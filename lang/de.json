@@ -6913,6 +6913,7 @@
     "Name the shortcut e.g. “Add to shopping list” – then say “Hey Siri, Add to shopping list”.": "Benenne den Kurzbefehl z. B. „Zur Einkaufsliste hinzufügen“ – dann sag „Hey Siri, Zur Einkaufsliste hinzufügen“.",
     "The items land in your household’s default shopping list. The token stays valid as long as it is used; an unused token expires on its own.": "Die Artikel landen in der Standard-Einkaufsliste deines Haushalts. Der Token bleibt gültig, solange er genutzt wird; ein ungenutzter Token läuft von selbst ab.",
     "Shortcut": "Kurzbefehl",
+    "This shortcut can only add things.": "Dieser Kurzbefehl kann nur etwas hinzufügen.",
     "Controlling": "Controlling",
     "Loan draw": "Darlehensabruf",
     "Purchase + expected trades": "Kauf + erwartete Gewerke",

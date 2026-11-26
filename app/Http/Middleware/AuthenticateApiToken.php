@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Route middleware "auth.token": signs the request in with a bearer token from the api_tokens table;
  * tokens unused for too long (security.api_token_idle_days) are deleted instead.
+ * Shortcut tokens only reach the few routes that add something.
  */
 class AuthenticateApiToken
 {
@@ -25,6 +26,10 @@ class AuthenticateApiToken
 
         if (! $token?->user) {
             return response()->json(['success' => false, 'error' => __('Please sign in again.')], 401);
+        }
+
+        if (! $token->allowsRoute($request->route()?->getName())) {
+            return response()->json(['success' => false, 'error' => __('This shortcut can only add things.')], 403);
         }
 
         if (! $token->last_used_at || $token->last_used_at->lt(now()->subMinutes(5))) {

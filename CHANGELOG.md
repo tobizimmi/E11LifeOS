@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an E11LifeOS. Die oberste Versionsnummer ist die aktuelle Version;
 jeder Deploy bekommt zusätzlich eine fortlaufende Build-Nummer.
 
+## [1.181.2] – 2026-11-26
+
+### Sicherheit
+- **Siri-Kurzbefehle können nur noch etwas hinzufügen** (Einkauf, Aufgabe, Notiz, Inbox). Bisher gab ihr Zugang fast die gesamte App-Schnittstelle frei, auch zum Lesen und Löschen. Gilt auch für bereits eingerichtete Kurzbefehle; sie funktionieren weiter.
+
 ## [1.181.1] – 2026-11-25
 
 ### Behoben (App-Schnittstelle)

@@ -22,7 +22,7 @@ new class extends Component
      */
     public function createSiriToken(): void
     {
-        $this->newToken = ApiToken::issue(Auth::user(), 'Siri / '.__('Shortcut'));
+        $this->newToken = ApiToken::issue(Auth::user(), 'Siri / '.__('Shortcut'), ApiToken::SCOPE_QUICK);
     }
 
     public function with(): array

@@ -316,7 +316,7 @@ class AccountController extends ApiController
     {
         $this->requirePassword($request);
 
-        return $this->ok(['url' => url('api/v1/quick/auto').'?token='.ApiToken::issue($this->user(), 'Siri / '.__('Shortcut')).'&text='], 201);
+        return $this->ok(['url' => url('api/v1/quick/auto').'?token='.ApiToken::issue($this->user(), 'Siri / '.__('Shortcut'), ApiToken::SCOPE_QUICK).'&text='], 201);
     }
 
     public function revokeSession(string $session): JsonResponse
